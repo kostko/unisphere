@@ -1,0 +1,204 @@
+#!/usr/bin/python
+#
+# Scenario deployment helper script for Modelnet testbed
+#
+# Copyright (C) 2012 by Jernej Kos <k@jst.sm>
+#
+import ConfigParser
+import hashlib, os, subprocess, sys, time
+
+class RemoteCommandFailed(Exception):
+  """
+  An exception that gets raised when a command executed via SSH
+  exits with non-zero exit code.
+  """
+  def __init__(self, data=None):
+    """
+    Class constructor.
+    
+    :param data: Combined stdout/stderr output of the failed
+      command
+    """
+    self.data = data
+
+class Controller(object):
+  """
+  Interface to the controller server.
+  """
+  def __init__(self, host, user, port_base):
+    """
+    Class constructor.
+    
+    :param host: Controller host
+    :param user: Username to authenticate with
+    :param port_base: Base port for forwarding
+    """
+    self.host = host
+    self.user = user
+    self.next_port = port_base
+    self.forwarders = {}
+    self.connections = {}
+  
+  def tunnel_connect(self, host, port):
+    """
+    Establish a SSH port forward via controller to a node.
+    
+    :param host: Node IP address
+    :param port: Node port
+    :return: Locally assigned port for this tunnel
+    """
+    local_port = self.next_port
+    self.next_port += 1
+    self.forwarders[local_port] = subprocess.Popen(
+      ["/usr/bin/ssh", "-N", "-L", "%d:%s:%d" % (local_port, host, port), "%s@%s" % (self.user, self.host)]
+    )
+    self.connections[host] = local_port
+    
+    return local_port
+  
+  def send_command(self, host, command, no_error_check=False):
+    """
+    Sends a command to the remote node.
+    
+    :param host: Node IP address
+    :param command: Command to execute
+    :param no_error_check: Set to True to avoid checking the return code
+    :return: Data received on stdout/stderr
+    """
+    port = self.connections[host]
+    p = subprocess.Popen(
+      ["/usr/bin/ssh", "-p", str(port), "-o", "StrictHostKeyChecking no", "%s@localhost" % self.user, command],
+      stdin = subprocess.PIPE,
+      stdout = subprocess.PIPE,
+      stderr = subprocess.STDOUT,
+    )    
+    data = p.communicate()[0]
+    if p.returncode != 0 and not no_error_check:
+      raise RemoteCommandFailed(data)
+    return data
+  
+  def send_sudo_command(self, host, command, **kwargs):
+    """
+    Sends a superuser command to the remote node. The same as
+    `send_command` but prefixes the command with "sudo".
+    
+    :param host: Node IP address
+    :param command: Command to execute
+    :return: Data received on stdout/stderr
+    """
+    return self.send_command(host, "sudo %s" % command, **kwargs)
+  
+  def copy_file(self, source, host, destination):
+    """
+    Copies a file or a directory to the node.
+    
+    :param source: Source file path
+    :param host: Node IP address
+    :param destination: Destination file path
+    """
+    port = self.connections[host]
+    p = subprocess.Popen(
+      ["/usr/bin/scp", "-r", "-P", str(port), "-o", "StrictHostKeyChecking no", source, "%s@localhost:%s" % (self.user, destination)],
+      stdin = subprocess.PIPE,
+      stdout = subprocess.PIPE,
+      stderr = subprocess.STDOUT,
+    )
+    data = p.communicate()[0]
+    if p.returncode != 0:
+      raise RemoteCommandFailed(data)
+  
+  def close(self):
+    """
+    Closes all established port forwards.
+    """
+    for fwd in self.forwarders.values():
+      fwd.terminate()
+    
+    self.forwarders = {}
+
+if __name__ == '__main__':
+  print ""
+  print "=== UNISPHERE Testbed helper ==="
+  print ""
+  
+  # Generate unique test identifier
+  test_id = hashlib.md5(os.urandom(16)).hexdigest()
+  print ">>> Test ID:", test_id
+  
+  # Parse the configuration file
+  config = ConfigParser.SafeConfigParser()
+  try:
+    config.read(sys.argv[1])
+  except (IndexError, IOError):
+    print "ERROR: First argument must be a valid testbed configuration file!"
+    exit(1)
+
+  # Setup the controller
+  controller = Controller(
+    config.get("testbed", "controller.host"),
+    config.get("testbed", "controller.user"),
+    config.getint("testbed", "port_base"),
+  )
+  
+  # Load the scenario
+  try:
+    scenario_dir = sys.argv[2]
+    if not os.path.isfile(os.path.join(scenario_dir, "scenario.conf")):
+      raise IndexError
+  except IndexError:
+    print "ERROR: Second argument must be a valid scenario directory!"
+    exit(1)
+   
+  scenario = ConfigParser.SafeConfigParser()
+  try:
+    scenario.read(os.path.join(scenario_dir, "scenario.conf"))
+  except IOError:
+    print "ERROR: Scenario directory must contain a valid scenario.conf!"
+    exit(1)
+  
+  print ">>> Establishing tunnels via the controller node..."
+  for name, host in config.items("forwarders") + config.items("virtual nodes"):
+    print "  - %s" % host
+    controller.tunnel_connect(host, 22)
+    
+    # Wait for the tunnel to establish
+    while True:
+      try:
+        controller.send_command(host, "ls")
+        break
+      except RemoteCommandFailed:
+        time.sleep(1)
+        continue
+  
+  print ">>> Tunnels ready."
+  
+  try:
+    # Deploy scenario on forwarder nodes first
+    print ">>> Deploying Modelnet scenario on forwarder and virtual nodes..."
+    testbed_dir = os.path.join("/tmp", "testbed-%s" % test_id)
+    for name, host in config.items("forwarders") + config.items("virtual nodes"):
+      print "  - %s" % host
+      
+      try:
+        controller.send_sudo_command(host, "mkdir %s" % testbed_dir)
+        controller.send_sudo_command(host, "chmod 777 %s" % testbed_dir)
+        controller.copy_file(os.path.join(scenario_dir, scenario.get("scenario", "model")), host, testbed_dir)
+        controller.copy_file(os.path.join(scenario_dir, scenario.get("scenario", "routes")), host, testbed_dir)
+        
+        # We don't perform an error check on deployhost, because it causes network
+        # interruption due to loading the modelnet kernel module
+        controller.send_sudo_command(host, "deployhost %s %s" % (
+          os.path.join(testbed_dir, os.path.basename(scenario.get("scenario", "model"))),
+          os.path.join(testbed_dir, os.path.basename(scenario.get("scenario", "routes")))
+        ), no_error_check = True)
+      except RemoteCommandFailed, e:
+        print "!!! Failed to deploy the scenario on all forwarders, aborting."
+        print "!!! Output of the failed command was:"
+        print e.data
+        break
+      finally:
+        controller.send_sudo_command(host, "rm -rf %s" % testbed_dir)
+  finally:
+    print ">>> Tearing down tunnels..."
+    controller.close()
+  

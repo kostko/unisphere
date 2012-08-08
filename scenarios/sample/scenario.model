@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<model>
+  <emulators>
+    <emul hostname="testbed-core1" int_idx="0">
+      <host hostname="testbed-edge1">
+        <subnet int_emul="0" int_nodes="3" vbcst="10.0.0.7" vmask="255.255.255.248" vnet="10.0.0.0/29">
+          <virtnode int_idx="3" int_vn="1" role="virtnode" vip="10.0.0.2" />
+          <virtnode int_idx="4" int_vn="2" role="virtnode" vip="10.0.0.3" />
+          <virtnode int_idx="2" int_vn="0" role="virtnode" vip="10.0.0.1" />
+        </subnet>
+      </host>
+    </emul>
+  </emulators>
+  <hops>
+    <hop int_dst="4" int_emul="0" int_idx="5" int_src="0" specs="client-stub" />
+    <hop dbl_len="1" int_dst="1" int_emul="0" int_idx="0" int_src="0" specs="stub-stub" />
+    <hop dbl_kbps="768" int_dst="1" int_emul="0" int_idx="2" int_src="3" specs="client-stub" />
+    <hop int_dst="0" int_emul="0" int_idx="4" int_src="4" specs="client-stub" />
+    <hop dbl_len="1" int_dst="0" int_emul="0" int_idx="1" int_src="1" specs="stub-stub" />
+    <hop int_dst="3" int_emul="0" int_idx="3" int_src="1" specs="client-stub" />
+    <hop dbl_kbps="768" int_dst="2" int_emul="0" int_idx="1" int_src="1" specs="client-stub" />
+    <hop int_delayms="1" int_dst="1" int_emul="0" int_idx="0" int_src="2" specs="client-stub" />
+  </hops>
+  <specs xmloutbug="workaround">
+    <client-stub dbl_kbps="64" dbl_plr="0" int_delayms="100" int_qlen="10" />
+    <stub-stub dbl_kbps="1000" dbl_plr="0" int_delayms="20" int_qlen="10" />
+  </specs>
+</model>
