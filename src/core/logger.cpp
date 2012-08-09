@@ -16,9 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "core/context.h"
+#include "core/logger.h"
+
+#include <iostream>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace UniSphere {
 
+Logger::Logger()
+{
+}
+
+void Logger::output(Level level, const std::string &text)
+{
+  boost::lock_guard<boost::mutex> g(m_mutex);
+  
+  std::cout << boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time());
+  std::cout << " ";
+  
+  switch (level) {
+    case Level::Info: std::cout    << "[INFO   ]"; break;
+    case Level::Warning: std::cout << "[WARNING]"; break;
+    case Level::Error: std::cout   << "[ERROR  ]"; break;
+  }
+  
+  std::cout << " " << text << std::endl;
+}
 
 }
