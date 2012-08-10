@@ -16,34 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_INTERPLEX_EXCEPTIONS_H
-#define UNISPHERE_INTERPLEX_EXCEPTIONS_H
-
-#include <core/exception.h>
+#include "interplex/linklet.h"
 
 namespace UniSphere {
 
-/**
- * Address type mismatch exception.
- */
-struct UNISPHERE_EXPORT AddressTypeMismatch : public Exception {
-  AddressTypeMismatch(const std::string &msg = "") : Exception(msg) {}
-};
-
-/**
- * Too many linklets exception.
- */
-struct UNISPHERE_EXPORT TooManyLinklets : public Exception {
-  TooManyLinklets(const std::string &msg = "") : Exception(msg) {}
-};
-
-/**
- * Linklet listen failed exception.
- */
-struct UNISPHERE_EXPORT LinkletListenFailed : public Exception {
-  LinkletListenFailed(const std::string &msg = "") : Exception(msg) {}
-};
-
+Linklet::Linklet(LinkManager &manager)
+  : m_manager(manager),
+    m_service(manager.context().service()),
+    m_state(State::Closed)
+{
 }
 
-#endif
+Linklet::~Linklet()
+{
+}
+
+}

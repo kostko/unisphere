@@ -16,34 +16,29 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_INTERPLEX_EXCEPTIONS_H
-#define UNISPHERE_INTERPLEX_EXCEPTIONS_H
-
-#include <core/exception.h>
+#include "interplex/linklet_factory.h"
+#include "interplex/link_manager.h"
+#include "interplex/ip_linklet.h"
 
 namespace UniSphere {
 
-/**
- * Address type mismatch exception.
- */
-struct UNISPHERE_EXPORT AddressTypeMismatch : public Exception {
-  AddressTypeMismatch(const std::string &msg = "") : Exception(msg) {}
-};
-
-/**
- * Too many linklets exception.
- */
-struct UNISPHERE_EXPORT TooManyLinklets : public Exception {
-  TooManyLinklets(const std::string &msg = "") : Exception(msg) {}
-};
-
-/**
- * Linklet listen failed exception.
- */
-struct UNISPHERE_EXPORT LinkletListenFailed : public Exception {
-  LinkletListenFailed(const std::string &msg = "") : Exception(msg) {}
-};
-
+LinkletFactory::LinkletFactory(LinkManager &manager)
+  : m_manager(manager)
+{
 }
 
-#endif
+LinkletPtr LinkletFactory::create(const Address& address) const
+{
+  LinkletPtr linklet;
+  switch (address.type()) {
+    // IPv4/v6 connection
+    case Address::Type::IP: linklet = LinkletPtr(new IPLinklet(m_manager)); break;
+    
+    // This should not happen
+    default: BOOST_ASSERT(false);
+  }
+  
+  return linklet;
+}
+  
+}

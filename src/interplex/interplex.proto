@@ -1,0 +1,13 @@
+//
+// Protocol messages for Interplex connection management
+//
+
+package UniSphere.Protocol.Interplex;
+import "src/interplex/contact.proto";
+
+//
+// Introductory link message
+//
+message Hello {
+  required UniSphere.Protocol.Contact local_contact = 1;
+}

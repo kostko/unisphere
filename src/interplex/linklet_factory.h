@@ -16,34 +16,41 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_INTERPLEX_EXCEPTIONS_H
-#define UNISPHERE_INTERPLEX_EXCEPTIONS_H
+#ifndef UNISPHERE_INTERPLEX_LINKLETFACTORY_H
+#define UNISPHERE_INTERPLEX_LINKLETFACTORY_H
 
-#include <core/exception.h>
+#include "core/globals.h"
+#include "interplex/contact.h"
 
 namespace UniSphere {
 
-/**
- * Address type mismatch exception.
- */
-struct UNISPHERE_EXPORT AddressTypeMismatch : public Exception {
-  AddressTypeMismatch(const std::string &msg = "") : Exception(msg) {}
-};
+class LinkManager;
+UNISPHERE_SHARED_POINTER(Linklet)
 
 /**
- * Too many linklets exception.
+ * A linklet factory is used to create new linklets.
  */
-struct UNISPHERE_EXPORT TooManyLinklets : public Exception {
-  TooManyLinklets(const std::string &msg = "") : Exception(msg) {}
+class UNISPHERE_NO_EXPORT LinkletFactory {
+public:
+  /**
+   * Class constructor.
+   * 
+   * @param manager Link manager instance
+   */
+  LinkletFactory(LinkManager &manager);
+  
+  /**
+   * Creates a new linklet suitable for handling the given address.
+   * 
+   * @param address Address
+   * @return A new linklet
+   */
+  LinkletPtr create(const Address &address) const;
+private:
+  /// Link manager associated with this linklet factory
+  LinkManager &m_manager;
 };
-
-/**
- * Linklet listen failed exception.
- */
-struct UNISPHERE_EXPORT LinkletListenFailed : public Exception {
-  LinkletListenFailed(const std::string &msg = "") : Exception(msg) {}
-};
-
+  
 }
 
 #endif
