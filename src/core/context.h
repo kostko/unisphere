@@ -19,8 +19,77 @@
 #ifndef UNISPHERE_CORE_CONTEXT_H
 #define UNISPHERE_CORE_CONTEXT_H
 
+#include <botan/botan.h>
+#include <boost/asio.hpp>
+
+#include "core/globals.h"
+#include "core/logger.h"
+
 namespace UniSphere {
 
+/**
+ * Library initializer class, must be created before any other class
+ * from the UNISPHERE library can be used and must be created only
+ * once!
+ */
+class UNISPHERE_EXPORT LibraryInitializer {
+public:
+  /**
+   * Class constructor.
+   */
+  LibraryInitializer();
+private:
+  /// Botan cryptographic library context
+  Botan::LibraryInitializer m_botan;
+};
+
+/**
+ * UNISPHERE framework entry point.
+ */
+class UNISPHERE_EXPORT Context {
+public:
+  /**
+   * Constructs a UNISPHERE context.
+   */
+  Context();
+  
+  /**
+   * Class destructor.
+   */
+  ~Context();
+  
+  /**
+   * Returns the ASIO I/O service for this UNISPHERE context. This service
+   * may be used for all I/O operations by context-dependent APIs.
+   */
+  inline boost::asio::io_service &service() { return m_io; }
+  
+  /**
+   * Returns the debug logger.
+   */
+  inline Logger &logger() { return m_logger; }
+  
+  /**
+   * Enters the main event loop. Passing a thread pool size of greater than
+   * one will use multiple threads for UNISPHERE processing.
+   *
+   * @param threads Size of the thread pool
+   */
+  void run(size_t threads = 1);
+  
+  /**
+   * Stop the event loop interrupting all operations.
+   */
+  void stop();
+private:
+  /// ASIO I/O service for all network operations
+  boost::asio::io_service m_io;
+  /// ASIO work grouping for all network operations
+  boost::asio::io_service::work m_work;
+  
+  /// Logger instance
+  Logger m_logger;
+};
 
 }
 

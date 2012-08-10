@@ -20,5 +20,35 @@
 
 namespace UniSphere {
 
+LibraryInitializer::LibraryInitializer()
+  : m_botan("thread_safe=true")
+{
+}
+
+Context::Context()
+  : m_work(m_io)
+{
+  // Log context initialization
+  UNISPHERE_LOG(*this, Info, "UNISPHERE Context initialized.");
+}
+
+Context::~Context()
+{
+}
+
+void Context::run(size_t threads)
+{
+  // Spawn a thread pool when multiple threads specified
+  if (threads > 1) {
+    // TODO
+  }
+  
+  m_io.run();
+}
+
+void Context::stop()
+{
+  m_io.stop();
+}
 
 }
