@@ -39,9 +39,9 @@ public:
    */
   inline Context &context() const { return m_context; }
   
-  Link &connect(const Contact &contact, std::function<void(Link&)> init = NULL);
+  LinkPtr connect(const Contact &contact, std::function<void(Link&)> init = NULL);
   
-  Link &create(const Contact &contact, std::function<void(Link&)> init, bool connect);
+  LinkPtr create(const Contact &contact, std::function<void(Link&)> init, bool connect);
   
   void listen(const Contact &contact);
   

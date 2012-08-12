@@ -39,12 +39,12 @@ void LinkManager::setListenLinkInit(std::function<void(Link&)> init)
   m_listeningInit = init;
 }
 
-Link& LinkManager::connect(const Contact &contact, std::function<void(Link&)> init)
+LinkPtr LinkManager::connect(const Contact &contact, std::function<void(Link&)> init)
 {
   return create(contact, init, true);
 }
 
-Link &LinkManager::create(const Contact &contact, std::function<void(Link&)> init, bool connect)
+LinkPtr LinkManager::create(const Contact &contact, std::function<void(Link&)> init, bool connect)
 {
   UpgradableLock lock(m_linksMutex);
   LinkPtr link;
@@ -64,7 +64,7 @@ Link &LinkManager::create(const Contact &contact, std::function<void(Link&)> ini
   
   // Setup link contact
   link->addContact(contact, connect);
-  return *link;
+  return link;
 }
 
 void LinkManager::listen(const Contact &contact)
@@ -111,12 +111,12 @@ void LinkManager::remove(const NodeIdentifier &nodeId)
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet
-  Link &link = create(linklet->peerContact(), m_listeningInit, false);
+  LinkPtr link = create(linklet->peerContact(), m_listeningInit, false);
   
   try {
-    link.addLinklet(linklet);
+    link->addLinklet(linklet);
   } catch (TooManyLinklets &e) {
-    link.tryCleanup();
+    link->tryCleanup();
     linklet->close();
   }
 }
