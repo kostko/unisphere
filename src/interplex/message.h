@@ -51,7 +51,25 @@ public:
     Plexus_RpcRequest   = 0x04,
     Plexus_RpcResponse  = 0x05,
     
-    /* 0x20 - 0xFF RESERVED FOR FUTURE USE */
+    /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
+    
+    /* 0xF0 - 0xFF USER-DEFINED MESSAGES */
+    UserMsg1            = 0xF0,
+    UserMsg2            = 0xF1,
+    UserMsg3            = 0xF2,
+    UserMsg4            = 0xF3,
+    UserMsg5            = 0xF4,
+    UserMsg6            = 0xF5,
+    UserMsg7            = 0xF6,
+    UserMsg8            = 0xF7,
+    UserMsg9            = 0xF8,
+    UserMsg10           = 0xF9,
+    UserMsg11           = 0xFA,
+    UserMsg12           = 0xFB,
+    UserMsg13           = 0xFC,
+    UserMsg14           = 0xFD,
+    UserMsg15           = 0xFE,
+    UserMsg16           = 0xFF,
   };
   
   /**
