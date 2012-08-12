@@ -34,17 +34,17 @@ LinkManager::LinkManager(Context &context, const NodeIdentifier &nodeId)
 {
 }
 
-void LinkManager::setListenLinkInit(std::function<void(Link&)> init)
+void LinkManager::setLinkInitializer(std::function<void(Link&)> init)
 {
-  m_listeningInit = init;
+  m_linkInitializer = init;
 }
 
-LinkPtr LinkManager::connect(const Contact &contact, std::function<void(Link&)> init)
+LinkPtr LinkManager::connect(const Contact &contact)
 {
-  return create(contact, init, true);
+  return create(contact, true);
 }
 
-LinkPtr LinkManager::create(const Contact &contact, std::function<void(Link&)> init, bool connect)
+LinkPtr LinkManager::create(const Contact &contact, bool connect)
 {
   UpgradableLock lock(m_linksMutex);
   LinkPtr link;
@@ -54,8 +54,8 @@ LinkPtr LinkManager::create(const Contact &contact, std::function<void(Link&)> i
     link = m_links[contact.nodeId()];
   } else {
     link = LinkPtr(new Link(*this, contact.nodeId()));
-    if (init) {
-      init(*link);
+    if (m_linkInitializer) {
+      m_linkInitializer(*link);
     }
     
     UpgradeToUniqueLock unique(lock);
@@ -111,7 +111,7 @@ LinkPtr LinkManager::getLink(const NodeIdentifier &nodeId)
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet
-  LinkPtr link = create(linklet->peerContact(), m_listeningInit, false);
+  LinkPtr link = create(linklet->peerContact(), false);
   
   try {
     link->addLinklet(linklet);

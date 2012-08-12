@@ -80,7 +80,7 @@ int main(int argc, char **argv)
   mgr.listen(Address(vm["host"].as<std::string>(), vm["port"].as<unsigned short>()));
   
   // Subscribe to message received events
-  mgr.setListenLinkInit([](Link &link) {
+  mgr.setLinkInitializer([](Link &link) {
     link.signalMessageReceived.connect([](const Message &msg) {
       ::Protocol::Test::Hello pmsg = message_cast< ::Protocol::Test::Hello>(msg);
       std::cout << "Received msg: " << pmsg.msg() << std::endl;

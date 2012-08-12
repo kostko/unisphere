@@ -43,20 +43,20 @@ public:
    * Creates a new link and starts with the connection procedure.
    * 
    * @param contact Peer contact information
-   * @param init Initialization function to call after link is created
    * @return A shared instance of Link
    */
-  LinkPtr connect(const Contact &contact, std::function<void(Link&)> init = NULL);
+  LinkPtr connect(const Contact &contact);
   
   /**
-   * Creates a new link.
+   * Creates a new link if one doesn't yet exist for the specified
+   * contact. If a link to this contact already exists, it is returned
+   * instead.
    * 
    * @param contact Peer contact information
-   * @param init Initialization function to call after link is created
-   * @param connect True immediately start with the connection procedure
+   * @param connect True to immediately start with the connection procedure
    * @return A shared instance of Link
    */
-  LinkPtr create(const Contact &contact, std::function<void(Link&)> init, bool connect);
+  LinkPtr create(const Contact &contact, bool connect);
   
   /**
    * Opens a listening linklet.
@@ -99,11 +99,13 @@ public:
   inline const NodeIdentifier &getLocalNodeId() const { return m_nodeId; }
   
   /**
-   * Sets up the initialization function for incoming links.
+   * Sets up a function that will be called each time a new link instance
+   * needs to be initialized. This function should be used to setup any
+   * signals or other link-related resources.
    *
    * @param init The initialization function
    */
-  void setListenLinkInit(std::function<void(Link&)> init);
+  void setLinkInitializer(std::function<void(Link&)> init);
 protected:
   /**
    * Called by a listener @ref Linklet when a new connection gets accepted
@@ -131,8 +133,9 @@ private:
   std::list<LinkletPtr> m_listeners;
   /// Mutex protecting the listening linklet list
   boost::shared_mutex m_listenersMutex;
-  /// Initialization function for listening links
-  std::function<void(Link&)> m_listeningInit;
+  
+  /// Initialization function for new link instances
+  std::function<void(Link&)> m_linkInitializer;
 };
   
 }
