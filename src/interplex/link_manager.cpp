@@ -67,30 +67,22 @@ LinkPtr LinkManager::create(const Contact &contact, std::function<void(Link&)> i
   return link;
 }
 
-void LinkManager::listen(const Contact &contact)
+bool LinkManager::listen(const Address &address)
 {
   UpgradableLock lock(m_listenersMutex);
-  
-  typedef std::pair<int, Address> PriorityAddress;
-  BOOST_FOREACH(PriorityAddress it, contact.addresses()) {
-    try {
-      LinkletPtr linklet = m_linkletFactory.create(it.second);
-      linklet->signalAcceptedConnection.connect(boost::bind(&LinkManager::linkletAcceptedConnection, this, _1));
-      linklet->listen(it.second);
-      
-      UpgradeToUniqueLock unique(lock);
-      m_listeners.push_back(linklet);
-    } catch (LinkletListenFailed &e) {
-      // Failed to listen on specified address, skip this one
-    }
+  try {
+    LinkletPtr linklet = m_linkletFactory.create(address);
+    linklet->signalAcceptedConnection.connect(boost::bind(&LinkManager::linkletAcceptedConnection, this, _1));
+    linklet->listen(address);
+    
+    UpgradeToUniqueLock unique(lock);
+    m_listeners.push_back(linklet);
+  } catch (LinkletListenFailed &e) {
+    // Failed to listen on specified address
+    return false;
   }
-}
-
-void LinkManager::listen(const Address &address, const NodeIdentifier &nodeId)
-{
-  Contact contact(nodeId);
-  contact.addAddress(address);
-  listen(contact);
+  
+  return true;
 }
 
 void LinkManager::remove(const NodeIdentifier &nodeId)

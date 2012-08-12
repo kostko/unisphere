@@ -39,13 +39,32 @@ public:
    */
   inline Context &context() const { return m_context; }
   
+  /**
+   * Creates a new link and starts with the connection procedure.
+   * 
+   * @param contact Peer contact information
+   * @param init Initialization function to call after link is created
+   * @return A shared instance of Link
+   */
   LinkPtr connect(const Contact &contact, std::function<void(Link&)> init = NULL);
   
+  /**
+   * Creates a new link.
+   * 
+   * @param contact Peer contact information
+   * @param init Initialization function to call after link is created
+   * @param connect True immediately start with the connection procedure
+   * @return A shared instance of Link
+   */
   LinkPtr create(const Contact &contact, std::function<void(Link&)> init, bool connect);
   
-  void listen(const Contact &contact);
-  
-  void listen(const Address &address, const NodeIdentifier &nodeId);
+  /**
+   * Opens a listening linklet.
+   * 
+   * @param address Local address to listen on
+   * @return True if listen was successful
+   */
+  bool listen(const Address &address);
   
   /**
    * Removes the link to a specific node. The link must be in the Closed
