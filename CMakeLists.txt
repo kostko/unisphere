@@ -53,3 +53,4 @@ set(unisphere_external_libraries
 )
 
 add_subdirectory(src)
+add_subdirectory(apps)
