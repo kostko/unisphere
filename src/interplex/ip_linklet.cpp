@@ -254,13 +254,20 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
         return close();
       }
       
-      UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Introductory phase completed.");
       m_peerContact = peerContact;
+      
+      // Perform additional verification on the peer before transitioning into
+      // the connected state
+      if (!signalVerifyPeer(shared_from_this())) {
+        return close();
+      }
+      
+      UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Introductory phase completed.");
       m_state = State::Connected;
       signalConnectionSuccess(shared_from_this());
       
-      // The above signal may close this linklet if peer verification fails, in this case we
-      // should not start reading, otherwise this will cause a segmentation fault
+      // The above signal may close this linklet, in this case we should not start reading,
+      // otherwise this will cause a segmentation fault
       if (m_state != State::Connected)
         return;
     } else {

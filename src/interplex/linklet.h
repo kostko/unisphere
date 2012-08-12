@@ -33,6 +33,32 @@ namespace UniSphere {
 UNISPHERE_SHARED_POINTER(Linklet)
 
 /**
+ * The verify peer combiner is used to call slots bound to the verifyPeer
+ * signal. If any slot returns false, further slots are not called and
+ * false is returned as a final result, meaning that the connection will
+ * be aborted.
+ */
+class UNISPHERE_NO_EXPORT VerifyPeerCombiner {
+public:
+  typedef bool result_type;
+  
+  template<typename InputIterator>
+  result_type operator()(InputIterator first, InputIterator last)
+  {
+    if (first == last)
+      return true;
+    
+    while (first != last) {
+      if (*first == false)
+        return false;
+      ++first;
+    }
+    
+    return true;
+  }
+};
+
+/**
  * Linklets represent different transport protocols that can be used
  * by Interplex to interconnect nodes.
  */
@@ -106,6 +132,7 @@ public:
   // Signals
   boost::signal<void (LinkletPtr)> signalConnectionFailed;
   boost::signal<void (LinkletPtr)> signalConnectionSuccess;
+  boost::signal<bool (LinkletPtr), VerifyPeerCombiner> signalVerifyPeer;
   boost::signal<void (LinkletPtr)> signalDisconnected;
   boost::signal<void (LinkletPtr)> signalAcceptedConnection;
   boost::signal<void (LinkletPtr, const Message&)> signalMessageReceived;

@@ -77,6 +77,8 @@ void Link::send(const Message &msg)
     // FIXME Make this limit configurable
     if (m_messages.size() < 512)
       m_messages.push_back(msg);
+    
+    // TODO Trigger a reconnect when one is not in progress
   } else {
     m_dispatcher->send(msg);
   }
@@ -126,6 +128,7 @@ void Link::addLinklet(LinkletPtr linklet)
   }
   
   // Connect to linklet signals
+  linklet->signalVerifyPeer.connect(boost::bind(&Link::linkletVerifyPeer, this, _1));
   linklet->signalConnectionFailed.connect(boost::bind(&Link::linkletConnectionFailed, this, _1));
   linklet->signalDisconnected.connect(boost::bind(&Link::linkletDisconnected, this, _1));
   linklet->signalMessageReceived.connect(boost::bind(&Link::linkletMessageReceived, this, _1, _2));
@@ -133,11 +136,14 @@ void Link::addLinklet(LinkletPtr linklet)
 
 void Link::removeLinklet(LinkletPtr linklet)
 {
+  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  
   // Remove linklet from list of linklets
   m_linklets.remove(linklet);
   
   // Disconnect all signals
   linklet->signalConnectionSuccess.disconnect(boost::bind(&Link::linkletConnectionSuccess, this, _1));
+  linklet->signalVerifyPeer.disconnect(boost::bind(&Link::linkletVerifyPeer, this, _1));
   linklet->signalConnectionFailed.disconnect(boost::bind(&Link::linkletConnectionFailed, this, _1));
   linklet->signalDisconnected.disconnect(boost::bind(&Link::linkletDisconnected, this, _1));
   linklet->signalMessageReceived.disconnect(boost::bind(&Link::linkletMessageReceived, this, _1, _2));
@@ -188,6 +194,10 @@ void Link::tryNextAddress()
   LinkPtr self = shared_from_this(); 
   boost::lock_guard<boost::recursive_mutex> g(m_mutex);
   
+  // Ensure that a connection actually still needs to be established
+  if (m_connectedLinklets > 0)
+    return;
+  
   if (m_addressIterator == m_addressList.end() || ++m_addressIterator == m_addressList.end()) {
     signalCycledAddresses(*this);
     m_addressIterator = m_addressList.begin();
@@ -217,12 +227,15 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
   
   // Remove linklet from list of linklets and try next address
   removeLinklet(linklet);
-  // TODO exponential backoff and limited number of retries
-  m_retryTimer.expires_from_now(boost::posix_time::seconds(2));
-  m_retryTimer.async_wait(boost::bind(&Link::tryNextAddress, this));
-}
   
-void Link::linkletConnectionSuccess(LinkletPtr linklet)
+  // TODO exponential backoff and limited number of retries
+  if (!m_connectedLinklets) {
+    m_retryTimer.expires_from_now(boost::posix_time::seconds(2));
+    m_retryTimer.async_wait(boost::bind(&Link::tryNextAddress, this));
+  }
+}
+
+bool Link::linkletVerifyPeer (LinkletPtr linklet)
 {
   boost::lock_guard<boost::recursive_mutex> g(m_mutex);
   
@@ -232,10 +245,15 @@ void Link::linkletConnectionSuccess(LinkletPtr linklet)
     // TODO used contact address should be removed as it is clearly not valid
     // TODO also we should use some signal that would be used by Router to update routing
     //      table entries
-    linklet->close();
-    linkletConnectionFailed(linklet);
-    return;
+    return false;
   }
+  
+  return true;
+}
+  
+void Link::linkletConnectionSuccess(LinkletPtr linklet)
+{
+  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
   
   // Change link state as we now have at least one working linklet
   m_connectedLinklets++;
@@ -255,6 +273,8 @@ void Link::linkletDisconnected(LinkletPtr linklet)
   // Switch link state when we have no suitable linklets to use
   if (--m_connectedLinklets == 0) {
     setState(Link::State::Closed);
+    
+    // TODO This should only be called when we require a persistent connection
     tryNextAddress();
   }
 }

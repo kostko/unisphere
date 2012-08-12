@@ -150,6 +150,14 @@ protected:
   void linkletConnectionFailed(LinkletPtr linklet);
   
   /**
+   * Called by @ref Linklet when additional peer verification should
+   * be performed. It should return true if the verification passes.
+   *
+   * @param linklet Affected linklet
+   */
+  bool linkletVerifyPeer(LinkletPtr linklet);
+  
+  /**
    * Called by @ref Linklet when current connection attempt is
    * successful.
    *
