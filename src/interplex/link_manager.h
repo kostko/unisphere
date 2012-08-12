@@ -68,7 +68,7 @@ public:
   /**
    * Returns the local node identifier.
    */
-  inline const NodeIdentifier &getNodeId() const { return m_nodeId; }
+  inline const NodeIdentifier &getLocalNodeId() const { return m_nodeId; }
   
   /**
    * Sets up the initialization function for incoming links.
