@@ -100,6 +100,14 @@ void LinkManager::remove(const NodeIdentifier &nodeId)
   m_links.erase(nodeId);
 }
 
+LinkPtr LinkManager::getLink(const NodeIdentifier &nodeId)
+{
+  if (m_links.find(nodeId) == m_links.end())
+    return LinkPtr();
+  
+  return m_links[nodeId];
+}
+
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet

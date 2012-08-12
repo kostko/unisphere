@@ -75,6 +75,15 @@ public:
   void remove(const NodeIdentifier &nodeId);
   
   /**
+   * Returns an existing link instance if one exists for the specified
+   * node identifier. Otherwise NULL is returned.
+   * 
+   * @param nodeId Link node identifier
+   * @return Link instance corresponding to the identifier or NULL
+   */
+  LinkPtr getLink(const NodeIdentifier &nodeId);
+  
+  /**
    * Returns the linklet factory instance.
    */
   inline const LinkletFactory &getLinkletFactory() const { return m_linkletFactory; }
