@@ -30,8 +30,8 @@ Link::Link(LinkManager &manager, const NodeIdentifier &nodeId)
   : m_manager(manager),
     m_nodeId(nodeId),
     m_state(Link::State::Closed),
+    m_persistent(false),
     m_dispatcher(new RoundRobinMessageDispatcher(m_linklets)),
-    m_connectedLinklets(0),
     m_addressIterator(m_addressList.end()),
     m_retryTimer(manager.context().service())
 {
@@ -53,7 +53,6 @@ void Link::close()
   }
   
   m_linklets.clear();
-  m_connectedLinklets = 0;
   setState(Link::State::Closed);
   m_manager.remove(m_nodeId);
 }
@@ -78,7 +77,9 @@ void Link::send(const Message &msg)
     if (m_messages.size() < 512)
       m_messages.push_back(msg);
     
-    // TODO Trigger a reconnect when one is not in progress
+    // Trigger a reconnect when one is not in progress
+    if (m_state != Link::State::Connecting)
+      tryNextAddress();
   } else {
     m_dispatcher->send(msg);
   }
@@ -114,11 +115,15 @@ void Link::addLinklet(LinkletPtr linklet)
   switch (linklet->state()) {
     case Linklet::State::Connected: {
       // A connected linklet; might change link state
-      m_connectedLinklets++;
       setState(Link::State::Connected);
       break;
     }
-    case Linklet::State::Connecting:
+    case Linklet::State::Connecting: {
+      if (m_state == Link::State::Closed)
+        setState(Link::State::Connecting);
+      
+      // Don't break here, so we connect the signal below!
+    }
     case Linklet::State::Closed: {
       // Connection is pending, we should connect to its success routine
       linklet->signalConnectionSuccess.connect(boost::bind(&Link::linkletConnectionSuccess, this, _1));
@@ -147,6 +152,32 @@ void Link::removeLinklet(LinkletPtr linklet)
   linklet->signalConnectionFailed.disconnect(boost::bind(&Link::linkletConnectionFailed, this, _1));
   linklet->signalDisconnected.disconnect(boost::bind(&Link::linkletDisconnected, this, _1));
   linklet->signalMessageReceived.disconnect(boost::bind(&Link::linkletMessageReceived, this, _1, _2));
+  
+  // Check that we have the proper state
+  checkLinkletState();
+}
+
+void Link::checkLinkletState()
+{
+  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  
+  bool connected = false;
+  bool connecting = false;
+  BOOST_FOREACH(LinkletPtr &l, m_linklets) {
+    if (l->state() == Linklet::State::Connected) {
+      connected = true;
+    } else if (l->state() == Linklet::State::Connecting) {
+      connecting = true;
+    }
+  }
+  
+  if (connected) {
+    setState(Link::State::Connected);
+  } else if (connecting) {
+    setState(Link::State::Connecting);
+  } else {
+    setState(Link::State::Closed);
+  }
 }
 
 void Link::setState(State state)
@@ -195,7 +226,7 @@ void Link::tryNextAddress()
   boost::lock_guard<boost::recursive_mutex> g(m_mutex);
   
   // Ensure that a connection actually still needs to be established
-  if (m_connectedLinklets > 0)
+  if (m_state != Link::State::Closed)
     return;
   
   if (m_addressIterator == m_addressList.end() || ++m_addressIterator == m_addressList.end()) {
@@ -211,6 +242,10 @@ void Link::tryNextAddress()
   
   // Log our attempt
   UNISPHERE_LOG(m_manager.context(), Info, "Link: Trying next address for outgoing connection.");
+  
+  // Change state to connecting if the link has been closed before
+  if (m_state == Link::State::Closed)
+    setState(Link::State::Connecting);
   
   const Address &address = *m_addressIterator;
   LinkletPtr linklet = m_manager.getLinkletFactory().create(address);
@@ -229,13 +264,13 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
   removeLinklet(linklet);
   
   // TODO exponential backoff and limited number of retries
-  if (!m_connectedLinklets) {
+  if (m_state == Link::State::Closed) {
     m_retryTimer.expires_from_now(boost::posix_time::seconds(2));
     m_retryTimer.async_wait(boost::bind(&Link::tryNextAddress, this));
   }
 }
 
-bool Link::linkletVerifyPeer (LinkletPtr linklet)
+bool Link::linkletVerifyPeer(LinkletPtr linklet)
 {
   boost::lock_guard<boost::recursive_mutex> g(m_mutex);
   
@@ -250,14 +285,11 @@ bool Link::linkletVerifyPeer (LinkletPtr linklet)
   
   return true;
 }
-  
+
 void Link::linkletConnectionSuccess(LinkletPtr linklet)
 {
   boost::lock_guard<boost::recursive_mutex> g(m_mutex);
-  
-  // Change link state as we now have at least one working linklet
-  m_connectedLinklets++;
-  setState(Link::State::Connected);
+  checkLinkletState();
 }
 
 void Link::linkletDisconnected(LinkletPtr linklet)
@@ -270,11 +302,9 @@ void Link::linkletDisconnected(LinkletPtr linklet)
   // Remove linklet from list of linklets
   removeLinklet(linklet);
   
-  // Switch link state when we have no suitable linklets to use
-  if (--m_connectedLinklets == 0) {
-    setState(Link::State::Closed);
-    
-    // TODO This should only be called when we require a persistent connection
+  // When removal of this linklet causes the link to become closed, attempt
+  // to reconnect when the link is marked as persistent
+  if (m_state == Link::State::Closed && m_persistent) {
     tryNextAddress();
   }
 }

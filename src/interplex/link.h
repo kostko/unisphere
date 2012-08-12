@@ -55,6 +55,7 @@ public:
    */
   enum class State {
     Closed,
+    Connecting,
     Connected
   };
   
@@ -78,6 +79,20 @@ public:
    * mutex or it will abort!
    */
   void close();
+  
+  /**
+   * Sets the persistency value of this link. A persistent link will
+   * attempt to always keep the connection established and will cause
+   * automatic reconnection attempts when the link fails.
+   * 
+   * @param value True for the link to be persistent, false otherwise
+   */
+  inline void setPersistant(bool value) { m_persistent = value; }
+  
+  /**
+   * Returns the persistency value of this link.
+   */
+  inline bool isPersistent() const { return m_persistent; }
   
   /**
    * Returns the node identifier of the node on the other side of
@@ -125,8 +140,23 @@ protected:
    */
   void removeLinklet(LinkletPtr linklet);
   
+  /**
+   * Checks linklets and ensures that link state is in sync with
+   * all the linklets.
+   */
+  void checkLinkletState();
+  
+  /**
+   * Adds new contact information to this link.
+   * 
+   * @param contact Contact information
+   * @param connect Should a connection be attempted if the link is closed
+   */
   void addContact(const Contact &contact, bool connect = true);
   
+  /**
+   * Attempts to connect to the next address in the address list.
+   */
   void tryNextAddress();
   
   /**
@@ -189,6 +219,8 @@ private:
   
   /// Current link state
   State m_state;
+  /// Should this connection be persitently maintained
+  bool m_persistent;
   
   /// Internal mutex
   boost::recursive_mutex m_mutex;
@@ -200,8 +232,6 @@ private:
   
   /// List of linklets
   std::list<LinkletPtr> m_linklets;
-  /// Number of currently connected linklets
-  size_t m_connectedLinklets;
   
   /// Contact address list
   std::set<Address> m_addressList;
