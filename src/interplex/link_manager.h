@@ -29,9 +29,21 @@
 namespace UniSphere {
 
 UNISPHERE_SHARED_POINTER(Link)
-  
+
+/**
+ * A link manager is used to manage links to all peers in a unified way. Each
+ * link is exposed as a Link instance with a simple message-based interface.
+ * The underlying mechanism of actually delivering these messages is completely
+ * abstracted.
+ */
 class UNISPHERE_EXPORT LinkManager {
 public:
+  /**
+   * Constructs a new link manager instance.
+   * 
+   * @param context UNISPHERE context
+   * @param nodeId Node identifier of the local node
+   */
   LinkManager(Context &context, const NodeIdentifier &nodeId);
   
   /**
