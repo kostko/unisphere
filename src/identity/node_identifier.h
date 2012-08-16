@@ -147,7 +147,7 @@ protected:
    */ 
   void setIdentifier(const std::string &identifier, Format format);
 private:
-  // The actual identifier in raw form
+  /// The actual identifier in raw form
   std::string m_identifier;
 };
   
