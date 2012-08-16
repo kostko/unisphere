@@ -1,0 +1,4 @@
+
+add_executable(test_identity identity.cpp)
+target_link_libraries(test_identity UnisphereCore UnisphereIdentity)
+add_test(test_identity test_identity)
