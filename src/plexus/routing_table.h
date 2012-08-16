@@ -260,7 +260,7 @@ public:
    * @param nodeId Destination node identifier
    * @return Routing entry for the specified node
    */
-  PeerEntry get(const NodeIdentifier &nodeId) const;
+  PeerEntry get(const NodeIdentifier &nodeId);
   
   /**
    * Returns the number of buckets currently in the routing table.
@@ -268,9 +268,15 @@ public:
   size_t bucketCount() const { return m_localBucket + 1; }
   
   /**
-   * Returns the number of neighbor entries currently in the routing table.
+   * Returns the number of peer entries currently in the routing table
+   * without counting the sibling table.
    */
-  size_t neighborCount() const;
+  size_t peerCount() const;
+  
+  /**
+   * Returns the number of sibling entries currently in the sibling table.
+   */
+  size_t siblingCount() const;
 public:
   // Signals
   // TODO signal for pinging entries while adding into full buckets
@@ -296,11 +302,11 @@ protected:
    * Performs the actual insertion of a node into the routing table. This
    * method is called by add with a shared lock held in read mode.
    *
-   * @param link Link to the peer in question
+   * @param entry Peer entry to insert
    * @param lock Shared pointer to upgradable lock
    * @return True if routing table has been changed
    */
-  bool insert(LinkPtr link, UpgradableLockPtr lock);
+  bool insert(PeerEntry &entry, UpgradableLockPtr lock);
   
   /**
    * Splits the current local bucket into two buckets. The new local bucket
