@@ -24,6 +24,15 @@
 
 namespace UniSphere {
 
+PeerEntry::PeerEntry()
+{
+}
+
+PeerEntry::PeerEntry (const NodeIdentifier &nodeId)
+  : nodeId(nodeId)
+{
+}
+  
 PeerEntry::PeerEntry(LinkPtr link)
   : nodeId(link->nodeId()),
     contact(link->contact()),
@@ -33,12 +42,33 @@ PeerEntry::PeerEntry(LinkPtr link)
 {
 }
 
-RoutingTable::RoutingTable(LinkManager &manager, size_t bucketSize)
+DistanceOrderedTable::DistanceOrderedTable(const NodeIdentifier &key, size_t maxSize)
+  : m_key(key),
+    m_maxSize(maxSize)
+{
+}
+
+void DistanceOrderedTable::insert(const PeerEntry &entry)
+{
+  PeerEntry e = entry;
+  e.distance = e.nodeId ^ m_key;
+  m_table.insert(e);
+  
+  // When there are already too many entries, remove the most distant one
+  if (m_table.size() > m_maxSize) {
+    auto &d = m_table.get<DistanceTag>();
+    d.erase(--d.end());
+  }
+}
+
+RoutingTable::RoutingTable(UniSphere::LinkManager &manager, size_t bucketSize, size_t numSiblings)
   : m_manager(manager),
     m_localId(manager.getLocalNodeId()),
     m_localBucket(0),
     m_maxBucketSize(bucketSize),
-    m_maxBuckets(NodeIdentifier::length * 8)
+    m_maxBuckets(NodeIdentifier::length * 8),
+    m_numKeySiblings(numSiblings),
+    m_maxSiblingsSize(5 * numSiblings)
 {
 }
 
@@ -70,7 +100,7 @@ bool RoutingTable::add(LinkPtr link)
 
 bool RoutingTable::insert(LinkPtr link, UpgradableLockPtr lock)
 {
-  BOOST_ASSERT(link && !link->contact().isNull());
+  BOOST_ASSERT(link && !link->contact().isNull() && link->nodeId() != m_localId);
   
   // First check if this entry is already present in the neighbor table and update
   // contact information if so
@@ -190,48 +220,31 @@ bool RoutingTable::split(UpgradableLockPtr lock)
   return true;
 }
 
-PeerEntryList RoutingTable::lookupInBucket(const NodeIdentifier &destination, size_t count,
-  bool includeTarget)
+bool RoutingTable::isSiblingFor(const NodeIdentifier &node, const NodeIdentifier &key)
 {
-  SharedLock lock(m_mutex);
-  
-  // This is much simpler as lookup, since we just fetch entries for the target bucket
-  BucketIndex bucket = bucketForIdentifier(destination);
-  PeerEntryList result;
-  auto entries = m_peers.get<BucketByDistanceTag>().equal_range(boost::make_tuple(bucket));
-  for (auto it = entries.first; it != entries.second && count > 0; it++) {
-    if (!includeTarget && (*it).nodeId == destination)
-      continue;
+  // First check that the specified key is inside the sibling neighbourhood
+  // of the local node; if not, we can't determine sibling status
+  if (m_siblings.size() == m_maxSiblingsSize) {
+    PeerEntry edgeNode = *m_siblings.get<DistanceTag>().rbegin();
     
-    result.push_back((*it));
-    count--;
+    // If distance to key is greater than distance to the most distant node
+    // in the sibling list, the key is outside radius so we can't know anything
+    if ((m_localId ^ key) > edgeNode.distance)
+      return false;
   }
   
-  return result;
-}
-
-PeerEntryList RoutingTable::sampleFromBuckets(const NodeIdentifier &target, size_t count)
-{
-  SharedLock lock(m_mutex);
-  
-  // Fetch destination bucket and sample all buckets up to it
-  PeerEntryList result;
-  size_t currentCount = 0;
-  size_t lastLcp = 0;
-  size_t lcp = target.longestCommonPrefix(m_localId);
-  auto entries = m_peers.get<LcpTag>().range(0 <= boost::lambda::_1, boost::lambda::_1 < lcp);
-  for (auto it = entries.first; it != entries.second; it++) {
-    if ((*it).nodeId == target)
-      continue;
-    if ((*it).lcp != lastLcp)
-      currentCount = 0;
-    
-    if (++currentCount > count)
-      continue;
-    result.push_back(*it);
+  // Order potential siblings by their distance to target key
+  DistanceOrderedTable candidates(key, m_numKeySiblings);
+  auto &entries = m_siblings.get<NodeIdTag>();
+  for (auto it = entries.begin(); it != entries.end(); it++) {
+    candidates.insert(*it);
   }
   
-  return result;
+  // Insert the local node as it is also a candidate
+  candidates.insert(PeerEntry(m_localId));
+  
+  // Check if specified node is among the sibling candidates
+  return candidates.table().get<NodeIdTag>().find(node) != candidates.table().end();
 }
 
 PeerEntryList RoutingTable::lookup(const NodeIdentifier &destination, size_t count)
@@ -256,41 +269,27 @@ PeerEntryList RoutingTable::lookup(const NodeIdentifier &destination, size_t cou
     boost::lambda::_1 <= endBucket
   );
   
-  boost::multi_index_container<
-    PeerEntry,
-    midx::indexed_by<
-      // Index by distance
-      midx::ordered_non_unique<
-        midx::tag<DistanceTag>,
-        BOOST_MULTI_INDEX_MEMBER(PeerEntry, NodeIdentifier, distance)
-      >
-    >
-  > candidates;
-
+  DistanceOrderedTable candidates(destination, count);
   for (auto it = entries.first; it != entries.second; it++) {
-    PeerEntry entry = *it;
-    entry.distance = (*it).contact.nodeId() ^ destination;
-    candidates.insert(entry);
+    candidates.insert(*it);
   }
   
   // Select the closest count entries
   PeerEntryList result;
-  BOOST_FOREACH(const PeerEntry &entry, candidates) {
+  BOOST_FOREACH(const PeerEntry &entry, candidates.table().get<DistanceTag>()) {
     result.push_back(entry);
-    if (--count <= 0)
-      break;
   }
   
   return result;
 }
 
-Contact RoutingTable::get(const NodeIdentifier &nodeId) const
+PeerEntry RoutingTable::get(const NodeIdentifier &nodeId) const
 {
   auto node = m_peers.get<NodeIdTag>().find(nodeId);
   if (node == m_peers.end())
-    return Contact();
+    return PeerEntry();
   
-  return (*node).contact;
+  return *node;
 }
 
 }

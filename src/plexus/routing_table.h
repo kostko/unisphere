@@ -48,11 +48,29 @@ typedef boost::uint16_t BucketIndex;
 class UNISPHERE_EXPORT PeerEntry {
 public:
   /**
+   * Constructs an invalid peer entry.
+   */
+  PeerEntry();
+  
+  /**
+   * Class constructor.
+   * 
+   * @param nodeId Peer node identifier
+   */
+  PeerEntry(const NodeIdentifier &nodeId);
+  
+  /**
    * Class constructor.
    *
    * @param link Pointer to a link established with the peer node
    */
   PeerEntry(LinkPtr link);
+  
+  /**
+   * Returns true if this peer entry has a valid node identifier
+   * and link associated with it.
+   */
+  bool isValid() const { return nodeId.isValid() && link; }
 public:
   /// Peer node identifier
   NodeIdentifier nodeId;
@@ -125,8 +143,82 @@ typedef boost::multi_index_container<
   >
 > PeerTable;
 
+/**
+ * Siblings are nodes that are responsible for a specific key in the DHT. This
+ * table contains peer entries that constitute the sibling neighbourhood of
+ * the local node.
+ */
+typedef boost::multi_index_container<
+  PeerEntry,
+  midx::indexed_by<
+    // Index by node identifier
+    midx::ordered_unique<
+      midx::tag<NodeIdTag>,
+      BOOST_MULTI_INDEX_MEMBER(PeerEntry, NodeIdentifier, nodeId)
+    >,
+    
+    // Index by distance
+    midx::ordered_non_unique<
+      midx::tag<DistanceTag>,
+      BOOST_MULTI_INDEX_MEMBER(PeerEntry, NodeIdentifier, distance)
+    >
+  >
+> SiblingTable;
+
 /// A list of neighbor entries
 typedef std::list<PeerEntry> PeerEntryList;
+
+/**
+ * A class that orders stores peer entries in a multi index container and only
+ * keeps a specified number of closest ones by XOR distance metric.
+ */
+class UNISPHERE_EXPORT DistanceOrderedTable {
+public:
+  /// Container type that sorts by distance and node identifiers
+  typedef boost::multi_index_container<
+    PeerEntry,
+    midx::indexed_by<
+      // Index by node identifier
+      midx::ordered_unique<
+        midx::tag<NodeIdTag>,
+        BOOST_MULTI_INDEX_MEMBER(PeerEntry, NodeIdentifier, nodeId)
+      >,
+      
+      // Index by distance
+      midx::ordered_non_unique<
+        midx::tag<DistanceTag>,
+        BOOST_MULTI_INDEX_MEMBER(PeerEntry, NodeIdentifier, distance)
+      >
+    >
+  > DistanceTable;
+  
+  /**
+   * Class constructor.
+   * 
+   * @param key Key to measure distance to
+   * @param maxSize Maximum number of top entries to keep
+   */
+  DistanceOrderedTable(const NodeIdentifier &key, size_t maxSize);
+  
+  /**
+   * Inserts a new peer entry into the table.
+   * 
+   * @param entry Peer entry
+   */
+  void insert(const PeerEntry &entry);
+  
+  /**
+   * Returns the underlying multi index container.
+   */
+  inline DistanceTable &table() { return m_table; }
+private:
+  /// Key to measure distance to
+  NodeIdentifier m_key;
+  /// Maximum number of peer entries to keep
+  size_t m_maxSize;
+  /// The underlying distance table
+  DistanceTable m_table;
+};
 
 /**
  * A class that manages the Kademlia routing table for the UNISPHERE
@@ -139,8 +231,9 @@ public:
    *
    * @param manager Link manager instance
    * @param bucketSize Maximum bucket size
+   * @param numSiblings Number of siblings
    */
-  RoutingTable(LinkManager &manager, size_t bucketSize);
+  RoutingTable(LinkManager &manager, size_t bucketSize, size_t numSiblings);
   
   /**
    * Adds a new entry into the routing table.
@@ -159,36 +252,15 @@ public:
    */
   PeerEntryList lookup(const NodeIdentifier &destination, size_t count);
   
-  /**
-   * Returns a maximum of @ref count contacts that are in the same
-   * bucket as the @ref destination.
-   *
-   * @param destination Destination identifier
-   * @param count Maximum number of contacts to return
-   * @param includeTarget Should the target contact be included
-   * @return A list of neighbor entries
-   */
-  PeerEntryList lookupInBucket(const NodeIdentifier &destination, size_t count,
-    bool includeTarget = true);
+  bool isSiblingFor(const NodeIdentifier &node, const NodeIdentifier &key);
   
   /**
-   * Samples @ref count entries from each bucket in the common prefix with
-   * target identifier.
-   *
-   * @param target Target identifier
-   * @param count Number of entries to sample per bucket
-   * @return A list of sampled entries
-   */
-  PeerEntryList sampleFromBuckets(const NodeIdentifier &target, size_t count);
-  
-  /**
-   * Returns contact information from the routing table. In case no
-   * contact information is available, returns a null contact.
+   * Returns the routing table entry for a specific node.
    *
    * @param nodeId Destination node identifier
-   * @return Contact for the target node
+   * @return Routing entry for the specified node
    */
-  Contact get(const NodeIdentifier &nodeId) const;
+  PeerEntry get(const NodeIdentifier &nodeId) const;
   
   /**
    * Returns the number of buckets currently in the routing table.
@@ -255,6 +327,13 @@ private:
   size_t m_maxBucketSize;
   /// Maximum number of buckets
   size_t m_maxBuckets;
+  
+  /// The sibling table
+  SiblingTable m_siblings;
+  /// Number of siblings for each key
+  size_t m_numKeySiblings;
+  /// Maximum number of entries in the sibling table
+  size_t m_maxSiblingsSize;
 };
 
 UNISPHERE_SHARED_POINTER(RoutingTable)
