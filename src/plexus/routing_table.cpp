@@ -242,9 +242,16 @@ bool RoutingTable::isSiblingFor(const NodeIdentifier &node, const NodeIdentifier
   return candidates.table().get<NodeIdTag>().find(node) != candidates.table().end();
 }
 
-PeerEntryList RoutingTable::lookup(const NodeIdentifier &destination, size_t count)
+DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, size_t count)
 {
   SharedLock lock(m_mutex);
+  DistanceOrderedTable result(destination, count);
+  
+  // If there are no siblings, we can only deliver to the local node
+  if (!m_siblings.size()) {
+    result.insert(PeerEntry(m_localId));
+    return result;
+  }
   
   // Sample enough buckets around the destination bucket so we will be able to get at least
   // count entries if there are so many available
@@ -252,6 +259,14 @@ PeerEntryList RoutingTable::lookup(const NodeIdentifier &destination, size_t cou
   BucketIndex endBucket = startBucket + 1;
   
   size_t actualSize = getBucketSize(startBucket);
+  
+  // If this node is a sibling, we should also consider all entries in the sibling table
+  if (isSiblingFor(m_localId, destination)) {
+    actualSize += m_siblings.size();
+    BOOST_FOREACH(const PeerEntry &entry, m_siblings) {
+      result.insert(entry);
+    }
+  }
   
   // Add all buckets with more bits in common and if that is still not enough, add buckets
   // with less bits in common
@@ -264,17 +279,9 @@ PeerEntryList RoutingTable::lookup(const NodeIdentifier &destination, size_t cou
     boost::lambda::_1 <= endBucket
   );
   
-  DistanceOrderedTable candidates(destination, count);
   for (auto it = entries.first; it != entries.second; it++) {
-    candidates.insert(*it);
+    result.insert(*it);
   }
-  
-  // Select the closest count entries
-  PeerEntryList result;
-  BOOST_FOREACH(const PeerEntry &entry, candidates.table().get<DistanceTag>()) {
-    result.push_back(entry);
-  }
-  
   return result;
 }
 

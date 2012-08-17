@@ -165,9 +165,6 @@ typedef boost::multi_index_container<
   >
 > SiblingTable;
 
-/// A list of neighbor entries
-typedef std::list<PeerEntry> PeerEntryList;
-
 /**
  * A class that orders stores peer entries in a multi index container and only
  * keeps a specified number of closest ones by XOR distance metric.
@@ -250,7 +247,7 @@ public:
    * @param count Maximum number of contacts to return
    * @return A list of closest neighbor entries
    */
-  PeerEntryList lookup(const NodeIdentifier &destination, size_t count);
+  DistanceOrderedTable lookup(const NodeIdentifier &destination, size_t count);
   
   bool isSiblingFor(const NodeIdentifier &node, const NodeIdentifier &key);
   
