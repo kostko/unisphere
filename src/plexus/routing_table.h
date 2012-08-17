@@ -21,7 +21,7 @@
 
 #include "core/context.h"
 #include "interplex/contact.h"
-#include <interplex/link.h>
+#include "interplex/link.h"
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/composite_key.hpp>
@@ -241,6 +241,14 @@ public:
   bool add(LinkPtr link);
   
   /**
+   * Removes an entry from the routing table.
+   * 
+   * @param nodeId Node identifier of the entry to remove
+   * @return True if routing table has been changed
+   */
+  bool remove(const NodeIdentifier &nodeId);
+  
+  /**
    * Returns a number of contacts closest to the destination.
    *
    * @param destination Destination identifier
@@ -285,6 +293,7 @@ public:
   size_t siblingCount() const;
 public:
   // Signals
+  boost::signal<void()> signalRejoin;
   // TODO signal for pinging entries while adding into full buckets
 protected:
   /**
@@ -305,23 +314,26 @@ protected:
   size_t getBucketSize(BucketIndex bucket) const;
   
   /**
-   * Performs the actual insertion of a node into the routing table. This
-   * method is called by add with a shared lock held in read mode.
+   * Performs the actual insertion of a node into the routing table.
    *
    * @param entry Peer entry to insert
-   * @param lock Shared pointer to upgradable lock
    * @return True if routing table has been changed
    */
-  bool insert(PeerEntry &entry, UpgradableLockPtr lock);
+  bool insert(PeerEntry &entry);
   
   /**
    * Splits the current local bucket into two buckets. The new local bucket
    * index will be for one larger than the old one.
    *
-   * @param lock Upgradable lock that will be used when doing modifications
    * @return True when split has been successful, false when table is full
    */
-  bool split(UpgradableLockPtr lock);
+  bool split();
+  
+  /**
+   * Attempts to add a new sibling from the k-buckets to the sibling table
+   * when not enough peer entries are located there.
+   */
+  void refillSiblingTable();
 private:
   /// Link manager associated with this router
   LinkManager &m_manager;
@@ -334,7 +346,7 @@ private:
   /// The routing table
   PeerTable m_peers;
   /// Mutex protecting changes to the routing table
-  boost::shared_mutex m_mutex;
+  boost::recursive_mutex m_mutex;
   /// Maximum number of entries in a bucket
   size_t m_maxBucketSize;
   /// Maximum number of buckets

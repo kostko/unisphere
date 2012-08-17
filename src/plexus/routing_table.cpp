@@ -98,17 +98,18 @@ size_t RoutingTable::siblingCount() const
 
 bool RoutingTable::add(LinkPtr link)
 {
-  UpgradableLockPtr lock(new UpgradableLock(m_mutex));
+  RecursiveUniqueLock lock(m_mutex);
   
   // Generate a peer entry that might be added to the routing tables
   PeerEntry entry(link);
   entry.lcp = link->nodeId().longestCommonPrefix(m_localId);
   entry.distance = link->nodeId() ^ m_localId;
-  return insert(entry, lock);
+  return insert(entry);
 }
 
-bool RoutingTable::insert(PeerEntry &entry, UpgradableLockPtr lock)
+bool RoutingTable::insert(PeerEntry &entry)
 {
+  RecursiveUniqueLock lock(m_mutex);
   BOOST_ASSERT(entry.isValid() && entry.nodeId != m_localId);
   
   // Check if node is already a sibling
@@ -143,8 +144,6 @@ bool RoutingTable::insert(PeerEntry &entry, UpgradableLockPtr lock)
       // Sibling list is already full, the most distant entry shall be removed (and
       // possibly moved to the k-buckets)
       PeerEntry oldSibling = *sibs.rbegin();
-      
-      UpgradeToUniqueLock unique(*lock);
       sibs.erase(--sibs.end());
       m_siblings.insert(PeerEntry(entry));
       
@@ -152,7 +151,6 @@ bool RoutingTable::insert(PeerEntry &entry, UpgradableLockPtr lock)
       result = true;
     } else {
       // Simply add to the sibling list
-      UpgradeToUniqueLock unique(*lock);
       m_siblings.insert(entry);
       return true;
     }
@@ -163,16 +161,13 @@ bool RoutingTable::insert(PeerEntry &entry, UpgradableLockPtr lock)
   if (getBucketSize(bucket) < m_maxBucketSize) {
     // Bucket is free so we can insert without any problems
     entry.bucket = bucket;
-    
-    // Upgrade to exclusive access lock and insert the entry
-    UpgradeToUniqueLock unique(*lock);
     m_peers.insert(entry);
     return true;
   } else if (bucket == m_localBucket) {
     // New host is in local bucket and it is full, we can split it and then
     // retry the insertion
-    if (split(lock)) {
-      return insert(entry, lock);
+    if (split()) {
+      return insert(entry);
     }
   } else {
     // Check if we can replace some existing entry in the target bucket
@@ -185,8 +180,10 @@ bool RoutingTable::insert(PeerEntry &entry, UpgradableLockPtr lock)
   return result;
 }
 
-bool RoutingTable::split(UpgradableLockPtr lock)
+bool RoutingTable::split()
 {
+  RecursiveUniqueLock lock(m_mutex);
+  
   if (m_localBucket >= m_maxBuckets)
     return false;
   
@@ -201,7 +198,6 @@ bool RoutingTable::split(UpgradableLockPtr lock)
   
   // Do the actual changes here, otherwise we would loose our initial iterators
   auto &nodes = m_peers.get<NodeIdTag>();
-  UpgradeToUniqueLock unique(*lock);
   BOOST_FOREACH(const NodeIdentifier &nodeId, candidates) {
     nodes.modify(
       nodes.find(nodeId), [=](PeerEntry &entry) { entry.bucket = m_localBucket; }
@@ -215,7 +211,7 @@ bool RoutingTable::split(UpgradableLockPtr lock)
 
 bool RoutingTable::isSiblingFor(const NodeIdentifier &node, const NodeIdentifier &key)
 {
-  SharedLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // First check that the specified key is inside the sibling neighbourhood
   // of the local node; if not, we can't determine sibling status
@@ -244,7 +240,7 @@ bool RoutingTable::isSiblingFor(const NodeIdentifier &node, const NodeIdentifier
 
 DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, size_t count)
 {
-  SharedLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   DistanceOrderedTable result(destination, count);
   
   // If there are no siblings, we can only deliver to the local node
@@ -285,9 +281,63 @@ DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, siz
   return result;
 }
 
+bool RoutingTable::remove(const NodeIdentifier &nodeId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  
+  // Check if the entry is a sibling entry and remove it
+  auto sibling = m_siblings.get<NodeIdTag>().find(nodeId);
+  if (sibling != m_siblings.end()) {
+    m_siblings.erase(sibling);
+    
+    // If there are no more siblings left, this means that the whole routing table
+    // has become empty; in this case we need to rejoin the overlay
+    if (!m_siblings.size()) {
+      lock.unlock();
+      signalRejoin();
+      return true;
+    }
+    
+    // Attempt to refill the missing sibling position
+    refillSiblingTable();
+    return true;
+  }
+  
+  // Check if entry is in one of the buckets and remove it
+  auto peer = m_peers.get<NodeIdTag>().find(nodeId);
+  if (peer != m_peers.end()) {
+    m_peers.erase(peer);
+    
+    // TODO Implement replacement cache?
+    
+    return true;
+  }
+  
+  return false;
+}
+
+void RoutingTable::refillSiblingTable()
+{
+  RecursiveUniqueLock lock(m_mutex);
+  
+  // If the sibling table is already full or empty we have nothing to do
+  if (m_siblings.size() == m_maxSiblingsSize || !m_siblings.size())
+    return;
+  
+  // Find the closest k-bucket with at least one entry in it
+  BucketIndex bucket = m_localBucket;
+  while (bucket > 0 && getBucketSize(bucket) == 0) { bucket--; }
+  
+  // Select the closest peer from this bucket and move it to the sibling table
+  auto &bd = m_peers.get<BucketByDistanceTag>();
+  auto peers = bd.equal_range(boost::make_tuple(bucket));
+  m_siblings.insert(*peers.first);
+  bd.erase(peers.first);
+}
+
 PeerEntry RoutingTable::get(const NodeIdentifier &nodeId)
 {
-  SharedLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   auto node = m_peers.get<NodeIdTag>().find(nodeId);
   if (node == m_peers.end())
     return PeerEntry();
