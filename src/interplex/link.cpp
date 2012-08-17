@@ -45,7 +45,7 @@ Link::~Link()
 
 void Link::close()
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Close all linklets and then unregister this link
   BOOST_FOREACH(LinkletPtr &linklet, m_linklets) {
@@ -62,7 +62,7 @@ void Link::tryCleanup()
   // Must take ownership of self, since close might be called while we
   // are still locking the mutex 
   LinkPtr self = shared_from_this();
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   if (m_linklets.size() == 0)
     close();
@@ -70,7 +70,7 @@ void Link::tryCleanup()
 
 void Link::send(const Message &msg)
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   if (m_state != Link::State::Connected) {
     // FIXME Make this limit configurable
@@ -97,7 +97,7 @@ Contact Link::contact() const
 
 void Link::addLinklet(LinkletPtr linklet)
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // If the linklet already exists, ignore this request
   BOOST_FOREACH(LinkletPtr &l, m_linklets) {
@@ -141,7 +141,7 @@ void Link::addLinklet(LinkletPtr linklet)
 
 void Link::removeLinklet(LinkletPtr linklet)
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Remove linklet from list of linklets
   m_linklets.remove(linklet);
@@ -159,7 +159,7 @@ void Link::removeLinklet(LinkletPtr linklet)
 
 void Link::checkLinkletState()
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   bool connected = false;
   bool connecting = false;
@@ -223,7 +223,7 @@ void Link::tryNextAddress()
   // Must take ownership of self, since close might be called while we
   // are still locking the mutex
   LinkPtr self = shared_from_this(); 
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Ensure that a connection actually still needs to be established
   if (m_state != Link::State::Closed)
@@ -255,7 +255,7 @@ void Link::tryNextAddress()
 
 void Link::linkletConnectionFailed(LinkletPtr linklet)
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Log connection failure
   UNISPHERE_LOG(m_manager.context(), Info, "Link: Outgoing connection failed. Queuing next try.");
@@ -272,7 +272,7 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
 
 bool Link::linkletVerifyPeer(LinkletPtr linklet)
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Check that the peer actually fits this link and close it if not
   if (linklet->peerContact().nodeId() != m_nodeId) {
@@ -288,7 +288,7 @@ bool Link::linkletVerifyPeer(LinkletPtr linklet)
 
 void Link::linkletConnectionSuccess(LinkletPtr linklet)
 {
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   checkLinkletState();
 }
 
@@ -297,7 +297,7 @@ void Link::linkletDisconnected(LinkletPtr linklet)
   // Must take ownership of self, since close might be called while we
   // are still locking the mutex 
   LinkPtr self = shared_from_this();
-  boost::lock_guard<boost::recursive_mutex> g(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Remove linklet from list of linklets
   removeLinklet(linklet);
