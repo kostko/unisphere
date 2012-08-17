@@ -249,6 +249,15 @@ public:
    */
   DistanceOrderedTable lookup(const NodeIdentifier &destination, size_t count);
   
+  /**
+   * Returns whether a node is a sibling for the specified key. Note that
+   * this can only be determined for keys that fall within the sibling
+   * neighbourhood of the local node.
+   * 
+   * @param node Node to check the sibling status for
+   * @param key Key to check the sibling status for
+   * @return True if the specified node is a sibling for the specified key
+   */
   bool isSiblingFor(const NodeIdentifier &node, const NodeIdentifier &key);
   
   /**
