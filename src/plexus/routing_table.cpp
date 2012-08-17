@@ -68,6 +68,7 @@ RoutingTable::RoutingTable(UniSphere::LinkManager &manager, size_t bucketSize, s
     m_maxBucketSize(bucketSize),
     m_maxBuckets(NodeIdentifier::length * 8),
     m_numKeySiblings(numSiblings),
+    // Multiplier set to five due to proof in S/Kademlia paper
     m_maxSiblingsSize(5 * numSiblings)
 {
 }
