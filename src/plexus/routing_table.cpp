@@ -28,7 +28,9 @@ PeerEntry::PeerEntry()
 }
 
 PeerEntry::PeerEntry (const NodeIdentifier &nodeId)
-  : nodeId(nodeId)
+  : nodeId(nodeId),
+    bucket(0),
+    lastSeen(boost::posix_time::microsec_clock::universal_time())
 {
 }
   
@@ -101,15 +103,27 @@ bool RoutingTable::add(LinkPtr link)
   
   // Generate a peer entry that might be added to the routing tables
   PeerEntry entry(link);
+  BOOST_ASSERT(entry.isValid());
   entry.lcp = link->nodeId().longestCommonPrefix(m_localId);
   entry.distance = link->nodeId() ^ m_localId;
+  return insert(entry);
+}
+
+bool RoutingTable::add(const NodeIdentifier &nodeId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  
+  // Generate a peer entry that might be added to the routing tables
+  PeerEntry entry(nodeId);
+  entry.lcp = nodeId.longestCommonPrefix(m_localId);
+  entry.distance = nodeId ^ m_localId;
   return insert(entry);
 }
 
 bool RoutingTable::insert(PeerEntry &entry)
 {
   RecursiveUniqueLock lock(m_mutex);
-  BOOST_ASSERT(entry.isValid() && entry.nodeId != m_localId);
+  BOOST_ASSERT(entry.nodeId != m_localId);
   
   // Check if node is already a sibling
   auto sibling = m_siblings.get<NodeIdTag>().find(entry.nodeId);
@@ -255,18 +269,19 @@ DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, siz
   
   size_t actualSize = getBucketSize(startBucket);
   
-  // If this node is a sibling, we should also consider all entries in the sibling table
-  if (isSiblingFor(m_localId, destination)) {
+  // Add all buckets with more bits in common and if that is still not enough, add buckets
+  // with less bits in common
+  while (endBucket <= m_localBucket) { actualSize += getBucketSize(endBucket++); }
+  while (actualSize < count && startBucket > 0) { actualSize += getBucketSize(--startBucket); }
+  
+  // If this node is a sibling, we should also consider all entries in the sibling table; also
+  // if we have sampled all buckets and still don't have enough entries to return
+  if (isSiblingFor(m_localId, destination) || actualSize < count) {
     actualSize += m_siblings.size();
     BOOST_FOREACH(const PeerEntry &entry, m_siblings) {
       result.insert(entry);
     }
   }
-  
-  // Add all buckets with more bits in common and if that is still not enough, add buckets
-  // with less bits in common
-  while (endBucket <= m_localBucket) { actualSize += getBucketSize(endBucket++); }
-  while (actualSize < count && startBucket > 0) { actualSize += getBucketSize(--startBucket); }
   
   // Now put all contacts into a container and sort by distance
   auto entries = m_peers.get<BucketIndexTag>().range(

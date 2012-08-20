@@ -241,6 +241,16 @@ public:
   bool add(LinkPtr link);
   
   /**
+   * Adds a new entry into the routing table. This will add a linkless
+   * entry that cannot be used for actual routing unless a link is defined
+   * later.
+   *
+   * @param nodeId Node identifier to add
+   * @return True if routing table has been changed
+   */
+  bool add(const NodeIdentifier &nodeId);
+  
+  /**
    * Removes an entry from the routing table.
    * 
    * @param nodeId Node identifier of the entry to remove
