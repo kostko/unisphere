@@ -226,11 +226,11 @@ public:
   /**
    * Class constructor.
    *
-   * @param manager Link manager instance
+   * @param localId Local node identifier
    * @param bucketSize Maximum bucket size
    * @param numSiblings Number of siblings
    */
-  RoutingTable(LinkManager &manager, size_t bucketSize, size_t numSiblings);
+  RoutingTable(const NodeIdentifier &localId, size_t bucketSize, size_t numSiblings);
   
   /**
    * Adds a new entry into the routing table.
@@ -335,9 +335,6 @@ protected:
    */
   void refillSiblingTable();
 private:
-  /// Link manager associated with this router
-  LinkManager &m_manager;
-  
   /// Local node identifier (obtained from link manager)
   NodeIdentifier m_localId;
   /// Bucket where local node identifier is located in

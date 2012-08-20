@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "plexus/routing_table.h"
-#include "interplex/link_manager.h"
 
 #include <boost/foreach.hpp>
 #include <boost/lambda/lambda.hpp>
@@ -61,9 +60,8 @@ void DistanceOrderedTable::insert(const PeerEntry &entry)
   }
 }
 
-RoutingTable::RoutingTable(UniSphere::LinkManager &manager, size_t bucketSize, size_t numSiblings)
-  : m_manager(manager),
-    m_localId(manager.getLocalNodeId()),
+RoutingTable::RoutingTable(const NodeIdentifier &localId, size_t bucketSize, size_t numSiblings)
+  : m_localId(localId),
     m_localBucket(0),
     m_maxBucketSize(bucketSize),
     m_maxBuckets(NodeIdentifier::length * 8),
