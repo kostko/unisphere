@@ -51,10 +51,16 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
     
     // Should be sibling for the local node
     REQUIRE(rt.isSiblingFor(node, localId) == true);
+    
+    // Ensure that rejoin signal is called when the routing table gets empty
+    bool rejoinCalled = false;
+    rt.signalRejoin.connect([&] () { rejoinCalled = true; });
+    REQUIRE(rt.remove(node) == true);
+    REQUIRE(rejoinCalled == true);
   }
   
   // Node identifiers that share half the bits with the local node identifier
-  std::vector<NodeIdentifier> siblings;
+  std::list<NodeIdentifier> siblings;
   // For choosing a random prefix size between 8 and 12 bytes
   std::uniform_int_distribution<int> prefixSize(8, 12);
   // For choosing a random suffix
@@ -87,6 +93,7 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
     
     // Insert additional entries to cause an overflow of the sibling table; enough
     // to spill into a single (first) k-bucket
+    std::list<NodeIdentifier> additionalPeers;
     for (int i = 0; i < replicaRedundancyS * 4; i++) {
       std::string id;
       while (id.size() < NodeIdentifier::length) {
@@ -94,6 +101,7 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
       }
       
       NodeIdentifier nodeId(id, NodeIdentifier::Format::Raw);
+      additionalPeers.push_back(nodeId);
       REQUIRE(nodeId.isValid());
       REQUIRE(rt.add(nodeId) == true);
     }
@@ -107,25 +115,53 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
     REQUIRE(rt.peerCount() == replicaRedundancyS);
     
     // Ensure that all siblings are contained in the sibling table
-    DistanceOrderedTable result = rt.lookup(localId, replicaRedundancyS * 5);
-    REQUIRE(result.table().size() == replicaRedundancyS * 5);
+    DistanceOrderedTable siblingTable = rt.lookup(localId, replicaRedundancyS * 5);
+    REQUIRE(siblingTable.table().size() == replicaRedundancyS * 5);
     for (const NodeIdentifier &siblingId : siblings) {
-      REQUIRE(result.table().get<NodeIdTag>().find(siblingId) != result.table().end());
+      REQUIRE(siblingTable.table().get<NodeIdTag>().find(siblingId) != siblingTable.table().end());
     }
     
-    // Now insert lots of random entries and check that the routing table behaves
-    // as it should
-    for (int i = 0; i < routingRedundancyK * 20; i++) {
-      std::string id;
-      while (id.size() < NodeIdentifier::length) {
-        id += static_cast<char>(suffixByte(rng));
+    SECTION("removal/buckets", "test that removal of entries from buckets works")
+    {
+      // Monitor status of the rejoin signal that must not be called
+      bool rejoinCalled = false;
+      rt.signalRejoin.connect([&] () { rejoinCalled = true; });
+      
+      // Remove peer entries that are contained in buckets (= those that are not in the
+      // sibling table)
+      size_t bucketPeers = rt.peerCount();
+      size_t siblingPeers = rt.siblingCount();
+      for (const NodeIdentifier &peerId : additionalPeers) {
+        if (siblingTable.table().get<NodeIdTag>().find(peerId) == siblingTable.table().end()) {
+          REQUIRE(rt.remove(peerId) == true);
+          REQUIRE(rejoinCalled == false);
+          bucketPeers--;
+          REQUIRE(rt.peerCount() == bucketPeers);
+        }
       }
       
-      NodeIdentifier nodeId(id, NodeIdentifier::Format::Raw);
-      REQUIRE(nodeId.isValid());
-      rt.add(nodeId);
+      // At the end we must have zero peers in buckets (all have been removed) but the sibling
+      // count must remain unchanged
+      REQUIRE(rt.peerCount() == 0);
+      REQUIRE(rt.siblingCount() == siblingPeers);
     }
     
-    // TODO Further tests
+    SECTION("random", "fill the routing table")
+    {
+      // Now insert lots of random entries and check that the routing table behaves
+      // as it should
+      for (int i = 0; i < routingRedundancyK * 20; i++) {
+        std::string id;
+        while (id.size() < NodeIdentifier::length) {
+          id += static_cast<char>(suffixByte(rng));
+        }
+        
+        NodeIdentifier nodeId(id, NodeIdentifier::Format::Raw);
+        REQUIRE(nodeId.isValid());
+        rt.add(nodeId);
+      }
+      
+      // TODO Further tests
+    }
   }
 }
