@@ -165,3 +165,7 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
     }
   }
 }
+
+TEST_CASE("plexus/router", "verify that the router works")
+{
+}

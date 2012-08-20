@@ -35,8 +35,6 @@ namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
-class LinkManager;
-
 /// Bucket index type
 typedef boost::uint16_t BucketIndex;
 

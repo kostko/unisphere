@@ -1,6 +1,7 @@
 
 set(unisphere_plexus_src
 routing_table.cpp
+router.cpp
 )
 
 add_library(UnispherePlexus SHARED ${unisphere_plexus_src})
