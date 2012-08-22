@@ -1,0 +1,25 @@
+//
+// Protocol messages for Plexus overlay
+//
+
+package UniSphere.Protocol.Plexus;
+
+message RoutedMessage {
+  // Source node identifier
+  required bytes sourceNode = 1;
+  // Source component identifier
+  required uint32 sourceComp = 2;
+  
+  // Destination key identifier
+  required bytes destinationId = 3;
+  // Destination component identifier
+  required uint32 destinationComp = 4;
+  
+  // Hop count
+  required uint32 hopCount = 5;
+  
+  // Message type (component dependent)
+  required uint32 type = 6;
+  // Message payload (type dependent)
+  required bytes message = 7;
+}

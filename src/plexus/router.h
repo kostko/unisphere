@@ -21,6 +21,7 @@
 
 #include "core/context.h"
 #include "plexus/routing_table.h"
+#include "plexus/routed_message.h"
 
 namespace UniSphere {
   
@@ -40,14 +41,33 @@ public:
    */
   Router(LinkManager &manager);
   
-  //void route(destination, msg...?)
+  /**
+   * Routes the specified message via the overlay.
+   * 
+   * @param msg A valid message to be routed
+   */
+  void route(const RoutedMessage &msg);
+  
+  /**
+   * Generates a new message and routes it via the overlay.
+   * 
+   * @param sourceCompId Source component identifier
+   * @param key Destination key
+   * @param destinationCompId Destination component identifier
+   * @param type Message type
+   * @param msg Protocol Buffers message
+   */
+  void route(std::uint32_t sourceCompId, const NodeIdentifier &key,
+             std::uint32_t destinationCompId, std::uint32_t type,
+             const google::protobuf::Message &msg);
   
   // TODO periodic refresh of buckets when no communication has been received from them
   // in a while (also see "Handling churn in a DHT")
 public:
-  // Signals
-  boost::signal<void(Message&)> signalDeliverMessage;
-  boost::signal<void(Message&)> signalForwardMessage;
+  /// Signal for delivery of locally-bound messages
+  boost::signal<void(RoutedMessage&)> signalDeliverMessage;
+  /// Signal for forwarding transit messages
+  boost::signal<void(RoutedMessage&)> signalForwardMessage;
   // TODO signal when local siblings have changed
 private:
   /// Reference to link manager for this router

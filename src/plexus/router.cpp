@@ -27,4 +27,25 @@ Router::Router(LinkManager &manager)
 {
 }
 
+void Router::route(const RoutedMessage &msg)
+{
+  if (!msg.isValid()) {
+    UNISPHERE_LOG(m_manager.context(), Warning, "Router: Dropping invalid message.");
+    return;
+  }
+  
+  // TODO
+}
+
+void Router::route(uint32_t sourceCompId, const NodeIdentifier &key,
+                   uint32_t destinationCompId, uint32_t type,
+                   const google::protobuf::Message &msg)
+{
+  // First encapsulate the specified application message into a routed message
+  RoutedMessage rmsg(m_manager.getLocalNodeId(), sourceCompId, key, destinationCompId, type, msg);
+  // Attempt to route the generated message
+  route(rmsg);
+}
+
+
 }
