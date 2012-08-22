@@ -36,7 +36,7 @@ namespace midx = boost::multi_index;
 namespace UniSphere {
 
 /// Bucket index type
-typedef boost::uint16_t BucketIndex;
+typedef std::uint16_t BucketIndex;
 
 /**
  * A peer entry contains routing table information and a pointer to the

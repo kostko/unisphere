@@ -28,8 +28,8 @@ Message::Message()
 {
   // Populate the header
   char *hdr = (char*) &buffer()[0];
-  *((boost::uint8_t*) hdr) = static_cast<boost::uint8_t>(m_type);
-  *((boost::uint32_t*) (hdr + 1)) = 0x00000000;
+  *((std::uint8_t*) hdr) = static_cast<std::uint8_t>(m_type);
+  *((std::uint32_t*) (hdr + 1)) = 0x00000000;
 }
 
 Message::Message(Type type, const google::protobuf::Message &msg)
@@ -45,8 +45,8 @@ Message::Message(Type type, const google::protobuf::Message &msg)
   
   // Populate the header
   char *hdr = (char*) &buffer()[0];
-  *((boost::uint8_t*) hdr) = static_cast<boost::uint8_t>(m_type);
-  *((boost::uint32_t*) (hdr + 1)) = htonl(size);
+  *((std::uint8_t*) hdr) = static_cast<std::uint8_t>(m_type);
+  *((std::uint32_t*) (hdr + 1)) = htonl(size);
 }
 
 void Message::detach()
@@ -78,8 +78,8 @@ void Message::setOriginator(LinkPtr originator)
 size_t Message::parseHeader()
 {
   char *hdr = (char*) &buffer()[0];
-  boost::uint8_t type = *((boost::uint8_t*) hdr);
-  boost::uint32_t size = ntohl(*((boost::uint32_t*) (hdr + 1)));
+  std::uint8_t type = *((std::uint8_t*) hdr);
+  std::uint32_t size = ntohl(*((std::uint32_t*) (hdr + 1)));
   m_type = static_cast<Message::Type>(type);
   m_buffer->resize(Message::header_size + size);
   return size;

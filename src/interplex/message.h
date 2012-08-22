@@ -42,7 +42,7 @@ public:
   /**
    * Message types.
    */
-  enum class Type : boost::uint8_t {
+  enum class Type : std::uint8_t {
     /* 0x00 - 0x1F RESERVED FOR SYSTEM PROTOCOLS */
     Null_Protocol       = 0x00,
     Interplex_KeepAlive = 0x01,

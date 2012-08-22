@@ -159,7 +159,7 @@ size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
   
   // Find the first 1 bit in XOR between identifiers
   for (; it != m_identifier.end() && !found_diff; ++it, ++otherIt) {
-    std::bitset<8> xored(static_cast<boost::uint8_t>(*it ^ *otherIt));
+    std::bitset<8> xored(static_cast<std::uint8_t>(*it ^ *otherIt));
     for (int i = 7; i >= 0; i--) {
       if (xored[i]) {
         found_diff = true;
