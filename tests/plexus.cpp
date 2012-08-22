@@ -146,6 +146,18 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
       REQUIRE(rt.siblingCount() == siblingPeers);
     }
     
+    SECTION("removal/siblings", "test that removal of siblings works")
+    {
+      // We remove a sibling and check that the sibling table gets refilled with an entry
+      // from the peer k-buckets
+      size_t oldPeerCount = rt.peerCount();
+      size_t oldSiblingCount = rt.siblingCount();
+      
+      REQUIRE(rt.remove(siblings.back()) == true);
+      REQUIRE(rt.siblingCount() == oldSiblingCount);
+      REQUIRE(rt.peerCount() == oldPeerCount - 1);
+    }
+    
     SECTION("random", "fill the routing table")
     {
       // Now insert lots of random entries and check that the routing table behaves
