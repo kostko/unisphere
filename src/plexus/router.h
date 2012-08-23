@@ -63,11 +63,33 @@ public:
   
   // TODO periodic refresh of buckets when no communication has been received from them
   // in a while (also see "Handling churn in a DHT")
+protected:
+  /**
+   * A method that initializes each link by connecting to its signals that
+   * are required to manage the routing table.
+   * 
+   * @param link Link to initialize
+   */
+  void initializeLink(Link &link);
+  
+  /**
+   * Called when a message has been received on any link.
+   * 
+   * @param msg Link-local message that has been received
+   */
+  void linkMessageReceived(const Message &msg);
+  
+  /**
+   * Called when a link has been lost (disconnected).
+   * 
+   * @param link Link that has been lost
+   */
+  void linkLost(Link &link);
 public:
   /// Signal for delivery of locally-bound messages
-  boost::signal<void(RoutedMessage&)> signalDeliverMessage;
+  boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
   /// Signal for forwarding transit messages
-  boost::signal<void(RoutedMessage&)> signalForwardMessage;
+  boost::signal<void(const RoutedMessage&)> signalForwardMessage;
   // TODO signal when local siblings have changed
 private:
   /// Reference to link manager for this router

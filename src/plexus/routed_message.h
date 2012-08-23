@@ -100,7 +100,7 @@ public:
   /**
    * Serializes the routed message into a Protocol Buffers message.
    */
-  Protocol::Plexus::RoutedMessage *serialize();
+  Protocol::Plexus::RoutedMessage *serialize() const;
 private:
   /// Source node identifier
   NodeIdentifier m_sourceNodeId;

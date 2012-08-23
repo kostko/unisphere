@@ -110,10 +110,13 @@ public:
    */
   Contact contact() const;
 public:
-  // Signals
+  /// Signal the recipt of a message
   boost::signal<void (const Message&)> signalMessageReceived;
+  /// Signal that all contact addresses have been tried
   boost::signal<void (Link&)> signalCycledAddresses;
+  /// Signal that the connection has been established
   boost::signal<void (Link&)> signalEstablished;
+  /// Signal that the connection has been lost
   boost::signal<void (Link&)> signalDisconnected;
 protected:
   /**

@@ -50,6 +50,7 @@ public:
     Interplex_Hello     = 0x03,
     Plexus_RpcRequest   = 0x04,
     Plexus_RpcResponse  = 0x05,
+    Plexus_Routed       = 0x06,
     
     /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
     

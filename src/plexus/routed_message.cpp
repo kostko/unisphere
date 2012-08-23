@@ -56,7 +56,7 @@ void RoutedMessage::decrementHopCount()
     m_hopCount--;
 }
 
-Protocol::Plexus::RoutedMessage *RoutedMessage::serialize()
+Protocol::Plexus::RoutedMessage *RoutedMessage::serialize() const
 {
   Protocol::Plexus::RoutedMessage *pmsg = new Protocol::Plexus::RoutedMessage;
   pmsg->set_sourcenode(m_sourceNodeId.as(NodeIdentifier::Format::Raw));
