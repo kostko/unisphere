@@ -80,11 +80,18 @@ protected:
   void linkMessageReceived(const Message &msg);
   
   /**
+   * Called when a link has been established.
+   * 
+   * @param link Link that has been established
+   */
+  void linkEstablished(LinkPtr link);
+  
+  /**
    * Called when a link has been lost (disconnected).
    * 
    * @param link Link that has been lost
    */
-  void linkLost(Link &link);
+  void linkLost(LinkPtr link);
 public:
   /// Signal for delivery of locally-bound messages
   boost::signal<void(const RoutedMessage&)> signalDeliverMessage;

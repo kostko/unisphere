@@ -197,11 +197,11 @@ void Link::setState(State state)
     
     // Emit signal when we connect
     lock.unlock();
-    signalEstablished(*this);
+    signalEstablished(shared_from_this());
   } else if (old == Link::State::Connected && state != Link::State::Connected) {
     // Emit signal when we disconnect
     lock.unlock();
-    signalDisconnected(*this);
+    signalDisconnected(shared_from_this());
   }
 }
 
@@ -230,7 +230,7 @@ void Link::tryNextAddress()
     return;
   
   if (m_addressIterator == m_addressList.end() || ++m_addressIterator == m_addressList.end()) {
-    signalCycledAddresses(*this);
+    signalCycledAddresses(shared_from_this());
     m_addressIterator = m_addressList.begin();
   }
   

@@ -113,11 +113,11 @@ public:
   /// Signal the recipt of a message
   boost::signal<void (const Message&)> signalMessageReceived;
   /// Signal that all contact addresses have been tried
-  boost::signal<void (Link&)> signalCycledAddresses;
+  boost::signal<void (LinkPtr)> signalCycledAddresses;
   /// Signal that the connection has been established
-  boost::signal<void (Link&)> signalEstablished;
+  boost::signal<void (LinkPtr)> signalEstablished;
   /// Signal that the connection has been lost
-  boost::signal<void (Link&)> signalDisconnected;
+  boost::signal<void (LinkPtr)> signalDisconnected;
 protected:
   /**
    * Private constructor.

@@ -30,12 +30,21 @@ Router::Router(LinkManager &manager)
 
 void Router::initializeLink(Link &link)
 {
+  link.signalEstablished.connect(boost::bind(&Router::linkEstablished, this, _1));
   link.signalDisconnected.connect(boost::bind(&Router::linkLost, this, _1));
   link.signalMessageReceived.connect(boost::bind(&Router::linkMessageReceived, this, _1));
 }
 
-void Router::linkLost(Link &link)
+void Router::linkEstablished(LinkPtr link)
 {
+  // Adds the established link to the routing table
+  m_routes.add(link);
+}
+
+void Router::linkLost(LinkPtr link)
+{
+  // Removes the lost link from the routing table
+  m_routes.remove(link->nodeId());
 }
 
 void Router::linkMessageReceived(const Message &msg)
@@ -61,6 +70,8 @@ void Router::route(const RoutedMessage &msg)
     UNISPHERE_LOG(m_manager.context(), Warning, "Router: No route to destination.");
     return;
   }
+  
+  // TODO The forwarding process should be used to also meet other nodes
   
   // Check if the message is destined to the local node, in this case it should be
   // delivered to an upper layer application/component
