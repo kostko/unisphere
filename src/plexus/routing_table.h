@@ -55,14 +55,14 @@ public:
    * 
    * @param nodeId Peer node identifier
    */
-  PeerEntry(const NodeIdentifier &nodeId);
+  explicit PeerEntry(const NodeIdentifier &nodeId);
   
   /**
    * Class constructor.
    *
    * @param link Pointer to a link established with the peer node
    */
-  PeerEntry(LinkPtr link);
+  explicit PeerEntry(LinkPtr link);
   
   /**
    * Returns true if this peer entry has a valid node identifier

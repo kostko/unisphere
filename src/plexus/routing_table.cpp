@@ -267,21 +267,25 @@ DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, siz
   BucketIndex startBucket = bucketForIdentifier(destination);
   BucketIndex endBucket = startBucket + 1;
   
+  // Entries from the most fitting bucket
   size_t actualSize = getBucketSize(startBucket);
   
-  // Add all buckets with more bits in common and if that is still not enough, add buckets
-  // with less bits in common
-  while (endBucket <= m_localBucket) { actualSize += getBucketSize(endBucket++); }
-  while (actualSize < count && startBucket > 0) { actualSize += getBucketSize(--startBucket); }
-  
-  // If this node is a sibling, we should also consider all entries in the sibling table; also
-  // if we have sampled all buckets and still don't have enough entries to return
-  if (isSiblingFor(m_localId, destination) || actualSize < count) {
-    actualSize += m_siblings.size();
-    BOOST_FOREACH(const PeerEntry &entry, m_siblings) {
-      result.insert(entry);
-    }
+  // Entries with other fitting buckets (includes the sibling table)
+  while (endBucket <= m_localBucket) {
+    actualSize += getBucketSize(endBucket++);
   }
+  
+  BOOST_FOREACH(const PeerEntry &entry, m_siblings) {
+    result.insert(entry);
+    actualSize++;
+  }
+  
+  // Consider the local node as a possible destination
+  result.insert(PeerEntry(m_localId));
+  actualSize++;
+  
+  // If there are still not enough entries, we have to consider all the other entries
+  while (actualSize < count && startBucket > 0) { actualSize += getBucketSize(--startBucket); }
   
   // Now put all contacts into a container and sort by distance
   auto entries = m_peers.get<BucketIndexTag>().range(
@@ -298,6 +302,7 @@ DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, siz
 bool RoutingTable::remove(const NodeIdentifier &nodeId)
 {
   RecursiveUniqueLock lock(m_mutex);
+  BOOST_ASSERT(nodeId != m_localId);
   
   // Check if the entry is a sibling entry and remove it
   auto sibling = m_siblings.get<NodeIdTag>().find(nodeId);
@@ -335,7 +340,7 @@ void RoutingTable::refillSiblingTable()
   RecursiveUniqueLock lock(m_mutex);
   
   // If the sibling table is already full or empty we have nothing to do
-  if (m_siblings.size() == m_maxSiblingsSize || !m_siblings.size())
+  if (m_siblings.size() == m_maxSiblingsSize || !m_siblings.size() || !m_peers.size())
     return;
   
   // Find the closest k-bucket with at least one entry in it

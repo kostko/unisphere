@@ -114,12 +114,16 @@ TEST_CASE("plexus/routing_table", "verify that routing table operations work")
     // Check that the number of spilled peers is correct
     REQUIRE(rt.peerCount() == replicaRedundancyS);
     
-    // Ensure that all siblings are contained in the sibling table
-    DistanceOrderedTable siblingTable = rt.lookup(localId, replicaRedundancyS * 5);
-    REQUIRE(siblingTable.table().size() == replicaRedundancyS * 5);
+    // Ensure that all siblings are contained in the sibling table; that +1 must be here
+    // because local node identifier is also returned in lookup
+    DistanceOrderedTable siblingTable = rt.lookup(localId, replicaRedundancyS * 5 + 1);
+    REQUIRE(siblingTable.table().size() == replicaRedundancyS * 5 + 1);
     for (const NodeIdentifier &siblingId : siblings) {
       REQUIRE(siblingTable.table().get<NodeIdTag>().find(siblingId) != siblingTable.table().end());
     }
+    
+    // Local node must be included in the sibling table
+    REQUIRE(siblingTable.table().get<NodeIdTag>().find(localId) != siblingTable.table().end());
     
     SECTION("removal/buckets", "test that removal of entries from buckets works")
     {
