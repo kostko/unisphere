@@ -26,7 +26,12 @@
 namespace UniSphere {
   
 class LinkManager;
+class Bootstrap;
 
+/**
+ * Router is used to route messages over the overlay network and ensure that 
+ * routing tables are up to date.
+ */
 class UNISPHERE_EXPORT Router {
 public:
   /// Bucket size (routing redundancy)
@@ -38,8 +43,14 @@ public:
    * Constructs a router instance.
    * 
    * @param manager Link manager used for underlaying communication
+   * @param bootstrap Bootstrap mechanism
    */
-  Router(LinkManager &manager);
+  Router(LinkManager &manager, Bootstrap &bootstrap);
+  
+  /**
+   * Joins the overlay network by using the specified bootstrap mechanism.
+   */
+  void join();
   
   /**
    * Routes the specified message via the overlay.
@@ -101,6 +112,8 @@ public:
 private:
   /// Reference to link manager for this router
   LinkManager &m_manager;
+  /// The bootstrap mechanism used
+  Bootstrap &m_bootstrap;
   /// The routing table
   RoutingTable m_routes;
 };

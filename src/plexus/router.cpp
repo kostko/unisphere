@@ -17,15 +17,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "plexus/router.h"
+#include "plexus/bootstrap.h"
 #include "interplex/link_manager.h"
 
 namespace UniSphere {
 
-Router::Router(LinkManager &manager)
+Router::Router(LinkManager &manager, Bootstrap &bootstrap)
   : m_manager(manager),
+    m_bootstrap(bootstrap),
     m_routes(manager.getLocalNodeId(), Router::bucket_size, Router::sibling_neighbourhood)
 {
   m_manager.setLinkInitializer(boost::bind(&Router::initializeLink, this, _1));
+  m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
+}
+
+void Router::join()
+{
+  Contact bootstrapContact = m_bootstrap.getBootstrapContact();
+  m_manager.connect(bootstrapContact);
+  // TODO Queue our node identifier lookup to insert ourselves into the routing tables
+  //      of other nodes
 }
 
 void Router::initializeLink(Link &link)
