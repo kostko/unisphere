@@ -3,6 +3,7 @@ set(unisphere_plexus_src
 routing_table.cpp
 router.cpp
 routed_message.cpp
+bootstrap.cpp
 )
 
 PROTOBUF_GENERATE_CPP(unisphere_plexus_proto_src unisphere_plexus_proto_hdr
