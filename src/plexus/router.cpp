@@ -34,6 +34,13 @@ Router::Router(LinkManager &manager, Bootstrap &bootstrap)
 void Router::join()
 {
   Contact bootstrapContact = m_bootstrap.getBootstrapContact();
+  m_bootstrap.signalContactReady.disconnect(boost::bind(&Router::join, this));
+  if (bootstrapContact.isNull()) {
+    // Bootstrap contact is not yet read, we should be called again when one becomes available
+    m_bootstrap.signalContactReady.connect(boost::bind(&Router::join, this));
+    return;
+  }
+  
   m_manager.connect(bootstrapContact);
   // TODO Queue our node identifier lookup to insert ourselves into the routing tables
   //      of other nodes

@@ -20,6 +20,7 @@
 #define UNISPHERE_PLEXUS_BOOTSTRAP_H
 
 #include "interplex/contact.h"
+#include <boost/signal.hpp>
 
 namespace UniSphere {
   
@@ -40,6 +41,9 @@ public:
    * the overlay network.
    */
   virtual Contact getBootstrapContact() = 0;
+public:
+  /// Signal that a new bootstrap contact is ready
+  boost::signal<void()> signalContactReady;
 };
 
 /**
