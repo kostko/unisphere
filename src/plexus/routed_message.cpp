@@ -22,7 +22,7 @@ namespace UniSphere {
 
 RoutedMessage::RoutedMessage(const Message &msg)
 {
-  Protocol::Plexus::RoutedMessage pmsg = message_cast<Protocol::Plexus::RoutedMessage>(msg);
+  Protocol::RoutedMessage pmsg = message_cast<Protocol::RoutedMessage>(msg);
   m_sourceNodeId = NodeIdentifier(pmsg.sourcenode(), NodeIdentifier::Format::Raw);
   m_sourceCompId = pmsg.sourcecomp();
   m_destinationKeyId = NodeIdentifier(pmsg.destinationid(), NodeIdentifier::Format::Raw);
@@ -56,9 +56,9 @@ void RoutedMessage::decrementHopCount()
     m_hopCount--;
 }
 
-Protocol::Plexus::RoutedMessage *RoutedMessage::serialize() const
+Protocol::RoutedMessage *RoutedMessage::serialize() const
 {
-  Protocol::Plexus::RoutedMessage *pmsg = new Protocol::Plexus::RoutedMessage;
+  Protocol::RoutedMessage *pmsg = new Protocol::RoutedMessage;
   pmsg->set_sourcenode(m_sourceNodeId.as(NodeIdentifier::Format::Raw));
   pmsg->set_sourcecomp(m_sourceCompId);
   pmsg->set_destinationid(m_destinationKeyId.as(NodeIdentifier::Format::Raw));

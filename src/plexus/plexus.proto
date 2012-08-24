@@ -2,7 +2,7 @@
 // Protocol messages for Plexus overlay
 //
 
-package UniSphere.Protocol.Plexus;
+package UniSphere.Protocol;
 
 message RoutedMessage {
   // Source node identifier
