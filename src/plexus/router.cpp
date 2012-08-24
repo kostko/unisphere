@@ -42,8 +42,6 @@ void Router::join()
   }
   
   m_manager.connect(bootstrapContact);
-  // TODO Queue our node identifier lookup to insert ourselves into the routing tables
-  //      of other nodes
 }
 
 void Router::initializeLink(Link &link)
@@ -57,6 +55,9 @@ void Router::linkEstablished(LinkPtr link)
 {
   // Adds the established link to the routing table
   m_routes.add(link);
+  
+  // TODO Queue our node identifier lookup to insert ourselves into the routing tables
+  //      of other nodes
 }
 
 void Router::linkLost(LinkPtr link)
