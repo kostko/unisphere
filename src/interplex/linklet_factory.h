@@ -37,7 +37,10 @@ public:
    * 
    * @param manager Link manager instance
    */
-  LinkletFactory(LinkManager &manager);
+  explicit LinkletFactory(LinkManager &manager);
+  
+  LinkletFactory(const LinkletFactory&) = delete;
+  LinkletFactory &operator=(const LinkletFactory&) = delete;
   
   /**
    * Creates a new linklet suitable for handling the given address.

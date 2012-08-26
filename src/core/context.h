@@ -38,6 +38,9 @@ public:
    * Class constructor.
    */
   LibraryInitializer();
+  
+  LibraryInitializer(const LibraryInitializer&) = delete;
+  LibraryInitializer &operator=(const LibraryInitializer&) = delete;
 private:
   /// Botan cryptographic library context
   Botan::LibraryInitializer m_botan;
@@ -52,6 +55,9 @@ public:
    * Constructs a UNISPHERE context.
    */
   Context();
+  
+  Context(const Context&) = delete;
+  Context &operator=(const Context&) = delete;
   
   /**
    * Class destructor.

@@ -112,6 +112,9 @@ public:
   RpcCall(RpcEngine &rpc, RpcId rpcId, RpcResponseSuccess success, RpcResponseFailure failure,
     boost::posix_time::time_duration timeout);
   
+  RpcCall(const RpcCall&) = delete;
+  RpcCall &operator=(const RpcCall&) = delete;
+  
   /**
    * Returns the unique identifier of this RPC call.
    */
@@ -163,7 +166,10 @@ public:
    * 
    * @param router Router instance
    */
-  RpcEngine(Router &router);
+  explicit RpcEngine(Router &router);
+  
+  RpcEngine(const RpcEngine&) = delete;
+  RpcEngine &operator=(const RpcEngine&) = delete;
   
   /**
    * Returns the router instance associated with this RPC engine.

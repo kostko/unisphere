@@ -46,6 +46,9 @@ public:
    */
   LinkManager(Context &context, const NodeIdentifier &nodeId);
   
+  LinkManager(const LinkManager&) = delete;
+  LinkManager &operator=(const LinkManager&) = delete;
+  
   /**
    * Returns the UNISPHERE context this manager belongs to.
    */

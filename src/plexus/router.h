@@ -58,6 +58,9 @@ public:
    */
   Router(LinkManager &manager, Bootstrap &bootstrap);
   
+  Router(const Router&) = delete;
+  Router &operator=(const Router&) = delete;
+  
   /**
    * Returns the link manager instance associated with this router.
    */
