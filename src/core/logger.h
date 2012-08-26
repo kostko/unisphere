@@ -55,7 +55,7 @@ public:
   void output(Level level, const std::string &text);
 private:
   // Logging mutex
-  boost::mutex m_mutex;
+  std::mutex m_mutex;
 };
 
 // Logging macros

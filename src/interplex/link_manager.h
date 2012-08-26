@@ -139,12 +139,12 @@ private:
   /// Mapping of all managed links by their identifiers
   boost::unordered_map<NodeIdentifier, LinkPtr> m_links;
   /// Mutex protecting the link mapping
-  boost::shared_mutex m_linksMutex;
+  std::mutex m_linksMutex;
   
   /// A list of all listening linklets
   std::list<LinkletPtr> m_listeners;
   /// Mutex protecting the listening linklet list
-  boost::shared_mutex m_listenersMutex;
+  std::mutex m_listenersMutex;
   
   /// Initialization function for new link instances
   std::function<void(Link&)> m_linkInitializer;

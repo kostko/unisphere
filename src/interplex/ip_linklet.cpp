@@ -155,7 +155,7 @@ void IPLinklet::send(const Message &msg)
   if (m_state != State::Connected && msg.type() != Message::Type::Interplex_Hello)
     return;
   
-  boost::lock_guard<boost::mutex> g(m_outMessagesMutex);
+  UniqueLock lock(m_outMessagesMutex);
   bool sendInProgress = !m_outMessages.empty();
   m_outMessages.push_back(msg);
   
@@ -180,7 +180,7 @@ void IPLinklet::send(const Message &msg)
 void IPLinklet::handleWrite(const boost::system::error_code &error)
 {
   if (!error) {
-    boost::lock_guard<boost::mutex> g(m_outMessagesMutex);
+    UniqueLock lock(m_outMessagesMutex);
     m_outMessages.pop_front();
     if (!m_outMessages.empty()) {
       if (m_state == State::IntroWait) {

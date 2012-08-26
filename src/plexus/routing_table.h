@@ -351,7 +351,7 @@ private:
   /// The routing table
   PeerTable m_peers;
   /// Mutex protecting changes to the routing table
-  boost::recursive_mutex m_mutex;
+  std::recursive_mutex m_mutex;
   /// Maximum number of entries in a bucket
   size_t m_maxBucketSize;
   /// Maximum number of buckets

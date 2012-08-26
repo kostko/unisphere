@@ -226,7 +226,7 @@ private:
   bool m_persistent;
   
   /// Internal mutex
-  boost::recursive_mutex m_mutex;
+  std::recursive_mutex m_mutex;
   
   /// Messages queued for delivery when the link was down
   std::deque<Message> m_messages;

@@ -125,7 +125,7 @@ protected:
   // Incoming message and outgoing message queue
   Message m_inMessage;
   std::deque<Message> m_outMessages;
-  boost::mutex m_outMessagesMutex;
+  std::mutex m_outMessagesMutex;
 };
 
 }

@@ -29,7 +29,7 @@ Logger::Logger()
 
 void Logger::output(Level level, const std::string &text)
 {
-  boost::lock_guard<boost::mutex> g(m_mutex);
+  UniqueLock lock(m_mutex);
   
   std::cout << boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time());
   std::cout << " ";

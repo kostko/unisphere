@@ -21,19 +21,17 @@
 
 #include <boost/format.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
+
+#include <mutex>
 
 using boost::format;
 
 namespace UniSphere {
 
-// Locking typedefs used for passing an upgradable lock around
-typedef boost::shared_lock<boost::shared_mutex> SharedLock;
-typedef boost::upgrade_lock<boost::shared_mutex> UpgradableLock;
-typedef boost::shared_ptr<UpgradableLock> UpgradableLockPtr;
-typedef boost::upgrade_to_unique_lock<boost::shared_mutex> UpgradeToUniqueLock;
-typedef boost::unique_lock<boost::shared_mutex> UniqueLock;
-typedef boost::unique_lock<boost::recursive_mutex> RecursiveUniqueLock;
+/// Unique lock typedef
+typedef std::unique_lock<std::mutex> UniqueLock;
+/// Recursive unique lock typedef
+typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
 
 }
 

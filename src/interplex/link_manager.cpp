@@ -46,7 +46,7 @@ LinkPtr LinkManager::connect(const Contact &contact)
 
 LinkPtr LinkManager::create(const Contact &contact, bool connect)
 {
-  UpgradableLock lock(m_linksMutex);
+  UniqueLock lock(m_linksMutex);
   LinkPtr link;
   
   // Find or create a link
@@ -58,7 +58,6 @@ LinkPtr LinkManager::create(const Contact &contact, bool connect)
       m_linkInitializer(*link);
     }
     
-    UpgradeToUniqueLock unique(lock);
     m_links[contact.nodeId()] = link;
   }
   
@@ -69,13 +68,11 @@ LinkPtr LinkManager::create(const Contact &contact, bool connect)
 
 bool LinkManager::listen(const Address &address)
 {
-  UpgradableLock lock(m_listenersMutex);
+  UniqueLock lock(m_listenersMutex);
   try {
     LinkletPtr linklet = m_linkletFactory.create(address);
     linklet->signalAcceptedConnection.connect(boost::bind(&LinkManager::linkletAcceptedConnection, this, _1));
     linklet->listen(address);
-    
-    UpgradeToUniqueLock unique(lock);
     m_listeners.push_back(linklet);
   } catch (LinkletListenFailed &e) {
     // Failed to listen on specified address
@@ -87,7 +84,7 @@ bool LinkManager::listen(const Address &address)
 
 void LinkManager::remove(const NodeIdentifier &nodeId)
 {
-  UpgradableLock lock(m_linksMutex);
+  UniqueLock lock(m_linksMutex);
   
   if (m_links.find(nodeId) == m_links.end())
     return;
@@ -96,7 +93,6 @@ void LinkManager::remove(const NodeIdentifier &nodeId)
   if (link->state() != Link::State::Closed)
     return;
   
-  UpgradeToUniqueLock unique(lock);
   m_links.erase(nodeId);
 }
 
