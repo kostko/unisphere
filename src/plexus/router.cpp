@@ -25,7 +25,8 @@ namespace UniSphere {
 Router::Router(LinkManager &manager, Bootstrap &bootstrap)
   : m_manager(manager),
     m_bootstrap(bootstrap),
-    m_routes(manager.getLocalNodeId(), Router::bucket_size, Router::sibling_neighbourhood)
+    m_routes(manager.getLocalNodeId(), Router::bucket_size, Router::sibling_neighbourhood),
+    m_rpc(*this)
 {
   m_manager.setLinkInitializer(boost::bind(&Router::initializeLink, this, _1));
   m_routes.signalRejoin.connect(boost::bind(&Router::join, this));

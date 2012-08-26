@@ -93,6 +93,11 @@ public:
   inline std::uint32_t payloadType() const { return m_payloadType; }
   
   /**
+   * Returns the payload.
+   */
+  inline const std::string &payload() const { return m_payload; }
+  
+  /**
    * Returns the hop count.
    */
   inline std::uint8_t hopCount() const { return m_hopCount; }
@@ -119,6 +124,21 @@ private:
   /// Payload data
   std::string m_payload;
 };
+
+/**
+ * Casts a routed message to a Protocol Buffers message type. The
+ * template argument must be a valid protobuf message class.
+ *
+ * @param msg Message to cast
+ * @return A Protocol Buffers message
+ */
+template<typename T>
+T message_cast(const RoutedMessage &msg)
+{
+  T payload;
+  payload.ParseFromString(msg.payload());
+  return payload;
+}
 
 }
 

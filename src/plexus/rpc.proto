@@ -18,5 +18,14 @@ message RpcRequest {
 //
 message RpcResponse {
   required uint64 rpc_id = 1;
-  required bytes data = 2;
+  required bool error = 2;
+  required bytes data = 3;
+}
+
+//
+// RPC error response payload
+//
+message RpcError {
+  required uint32 code = 1;
+  required string message = 2;
 }

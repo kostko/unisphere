@@ -22,6 +22,7 @@
 #include "core/context.h"
 #include "plexus/routing_table.h"
 #include "plexus/routed_message.h"
+#include "plexus/rpc_engine.h"
 
 namespace UniSphere {
   
@@ -40,12 +41,27 @@ public:
   static const size_t sibling_neighbourhood = 16;
   
   /**
+   * Identifiers of components that can be routed to. These components
+   * may differ between nodes, but system components must always be
+   * implemented.
+   */
+  enum class Component : std::uint32_t {
+    /* 0x00 - 0xFF RESERVED FOR SYSTEM PROTOCOLS */
+    RPC_Engine    = 0x01,
+  };
+  
+  /**
    * Constructs a router instance.
    * 
    * @param manager Link manager used for underlaying communication
    * @param bootstrap Bootstrap mechanism
    */
   Router(LinkManager &manager, Bootstrap &bootstrap);
+  
+  /**
+   * Returns the link manager instance associated with this router.
+   */
+  inline LinkManager &linkManager() const { return m_manager; }
   
   /**
    * Joins the overlay network by using the specified bootstrap mechanism.
@@ -116,6 +132,8 @@ private:
   Bootstrap &m_bootstrap;
   /// The routing table
   RoutingTable m_routes;
+  /// The RPC engine
+  RpcEngine m_rpc;
 };
   
 }
