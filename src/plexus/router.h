@@ -64,6 +64,11 @@ public:
   inline LinkManager &linkManager() const { return m_manager; }
   
   /**
+   * Returns the RPC engine instance associated with this router.
+   */
+  inline RpcEngine &rpcEngine() { return m_rpc; }
+  
+  /**
    * Joins the overlay network by using the specified bootstrap mechanism.
    */
   void join();
