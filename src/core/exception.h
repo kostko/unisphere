@@ -41,13 +41,13 @@ public:
   /**
    * Class destructor.
    */
-  virtual ~Exception() throw()
+  virtual ~Exception() noexcept
   {}
   
   /**
    * Returns the exception message.
    */
-  const char *what() const throw()
+  const char *what() const noexcept
   {
     return m_message.c_str();
   }
