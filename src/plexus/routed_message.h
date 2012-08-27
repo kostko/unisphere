@@ -20,7 +20,7 @@
 #define UNISPHERE_PLEXUS_ROUTEDMESSAGE_H
 
 #include "core/globals.h"
-#include "src/plexus/plexus.pb.h"
+#include "src/plexus/routed_message.pb.h"
 #include "interplex/message.h"
 #include "identity/node_identifier.h"
 

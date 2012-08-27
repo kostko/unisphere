@@ -8,7 +8,7 @@ rpc_engine.cpp
 )
 
 PROTOBUF_GENERATE_CPP(unisphere_plexus_proto_src unisphere_plexus_proto_hdr
-plexus.proto
+routed_message.proto
 rpc.proto
 )
 
