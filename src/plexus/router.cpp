@@ -19,6 +19,7 @@
 #include "plexus/router.h"
 #include "plexus/bootstrap.h"
 #include "interplex/link_manager.h"
+#include "src/plexus/core_methods.pb.h"
 
 namespace UniSphere {
 
@@ -30,6 +31,41 @@ Router::Router(LinkManager &manager, Bootstrap &bootstrap)
 {
   m_manager.setLinkInitializer(boost::bind(&Router::initializeLink, this, _1));
   m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
+  
+  // Register core routing RPC methods
+  registerCoreRpcMethods();
+}
+
+void Router::registerCoreRpcMethods()
+{
+  // Find node that is destined for the local node
+  m_rpc.registerMethod<Protocol::FindNodeRequest, Protocol::FindNodeResponse>("Core.FindNode",
+    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg) -> Protocol::FindNodeResponse {
+      // Return the specified number of sibling nodes
+      Protocol::FindNodeResponse response;
+      DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
+      for (const PeerEntry &entry : siblings.table().get<DistanceTag>()) {
+        Protocol::Contact *contact = response.add_contacts();
+        *contact = entry.contact.toMessage();
+      }
+      
+      return response;
+    }
+  );
+  
+  // Find node that is in transit over the local node
+  m_rpc.registerInterceptMethod<Protocol::FindNodeRequest>("Core.FindNode",
+    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg) {
+      // TODO Rate limiting
+      
+    }
+  );
+  
+  // Peer entry exchange for filling up local k-buckets
+  m_rpc.registerMethod<Protocol::ExchangeEntriesRequest, Protocol::ExchangeEntriesResponse>("Core.ExchangeEntries",
+    [this](const Protocol::ExchangeEntriesRequest, const RoutedMessage &msg) -> Protocol::ExchangeEntriesResponse {
+    }
+  );
 }
 
 void Router::join()

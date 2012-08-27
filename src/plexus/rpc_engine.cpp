@@ -76,8 +76,9 @@ void RpcCall::done(const Protocol::RpcResponse &response)
 RpcEngine::RpcEngine(Router &router)
   : m_router(router)
 {
-  // Subscribe to message delivery events
+  // Subscribe to message delivery and forward events
   m_router.signalDeliverMessage.connect(boost::bind(&RpcEngine::messageDelivery, this, _1));
+  m_router.signalForwardMessage.connect(boost::bind(&RpcEngine::messageForward, this, _1));
 }
 
 RpcId RpcEngine::getNextRpcId() const
@@ -89,7 +90,7 @@ RpcId RpcEngine::getNextRpcId() const
   return rpcId;
 }
 
-RpcCallPtr RpcEngine::create(const NodeIdentifier &destination, const std::string &method,
+RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::string &method,
                              const std::vector<char> &payload, RpcResponseSuccess success,
                              RpcResponseFailure failure, int timeout)
 {
@@ -146,9 +147,10 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
   
   switch (msg.payloadType()) {
     case static_cast<std::uint32_t>(RpcMessageType::Request): {
-      UniqueLock lock(m_mutex);
       Protocol::RpcRequest request = message_cast<Protocol::RpcRequest>(msg);
       RpcId rpcId = request.rpc_id();
+      
+      UniqueLock lock(m_mutex);
       if (m_methods.find(request.method()) == m_methods.end())
         return respond(msg, getErrorResponse(rpcId, RpcErrorCode::MethodNotFound, "Method not found."));
       
@@ -174,6 +176,30 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       break;
     }
   }
+}
+
+void RpcEngine::messageForward(const RoutedMessage &msg)
+{
+  if (msg.destinationCompId() != static_cast<std::uint32_t>(Router::Component::RPC_Engine) ||
+      msg.payloadType() != static_cast<std::uint32_t>(RpcMessageType::Request))
+    return;
+  
+  UniqueLock lock(m_mutex);
+  Protocol::RpcRequest request = message_cast<Protocol::RpcRequest>(msg);
+  RpcId rpcId = request.rpc_id();
+  
+  if (m_interceptMethods.find(request.method()) == m_interceptMethods.end())
+    return;
+  
+  auto handler = m_interceptMethods[request.method()];
+  lock.unlock();
+  
+  // Call the registered method handler for the intercepted RPC request
+  handler(
+    msg, request,
+    [](const Protocol::RpcResponse&) {},
+    [](RpcErrorCode, const std::string&) {}
+  );
 }
 
 void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &response)

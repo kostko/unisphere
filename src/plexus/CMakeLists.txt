@@ -10,6 +10,7 @@ rpc_engine.cpp
 PROTOBUF_GENERATE_CPP(unisphere_plexus_proto_src unisphere_plexus_proto_hdr
 routed_message.proto
 rpc.proto
+core_methods.proto
 )
 
 add_library(UnispherePlexus SHARED ${unisphere_plexus_src} ${unisphere_plexus_proto_src})

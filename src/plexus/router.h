@@ -127,6 +127,11 @@ protected:
    * @param link Link that has been lost
    */
   void linkLost(LinkPtr link);
+  
+  /**
+   * Performs registration of core RPC methods that are required for routing.
+   */
+  void registerCoreRpcMethods();
 public:
   /// Signal for delivery of locally-bound messages
   boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
