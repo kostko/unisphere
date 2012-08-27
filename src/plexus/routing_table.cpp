@@ -36,7 +36,6 @@ PeerEntry::PeerEntry (const NodeIdentifier &nodeId)
   
 PeerEntry::PeerEntry(LinkPtr link)
   : nodeId(link->nodeId()),
-    contact(link->contact()),
     link(link),
     bucket(0),
     lastSeen(boost::posix_time::microsec_clock::universal_time())

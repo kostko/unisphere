@@ -68,12 +68,15 @@ public:
    * Returns true if this peer entry has a valid node identifier
    * and link associated with it.
    */
-  bool isValid() const { return nodeId.isValid() && link; }
+  inline bool isValid() const { return nodeId.isValid() && link; }
+  
+  /**
+   * Returns the contact information for this peer entry.
+   */
+  inline Contact contact() const { return link->contact(); }
 public:
   /// Peer node identifier
   NodeIdentifier nodeId;
-  /// Peer contact information
-  Contact contact;
   /// Peer link
   LinkPtr link;
   

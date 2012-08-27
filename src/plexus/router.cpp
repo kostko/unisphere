@@ -53,7 +53,7 @@ void Router::registerCoreRpcMethods()
       DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
       for (const PeerEntry &entry : siblings.table().get<DistanceTag>()) {
         Protocol::Contact *contact = response.add_contacts();
-        *contact = entry.contact.toMessage();
+        *contact = entry.contact().toMessage();
       }
       
       return response;
@@ -73,7 +73,7 @@ void Router::registerCoreRpcMethods()
       DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
       for (const PeerEntry &entry : siblings.table().get<DistanceTag>()) {
         Protocol::Contact *contact = backRequest.add_contacts();
-        *contact = entry.contact.toMessage();
+        *contact = entry.contact().toMessage();
       }
       
       // Perform a back-request without confirmation to the source node
@@ -172,10 +172,12 @@ void Router::linkEstablished(LinkPtr link)
       },
       // Error handler
       [this, link](RpcErrorCode code, const std::string &msg) {
-        m_state = State::Init;
-        
-        link->close();
-        join();
+        if (m_state == State::Bootstrap) {
+          m_state = State::Init;
+          
+          link->close();
+          join();
+        }
       }
     );
   }
