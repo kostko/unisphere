@@ -24,6 +24,11 @@
 #include "plexus/routed_message.h"
 #include "plexus/rpc_engine.h"
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+
 namespace UniSphere {
   
 class LinkManager;
@@ -39,6 +44,10 @@ public:
   static const size_t bucket_size = 20;
   /// Per-key sibling neighbourhood size (key storage redundancy)
   static const size_t sibling_neighbourhood = 16;
+  /// Pending contacts establishment period (in seconds)
+  static const int pending_contacts_period = 2;
+  /// Maximum number of pending contacts
+  static const size_t pending_contacts_size = 128;
   
   /**
    * Identifiers of components that can be routed to. These components
@@ -48,6 +57,15 @@ public:
   enum class Component : std::uint32_t {
     /* 0x00 - 0xFF RESERVED FOR SYSTEM PROTOCOLS */
     RPC_Engine    = 0x01,
+  };
+  
+  /**
+   * Possible states of the overlay router.
+   */
+  enum class State {
+    Init,
+    Bootstrap,
+    Joined
   };
   
   /**
@@ -70,6 +88,11 @@ public:
    * Returns the RPC engine instance associated with this router.
    */
   inline RpcEngine &rpcEngine() { return m_rpc; }
+  
+  /**
+   * Returns the current router state.
+   */
+  inline State state() { return m_state; }
   
   /**
    * Joins the overlay network by using the specified bootstrap mechanism.
@@ -132,6 +155,20 @@ protected:
    * Performs registration of core RPC methods that are required for routing.
    */
   void registerCoreRpcMethods();
+  
+  /**
+   * Attempts to establish a connection with the next contact in the contact
+   * queue.
+   */
+  void connectToMoreContacts();
+  
+  /**
+   * Queues a contact to be connected later. This is done so that we don't
+   * establish lots of connections at once but have control over the rate.
+   * 
+   * @param contact Contact to queue
+   */
+  void queueContact(const Contact &contact);
 public:
   /// Signal for delivery of locally-bound messages
   boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
@@ -147,6 +184,22 @@ private:
   RoutingTable m_routes;
   /// The RPC engine
   RpcEngine m_rpc;
+  /// Pending contact queue
+  boost::multi_index_container<
+    Contact,
+    midx::indexed_by<
+      midx::sequenced<>,
+      midx::hashed_unique<
+        midx::const_mem_fun<Contact, NodeIdentifier, &Contact::nodeId>
+      >
+    >
+  > m_pendingContacts;
+  /// Pending contact timer
+  boost::asio::deadline_timer m_pendingContactTimer;
+  /// Mutex protecting the router
+  std::mutex m_mutex;
+  /// Router state
+  State m_state;
 };
   
 }

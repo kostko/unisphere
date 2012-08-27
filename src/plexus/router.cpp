@@ -27,10 +27,16 @@ Router::Router(LinkManager &manager, Bootstrap &bootstrap)
   : m_manager(manager),
     m_bootstrap(bootstrap),
     m_routes(manager.getLocalNodeId(), Router::bucket_size, Router::sibling_neighbourhood),
-    m_rpc(*this)
+    m_rpc(*this),
+    m_pendingContactTimer(manager.context().service()),
+    m_state(State::Init)
 {
   m_manager.setLinkInitializer(boost::bind(&Router::initializeLink, this, _1));
   m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
+  
+  // Setup the periodic contact establishment timer
+  m_pendingContactTimer.expires_from_now(boost::posix_time::seconds(Router::pending_contacts_period));
+  m_pendingContactTimer.async_wait(boost::bind(&Router::connectToMoreContacts, this));
   
   // Register core routing RPC methods
   registerCoreRpcMethods();
@@ -38,9 +44,10 @@ Router::Router(LinkManager &manager, Bootstrap &bootstrap)
 
 void Router::registerCoreRpcMethods()
 {
-  // Find node that is destined for the local node
+  // Find node RPC that is destined for the local node
   m_rpc.registerMethod<Protocol::FindNodeRequest, Protocol::FindNodeResponse>("Core.FindNode",
-    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg) -> Protocol::FindNodeResponse {
+    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg, RpcId) -> Protocol::FindNodeResponse {
+      // TODO Maximum number of sibling nodes
       // Return the specified number of sibling nodes
       Protocol::FindNodeResponse response;
       DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
@@ -53,19 +60,65 @@ void Router::registerCoreRpcMethods()
     }
   );
   
-  // Find node that is in transit over the local node
+  // Find node RPC that is in transit over the local node
   m_rpc.registerInterceptMethod<Protocol::FindNodeRequest>("Core.FindNode",
-    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg) {
+    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg, RpcId rpcId) {
+      // TODO Maximum number of key-sibling nodes
       // TODO Rate limiting
       
+      // Push the specified number of key-sibling nodes to the source node
+      Protocol::ExchangeEntriesRequest backRequest;
+      backRequest.set_rpcid(rpcId);
+      backRequest.set_destination(msg.destinationKeyId().as(NodeIdentifier::Format::Raw));
+      DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
+      for (const PeerEntry &entry : siblings.table().get<DistanceTag>()) {
+        Protocol::Contact *contact = backRequest.add_contacts();
+        *contact = entry.contact.toMessage();
+      }
+      
+      // Perform a back-request without confirmation to the source node
+      m_rpc.call<Protocol::ExchangeEntriesRequest>(msg.sourceNodeId(), "Core.ExchangeEntries", backRequest);
     }
   );
   
   // Peer entry exchange for filling up local k-buckets
-  m_rpc.registerMethod<Protocol::ExchangeEntriesRequest, Protocol::ExchangeEntriesResponse>("Core.ExchangeEntries",
-    [this](const Protocol::ExchangeEntriesRequest, const RoutedMessage &msg) -> Protocol::ExchangeEntriesResponse {
+  m_rpc.registerMethod<Protocol::ExchangeEntriesRequest>("Core.ExchangeEntries",
+    [this](const Protocol::ExchangeEntriesRequest &request, const RoutedMessage&, RpcId) {
+      // Ensure that a recent outgoing RPC with the specified identifier exists
+      if (!m_rpc.isRecentCall(request.rpcid()))
+        return;
+      
+      // Queue all contacts to be contacted
+      for (const Protocol::Contact &ct : request.contacts()) {
+        queueContact(Contact::fromMessage(ct));
+      }
     }
   );
+}
+
+void Router::queueContact(const Contact &contact)
+{
+  UniqueLock lock(m_mutex);
+  if (m_pendingContacts.get<1>().find(contact.nodeId()) != m_pendingContacts.get<1>().end())
+    return;
+  
+  if (m_pendingContacts.size() >= Router::pending_contacts_size)
+    return;
+  
+  m_pendingContacts.push_front(contact);
+}
+
+void Router::connectToMoreContacts()
+{
+  UniqueLock lock(m_mutex);
+  
+  // Retrieve the last contact and attempt to establish contact
+  m_manager.connect(m_pendingContacts.back());
+  m_pendingContacts.pop_back();
+  
+  // Setup the periodic contact establishment timer
+  m_pendingContactTimer.expires_from_now(boost::posix_time::seconds(Router::pending_contacts_period));
+  m_pendingContactTimer.async_wait(boost::bind(&Router::connectToMoreContacts, this));
 }
 
 void Router::join()
@@ -79,6 +132,9 @@ void Router::join()
   }
   
   m_manager.connect(bootstrapContact);
+  
+  // TODO Queue our node identifier lookup to insert ourselves into the routing tables
+  //      of other nodes
 }
 
 void Router::initializeLink(Link &link)
@@ -91,16 +147,44 @@ void Router::initializeLink(Link &link)
 void Router::linkEstablished(LinkPtr link)
 {
   // Adds the established link to the routing table
-  m_routes.add(link);
+  if (!m_routes.add(link))
+    link->close();
   
-  // TODO Queue our node identifier lookup to insert ourselves into the routing tables
-  //      of other nodes
+  // If we are still in the init phase, we should lookup the identifier
+  if (m_state == State::Init) {
+    using namespace Protocol;
+    FindNodeRequest request;
+    request.set_num_contacts(m_routes.maxSiblingsSize());
+    
+    // TODO Properly handle cases when the siblinghood of our local id is misrouting RPCs
+    // TODO In the most extreme case, our node identifier should be changed
+    m_state = State::Bootstrap;
+    m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
+      // Success handler
+      [this](const FindNodeResponse &response) {
+        // Queue all contacts to be contacted
+        for (const Protocol::Contact &ct : response.contacts()) {
+          queueContact(UniSphere::Contact::fromMessage(ct));
+        }
+        
+        // We are now in the "joined" state
+        m_state = State::Joined;
+      },
+      // Error handler
+      [this, link](RpcErrorCode code, const std::string &msg) {
+        m_state = State::Init;
+        
+        link->close();
+        join();
+      }
+    );
+  }
 }
 
 void Router::linkLost(LinkPtr link)
 {
   // Removes the lost link from the routing table
-  m_routes.remove(link->nodeId());
+  m_routes.remove(link);
 }
 
 void Router::linkMessageReceived(const Message &msg)
@@ -126,8 +210,6 @@ void Router::route(const RoutedMessage &msg)
     UNISPHERE_LOG(m_manager.context(), Warning, "Router: No route to destination.");
     return;
   }
-  
-  // TODO The forwarding process should be used to also meet other nodes
   
   // Check if the message is destined to the local node, in this case it should be
   // delivered to an upper layer application/component

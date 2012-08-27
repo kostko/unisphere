@@ -76,7 +76,7 @@ void RpcCall::done(const Protocol::RpcResponse &response)
 
 void RpcCall::cancel()
 {
-  m_rpc.cancel(m_destination, m_rpcId);
+  m_rpc.cancel(m_rpcId);
 }
   
 RpcEngine::RpcEngine(Router &router)
@@ -104,7 +104,10 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
   
   // Register the pending RPC call
   RpcCallPtr call(new RpcCall(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(timeout)));
-  m_pendingCalls[RpcCallKey(destination, call->rpcId())] = call;
+  m_pendingCalls[call->rpcId()] = call;
+  m_recentCalls.push_front(call->rpcId());
+  if (m_recentCalls.size() > RpcEngine::recent_size)
+    m_recentCalls.pop_back();
   call->start();
   
   // Prepare the request message
@@ -123,10 +126,10 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
   );
 }
 
-void RpcEngine::cancel(const NodeIdentifier &destination, RpcId rpcId)
+void RpcEngine::cancel(RpcId rpcId)
 {
   UniqueLock lock(m_mutex);
-  m_pendingCalls.erase(RpcCallKey(destination, rpcId));
+  m_pendingCalls.erase(rpcId);
 }
 
 Protocol::RpcResponse RpcEngine::getErrorResponse(RpcId rpcId, RpcErrorCode code, const std::string &message) const
@@ -175,11 +178,10 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       UniqueLock lock(m_mutex);
       Protocol::RpcResponse response = message_cast<Protocol::RpcResponse>(msg);
       RpcId rpcId = response.rpc_id();
-      RpcCallKey rpcCallKey(msg.sourceNodeId(), rpcId);
-      if (m_pendingCalls.find(rpcCallKey) == m_pendingCalls.end())
+      if (m_pendingCalls.find(rpcId) == m_pendingCalls.end())
         return;
       
-      m_pendingCalls[rpcCallKey]->done(response);
+      m_pendingCalls[rpcId]->done(response);
       break;
     }
   }
@@ -219,6 +221,11 @@ void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &r
     static_cast<std::uint32_t>(RpcMessageType::Response),
     response
   );
+}
+
+bool RpcEngine::isRecentCall(RpcId rpcId)
+{
+  return m_recentCalls.get<1>().find(rpcId) != m_recentCalls.get<1>().end();
 }
 
 }

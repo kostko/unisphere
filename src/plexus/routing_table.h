@@ -251,10 +251,19 @@ public:
   /**
    * Removes an entry from the routing table.
    * 
-   * @param nodeId Node identifier of the entry to remove
+   * @param link Link to the peer that should be removed
    * @return True if routing table has been changed
    */
-  bool remove(const NodeIdentifier &nodeId);
+  bool remove(LinkPtr link);
+  
+  /**
+   * Removes an entry from the routing table.
+   * 
+   * @param nodeId Node identifier of the entry to remove
+   * @param link Set to a link pointer to only remove a specific link
+   * @return True if routing table has been changed
+   */
+  bool remove(const NodeIdentifier &nodeId, LinkPtr link = LinkPtr());
   
   /**
    * Returns a number of contacts closest to the destination.
@@ -299,6 +308,11 @@ public:
    * Returns the number of sibling entries currently in the sibling table.
    */
   size_t siblingCount() const;
+  
+  /**
+   * Returns the maximum number of entries in the sibling table.
+   */
+  size_t maxSiblingsSize() const;
 public:
   // Signals
   boost::signal<void()> signalRejoin;

@@ -27,7 +27,13 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/date_time.hpp>
 #include <boost/asio.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/identity.hpp>
 #include <unordered_map>
+
+namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
@@ -176,6 +182,9 @@ UNISPHERE_SHARED_POINTER(RpcCall);
  */
 class UNISPHERE_EXPORT RpcEngine {
 public:
+  /// Recent RPC call list size
+  static const size_t recent_size = 20;
+  
   /**
    * Class constructor.
    * 
@@ -217,12 +226,37 @@ public:
   }
   
   /**
+   * Calls a remote procedure without confirmation.
+   *
+   * @param destination Destination key
+   * @param method Method name
+   * @param request Request payload
+   */
+  template<typename RequestType>
+  void call(const NodeIdentifier &destination, const std::string &method,
+            const RequestType &request)
+  {
+    // Serialize Protocol Buffers message into the payload
+    std::vector<char> buffer(request.ByteSize());
+    request.SerializeToArray(&buffer[0], buffer.size());
+    
+    // Create the call and immediately cancel it as we don't need a confirmation
+    RpcCallPtr call = createCall(destination, method, buffer, nullptr, nullptr, 0);
+    call->cancel();
+  }
+  
+  /**
    * Cancels a given pending RPC call.
    * 
-   * @param destination Call's destination key
    * @param rpcId Call's unique identifier
    */
-  void cancel(const NodeIdentifier &destination, RpcId rpcId);
+  void cancel(RpcId rpcId);
+  
+  /**
+   * Verifies that the specific RPC call was an actual recent outgoing call performed
+   * by this node.
+   */
+  bool isRecentCall(RpcId rpcId);
   
   /**
    * Registers a new RPC method call.
@@ -230,11 +264,24 @@ public:
    * @param method Method name
    * @param impl Method implementation
    */
-  template<typename RequestType, typename ResponseType = void>
-  void registerMethod(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&)> impl)
+  template<typename RequestType, typename ResponseType>
+  void registerMethod(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
   {
     UniqueLock lock(m_mutex);
     m_methods[method] = createBasicMethodHandler<RequestType, ResponseType>(method, impl);
+  }
+  
+  /**
+   * Registers a new RPC method call that doesn't send back a response.
+   *
+   * @param method Method name
+   * @param impl Method implementation
+   */
+  template<typename RequestType>
+  void registerMethod(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
+  {
+    UniqueLock lock(m_mutex);
+    m_methods[method] = createBasicMethodHandler<RequestType>(method, impl);
   }
   
   /**
@@ -246,7 +293,7 @@ public:
    * @param impl Method implementation
    */
   template<typename RequestType>
-  void registerInterceptMethod(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&)> impl)
+  void registerInterceptMethod(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
   {
     UniqueLock lock(m_mutex);
     m_interceptMethods[method] = createBasicMethodHandler<RequestType>(method, impl);
@@ -279,7 +326,7 @@ protected:
    * @param impl Method implementation
    */
   template<typename RequestType, typename ResponseType>
-  RpcHandler createBasicMethodHandler(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&)> impl)
+  RpcHandler createBasicMethodHandler(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&, RpcId)> impl)
   {
     // Wrap the implementation with proper serializers/deserializers depending on
     // specified request and response types
@@ -287,7 +334,7 @@ protected:
                   RpcResponseSuccess success, RpcResponseFailure failure) {
       try {
         // Deserialize the message and call method implementation
-        ResponseType rsp = impl(message_cast<RequestType>(request.data()), msg);
+        ResponseType rsp = impl(message_cast<RequestType>(request.data()), msg, request.rpc_id());
         Protocol::RpcResponse response;
         response.set_rpc_id(request.rpc_id());
         
@@ -310,7 +357,7 @@ protected:
    * @param impl Method implementation
    */
   template<typename RequestType>
-  RpcHandler createBasicMethodHandler(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&)> impl)
+  RpcHandler createBasicMethodHandler(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&, RpcId)> impl)
   {
     // Wrap the implementation with proper serializers/deserializers depending on
     // specified request and response types
@@ -318,7 +365,7 @@ protected:
                   RpcResponseSuccess success, RpcResponseFailure failure) {
       try {
         // Deserialize the message and call method implementation
-        impl(message_cast<RequestType>(request.data()), msg);
+        impl(message_cast<RequestType>(request.data()), msg, request.rpc_id());
       } catch (RpcException &error) {
         // Handle failures by invoking the failure handler
         failure(error.code(), error.message());
@@ -362,11 +409,19 @@ private:
   /// Mutex protecting the RPC engine
   std::mutex m_mutex;
   /// Pending RPC calls
-  std::unordered_map<RpcCallKey, RpcCallPtr> m_pendingCalls;
+  std::unordered_map<RpcId, RpcCallPtr> m_pendingCalls;
   /// Registered RPC methods
   std::unordered_map<std::string, RpcHandler> m_methods;
   /// Registered RPC intercept methods
   std::unordered_map<std::string, RpcHandler> m_interceptMethods;
+  /// Recent RPC calls
+  boost::multi_index_container<
+    RpcId,
+    midx::indexed_by<
+      midx::sequenced<>,
+      midx::hashed_unique<midx::identity<RpcId>>
+    >
+  > m_recentCalls;
 };
   
 }
