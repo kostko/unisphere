@@ -33,6 +33,8 @@ namespace UniSphere {
 
 /// RPC identifier type
 typedef std::uint64_t RpcId;
+/// RPC call mapping key
+typedef std::tuple<NodeIdentifier, RpcId> RpcCallKey;
 
 class RpcEngine;
 class Router;
@@ -105,12 +107,13 @@ public:
    * 
    * @param rpc RPC engine that created this call
    * @param rpcId Call's unique identifier
+   * @param destination Destination key identifier
    * @param success Success handler
    * @param failure Failure handler
    * @param timeout Timeout
    */
-  RpcCall(RpcEngine &rpc, RpcId rpcId, RpcResponseSuccess success, RpcResponseFailure failure,
-    boost::posix_time::time_duration timeout);
+  RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcResponseSuccess success,
+    RpcResponseFailure failure, boost::posix_time::time_duration timeout);
   
   RpcCall(const RpcCall&) = delete;
   RpcCall &operator=(const RpcCall&) = delete;
@@ -119,6 +122,11 @@ public:
    * Returns the unique identifier of this RPC call.
    */
   inline RpcId rpcId() const { return m_rpcId; }
+  
+  /**
+   * Returns the destination key for this RPC call.
+   */
+  inline NodeIdentifier destination() const { return m_destination; }
   
   /**
    * Dispatches the RPC request and starts the timeout timer.
@@ -131,11 +139,18 @@ public:
    * @param response RPC response
    */
   void done(const Protocol::RpcResponse &response);
+  
+  /**
+   * Cancels this call and doesn't call the failure handler.
+   */
+  void cancel();
 private:
   /// RPC engine that generated this call
   RpcEngine &m_rpc;
   /// Unique identifier for this RPC call
   RpcId m_rpcId;
+  /// Destination key for this RPC call
+  NodeIdentifier m_destination;
   
   /// Strand to ensure that success and failure handlers are
   /// always executed serially
@@ -203,8 +218,11 @@ public:
   
   /**
    * Cancels a given pending RPC call.
+   * 
+   * @param destination Call's destination key
+   * @param rpcId Call's unique identifier
    */
-  void cancel(RpcId rpcId);
+  void cancel(const NodeIdentifier &destination, RpcId rpcId);
   
   /**
    * Registers a new RPC method call.
@@ -344,7 +362,7 @@ private:
   /// Mutex protecting the RPC engine
   std::mutex m_mutex;
   /// Pending RPC calls
-  std::unordered_map<RpcId, RpcCallPtr> m_pendingCalls;
+  std::unordered_map<RpcCallKey, RpcCallPtr> m_pendingCalls;
   /// Registered RPC methods
   std::unordered_map<std::string, RpcHandler> m_methods;
   /// Registered RPC intercept methods

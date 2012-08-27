@@ -31,10 +31,11 @@ RpcException::RpcException(RpcErrorCode code, const std::string &msg)
 {
 }
   
-RpcCall::RpcCall(RpcEngine &rpc, RpcId rpcId, RpcResponseSuccess success, RpcResponseFailure failure,
-                 boost::posix_time::time_duration timeout)
+RpcCall::RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcResponseSuccess success,
+                 RpcResponseFailure failure, boost::posix_time::time_duration timeout)
   : m_rpc(rpc),
     m_rpcId(rpcId),
+    m_destination(destination),
     m_strand(rpc.router().linkManager().context().service()),
     m_success(success),
     m_failure(failure),
@@ -51,7 +52,7 @@ void RpcCall::start()
     // We are using a weak reference, because the object might already be gone
     // when we come to this point and we need to check for this
     if (RpcCallPtr self = me.lock()) {
-      self->m_rpc.cancel(self->rpcId());
+      self->cancel();
       if (self->m_failure)
         self->m_failure(RpcErrorCode::RequestTimedOut, "Request timed out.");
     }
@@ -66,11 +67,16 @@ void RpcCall::done(const Protocol::RpcResponse &response)
   m_strand.post([me, response]() {
     if (RpcCallPtr self = me.lock()) {
       self->m_timer.cancel();
-      self->m_rpc.cancel(self->rpcId());
+      self->cancel();
       if (self->m_success)
         self->m_success(response);
     }
   });
+}
+
+void RpcCall::cancel()
+{
+  m_rpc.cancel(m_destination, m_rpcId);
 }
   
 RpcEngine::RpcEngine(Router &router)
@@ -97,8 +103,8 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
   UniqueLock lock(m_mutex);
   
   // Register the pending RPC call
-  RpcCallPtr call(new RpcCall(*this, getNextRpcId(), success, failure, boost::posix_time::seconds(timeout)));
-  m_pendingCalls[call->rpcId()] = call;
+  RpcCallPtr call(new RpcCall(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(timeout)));
+  m_pendingCalls[RpcCallKey(destination, call->rpcId())] = call;
   call->start();
   
   // Prepare the request message
@@ -117,10 +123,10 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
   );
 }
 
-void RpcEngine::cancel(RpcId rpcId)
+void RpcEngine::cancel(const NodeIdentifier &destination, RpcId rpcId)
 {
   UniqueLock lock(m_mutex);
-  m_pendingCalls.erase(rpcId);
+  m_pendingCalls.erase(RpcCallKey(destination, rpcId));
 }
 
 Protocol::RpcResponse RpcEngine::getErrorResponse(RpcId rpcId, RpcErrorCode code, const std::string &message) const
@@ -169,10 +175,11 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       UniqueLock lock(m_mutex);
       Protocol::RpcResponse response = message_cast<Protocol::RpcResponse>(msg);
       RpcId rpcId = response.rpc_id();
-      if (m_pendingCalls.find(rpcId) == m_pendingCalls.end())
+      RpcCallKey rpcCallKey(msg.sourceNodeId(), rpcId);
+      if (m_pendingCalls.find(rpcCallKey) == m_pendingCalls.end())
         return;
       
-      m_pendingCalls[rpcId]->done(response);
+      m_pendingCalls[rpcCallKey]->done(response);
       break;
     }
   }
