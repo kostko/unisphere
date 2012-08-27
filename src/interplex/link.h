@@ -114,6 +114,16 @@ public:
    * Returns contact information about the destination node.
    */
   Contact contact() const;
+  
+  /**
+   * Ensures that the given function is called when the link is connected. If
+   * the link is currently connected, this function is executed immediately.
+   * This is required because link state might be changed by another thread
+   * and this function holds the mutex.
+   * 
+   * @param function Function that should be called
+   */
+  void callWhenConnected(std::function<void(LinkPtr)> function);
 public:
   /// Signal the recipt of a message
   boost::signal<void (const Message&)> signalMessageReceived;

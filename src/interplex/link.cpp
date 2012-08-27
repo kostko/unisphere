@@ -95,6 +95,24 @@ Contact Link::contact() const
   return contact;
 }
 
+void Link::callWhenConnected(std::function<void(LinkPtr)> function)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  if (isConnected()) {
+    // When we are connected, call the function immediately
+    lock.unlock();
+    function(shared_from_this());
+  } else {
+    // Ensure that the function will be called when we connect and that it is automatically
+    // disconnected after invocation
+    boost::signals::scoped_connection *connection = new boost::signals::scoped_connection;
+    *connection = signalEstablished.connect([connection, function](LinkPtr link) {
+      function(link);
+      delete connection;
+    });
+  }
+}
+
 void Link::addLinklet(LinkletPtr linklet)
 {
   RecursiveUniqueLock lock(m_mutex);
