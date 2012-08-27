@@ -32,7 +32,6 @@ Router::Router(LinkManager &manager, Bootstrap &bootstrap)
     m_state(State::Init)
 {
   m_manager.setLinkInitializer(boost::bind(&Router::initializeLink, this, _1));
-  m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
   
   // Setup the periodic contact establishment timer
   m_pendingContactTimer.expires_from_now(boost::posix_time::seconds(Router::pending_contacts_period));
@@ -113,8 +112,10 @@ void Router::connectToMoreContacts()
   UniqueLock lock(m_mutex);
   
   // Retrieve the last contact and attempt to establish contact
-  m_manager.connect(m_pendingContacts.back());
-  m_pendingContacts.pop_back();
+  if (m_pendingContacts.size() > 0) {
+    m_manager.connect(m_pendingContacts.back());
+    m_pendingContacts.pop_back();
+  }
   
   // Setup the periodic contact establishment timer
   m_pendingContactTimer.expires_from_now(boost::posix_time::seconds(Router::pending_contacts_period));
@@ -131,10 +132,44 @@ void Router::join()
     return;
   }
   
-  m_manager.connect(bootstrapContact);
-  
-  // TODO Queue our node identifier lookup to insert ourselves into the routing tables
-  //      of other nodes
+  m_state = State::Init;
+  LinkPtr link = m_manager.connect(bootstrapContact);
+  link->callWhenConnected(boost::bind(&Router::bootstrapStart, this, _1));
+}
+
+void Router::bootstrapStart(LinkPtr link)
+{
+  // Perform bootstrap lookup procedure when we are in init state
+  UniqueLock lock(m_mutex);
+  if (m_state == State::Init) {
+    using namespace Protocol;
+    FindNodeRequest request;
+    request.set_num_contacts(m_routes.maxSiblingsSize());
+    
+    // The first phase is to contact the bootstrap node to give us contact information
+    m_state = State::Bootstrap;
+    m_rpc.call<FindNodeRequest, FindNodeResponse>(link->nodeId(), "Core.FindNode", request,
+      // Success handler
+      [this, link](const FindNodeResponse &response) {
+        // We are now in the "insertion first" state
+        m_state = State::Insertion1;
+        link->close();
+        
+        // TODO Do something so we don't stay in this phase forever in case the
+        //      bootstrap node has given us bad contacts
+        
+        // Queue all contacts to be contacted
+        for (const Protocol::Contact &ct : response.contacts()) {
+          queueContact(UniSphere::Contact::fromMessage(ct));
+        }
+      },
+      // Error handler
+      [this, link](RpcErrorCode, const std::string&) {
+        link->close();
+        join();
+      }
+    );
+  }
 }
 
 void Router::initializeLink(Link &link)
@@ -147,18 +182,20 @@ void Router::initializeLink(Link &link)
 void Router::linkEstablished(LinkPtr link)
 {
   // Adds the established link to the routing table
-  if (!m_routes.add(link))
+  if (!m_routes.add(link)) {
     link->close();
+    return;
+  }
   
-  // If we are still in the init phase, we should lookup the identifier
-  if (m_state == State::Init) {
+  // When we are not yet fully joined, we should perform certain lookups depending on our state
+  UniqueLock lock(m_mutex);
+  if (m_state == State::Insertion1) {
     using namespace Protocol;
     FindNodeRequest request;
     request.set_num_contacts(m_routes.maxSiblingsSize());
     
-    // TODO Properly handle cases when the siblinghood of our local id is misrouting RPCs
-    // TODO In the most extreme case, our node identifier should be changed
-    m_state = State::Bootstrap;
+    // The second phase is to lookup our own identifier
+    m_state = State::Insertion2;
     m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
       // Success handler
       [this](const FindNodeResponse &response) {
@@ -167,17 +204,16 @@ void Router::linkEstablished(LinkPtr link)
           queueContact(UniSphere::Contact::fromMessage(ct));
         }
         
+        // TODO Check for identifier collisions (unlikely but could happen)
+        
         // We are now in the "joined" state
         m_state = State::Joined;
+        m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
+        m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
       },
       // Error handler
-      [this, link](RpcErrorCode code, const std::string &msg) {
-        if (m_state == State::Bootstrap) {
-          m_state = State::Init;
-          
-          link->close();
-          join();
-        }
+      [this](RpcErrorCode, const std::string&) {
+        join();
       }
     );
   }

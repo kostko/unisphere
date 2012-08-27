@@ -65,6 +65,8 @@ public:
   enum class State {
     Init,
     Bootstrap,
+    Insertion1,
+    Insertion2,
     Joined
   };
   
@@ -169,6 +171,13 @@ protected:
    * @param contact Contact to queue
    */
   void queueContact(const Contact &contact);
+  
+  /**
+   * Starts the initial bootstrap lookup procedure.
+   * 
+   * @param link An established bootstrap link
+   */
+  void bootstrapStart(LinkPtr link);
 public:
   /// Signal for delivery of locally-bound messages
   boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
