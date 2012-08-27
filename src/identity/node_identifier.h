@@ -137,6 +137,9 @@ public:
     boost::hash<std::string> hasher;
     return hasher(identifier.m_identifier);
   }
+  
+  // Ensure that our hash function is also our friend
+  friend class std::hash<NodeIdentifier>;
 protected:
   /**
    * A helper method for setting up this identifier from differently formatted
@@ -151,6 +154,21 @@ private:
   std::string m_identifier;
 };
   
+}
+
+namespace std {
+  /**
+   * STL hash function implementation for UniSphere::NodeIdentifier.
+   */
+  template<>
+  class hash<UniSphere::NodeIdentifier> {
+  public:
+    size_t operator()(const UniSphere::NodeIdentifier &identifier)
+    {
+      std::hash<std::string> hasher;
+      return hasher(identifier.m_identifier);
+    }
+  };
 }
 
 #endif
