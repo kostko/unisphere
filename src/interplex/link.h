@@ -95,6 +95,11 @@ public:
   inline bool isPersistent() const { return m_persistent; }
   
   /**
+   * Returns true if this link is currently in a connected state.
+   */
+  inline bool isConnected() const { return m_state == State::Connected; }
+  
+  /**
    * Returns the node identifier of the node on the other side of
    * this link.
    */
