@@ -24,6 +24,8 @@
 
 #include <mutex>
 
+#include "hash_tuple.h"
+
 using boost::format;
 
 namespace UniSphere {
