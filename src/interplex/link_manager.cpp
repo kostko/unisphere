@@ -39,6 +39,11 @@ void LinkManager::setLinkInitializer(std::function<void(Link&)> init)
   m_linkInitializer = init;
 }
 
+void LinkManager::setLocalAddress(const Address &address)
+{
+  m_localAddress = address;
+}
+
 LinkPtr LinkManager::connect(const Contact &contact)
 {
   return create(contact, true);

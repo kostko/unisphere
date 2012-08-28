@@ -76,6 +76,13 @@ void IPLinklet::connect(const Address &address)
   // Log our connection attempt
   UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Connecting to a remote address...");
   
+  // When a local address is specified, we should bind to it for outgoing connections
+  Address localAddress = m_manager.getLocalAddress();
+  if (!localAddress.isNull()) {
+    socket().open(localAddress.toIpEndpoint().protocol());
+    socket().bind(localAddress.toIpEndpoint());
+  }
+  
   // Setup the TCP socket
   socket().async_connect(
     address.toIpEndpoint(),
@@ -105,14 +112,14 @@ void IPLinklet::start(bool client)
 {
   BOOST_ASSERT(m_state != State::Listening);
   m_state = State::IntroWait;
-      
+  
   // Send introductory message
   Protocol::Interplex::Hello hello;
   *hello.mutable_local_contact() = m_manager.getLocalContact().toMessage();
   send(Message(Message::Type::Interplex_Hello, hello));
   
   // Wait for the introductory message
-  m_socket.async_read_some(
+  boost::asio::async_read(m_socket,
     boost::asio::buffer(m_inMessage.buffer(), Message::header_size),
     boost::bind(&IPLinklet::handleReadHeader, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
       boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
@@ -222,14 +229,14 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
         }
         
         // Read payload
-        m_socket.async_read_some(
+        boost::asio::async_read(m_socket,
           boost::asio::buffer(&m_inMessage.buffer()[0] + Message::header_size, payloadSize),
           boost::bind(&IPLinklet::handleReadPayload, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
             boost::asio::placeholders::error)
         );
       } else {
         // Read payload
-        m_socket.async_read_some(
+        boost::asio::async_read(m_socket,
           boost::asio::buffer(&m_inMessage.buffer()[0] + Message::header_size, payloadSize),
           boost::bind(&IPLinklet::handleReadPayload, this, boost::asio::placeholders::error)
         );
@@ -278,7 +285,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
     m_inMessage.detach();
     
     // Ready for next message
-    m_socket.async_read_some(
+    boost::asio::async_read(m_socket,
       boost::asio::buffer(m_inMessage.buffer(), Message::header_size),
       boost::bind(&IPLinklet::handleReadHeader, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
     );

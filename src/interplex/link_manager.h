@@ -114,6 +114,19 @@ public:
   inline const NodeIdentifier &getLocalNodeId() const { return m_nodeId; }
   
   /**
+   * Sets a local address for all outgoing connections. This will cause all
+   * outgoing sockets to bind to this address.
+   * 
+   * @param address Local outgoing address
+   */
+  void setLocalAddress(const Address &address);
+  
+  /**
+   * Returns the local address.
+   */
+  inline const Address &getLocalAddress() const { return m_localAddress; }
+  
+  /**
    * Sets up a function that will be called each time a new link instance
    * needs to be initialized. This function should be used to setup any
    * signals or other link-related resources.
@@ -151,6 +164,9 @@ private:
   
   /// Initialization function for new link instances
   std::function<void(Link&)> m_linkInitializer;
+  
+  /// Local outgoing address
+  Address m_localAddress;
 };
   
 }
