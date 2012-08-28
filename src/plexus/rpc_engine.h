@@ -267,7 +267,7 @@ public:
   template<typename RequestType, typename ResponseType>
   void registerMethod(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
   {
-    UniqueLock lock(m_mutex);
+    RecursiveUniqueLock lock(m_mutex);
     m_methods[method] = createBasicMethodHandler<RequestType, ResponseType>(method, impl);
   }
   
@@ -280,7 +280,7 @@ public:
   template<typename RequestType>
   void registerMethod(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
   {
-    UniqueLock lock(m_mutex);
+    RecursiveUniqueLock lock(m_mutex);
     m_methods[method] = createBasicMethodHandler<RequestType>(method, impl);
   }
   
@@ -295,7 +295,7 @@ public:
   template<typename RequestType>
   void registerInterceptMethod(const std::string &method, std::function<void(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
   {
-    UniqueLock lock(m_mutex);
+    RecursiveUniqueLock lock(m_mutex);
     m_interceptMethods[method] = createBasicMethodHandler<RequestType>(method, impl);
   }
 protected:
@@ -337,6 +337,7 @@ protected:
         ResponseType rsp = impl(message_cast<RequestType>(request.data()), msg, request.rpc_id());
         Protocol::RpcResponse response;
         response.set_rpc_id(request.rpc_id());
+        response.set_error(false);
         
         // Serialize response message into the payload
         std::vector<char> buffer(rsp.ByteSize());
@@ -407,7 +408,7 @@ private:
   /// Router over which the RPCs are routed
   Router &m_router;
   /// Mutex protecting the RPC engine
-  std::mutex m_mutex;
+  std::recursive_mutex m_mutex;
   /// Pending RPC calls
   std::unordered_map<RpcId, RpcCallPtr> m_pendingCalls;
   /// Registered RPC methods

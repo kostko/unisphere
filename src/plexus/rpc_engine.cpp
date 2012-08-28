@@ -100,14 +100,15 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
                              const std::vector<char> &payload, RpcResponseSuccess success,
                              RpcResponseFailure failure, int timeout)
 {
-  UniqueLock lock(m_mutex);
-  
   // Register the pending RPC call
   RpcCallPtr call(new RpcCall(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(timeout)));
-  m_pendingCalls[call->rpcId()] = call;
-  m_recentCalls.push_front(call->rpcId());
-  if (m_recentCalls.size() > RpcEngine::recent_size)
-    m_recentCalls.pop_back();
+  {
+    RecursiveUniqueLock lock(m_mutex);
+    m_pendingCalls[call->rpcId()] = call;
+    m_recentCalls.push_front(call->rpcId());
+    if (m_recentCalls.size() > RpcEngine::recent_size)
+      m_recentCalls.pop_back();
+  }
   call->start();
   
   // Prepare the request message
@@ -124,11 +125,13 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
     static_cast<std::uint32_t>(RpcMessageType::Request),
     msg
   );
+  
+  return call;
 }
 
 void RpcEngine::cancel(RpcId rpcId)
 {
-  UniqueLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   m_pendingCalls.erase(rpcId);
 }
 
@@ -159,7 +162,7 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       Protocol::RpcRequest request = message_cast<Protocol::RpcRequest>(msg);
       RpcId rpcId = request.rpc_id();
       
-      UniqueLock lock(m_mutex);
+      RecursiveUniqueLock lock(m_mutex);
       if (m_methods.find(request.method()) == m_methods.end())
         return respond(msg, getErrorResponse(rpcId, RpcErrorCode::MethodNotFound, "Method not found."));
       
@@ -175,7 +178,7 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       break;
     }
     case static_cast<std::uint32_t>(RpcMessageType::Response): {
-      UniqueLock lock(m_mutex);
+      RecursiveUniqueLock lock(m_mutex);
       Protocol::RpcResponse response = message_cast<Protocol::RpcResponse>(msg);
       RpcId rpcId = response.rpc_id();
       if (m_pendingCalls.find(rpcId) == m_pendingCalls.end())
@@ -193,7 +196,7 @@ void RpcEngine::messageForward(const RoutedMessage &msg)
       msg.payloadType() != static_cast<std::uint32_t>(RpcMessageType::Request))
     return;
   
-  UniqueLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   Protocol::RpcRequest request = message_cast<Protocol::RpcRequest>(msg);
   RpcId rpcId = request.rpc_id();
   

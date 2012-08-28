@@ -52,7 +52,10 @@ void Router::registerCoreRpcMethods()
       DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
       for (const PeerEntry &entry : siblings.table().get<DistanceTag>()) {
         Protocol::Contact *contact = response.add_contacts();
-        *contact = entry.contact().toMessage();
+        if (entry.nodeId == m_manager.getLocalNodeId())
+          *contact = m_manager.getLocalContact().toMessage();
+        else
+          *contact = entry.contact().toMessage();
       }
       
       return response;
@@ -62,6 +65,9 @@ void Router::registerCoreRpcMethods()
   // Find node RPC that is in transit over the local node
   m_rpc.registerInterceptMethod<Protocol::FindNodeRequest>("Core.FindNode",
     [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg, RpcId rpcId) {
+      if (msg.sourceNodeId() == m_manager.getLocalNodeId())
+        return;
+      
       // TODO Maximum number of key-sibling nodes
       // TODO Rate limiting
       
@@ -72,7 +78,10 @@ void Router::registerCoreRpcMethods()
       DistanceOrderedTable siblings = m_routes.lookup(msg.destinationKeyId(), request.num_contacts());
       for (const PeerEntry &entry : siblings.table().get<DistanceTag>()) {
         Protocol::Contact *contact = backRequest.add_contacts();
-        *contact = entry.contact().toMessage();
+        if (entry.nodeId == m_manager.getLocalNodeId())
+          *contact = m_manager.getLocalContact().toMessage();
+        else
+          *contact = entry.contact().toMessage();
       }
       
       // Perform a back-request without confirmation to the source node
@@ -97,7 +106,7 @@ void Router::registerCoreRpcMethods()
 
 void Router::queueContact(const Contact &contact)
 {
-  UniqueLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   if (m_pendingContacts.get<1>().find(contact.nodeId()) != m_pendingContacts.get<1>().end())
     return;
   
@@ -109,7 +118,7 @@ void Router::queueContact(const Contact &contact)
 
 void Router::connectToMoreContacts()
 {
-  UniqueLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   
   // Retrieve the last contact and attempt to establish contact
   if (m_pendingContacts.size() > 0) {
@@ -132,6 +141,8 @@ void Router::join()
     return;
   }
   
+  UNISPHERE_LOG(m_manager.context(), Info, "Router: Joining the overlay network.");
+  
   m_state = State::Init;
   LinkPtr link = m_manager.connect(bootstrapContact);
   link->callWhenConnected(boost::bind(&Router::bootstrapStart, this, _1));
@@ -140,17 +151,21 @@ void Router::join()
 void Router::bootstrapStart(LinkPtr link)
 {
   // Perform bootstrap lookup procedure when we are in init state
-  UniqueLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   if (m_state == State::Init) {
     using namespace Protocol;
     FindNodeRequest request;
     request.set_num_contacts(m_routes.maxSiblingsSize());
+    
+    UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering bootstrap phase.");
     
     // The first phase is to contact the bootstrap node to give us contact information
     m_state = State::Bootstrap;
     m_rpc.call<FindNodeRequest, FindNodeResponse>(link->nodeId(), "Core.FindNode", request,
       // Success handler
       [this, link](const FindNodeResponse &response) {
+        UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering insertion first phase.");
+        
         // We are now in the "insertion first" state
         m_state = State::Insertion1;
         link->close();
@@ -165,6 +180,8 @@ void Router::bootstrapStart(LinkPtr link)
       },
       // Error handler
       [this, link](RpcErrorCode, const std::string&) {
+        UNISPHERE_LOG(m_manager.context(), Error, "Router: Failed to bootstrap!");
+        
         link->close();
         join();
       }
@@ -188,11 +205,13 @@ void Router::linkEstablished(LinkPtr link)
   }
   
   // When we are not yet fully joined, we should perform certain lookups depending on our state
-  UniqueLock lock(m_mutex);
+  RecursiveUniqueLock lock(m_mutex);
   if (m_state == State::Insertion1) {
     using namespace Protocol;
     FindNodeRequest request;
     request.set_num_contacts(m_routes.maxSiblingsSize());
+    
+    UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering insertion second phase.");
     
     // The second phase is to lookup our own identifier
     m_state = State::Insertion2;
@@ -206,6 +225,8 @@ void Router::linkEstablished(LinkPtr link)
         
         // TODO Check for identifier collisions (unlikely but could happen)
         
+        UNISPHERE_LOG(m_manager.context(), Info, "Router: Successfully joined the overlay.");
+        
         // We are now in the "joined" state
         m_state = State::Joined;
         m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
@@ -213,6 +234,7 @@ void Router::linkEstablished(LinkPtr link)
       },
       // Error handler
       [this](RpcErrorCode, const std::string&) {
+        UNISPHERE_LOG(m_manager.context(), Error, "Router: Failed to bootstrap!");
         join();
       }
     );
