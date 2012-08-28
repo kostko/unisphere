@@ -186,6 +186,11 @@ void IPLinklet::send(const Message &msg)
 
 void IPLinklet::handleWrite(const boost::system::error_code &error)
 {
+  // If an operation has been aborted, this means that this linklet is no longer
+  // present and has already been destroyed (the socket is only closed then)
+  if (error == boost::asio::error::operation_aborted)
+    return;
+  
   if (!error) {
     UniqueLock lock(m_outMessagesMutex);
     m_outMessages.pop_front();
@@ -214,6 +219,11 @@ void IPLinklet::handleWrite(const boost::system::error_code &error)
 
 void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t bytes)
 {
+  // If an operation has been aborted, this means that this linklet is no longer
+  // present and has already been destroyed (the socket is only closed then)
+  if (error == boost::asio::error::operation_aborted)
+    return;
+  
   if (!error && bytes == Message::header_size) {
     // Parse header and get message size
     size_t payloadSize = m_inMessage.parseHeader();
@@ -251,6 +261,11 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
 
 void IPLinklet::handleReadPayload(const boost::system::error_code &error)
 {
+  // If an operation has been aborted, this means that this linklet is no longer
+  // present and has already been destroyed (the socket is only closed then)
+  if (error == boost::asio::error::operation_aborted)
+    return;
+  
   if (!error) {
     if (m_state == State::IntroWait) {
       // We have received the hello message, extract information and detach
