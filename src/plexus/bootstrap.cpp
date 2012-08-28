@@ -33,5 +33,32 @@ Contact SingleHostBootstrap::getBootstrapContact()
 {
   return m_contact;
 }
+
+DelayedBootstrap::DelayedBootstrap()
+  : m_lastContact(m_contacts.end())
+{
+}
+
+Contact DelayedBootstrap::getBootstrapContact()
+{
+  if (m_lastContact == m_contacts.end())
+    m_lastContact = m_contacts.begin();
   
+  if (m_lastContact == m_contacts.end())
+    return Contact();
+  
+  Contact contact = *m_lastContact;
+  m_lastContact++;
+  return contact;
+}
+
+void DelayedBootstrap::addContact (const Contact &contact)
+{
+  m_contacts.push_back(contact);
+  
+  // If there were no contacts before, signal that there are now
+  if (m_contacts.size() == 1)
+    signalContactReady();
+}
+
 }

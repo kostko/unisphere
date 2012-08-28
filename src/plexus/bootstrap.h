@@ -68,6 +68,36 @@ private:
   /// The single bootstrap contact
   Contact m_contact;
 };
+
+/**
+ * A bootstrap method that starts without any contacts and where contacts
+ * can be added later on.
+ */
+class UNISPHERE_EXPORT DelayedBootstrap : public Bootstrap {
+public:
+  /**
+   * Class constructor.
+   */
+  DelayedBootstrap();
+  
+  /**
+   * Returns the next bootstrap contact that can be used for bootstrapping
+   * the overlay network.
+   */
+  Contact getBootstrapContact();
+  
+  /**
+   * Adds a new bootstrap contact.
+   * 
+   * @param contact Bootstrap contact to add
+   */
+  void addContact(const Contact &contact);
+private:
+  /// The bootstrap contact queue
+  std::list<Contact> m_contacts;
+  /// The contact iterator
+  std::list<Contact>::iterator m_lastContact;
+};
   
 }
 
