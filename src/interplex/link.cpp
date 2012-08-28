@@ -47,8 +47,10 @@ void Link::close()
 {
   RecursiveUniqueLock lock(m_mutex);
   
-  // Close all linklets and then unregister this link
-  BOOST_FOREACH(LinkletPtr &linklet, m_linklets) {
+  // Close all linklets and then unregister this link; we have to make a copy
+  // of this list because closing a linklet will cause removal from this list
+  std::list<LinkletPtr> linklets = m_linklets;
+  BOOST_FOREACH(LinkletPtr &linklet, linklets) {
     linklet->close();
   }
   
