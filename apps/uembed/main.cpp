@@ -60,11 +60,37 @@ int main(int argc, char **argv)
 {
   LibraryInitializer init;
   Context ctx;
+
+  // Create the bootstrap node
+  VirtualNode *bootstrap = createNode(ctx, getRandomNodeId(), "127.42.0.1", 8472);
   
-  VirtualNode *first = createNode(ctx, getRandomNodeId(), "127.42.0.1", 8472);
-  VirtualNode *second = createNode(ctx, getRandomNodeId(), "127.42.0.2", 8472, first->linkManager->getLocalContact());
-  first->router->create();
-  second->router->join();
+  std::unordered_map<NodeIdentifier, VirtualNode*> nodes;
+  unsigned short port = 8473;
+  for (int i = 0; i < 20; i++) {
+    VirtualNode *node = createNode(ctx, getRandomNodeId(), "127.42.0.1", port++, bootstrap->linkManager->getLocalContact());
+    nodes[node->nodeId] = node;
+  }
+  
+  // Bootstrap the network
+  bootstrap->router->create();
+  
+  // Join peers at a specific rate
+  int delay = 1;
+  std::unordered_map<NodeIdentifier, VirtualNode*>::iterator peer = nodes.begin();
+  boost::asio::deadline_timer joinTimer(ctx.service());
+  std::function<void()> joinNode = [&]() {
+    if (peer == nodes.end())
+      return;
+    
+    (*peer).second->router->join();
+    ++peer;
+    
+    joinTimer.expires_from_now(boost::posix_time::seconds(delay));
+    joinTimer.async_wait(boost::bind(joinNode));
+  };
+  
+  joinTimer.expires_from_now(boost::posix_time::seconds(delay));
+  joinTimer.async_wait(boost::bind(joinNode));
   
   // Run the context
   ctx.run();
