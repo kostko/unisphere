@@ -85,7 +85,10 @@ void Router::registerCoreRpcMethods()
       }
       
       // Perform a back-request without confirmation to the source node
-      m_rpc.call<Protocol::ExchangeEntriesRequest>(msg.sourceNodeId(), "Core.ExchangeEntries", backRequest);
+      Contact backContact = Contact::fromMessage(request.local_contact());
+      m_rpc.call<Protocol::ExchangeEntriesRequest>(msg.sourceNodeId(), "Core.ExchangeEntries", backRequest,
+        RpcCallOptions().setDeliverVia(m_manager.connect(backContact))
+      );
     }
   );
   
@@ -156,27 +159,28 @@ void Router::bootstrapStart(LinkPtr link)
     using namespace Protocol;
     FindNodeRequest request;
     request.set_num_contacts(m_routes.maxSiblingsSize());
+    *request.mutable_local_contact() = m_manager.getLocalContact().toMessage();
     
     UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering bootstrap phase.");
     
     // The first phase is to contact the bootstrap node to give us contact information
     m_state = State::Bootstrap;
-    m_rpc.call<FindNodeRequest, FindNodeResponse>(link->nodeId(), "Core.FindNode", request,
+    m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
       // Success handler
-      [this, link](const FindNodeResponse &response) {
-        UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering insertion first phase.");
-        
-        // We are now in the "insertion first" state
-        m_state = State::Insertion1;
-        link->close();
-        
-        // TODO Do something so we don't stay in this phase forever in case the
-        //      bootstrap node has given us bad contacts
+      [this](const FindNodeResponse &response) {
+        // TODO Check for identifier collisions (unlikely but could happen)
         
         // Queue all contacts to be contacted
         for (const Protocol::Contact &ct : response.contacts()) {
           queueContact(UniSphere::Contact::fromMessage(ct));
         }
+        
+        UNISPHERE_LOG(m_manager.context(), Info, "Router: Successfully joined the overlay.");
+        
+        // We are now in the "joined" state
+        m_state = State::Joined;
+        m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
+        m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
       },
       // Error handler
       [this, link](RpcErrorCode, const std::string&) {
@@ -184,7 +188,9 @@ void Router::bootstrapStart(LinkPtr link)
         
         link->close();
         join();
-      }
+      },
+      // Options
+      RpcCallOptions().setDeliverVia(link)
     );
   }
 }
@@ -200,44 +206,10 @@ void Router::linkEstablished(LinkPtr link)
 {
   // Adds the established link to the routing table
   if (!m_routes.add(link)) {
+    UNISPHERE_LOG(m_manager.context(), Warning, "Router: Unable to add established link to table!");
+    
     link->close();
     return;
-  }
-  
-  // When we are not yet fully joined, we should perform certain lookups depending on our state
-  RecursiveUniqueLock lock(m_mutex);
-  if (m_state == State::Insertion1) {
-    using namespace Protocol;
-    FindNodeRequest request;
-    request.set_num_contacts(m_routes.maxSiblingsSize());
-    
-    UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering insertion second phase.");
-    
-    // The second phase is to lookup our own identifier
-    m_state = State::Insertion2;
-    m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
-      // Success handler
-      [this](const FindNodeResponse &response) {
-        // Queue all contacts to be contacted
-        for (const Protocol::Contact &ct : response.contacts()) {
-          queueContact(UniSphere::Contact::fromMessage(ct));
-        }
-        
-        // TODO Check for identifier collisions (unlikely but could happen)
-        
-        UNISPHERE_LOG(m_manager.context(), Info, "Router: Successfully joined the overlay.");
-        
-        // We are now in the "joined" state
-        m_state = State::Joined;
-        m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
-        m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
-      },
-      // Error handler
-      [this](RpcErrorCode, const std::string&) {
-        UNISPHERE_LOG(m_manager.context(), Error, "Router: Failed to bootstrap!");
-        join();
-      }
-    );
   }
 }
 
@@ -265,15 +237,33 @@ void Router::route(const RoutedMessage &msg)
     return;
   }
   
+  // Routing options can override the next hop
+  if (LinkPtr deliverVia = msg.options().deliverVia.lock()) {
+    deliverVia->send(Message(Message::Type::Plexus_Routed, *msg.serialize()));
+    return;
+  }
+  
+  // Determine the next hop we will use for forwarding the message
   DistanceOrderedTable nextHops = m_routes.lookup(msg.destinationKeyId(), Router::bucket_size);
-  if (nextHops.table().size() == 0) {
+  PeerEntry nextHop;
+  for (const PeerEntry &entry : nextHops.table().get<DistanceTag>()) {
+    if (entry.link == msg.originator().lock())
+      continue;
+    else if (entry.nodeId == m_manager.getLocalNodeId() &&
+             !m_routes.isSiblingFor(m_manager.getLocalNodeId(), msg.destinationKeyId()))
+      continue;
+    
+    nextHop = entry;
+    break;
+  }
+  
+  if (nextHop.isNull()) {
     UNISPHERE_LOG(m_manager.context(), Warning, "Router: No route to destination.");
     return;
   }
   
   // Check if the message is destined to the local node, in this case it should be
   // delivered to an upper layer application/component
-  PeerEntry nextHop = *nextHops.table().get<DistanceTag>().begin();
   if (nextHop.nodeId == m_manager.getLocalNodeId()) {
     signalDeliverMessage(msg);
     return;
@@ -285,10 +275,11 @@ void Router::route(const RoutedMessage &msg)
 
 void Router::route(std::uint32_t sourceCompId, const NodeIdentifier &key,
                    std::uint32_t destinationCompId, std::uint32_t type,
-                   const google::protobuf::Message &msg)
+                   const google::protobuf::Message &msg,
+                   const RoutingOptions &opts)
 {
   // First encapsulate the specified application message into a routed message
-  RoutedMessage rmsg(m_manager.getLocalNodeId(), sourceCompId, key, destinationCompId, type, msg);
+  RoutedMessage rmsg(m_manager.getLocalNodeId(), sourceCompId, key, destinationCompId, type, msg, opts);
   // Attempt to route the generated message
   route(rmsg);
 }

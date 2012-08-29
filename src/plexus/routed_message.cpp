@@ -30,17 +30,20 @@ RoutedMessage::RoutedMessage(const Message &msg)
   m_hopCount = pmsg.hopcount();
   m_payloadType = pmsg.type();
   m_payload = pmsg.message();
+  m_originator = msg.originator();
 }
 
 RoutedMessage::RoutedMessage(const NodeIdentifier &sourceNodeId, uint32_t sourceCompId,
                              const NodeIdentifier &destinationKeyId, uint32_t destinationCompId,
-                             std::uint32_t type, const google::protobuf::Message &msg)
+                             std::uint32_t type, const google::protobuf::Message &msg,
+                             const RoutingOptions &opts)
   : m_sourceNodeId(sourceNodeId),
     m_sourceCompId(sourceCompId),
     m_destinationKeyId(destinationKeyId),
     m_destinationCompId(destinationCompId),
     m_hopCount(RoutedMessage::default_hop_count),
-    m_payloadType(type)
+    m_payloadType(type),
+    m_options(opts)
 {
   msg.SerializeToString(&m_payload);
 }

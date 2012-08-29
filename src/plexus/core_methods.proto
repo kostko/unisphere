@@ -7,6 +7,7 @@ import "src/interplex/contact.proto";
 
 message FindNodeRequest {
   required uint32 num_contacts = 1;
+  required UniSphere.Protocol.Contact local_contact = 2;
 }
 
 message FindNodeResponse {

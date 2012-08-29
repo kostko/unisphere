@@ -65,8 +65,6 @@ public:
   enum class State {
     Init,
     Bootstrap,
-    Insertion1,
-    Insertion2,
     Joined
   };
   
@@ -116,10 +114,12 @@ public:
    * @param destinationCompId Destination component identifier
    * @param type Message type
    * @param msg Protocol Buffers message
+   * @param opts Routing options
    */
   void route(std::uint32_t sourceCompId, const NodeIdentifier &key,
              std::uint32_t destinationCompId, std::uint32_t type,
-             const google::protobuf::Message &msg);
+             const google::protobuf::Message &msg,
+             const RoutingOptions &opts = RoutingOptions());
   
   // TODO periodic refresh of buckets when no communication has been received from them
   // in a while (also see "Handling churn in a DHT")

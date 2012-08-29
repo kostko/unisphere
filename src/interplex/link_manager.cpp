@@ -46,6 +46,10 @@ void LinkManager::setLocalAddress(const Address &address)
 
 LinkPtr LinkManager::connect(const Contact &contact)
 {
+  // Never attempt to establish a connection with ourselves
+  if (contact.nodeId() == m_nodeId)
+    return LinkPtr();
+  
   return create(contact, true);
 }
 

@@ -176,6 +176,39 @@ private:
 UNISPHERE_SHARED_POINTER(RpcCall);
 
 /**
+ * RPC call options can be used to specify per-call options.
+ */
+class UNISPHERE_EXPORT RpcCallOptions {
+public:
+  /**
+   * Constructs default options.
+   */
+  RpcCallOptions()
+    : timeout(15)
+  {}
+  
+  /**
+   * Sets up routing options for this RPC call.
+   */
+  RpcCallOptions &setRoutingOptions(const RoutingOptions &opts) { routingOptions = opts; return *this; }
+  
+  /**
+   * Sets this call's timeout in seconds.
+   */
+  RpcCallOptions &setTimeout(int seconds) { timeout = seconds; return *this; }
+  
+  /**
+   * Forces the RPC call to be delivered via a specific link.
+   */
+  RpcCallOptions &setDeliverVia(LinkPtr link) { routingOptions.deliverVia = link; return *this; }
+public:
+  /// Routing options
+  RoutingOptions routingOptions;
+  /// Timeout in seconds
+  int timeout;
+};
+
+/**
  * This class handles RPC calls between nodes. Each RPC call is composed of
  * two parts - request and response, both formatted as Protocol Buffers
  * messages.
@@ -208,12 +241,12 @@ public:
    * @param request Request payload
    * @param success Success callback
    * @param failure Failure callback
-   * @param timeout Timeout (in seconds)
+   * @param opts Call options
    */
   template<typename RequestType, typename ResponseType>
   void call(const NodeIdentifier &destination, const std::string &method,
             const RequestType &request, std::function<void(const ResponseType&)> success,
-            RpcResponseFailure failure = nullptr, int timeout = 15)
+            RpcResponseFailure failure = nullptr, const RpcCallOptions &opts = RpcCallOptions())
   {
     // Serialize Protocol Buffers message into the payload
     std::vector<char> buffer(request.ByteSize());
@@ -221,7 +254,7 @@ public:
     
     createCall(destination, method, buffer,
       [success](const Protocol::RpcResponse &rsp) { success(message_cast<ResponseType>(rsp.data())); },
-      failure, timeout
+      failure, opts
     );
   }
   
@@ -231,17 +264,18 @@ public:
    * @param destination Destination key
    * @param method Method name
    * @param request Request payload
+   * @param opts Call options
    */
   template<typename RequestType>
   void call(const NodeIdentifier &destination, const std::string &method,
-            const RequestType &request)
+            const RequestType &request, const RpcCallOptions &opts = RpcCallOptions())
   {
     // Serialize Protocol Buffers message into the payload
     std::vector<char> buffer(request.ByteSize());
     request.SerializeToArray(&buffer[0], buffer.size());
     
     // Create the call and immediately cancel it as we don't need a confirmation
-    RpcCallPtr call = createCall(destination, method, buffer, nullptr, nullptr, 0);
+    RpcCallPtr call = createCall(destination, method, buffer, nullptr, nullptr, opts);
     call->cancel();
   }
   
@@ -313,11 +347,11 @@ protected:
    * @param payload Request payload
    * @param success Success callback
    * @param failure Failure callback
-   * @param timeout Timeout (in seconds)
+   * @param opts Call options
    */
   RpcCallPtr createCall(const NodeIdentifier &destination, const std::string &method,
                     const std::vector<char> &payload, RpcResponseSuccess success,
-                    RpcResponseFailure failure, int timeout);
+                    RpcResponseFailure failure, const RpcCallOptions &opts);
   
   /**
    * Creates a new RPC method handler.

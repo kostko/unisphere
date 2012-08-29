@@ -294,6 +294,10 @@ bool Link::linkletVerifyPeer(LinkletPtr linklet)
 {
   RecursiveUniqueLock lock(m_mutex);
   
+  // If peer has the same identifier as the local node, we should drop the link
+  if (linklet->peerContact().nodeId() == m_manager.getLocalNodeId())
+    return false;
+  
   // Check that the peer actually fits this link and close it if not
   if (linklet->peerContact().nodeId() != m_nodeId) {
     UNISPHERE_LOG(m_manager.context(), Error, "Link: Link identifier does not match destination node!");

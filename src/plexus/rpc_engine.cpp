@@ -98,10 +98,10 @@ RpcId RpcEngine::getNextRpcId() const
 
 RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::string &method,
                              const std::vector<char> &payload, RpcResponseSuccess success,
-                             RpcResponseFailure failure, int timeout)
+                             RpcResponseFailure failure, const RpcCallOptions &opts)
 {
   // Register the pending RPC call
-  RpcCallPtr call(new RpcCall(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(timeout)));
+  RpcCallPtr call(new RpcCall(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(opts.timeout)));
   {
     RecursiveUniqueLock lock(m_mutex);
     m_pendingCalls[call->rpcId()] = call;
@@ -123,7 +123,8 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
     destination,
     static_cast<std::uint32_t>(Router::Component::RPC_Engine),
     static_cast<std::uint32_t>(RpcMessageType::Request),
-    msg
+    msg,
+    opts.routingOptions
   );
   
   return call;

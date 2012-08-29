@@ -71,6 +71,11 @@ public:
   inline bool isValid() const { return nodeId.isValid() && link; }
   
   /**
+   * Returns true if this peer entry has a null node identifier.
+   */
+  inline bool isNull() const { return nodeId.isNull(); }
+  
+  /**
    * Returns the contact information for this peer entry.
    */
   inline Contact contact() const { return link->contact(); }
