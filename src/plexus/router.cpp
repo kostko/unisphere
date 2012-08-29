@@ -144,7 +144,7 @@ void Router::join()
     return;
   }
   
-  UNISPHERE_LOG(m_manager.context(), Info, "Router: Joining the overlay network.");
+  UNISPHERE_LOG(m_manager, Info, "Router: Joining the overlay network.");
   
   m_state = State::Init;
   LinkPtr link = m_manager.connect(bootstrapContact);
@@ -161,7 +161,7 @@ void Router::bootstrapStart(LinkPtr link)
     request.set_num_contacts(m_routes.maxSiblingsSize());
     *request.mutable_local_contact() = m_manager.getLocalContact().toMessage();
     
-    UNISPHERE_LOG(m_manager.context(), Info, "Router: Entering bootstrap phase.");
+    UNISPHERE_LOG(m_manager, Info, "Router: Entering bootstrap phase.");
     
     // The first phase is to contact the bootstrap node to give us contact information
     m_state = State::Bootstrap;
@@ -175,7 +175,7 @@ void Router::bootstrapStart(LinkPtr link)
           queueContact(UniSphere::Contact::fromMessage(ct));
         }
         
-        UNISPHERE_LOG(m_manager.context(), Info, "Router: Successfully joined the overlay.");
+        UNISPHERE_LOG(m_manager, Info, "Router: Successfully joined the overlay.");
         
         // We are now in the "joined" state
         m_state = State::Joined;
@@ -184,7 +184,7 @@ void Router::bootstrapStart(LinkPtr link)
       },
       // Error handler
       [this, link](RpcErrorCode, const std::string&) {
-        UNISPHERE_LOG(m_manager.context(), Error, "Router: Failed to bootstrap!");
+        UNISPHERE_LOG(m_manager, Error, "Router: Failed to bootstrap!");
         
         link->close();
         join();
@@ -206,7 +206,7 @@ void Router::linkEstablished(LinkPtr link)
 {
   // Adds the established link to the routing table
   if (!m_routes.add(link)) {
-    UNISPHERE_LOG(m_manager.context(), Warning, "Router: Unable to add established link to table!");
+    UNISPHERE_LOG(m_manager, Warning, "Router: Unable to add established link to table!");
     
     link->close();
     return;
@@ -233,7 +233,7 @@ void Router::linkMessageReceived(const Message &msg)
 void Router::route(const RoutedMessage &msg)
 {
   if (!msg.isValid()) {
-    UNISPHERE_LOG(m_manager.context(), Warning, "Router: Dropping invalid message.");
+    UNISPHERE_LOG(m_manager, Warning, "Router: Dropping invalid message.");
     return;
   }
   
@@ -258,7 +258,7 @@ void Router::route(const RoutedMessage &msg)
   }
   
   if (nextHop.isNull()) {
-    UNISPHERE_LOG(m_manager.context(), Warning, "Router: No route to destination.");
+    UNISPHERE_LOG(m_manager, Warning, "Router: No route to destination.");
     return;
   }
   

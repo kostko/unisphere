@@ -45,7 +45,6 @@ NodeIdentifier getRandomNodeId()
 VirtualNode *createNode(Context &context, const NodeIdentifier &nodeId, const std::string &ip, unsigned short port,
   const Contact &bootstrap = Contact())
 {
-  std::cout << "creating node with id: " << nodeId.as(NodeIdentifier::Format::Hex) << std::endl;
   VirtualNode *node = new VirtualNode();
   node->nodeId = nodeId;
   node->linkManager = new LinkManager(context, nodeId);

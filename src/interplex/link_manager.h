@@ -171,4 +171,11 @@ private:
   
 }
 
+// Logging macros
+#ifdef UNISPHERE_DEBUG
+#define UNISPHERE_LOG(manager, level, text) (manager).context().logger().output(Logger::Level::level, (text), (manager).getLocalNodeId().as(NodeIdentifier::Format::Hex))
+#else
+#define UNISPHERE_LOG(manager, level, text)
+#endif
+
 #endif

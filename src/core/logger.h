@@ -51,8 +51,9 @@ public:
    *
    * @param level Log level
    * @param text Text to output
+   * @param component Optional component name
    */
-  void output(Level level, const std::string &text);
+  void output(Level level, const std::string &text, const std::string &component = "");
 private:
   // Logging mutex
   std::mutex m_mutex;
@@ -60,9 +61,9 @@ private:
 
 // Logging macros
 #ifdef UNISPHERE_DEBUG
-#define UNISPHERE_LOG(context, level, text) (context).logger().output(Logger::Level::level, (text))
+#define UNISPHERE_CLOG(context, level, text) (context).logger().output(Logger::Level::level, (text))
 #else
-#define UNISPHERE_LOG(context, level, text)
+#define UNISPHERE_CLOG(context, level, text)
 #endif
 
 }

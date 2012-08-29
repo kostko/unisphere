@@ -57,7 +57,7 @@ void IPLinklet::listen(const Address &address)
   }
   
   // Log our listen attempt
-  UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Listening for incoming connections.");
+  UNISPHERE_LOG(m_manager, Info, "IPLinklet: Listening for incoming connections.");
   
   // Setup the TCP acceptor
   LinkletPtr linklet(new IPLinklet(m_manager));
@@ -74,7 +74,7 @@ void IPLinklet::connect(const Address &address)
   m_state = State::Connecting;
   
   // Log our connection attempt
-  UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Connecting to a remote address...");
+  UNISPHERE_LOG(m_manager, Info, "IPLinklet: Connecting to a remote address...");
   
   // When a local address is specified, we should bind to it for outgoing connections
   Address localAddress = m_manager.getLocalAddress();
@@ -95,7 +95,7 @@ void IPLinklet::close()
   if (m_state == State::Closed)
     return;
   
-  UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Closing connection.");
+  UNISPHERE_LOG(m_manager, Info, "IPLinklet: Closing connection.");
   State state = m_state;
   m_state = State::Closed;
   socket().close();
@@ -148,11 +148,11 @@ void IPLinklet::handleConnect(const boost::system::error_code &error)
 {
   if (!error) {
     // Connection successful
-    UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Outgoing connection successful."); 
+    UNISPHERE_LOG(m_manager, Info, "IPLinklet: Outgoing connection successful."); 
     start();
   } else {
     // Signal connection failure to upper layers
-    UNISPHERE_LOG(m_manager.context(), Error, "IPLinklet: Outgoing connection failed!");
+    UNISPHERE_LOG(m_manager, Error, "IPLinklet: Outgoing connection failed!");
     signalConnectionFailed(shared_from_this());
   }
 }
@@ -212,7 +212,7 @@ void IPLinklet::handleWrite(const boost::system::error_code &error)
     }
   } else {
     // Log
-    UNISPHERE_LOG(m_manager.context(), Error, "IPLinklet: Message write failed!");
+    UNISPHERE_LOG(m_manager, Error, "IPLinklet: Message write failed!");
     close();
   }
 }
@@ -233,7 +233,7 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
       if (m_state == State::IntroWait) {
         // Only hello messages are allowed in IntroWait state
         if (m_inMessage.type() != Message::Type::Interplex_Hello) {
-          UNISPHERE_LOG(m_manager.context(), Error, "IPLinklet: Received non-hello message in IntroWait phase!");
+          UNISPHERE_LOG(m_manager, Error, "IPLinklet: Received non-hello message in IntroWait phase!");
           close();
           return;
         }
@@ -254,7 +254,7 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
     }
   } else {
     // Log
-    UNISPHERE_LOG(m_manager.context(), Error, "IPLinklet: Message header read failed!");
+    UNISPHERE_LOG(m_manager, Error, "IPLinklet: Message header read failed!");
     close();
   }
 }
@@ -272,7 +272,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
       Protocol::Interplex::Hello hello = message_cast<Protocol::Interplex::Hello>(m_inMessage);
       Contact peerContact = Contact::fromMessage(hello.local_contact());
       if (peerContact.isNull()) {
-        UNISPHERE_LOG(m_manager.context(), Error, "IPLinklet: Peer node id mismatch in hello message!");
+        UNISPHERE_LOG(m_manager, Error, "IPLinklet: Peer node id mismatch in hello message!");
         return close();
       }
       
@@ -284,7 +284,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
         return close();
       }
       
-      UNISPHERE_LOG(m_manager.context(), Info, "IPLinklet: Introductory phase completed.");
+      UNISPHERE_LOG(m_manager, Info, "IPLinklet: Introductory phase completed.");
       m_state = State::Connected;
       signalConnectionSuccess(shared_from_this());
       
@@ -306,7 +306,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
     );
   } else {
     // Log
-    UNISPHERE_LOG(m_manager.context(), Error, "IPLinklet: Message body read failed!");
+    UNISPHERE_LOG(m_manager, Error, "IPLinklet: Message body read failed!");
     close();
   }
 }

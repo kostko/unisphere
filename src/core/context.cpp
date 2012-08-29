@@ -29,7 +29,7 @@ Context::Context()
   : m_work(m_io)
 {
   // Log context initialization
-  UNISPHERE_LOG(*this, Info, "UNISPHERE Context initialized.");
+  UNISPHERE_CLOG(*this, Info, "UNISPHERE Context initialized.");
 }
 
 Context::~Context()

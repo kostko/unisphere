@@ -27,7 +27,7 @@ Logger::Logger()
 {
 }
 
-void Logger::output(Level level, const std::string &text)
+void Logger::output(Level level, const std::string &text, const std::string &component)
 {
   UniqueLock lock(m_mutex);
   
@@ -39,6 +39,11 @@ void Logger::output(Level level, const std::string &text)
     case Level::Warning: std::cout << "[WARNING]"; break;
     case Level::Error: std::cout   << "[ERROR  ]"; break;
   }
+  
+  if (!component.empty())
+    std::cout << " [" << component << "]";
+  else
+    std::cout << " [global]";
   
   std::cout << " " << text << std::endl;
 }

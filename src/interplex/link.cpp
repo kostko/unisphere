@@ -40,7 +40,7 @@ Link::Link(LinkManager &manager, const NodeIdentifier &nodeId)
 Link::~Link()
 {
   // Log link destruction
-  UNISPHERE_LOG(m_manager.context(), Info, "Link: Destroying link.");
+  UNISPHERE_LOG(m_manager, Info, "Link: Destroying link.");
 }
 
 void Link::close()
@@ -261,7 +261,7 @@ void Link::tryNextAddress()
   }
   
   // Log our attempt
-  UNISPHERE_LOG(m_manager.context(), Info, "Link: Trying next address for outgoing connection.");
+  UNISPHERE_LOG(m_manager, Info, "Link: Trying next address for outgoing connection.");
   
   // Change state to connecting if the link has been closed before
   if (m_state == Link::State::Closed)
@@ -278,7 +278,7 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
   RecursiveUniqueLock lock(m_mutex);
   
   // Log connection failure
-  UNISPHERE_LOG(m_manager.context(), Info, "Link: Outgoing connection failed. Queuing next try.");
+  UNISPHERE_LOG(m_manager, Info, "Link: Outgoing connection failed. Queuing next try.");
   
   // Remove linklet from list of linklets and try next address
   removeLinklet(linklet);
@@ -300,7 +300,7 @@ bool Link::linkletVerifyPeer(LinkletPtr linklet)
   
   // Check that the peer actually fits this link and close it if not
   if (linklet->peerContact().nodeId() != m_nodeId) {
-    UNISPHERE_LOG(m_manager.context(), Error, "Link: Link identifier does not match destination node!");
+    UNISPHERE_LOG(m_manager, Error, "Link: Link identifier does not match destination node!");
     // TODO used contact address should be removed as it is clearly not valid
     // TODO also we should use some signal that would be used by Router to update routing
     //      table entries
