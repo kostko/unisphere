@@ -151,6 +151,17 @@ void Router::join()
   link->callWhenConnected(boost::bind(&Router::bootstrapStart, this, _1));
 }
 
+void Router::create()
+{
+  if (m_state != State::Init)
+    return;
+  
+  UNISPHERE_LOG(m_manager, Info, "Router: Creating the overlay network.");
+  
+  m_state = State::Joined;
+  signalJoined();
+}
+
 void Router::bootstrapStart(LinkPtr link)
 {
   // Perform bootstrap lookup procedure when we are in init state

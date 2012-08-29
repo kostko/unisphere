@@ -100,6 +100,11 @@ public:
   void join();
   
   /**
+   * Creates the overlay network by being the only node in it.
+   */
+  void create();
+  
+  /**
    * Routes the specified message via the overlay.
    * 
    * @param msg A valid message to be routed

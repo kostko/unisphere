@@ -63,6 +63,7 @@ int main(int argc, char **argv)
   
   VirtualNode *first = createNode(ctx, getRandomNodeId(), "127.42.0.1", 8472);
   VirtualNode *second = createNode(ctx, getRandomNodeId(), "127.42.0.2", 8472, first->linkManager->getLocalContact());
+  first->router->create();
   second->router->join();
   
   // Run the context
