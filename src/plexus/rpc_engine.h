@@ -61,8 +61,10 @@ enum class RpcErrorCode : std::uint32_t {
   RequestTimedOut = 0x02,
 };
 
+/// Callback type for successful RPC method responses
+typedef std::function<void(const Protocol::RpcResponse&, const RoutingOptions&)> RpcResponseSuccess;
 /// Callback type for successful RPC calls
-typedef std::function<void(const Protocol::RpcResponse&)> RpcResponseSuccess;
+typedef std::function<void(const Protocol::RpcResponse&)> RpcCallSuccess;
 /// Callback type for failed RPC calls
 typedef std::function<void(RpcErrorCode, const std::string&)> RpcResponseFailure;
 /// Callback type for RPC method handlers
@@ -118,7 +120,7 @@ public:
    * @param failure Failure handler
    * @param timeout Timeout
    */
-  RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcResponseSuccess success,
+  RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcCallSuccess success,
     RpcResponseFailure failure, boost::posix_time::time_duration timeout);
   
   RpcCall(const RpcCall&) = delete;
@@ -168,7 +170,7 @@ private:
   boost::posix_time::time_duration m_timeout;
   
   /// RPC success handler
-  RpcResponseSuccess m_success;
+  RpcCallSuccess m_success;
   /// RPC failure handler
   RpcResponseFailure m_failure;
 };
@@ -206,6 +208,39 @@ public:
   RoutingOptions routingOptions;
   /// Timeout in seconds
   int timeout;
+};
+
+/**
+ * Class for returning responses to RPC method calls.
+ */
+template<class ResponseType>
+class UNISPHERE_EXPORT RpcResponse {
+public:
+  /**
+   * Constructor for implicitly converting from response types without
+   * specifying any options.
+   * 
+   * @param response Response message
+   */
+  RpcResponse(ResponseType rsp)
+    : response(rsp)
+  {}
+  
+  /**
+   * Constructor for defining routing options.
+   * 
+   * @param response Response message
+   * @param opts Routing options
+   */
+  RpcResponse(ResponseType rsp, const RoutingOptions &opts)
+    : response(rsp),
+      routingOptions(opts)
+  {}
+public:
+  /// The actual response message
+  ResponseType response;
+  /// Routing options
+  RoutingOptions routingOptions;
 };
 
 /**
@@ -299,7 +334,7 @@ public:
    * @param impl Method implementation
    */
   template<typename RequestType, typename ResponseType>
-  void registerMethod(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
+  void registerMethod(const std::string &method, std::function<RpcResponse<ResponseType>(const RequestType&, const RoutedMessage&, RpcId rpcId)> impl)
   {
     RecursiveUniqueLock lock(m_mutex);
     m_methods[method] = createBasicMethodHandler<RequestType, ResponseType>(method, impl);
@@ -350,7 +385,7 @@ protected:
    * @param opts Call options
    */
   RpcCallPtr createCall(const NodeIdentifier &destination, const std::string &method,
-                    const std::vector<char> &payload, RpcResponseSuccess success,
+                    const std::vector<char> &payload, RpcCallSuccess success,
                     RpcResponseFailure failure, const RpcCallOptions &opts);
   
   /**
@@ -360,7 +395,7 @@ protected:
    * @param impl Method implementation
    */
   template<typename RequestType, typename ResponseType>
-  RpcHandler createBasicMethodHandler(const std::string &method, std::function<ResponseType(const RequestType&, const RoutedMessage&, RpcId)> impl)
+  RpcHandler createBasicMethodHandler(const std::string &method, std::function<RpcResponse<ResponseType>(const RequestType&, const RoutedMessage&, RpcId)> impl)
   {
     // Wrap the implementation with proper serializers/deserializers depending on
     // specified request and response types
@@ -368,16 +403,16 @@ protected:
                   RpcResponseSuccess success, RpcResponseFailure failure) {
       try {
         // Deserialize the message and call method implementation
-        ResponseType rsp = impl(message_cast<RequestType>(request.data()), msg, request.rpc_id());
+        RpcResponse<ResponseType> rsp = impl(message_cast<RequestType>(request.data()), msg, request.rpc_id());
         Protocol::RpcResponse response;
         response.set_rpc_id(request.rpc_id());
         response.set_error(false);
         
         // Serialize response message into the payload
-        std::vector<char> buffer(rsp.ByteSize());
-        rsp.SerializeToArray(&buffer[0], buffer.size());
+        std::vector<char> buffer(rsp.response.ByteSize());
+        rsp.response.SerializeToArray(&buffer[0], buffer.size());
         response.set_data(&buffer[0], buffer.size());
-        success(response);
+        success(response, rsp.routingOptions);
       } catch (RpcException &error) {
         // Handle failures by invoking the failure handler
         failure(error.code(), error.message());
@@ -424,8 +459,10 @@ protected:
    * 
    * @param msg Original request message
    * @param response Response message
+   * @param opts Routing options
    */
-  void respond(const RoutedMessage &msg, const Protocol::RpcResponse &response);
+  void respond(const RoutedMessage &msg, const Protocol::RpcResponse &response,
+               const RoutingOptions &opts = RoutingOptions());
 protected:
   /**
    * Called by the router when a message is to be delivered to the local

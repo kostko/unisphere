@@ -23,7 +23,7 @@
 #include <botan/auto_rng.h>
 
 namespace UniSphere {
-
+  
 RpcException::RpcException(RpcErrorCode code, const std::string &msg)
   : Exception("RPC Exception: " + msg),
     m_code(code),
@@ -31,7 +31,7 @@ RpcException::RpcException(RpcErrorCode code, const std::string &msg)
 {
 }
   
-RpcCall::RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcResponseSuccess success,
+RpcCall::RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcCallSuccess success,
                  RpcResponseFailure failure, boost::posix_time::time_duration timeout)
   : m_rpc(rpc),
     m_rpcId(rpcId),
@@ -97,7 +97,7 @@ RpcId RpcEngine::getNextRpcId() const
 }
 
 RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::string &method,
-                             const std::vector<char> &payload, RpcResponseSuccess success,
+                             const std::vector<char> &payload, RpcCallSuccess success,
                              RpcResponseFailure failure, const RpcCallOptions &opts)
 {
   // Register the pending RPC call
@@ -173,7 +173,7 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       // Call the registered method handler
       handler(
         msg, request,
-        [this, msg](const Protocol::RpcResponse &response) { respond(msg, response); },
+        [this, msg](const Protocol::RpcResponse &response, const RoutingOptions &opts) { respond(msg, response, opts); },
         [this, msg, rpcId](RpcErrorCode code, const std::string &emsg) { respond(msg, getErrorResponse(rpcId, code, emsg)); }
       );
       break;
@@ -182,8 +182,10 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
       RecursiveUniqueLock lock(m_mutex);
       Protocol::RpcResponse response = message_cast<Protocol::RpcResponse>(msg);
       RpcId rpcId = response.rpc_id();
-      if (m_pendingCalls.find(rpcId) == m_pendingCalls.end())
+      if (m_pendingCalls.find(rpcId) == m_pendingCalls.end()) {
+        UNISPHERE_LOG(m_router.linkManager(), Warning, "Got RPC response for an unknown call!");
         return;
+      }
       
       m_pendingCalls[rpcId]->done(response);
       break;
@@ -210,12 +212,13 @@ void RpcEngine::messageForward(const RoutedMessage &msg)
   // Call the registered method handler for the intercepted RPC request
   handler(
     msg, request,
-    [](const Protocol::RpcResponse&) {},
+    [](const Protocol::RpcResponse&, const RoutingOptions&) {},
     [](RpcErrorCode, const std::string&) {}
   );
 }
 
-void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &response)
+void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &response,
+                        const RoutingOptions &opts)
 {
   // Send the RPC message back to the source node
   m_router.route(
@@ -223,7 +226,8 @@ void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &r
     msg.sourceNodeId(),
     static_cast<std::uint32_t>(Router::Component::RPC_Engine),
     static_cast<std::uint32_t>(RpcMessageType::Response),
-    response
+    response,
+    opts
   );
 }
 

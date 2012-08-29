@@ -45,7 +45,9 @@ void Router::registerCoreRpcMethods()
 {
   // Find node RPC that is destined for the local node
   m_rpc.registerMethod<Protocol::FindNodeRequest, Protocol::FindNodeResponse>("Core.FindNode",
-    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg, RpcId) -> Protocol::FindNodeResponse {
+    [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::FindNodeResponse> {
+      UNISPHERE_LOG(m_manager, Info, "Router: Received Core.FindNode call from " + msg.sourceNodeId().as(NodeIdentifier::Format::Hex));
+      
       // TODO Maximum number of sibling nodes
       // Return the specified number of sibling nodes
       Protocol::FindNodeResponse response;
@@ -58,7 +60,11 @@ void Router::registerCoreRpcMethods()
           *contact = entry.contact().toMessage();
       }
       
-      return response;
+      Contact backContact = Contact::fromMessage(request.local_contact());
+      return RpcResponse<Protocol::FindNodeResponse>(
+        response,
+        RoutingOptions().setDeliverVia(m_manager.connect(backContact))
+      );
     }
   );
   
@@ -96,8 +102,10 @@ void Router::registerCoreRpcMethods()
   m_rpc.registerMethod<Protocol::ExchangeEntriesRequest>("Core.ExchangeEntries",
     [this](const Protocol::ExchangeEntriesRequest &request, const RoutedMessage&, RpcId) {
       // Ensure that a recent outgoing RPC with the specified identifier exists
-      if (!m_rpc.isRecentCall(request.rpcid()))
+      if (!m_rpc.isRecentCall(request.rpcid())) {
+        UNISPHERE_LOG(m_manager, Warning, "RPC method Core.ExchangeEntries called with invalid rpcId!");
         return;
+      }
       
       // Queue all contacts to be contacted
       for (const Protocol::Contact &ct : request.contacts()) {
@@ -279,6 +287,7 @@ void Router::route(const RoutedMessage &msg)
   // Check if the message is destined to the local node, in this case it should be
   // delivered to an upper layer application/component
   if (nextHop.nodeId == m_manager.getLocalNodeId()) {
+    UNISPHERE_LOG(m_manager, Info, "Received local message.");
     signalDeliverMessage(msg);
     return;
   } else {
