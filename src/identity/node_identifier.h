@@ -163,7 +163,7 @@ namespace std {
   template<>
   class hash<UniSphere::NodeIdentifier> {
   public:
-    size_t operator()(const UniSphere::NodeIdentifier &identifier)
+    size_t operator()(const UniSphere::NodeIdentifier &identifier) const
     {
       std::hash<std::string> hasher;
       return hasher(identifier.m_identifier);
