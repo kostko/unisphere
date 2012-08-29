@@ -181,6 +181,9 @@ void Router::bootstrapStart(LinkPtr link)
         m_state = State::Joined;
         m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
         m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
+        
+        // Notify subscribers
+        signalJoined();
       },
       // Error handler
       [this, link](RpcErrorCode, const std::string&) {
