@@ -59,17 +59,17 @@ void RpcCall::start()
   }));
 }
 
-void RpcCall::done(const Protocol::RpcResponse &response)
+void RpcCall::done(const Protocol::RpcResponse &response, const RoutedMessage &msg)
 {
   RpcCallWeakPtr me(shared_from_this());
   
   // Response must be copied as a reference will go away after the method completes
-  m_strand.post([me, response]() {
+  m_strand.post([me, response, msg]() {
     if (RpcCallPtr self = me.lock()) {
       self->m_timer.cancel();
       self->cancel();
       if (self->m_success)
-        self->m_success(response);
+        self->m_success(response, msg);
     }
   });
 }
@@ -187,7 +187,7 @@ void RpcEngine::messageDelivery(const RoutedMessage &msg)
         return;
       }
       
-      m_pendingCalls[rpcId]->done(response);
+      m_pendingCalls[rpcId]->done(response, msg);
       break;
     }
   }

@@ -195,8 +195,9 @@ void Router::bootstrapStart(LinkPtr link)
     m_state = State::Bootstrap;
     m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
       // Success handler
-      [this](const FindNodeResponse &response) {
-        // TODO Check for identifier collisions (unlikely but could happen)
+      [this](const FindNodeResponse &response, const UniSphere::RoutedMessage &msg) {
+        // Check for identifier collisions (unlikely but could happen)
+        BOOST_ASSERT(msg.sourceNodeId() != m_manager.getLocalNodeId());
         
         // Queue all contacts to be contacted
         for (const Protocol::Contact &ct : response.contacts()) {

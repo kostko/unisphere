@@ -104,7 +104,7 @@ int main(int argc, char **argv)
       ping.set_timestamp(0);
       bootstrap->router->rpcEngine().call<Protocol::PingRequest, Protocol::PingResponse>(node->nodeId, "Core.Ping", ping,
         // Success handler
-        [](const Protocol::PingResponse &response) {
+        [](const Protocol::PingResponse &response, const RoutedMessage&) {
           std::cout << "success!" << std::endl;
         },
         // Error handler

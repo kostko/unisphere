@@ -64,7 +64,7 @@ enum class RpcErrorCode : std::uint32_t {
 /// Callback type for successful RPC method responses
 typedef std::function<void(const Protocol::RpcResponse&, const RoutingOptions&)> RpcResponseSuccess;
 /// Callback type for successful RPC calls
-typedef std::function<void(const Protocol::RpcResponse&)> RpcCallSuccess;
+typedef std::function<void(const Protocol::RpcResponse&, const RoutedMessage&)> RpcCallSuccess;
 /// Callback type for failed RPC calls
 typedef std::function<void(RpcErrorCode, const std::string&)> RpcResponseFailure;
 /// Callback type for RPC method handlers
@@ -145,8 +145,9 @@ public:
    * Signals the successful receipt of an RPC response.
    * 
    * @param response RPC response
+   * @param msg Raw routed message that contained the response
    */
-  void done(const Protocol::RpcResponse &response);
+  void done(const Protocol::RpcResponse &response, const RoutedMessage &msg);
   
   /**
    * Cancels this call and doesn't call the failure handler.
@@ -280,7 +281,7 @@ public:
    */
   template<typename RequestType, typename ResponseType>
   void call(const NodeIdentifier &destination, const std::string &method,
-            const RequestType &request, std::function<void(const ResponseType&)> success,
+            const RequestType &request, std::function<void(const ResponseType&, const RoutedMessage&)> success,
             RpcResponseFailure failure = nullptr, const RpcCallOptions &opts = RpcCallOptions())
   {
     // Serialize Protocol Buffers message into the payload
@@ -288,7 +289,7 @@ public:
     request.SerializeToArray(&buffer[0], buffer.size());
     
     createCall(destination, method, buffer,
-      [success](const Protocol::RpcResponse &rsp) { success(message_cast<ResponseType>(rsp.data())); },
+      [success](const Protocol::RpcResponse &rsp, const RoutedMessage &msg) { success(message_cast<ResponseType>(rsp.data()), msg); },
       failure, opts
     );
   }
