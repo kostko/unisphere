@@ -20,6 +20,7 @@
 #include "interplex/link_manager.h"
 #include "plexus/bootstrap.h"
 #include "plexus/router.h"
+#include "src/plexus/core_methods.pb.h"
 
 #include <iostream>
 #include <botan/auto_rng.h>
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
   
   std::unordered_map<NodeIdentifier, VirtualNode*> nodes;
   unsigned short port = 8473;
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 50; i++) {
     VirtualNode *node = createNode(ctx, getRandomNodeId(), "127.42.0.1", port++, bootstrap->linkManager->getLocalContact());
     nodes[node->nodeId] = node;
   }
@@ -91,6 +92,30 @@ int main(int argc, char **argv)
   
   joinTimer.expires_from_now(boost::posix_time::seconds(delay));
   joinTimer.async_wait(boost::bind(joinNode));
+  
+  // Run tests when the network stabilizes
+  boost::asio::deadline_timer endTimer(ctx.service());
+  std::function<void()> endCb = [&]() {
+    std::cout << "stablized, checking that routing works" << std::endl;
+    // Test that nodes can be contacted
+    for (std::pair<NodeIdentifier, VirtualNode*> p : nodes) {
+      VirtualNode *node = p.second;
+      Protocol::PingRequest ping;
+      ping.set_timestamp(0);
+      bootstrap->router->rpcEngine().call<Protocol::PingRequest, Protocol::PingResponse>(node->nodeId, "Core.Ping", ping,
+        // Success handler
+        [](const Protocol::PingResponse &response) {
+          std::cout << "success!" << std::endl;
+        },
+        // Error handler
+        [](RpcErrorCode, const std::string&) {
+          std::cout << "failure failure failure" << std::endl;
+        }
+      );
+    }
+  };
+  endTimer.expires_from_now(boost::posix_time::seconds(180));
+  endTimer.async_wait(boost::bind(endCb));
   
   // Run the context
   ctx.run();
