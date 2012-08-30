@@ -304,7 +304,7 @@ public:
    */
   template<typename RequestType>
   void call(const NodeIdentifier &destination, const std::string &method,
-            const RequestType &request, const RpcCallOptions &opts = RpcCallOptions())
+            const RequestType &request = RequestType(), const RpcCallOptions &opts = RpcCallOptions())
   {
     // Serialize Protocol Buffers message into the payload
     std::vector<char> buffer(request.ByteSize());
