@@ -86,7 +86,8 @@ void IPLinklet::connect(const Address &address)
   // Setup the TCP socket
   socket().async_connect(
     address.toIpEndpoint(),
-    boost::bind(&IPLinklet::handleConnect, this, boost::asio::placeholders::error)
+    boost::bind(&IPLinklet::handleConnect, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+      boost::asio::placeholders::error)
   );
 }
 
@@ -137,7 +138,8 @@ void IPLinklet::handleAccept(LinkletPtr linklet, const boost::system::error_code
     nextLinklet->signalConnectionSuccess.connect(signalAcceptedConnection);
     m_acceptor.async_accept(
       boost::static_pointer_cast<IPLinklet>(nextLinklet)->socket(),
-      boost::bind(&IPLinklet::handleAccept, this, nextLinklet, boost::asio::placeholders::error)
+      boost::bind(&IPLinklet::handleAccept, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+        nextLinklet, boost::asio::placeholders::error)
     );
   } else {
     // TODO Error while accepting, how to handle this?
@@ -167,48 +169,31 @@ void IPLinklet::send(const Message &msg)
   m_outMessages.push_back(msg);
   
   if (!sendInProgress) {
-    if (m_state == State::IntroWait) {
-      boost::asio::async_write(
-        m_socket,
-        boost::asio::buffer(m_outMessages.front().buffer()),
-        boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-          boost::asio::placeholders::error)
-      );
-    } else {
-      boost::asio::async_write(
-        m_socket,
-        boost::asio::buffer(m_outMessages.front().buffer()),
-        boost::bind(&IPLinklet::handleWrite, this, boost::asio::placeholders::error)
-      );
-    }
+    boost::asio::async_write(
+      m_socket,
+      boost::asio::buffer(m_outMessages.front().buffer()),
+      boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+        boost::asio::placeholders::error)
+    );
   }
 }
 
 void IPLinklet::handleWrite(const boost::system::error_code &error)
 {
-  // If an operation has been aborted, this means that this linklet is no longer
-  // present and has already been destroyed (the socket is only closed then)
-  if (error == boost::asio::error::operation_aborted)
+  // Ignore aborted ASIO operations
+  if (error == boost::asio::error::operation_aborted || m_state == State::Closed)
     return;
   
   if (!error) {
     UniqueLock lock(m_outMessagesMutex);
     m_outMessages.pop_front();
     if (!m_outMessages.empty()) {
-      if (m_state == State::IntroWait) {
-        boost::asio::async_write(
-          m_socket,
-          boost::asio::buffer(m_outMessages.front().buffer()),
-          boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-            boost::asio::placeholders::error)
-        );
-      } else {
-        boost::asio::async_write(
-          m_socket,
-          boost::asio::buffer(m_outMessages.front().buffer()),
-          boost::bind(&IPLinklet::handleWrite, this, boost::asio::placeholders::error)
-        );
-      }
+      boost::asio::async_write(
+        m_socket,
+        boost::asio::buffer(m_outMessages.front().buffer()),
+        boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+          boost::asio::placeholders::error)
+      );
     }
   } else {
     // Log
@@ -219,9 +204,8 @@ void IPLinklet::handleWrite(const boost::system::error_code &error)
 
 void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t bytes)
 {
-  // If an operation has been aborted, this means that this linklet is no longer
-  // present and has already been destroyed (the socket is only closed then)
-  if (error == boost::asio::error::operation_aborted)
+  // Ignore aborted ASIO operations
+  if (error == boost::asio::error::operation_aborted || m_state == State::Closed)
     return;
   
   if (!error && bytes == Message::header_size) {
@@ -237,20 +221,14 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
           close();
           return;
         }
-        
-        // Read payload
-        boost::asio::async_read(m_socket,
-          boost::asio::buffer(&m_inMessage.buffer()[0] + Message::header_size, payloadSize),
-          boost::bind(&IPLinklet::handleReadPayload, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-            boost::asio::placeholders::error)
-        );
-      } else {
-        // Read payload
-        boost::asio::async_read(m_socket,
-          boost::asio::buffer(&m_inMessage.buffer()[0] + Message::header_size, payloadSize),
-          boost::bind(&IPLinklet::handleReadPayload, this, boost::asio::placeholders::error)
-        );
       }
+      
+      // Read payload
+      boost::asio::async_read(m_socket,
+        boost::asio::buffer(&m_inMessage.buffer()[0] + Message::header_size, payloadSize),
+        boost::bind(&IPLinklet::handleReadPayload, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+          boost::asio::placeholders::error)
+      );
     }
   } else {
     // Log
@@ -261,9 +239,8 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
 
 void IPLinklet::handleReadPayload(const boost::system::error_code &error)
 {
-  // If an operation has been aborted, this means that this linklet is no longer
-  // present and has already been destroyed (the socket is only closed then)
-  if (error == boost::asio::error::operation_aborted)
+  // Ignore aborted ASIO operations
+  if (error == boost::asio::error::operation_aborted || m_state == State::Closed)
     return;
   
   if (!error) {
@@ -302,7 +279,8 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
     // Ready for next message
     boost::asio::async_read(m_socket,
       boost::asio::buffer(m_inMessage.buffer(), Message::header_size),
-      boost::bind(&IPLinklet::handleReadHeader, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
+      boost::bind(&IPLinklet::handleReadHeader, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+        boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
     );
   } else {
     // Log
