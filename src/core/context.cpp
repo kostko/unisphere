@@ -36,6 +36,16 @@ Context::~Context()
 {
 }
 
+void Context::schedule(int timeout, std::function<void()> operation)
+{
+  // The timer pointer is passed into a closure so it will be automatically removed
+  // when the operation is done executing
+  typedef boost::shared_ptr<boost::asio::deadline_timer> SharedTimer;
+  SharedTimer timer = SharedTimer(new boost::asio::deadline_timer(m_io));
+  timer->expires_from_now(boost::posix_time::seconds(timeout));
+  timer->async_wait([timer, operation](const boost::system::error_code&) { operation(); });
+}
+
 void Context::run(size_t threads)
 {
   // Spawn a thread pool when multiple threads specified

@@ -93,11 +93,8 @@ int main(int argc, char **argv)
   joinTimer.expires_from_now(boost::posix_time::seconds(delay));
   joinTimer.async_wait(boost::bind(joinNode));
   
-  // Run tests when the network stabilizes
-  boost::asio::deadline_timer endTimer(ctx.service());
-  std::function<void()> endCb = [&]() {
-    std::cout << "stablized, checking that routing works" << std::endl;
-    // Test that nodes can be contacted
+  // After 3 minutes, check if RPC calls between nodes work
+  ctx.schedule(180, [&]() {
     for (std::pair<NodeIdentifier, VirtualNode*> p : nodes) {
       VirtualNode *node = p.second;
       Protocol::PingRequest ping;
@@ -113,9 +110,12 @@ int main(int argc, char **argv)
         }
       );
     }
-  };
-  endTimer.expires_from_now(boost::posix_time::seconds(180));
-  endTimer.async_wait(boost::bind(endCb));
+  });
+  
+  // After 3 minutes and 30 seconds, bootstrap node leaves the overlay
+  ctx.schedule(210, [&]() {
+    bootstrap->router->leave();
+  });
   
   // Run the context
   ctx.run();

@@ -65,6 +65,14 @@ public:
   ~Context();
   
   /**
+   * Schedules an operation to be executed after a timeout.
+   * 
+   * @param timeout Number of seconds to wait before executing
+   * @param operation Operation to be executed
+   */
+  void schedule(int timeout, std::function<void()> operation);
+  
+  /**
    * Returns the ASIO I/O service for this UNISPHERE context. This service
    * may be used for all I/O operations by context-dependent APIs.
    */
