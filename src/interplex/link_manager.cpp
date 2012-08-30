@@ -55,7 +55,7 @@ LinkPtr LinkManager::connect(const Contact &contact)
 
 LinkPtr LinkManager::create(const Contact &contact, bool connect)
 {
-  UniqueLock lock(m_linksMutex);
+  RecursiveUniqueLock lock(m_linksMutex);
   LinkPtr link;
   
   // Find or create a link
@@ -91,10 +91,32 @@ bool LinkManager::listen(const Address &address)
   return true;
 }
 
+void LinkManager::closeAll()
+{
+  // First shut down listeners
+  {
+    UniqueLock lock(m_listenersMutex);
+    for (LinkletPtr linklet : m_listeners) {
+      linklet->close();
+    }
+    m_listeners.clear();
+  }
+  
+  // Then shut down all links
+  {
+    RecursiveUniqueLock lock(m_linksMutex);
+    // Make a copy since we will be modifying the original links list
+    auto links = m_links;
+    for (auto p : links) {
+      p.second->close();
+    }
+  }
+}
+
 void LinkManager::remove(const NodeIdentifier &nodeId)
 {
-  UniqueLock lock(m_linksMutex);
-  
+  RecursiveUniqueLock lock(m_linksMutex);
+
   if (m_links.find(nodeId) == m_links.end())
     return;
   
@@ -111,6 +133,16 @@ LinkPtr LinkManager::getLink(const NodeIdentifier &nodeId)
     return LinkPtr();
   
   return m_links[nodeId];
+}
+
+std::list<NodeIdentifier> LinkManager::getLinkIds()
+{
+  RecursiveUniqueLock lock(m_linksMutex);
+  std::list<NodeIdentifier> links;
+  for (auto p : m_links) {
+    links.push_back(p.first);
+  }
+  return links;
 }
 
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)

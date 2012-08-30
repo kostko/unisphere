@@ -65,7 +65,8 @@ public:
   enum class State {
     Init,
     Bootstrap,
-    Joined
+    Joined,
+    Leaving
   };
   
   /**
@@ -103,6 +104,11 @@ public:
    * Creates the overlay network by being the only node in it.
    */
   void create();
+  
+  /**
+   * Leaves the overlay network.
+   */
+  void leave();
   
   /**
    * Routes the specified message via the overlay.

@@ -90,6 +90,11 @@ public:
   void remove(const NodeIdentifier &nodeId);
   
   /**
+   * Closes all existing links and stops listening for any new ones.
+   */
+  void closeAll();
+  
+  /**
    * Returns an existing link instance if one exists for the specified
    * node identifier. Otherwise NULL is returned.
    * 
@@ -97,6 +102,11 @@ public:
    * @return Link instance corresponding to the identifier or NULL
    */
   LinkPtr getLink(const NodeIdentifier &nodeId);
+  
+  /**
+   * Returns a list of node identifiers to links that we have established.
+   */
+  std::list<NodeIdentifier> getLinkIds();
   
   /**
    * Returns the linklet factory instance.
@@ -155,7 +165,7 @@ private:
   /// Mapping of all managed links by their identifiers
   boost::unordered_map<NodeIdentifier, LinkPtr> m_links;
   /// Mutex protecting the link mapping
-  std::mutex m_linksMutex;
+  std::recursive_mutex m_linksMutex;
   
   /// A list of all listening linklets
   std::list<LinkletPtr> m_listeners;

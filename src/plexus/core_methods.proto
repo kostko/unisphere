@@ -14,6 +14,9 @@ message FindNodeResponse {
   repeated UniSphere.Protocol.Contact contacts = 1;
 }
 
+message LeaveNodeRequest {
+}
+
 message ExchangeEntriesRequest {
   required uint64 rpcId = 1;
   required bytes destination = 2;

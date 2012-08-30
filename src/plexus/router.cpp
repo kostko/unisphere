@@ -68,6 +68,19 @@ void Router::registerCoreRpcMethods()
     }
   );
   
+  // Leave node RPC that signals when a node is leaving
+  m_rpc.registerMethod<Protocol::LeaveNodeRequest>("Core.LeaveNode",
+    [this](const Protocol::LeaveNodeRequest&, const RoutedMessage &msg, RpcId) {
+      UNISPHERE_LOG(m_manager, Info, "Node " + msg.sourceNodeId().as(NodeIdentifier::Format::Hex) + " is leaving.");
+      
+      // Terminate link with node and remove it from the routing tables
+      LinkPtr link = m_manager.getLink(msg.sourceNodeId());
+      m_routes.remove(msg.sourceNodeId());
+      if (link)
+        link->close();
+    }
+  );
+  
   // Find node RPC that is in transit over the local node
   m_rpc.registerInterceptMethod<Protocol::FindNodeRequest>("Core.FindNode",
     [this](const Protocol::FindNodeRequest &request, const RoutedMessage &msg, RpcId rpcId) {
@@ -151,8 +164,34 @@ void Router::connectToMoreContacts()
   m_pendingContactTimer.async_wait(boost::bind(&Router::connectToMoreContacts, this));
 }
 
+void Router::leave()
+{
+  if (m_state != State::Joined)
+    return;
+  
+  // Switch to leaving state and reconnect the rejoin signal
+  m_state = State::Leaving;
+  boost::signals::scoped_connection *connection = new boost::signals::scoped_connection;
+  m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
+  *connection = m_routes.signalRejoin.connect([connection, this]{
+    UNISPHERE_LOG(m_manager, Info, "Router: Left the overlay.");
+    
+    // When the routing table is empty, switch to init state
+    m_state = State::Init;
+    delete connection;
+  });
+  
+  // Notify all nodes that we are leaving
+  for (NodeIdentifier nodeId : m_manager.getLinkIds()) {
+    m_rpc.call<Protocol::LeaveNodeRequest>(nodeId, "Core.LeaveNode");
+  }
+}
+
 void Router::join()
 {
+  if (m_state == State::Leaving)
+    return;
+  
   Contact bootstrapContact = m_bootstrap.getBootstrapContact();
   m_bootstrap.signalContactReady.disconnect(boost::bind(&Router::join, this));
   if (bootstrapContact.isNull()) {
