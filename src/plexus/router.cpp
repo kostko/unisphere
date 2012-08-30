@@ -113,6 +113,15 @@ void Router::registerCoreRpcMethods()
       }
     }
   );
+  
+  // Simple ping messages
+  m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
+    [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::PingResponse> {
+      Protocol::PingResponse rsp;
+      rsp.set_timestamp(1);
+      return rsp;
+    }
+  );
 }
 
 void Router::queueContact(const Contact &contact)

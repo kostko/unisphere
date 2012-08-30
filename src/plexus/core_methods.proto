@@ -20,3 +20,11 @@ message ExchangeEntriesRequest {
   repeated UniSphere.Protocol.Contact contacts = 3;
 }
 
+message PingRequest {
+  required uint64 timestamp = 1;
+}
+
+message PingResponse {
+  required uint64 timestamp = 1;
+}
+
