@@ -328,8 +328,11 @@ void Link::linkletDisconnected(LinkletPtr linklet)
   
   // When removal of this linklet causes the link to become closed, attempt
   // to reconnect when the link is marked as persistent
-  if (m_state == Link::State::Closed && m_persistent) {
-    tryNextAddress();
+  if (m_state == Link::State::Closed) {
+    if (m_persistent)
+      tryNextAddress();
+    else
+      close();
   }
 }
 
