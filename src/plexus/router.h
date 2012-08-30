@@ -41,9 +41,9 @@ class Bootstrap;
 class UNISPHERE_EXPORT Router {
 public:
   /// Bucket size (routing redundancy)
-  static const size_t bucket_size = 20;
+  static const size_t bucket_size = 16;
   /// Per-key sibling neighbourhood size (key storage redundancy)
-  static const size_t sibling_neighbourhood = 16;
+  static const size_t sibling_neighbourhood = 8;
   /// Pending contacts establishment period (in seconds)
   static const int pending_contacts_period = 2;
   /// Maximum number of pending contacts
