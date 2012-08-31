@@ -48,12 +48,12 @@ void Context::schedule(int timeout, std::function<void()> operation)
 
 void Context::run(size_t threads)
 {
-  // Spawn a thread pool when multiple threads specified
-  if (threads > 1) {
-    // TODO
+  // Create as many threads as specified and let them run the I/O service
+  for (int i = 0; i < threads; i++) {
+    m_pool.create_thread(boost::bind(&boost::asio::io_service::run, &m_io));
   }
   
-  m_io.run();
+  m_pool.join_all();
 }
 
 void Context::stop()

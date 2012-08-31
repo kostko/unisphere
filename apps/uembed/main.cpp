@@ -118,6 +118,6 @@ int main(int argc, char **argv)
   });
   
   // Run the context
-  ctx.run();
+  ctx.run(2);
   return 0;
 }

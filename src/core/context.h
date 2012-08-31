@@ -21,6 +21,7 @@
 
 #include <botan/botan.h>
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 
 #include "core/globals.h"
 #include "core/logger.h"
@@ -100,6 +101,8 @@ private:
   boost::asio::io_service m_io;
   /// ASIO work grouping for all network operations
   boost::asio::io_service::work m_work;
+  /// The thread pool when multiple threads are used
+  boost::thread_group m_pool;
   
   /// Logger instance
   Logger m_logger;
