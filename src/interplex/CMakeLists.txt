@@ -17,4 +17,4 @@ interplex.proto
 )
 
 add_library(UnisphereInterplex SHARED ${unisphere_interplex_src} ${unisphere_interplex_proto_src} ${unisphere_interplex_proto_hdr})
-target_link_libraries(UnisphereInterplex UnisphereCore UnisphereIdentity ${unisphere_external_libraries})
+target_link_libraries(UnisphereInterplex UnisphereCore UnisphereIdentity UnisphereMeasure ${unisphere_external_libraries})

@@ -14,4 +14,4 @@ core_methods.proto
 )
 
 add_library(UnispherePlexus SHARED ${unisphere_plexus_src} ${unisphere_plexus_proto_src})
-target_link_libraries(UnispherePlexus UnisphereCore UnisphereIdentity UnisphereInterplex ${unisphere_external_libraries})
+target_link_libraries(UnispherePlexus UnisphereCore UnisphereIdentity UnisphereInterplex UnisphereMeasure ${unisphere_external_libraries})

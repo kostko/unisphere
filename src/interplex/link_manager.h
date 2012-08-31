@@ -23,6 +23,10 @@
 #include "interplex/contact.h"
 #include "interplex/linklet_factory.h"
 
+#ifdef UNISPHERE_DEBUG
+#include "measure/measure.h"
+#endif
+
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
 
@@ -144,6 +148,13 @@ public:
    * @param init The initialization function
    */
   void setLinkInitializer(std::function<void(Link&)> init);
+  
+#ifdef UNISPHERE_DEBUG
+  /**
+   * Returns the measure instance that can be used for storing measurements.
+   */
+  inline Measure &getMeasure() { return m_measure; }
+#endif
 protected:
   /**
    * Called by a listener @ref Linklet when a new connection gets accepted
@@ -177,15 +188,24 @@ private:
   
   /// Local outgoing address
   Address m_localAddress;
+
+#ifdef UNISPHERE_DEBUG
+  /// Measurement instance
+  Measure m_measure;
+#endif
 };
   
 }
 
-// Logging macros
+// Logging and measurement macros
 #ifdef UNISPHERE_DEBUG
 #define UNISPHERE_LOG(manager, level, text) (manager).context().logger().output(Logger::Level::level, (text), (manager).getLocalNodeId().as(NodeIdentifier::Format::Hex))
+#define UNISPHERE_MEASURE_ADD(manager, metric, value) (manager).getMeasure().add(metric, value)
+#define UNISPHERE_MEASURE_INC(manager, metric) (manager).getMeasure().increment(metric)
 #else
 #define UNISPHERE_LOG(manager, level, text)
+#define UNISPHERE_MEASURE_ADD(manager, metric, value)
+#define UNISPHERE_MEASURE_INC(manager, metric)
 #endif
 
 #endif

@@ -305,12 +305,14 @@ void Router::route(const RoutedMessage &msg)
 {
   if (!msg.isValid()) {
     UNISPHERE_LOG(m_manager, Warning, "Router: Dropping invalid message.");
+    UNISPHERE_MEASURE_INC(m_manager, "messages.dropped");
     return;
   }
   
   // Routing options can override the next hop
   if (LinkPtr deliverVia = msg.options().deliverVia.lock()) {
     deliverVia->send(Message(Message::Type::Plexus_Routed, *msg.serialize()));
+    UNISPHERE_MEASURE_INC(m_manager, "messages.forward");
     return;
   }
   
@@ -330,6 +332,7 @@ void Router::route(const RoutedMessage &msg)
   
   if (nextHop.isNull()) {
     UNISPHERE_LOG(m_manager, Warning, "Router: No route to destination.");
+    UNISPHERE_MEASURE_INC(m_manager, "messages.dropped");
     return;
   }
   
@@ -337,9 +340,11 @@ void Router::route(const RoutedMessage &msg)
   // delivered to an upper layer application/component
   if (nextHop.nodeId == m_manager.getLocalNodeId()) {
     UNISPHERE_LOG(m_manager, Info, "Received local message.");
+    UNISPHERE_MEASURE_INC(m_manager, "messages.local");
     signalDeliverMessage(msg);
     return;
   } else {
+    UNISPHERE_MEASURE_INC(m_manager, "messages.forward");
     signalForwardMessage(msg);
     nextHop.link->send(Message(Message::Type::Plexus_Routed, *msg.serialize()));
   }
