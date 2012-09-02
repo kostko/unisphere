@@ -28,14 +28,9 @@ Router::Router(LinkManager &manager, Bootstrap &bootstrap)
     m_bootstrap(bootstrap),
     m_routes(manager.getLocalNodeId(), Router::bucket_size, Router::sibling_neighbourhood),
     m_rpc(*this),
-    m_pendingContactTimer(manager.context().service()),
     m_state(State::Init)
 {
-  m_manager.setLinkInitializer(boost::bind(&Router::initializeLink, this, _1));
-  
-  // Setup the periodic contact establishment timer
-  m_pendingContactTimer.expires_from_now(boost::posix_time::seconds(Router::pending_contacts_period));
-  m_pendingContactTimer.async_wait(boost::bind(&Router::connectToMoreContacts, this));
+  m_manager.signalMessageReceived.connect(boost::bind(&Router::messageReceived, this, _1));
   
   // Register core routing RPC methods
   registerCoreRpcMethods();
@@ -57,13 +52,16 @@ void Router::registerCoreRpcMethods()
         if (entry.nodeId == m_manager.getLocalNodeId())
           *contact = m_manager.getLocalContact().toMessage();
         else
-          *contact = entry.contact().toMessage();
+          *contact = entry.contact.toMessage();
       }
       
       Contact backContact = Contact::fromMessage(request.local_contact());
+      if (backContact.nodeId() == msg.sourceNodeId())
+        pingContact(backContact);
+      
       return RpcResponse<Protocol::FindNodeResponse>(
         response,
-        RoutingOptions().setDeliverVia(m_manager.connect(backContact))
+        RoutingOptions().setDeliverVia(backContact)
       );
     }
   );
@@ -73,11 +71,8 @@ void Router::registerCoreRpcMethods()
     [this](const Protocol::LeaveNodeRequest&, const RoutedMessage &msg, RpcId) {
       UNISPHERE_LOG(m_manager, Info, "Node " + msg.sourceNodeId().as(NodeIdentifier::Format::Hex) + " is leaving.");
       
-      // Terminate link with node and remove it from the routing tables
-      LinkPtr link = m_manager.getLink(msg.sourceNodeId());
+      // Remove node from routing table
       m_routes.remove(msg.sourceNodeId());
-      if (link)
-        link->close();
     }
   );
   
@@ -100,13 +95,17 @@ void Router::registerCoreRpcMethods()
         if (entry.nodeId == m_manager.getLocalNodeId())
           *contact = m_manager.getLocalContact().toMessage();
         else
-          *contact = entry.contact().toMessage();
+          *contact = entry.contact.toMessage();
       }
       
       // Perform a back-request without confirmation to the source node
       Contact backContact = Contact::fromMessage(request.local_contact());
+      if (backContact.nodeId() != msg.sourceNodeId())
+        return;
+      
+      pingContact(backContact);
       m_rpc.call<Protocol::ExchangeEntriesRequest>(msg.sourceNodeId(), "Core.ExchangeEntries", backRequest,
-        RpcCallOptions().setDeliverVia(m_manager.connect(backContact))
+        RpcCallOptions().setDeliverVia(backContact)
       );
     }
   );
@@ -122,7 +121,7 @@ void Router::registerCoreRpcMethods()
       
       // Queue all contacts to be contacted
       for (const Protocol::Contact &ct : request.contacts()) {
-        queueContact(Contact::fromMessage(ct));
+        pingContact(Contact::fromMessage(ct));
       }
     }
   );
@@ -130,38 +129,18 @@ void Router::registerCoreRpcMethods()
   // Simple ping messages
   m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
     [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::PingResponse> {
-      Protocol::PingResponse rsp;
-      rsp.set_timestamp(1);
-      return rsp;
+      // Add peer to routing table when message has been delivered directly
+      if (msg.originLinkId() == msg.sourceNodeId())
+        m_routes.add(m_manager.getLinkContact(msg.originLinkId()));
+      
+      Protocol::PingResponse response;
+      response.set_timestamp(1);
+      return RpcResponse<Protocol::PingResponse>(
+        response,
+        RoutingOptions().setDeliverVia(msg.sourceNodeId())
+      );
     }
   );
-}
-
-void Router::queueContact(const Contact &contact)
-{
-  RecursiveUniqueLock lock(m_mutex);
-  if (m_pendingContacts.get<1>().find(contact.nodeId()) != m_pendingContacts.get<1>().end())
-    return;
-  
-  if (m_pendingContacts.size() >= Router::pending_contacts_size)
-    return;
-  
-  m_pendingContacts.push_front(contact);
-}
-
-void Router::connectToMoreContacts()
-{
-  RecursiveUniqueLock lock(m_mutex);
-  
-  // Retrieve the last contact and attempt to establish contact
-  if (m_pendingContacts.size() > 0) {
-    m_manager.connect(m_pendingContacts.back());
-    m_pendingContacts.pop_back();
-  }
-  
-  // Setup the periodic contact establishment timer
-  m_pendingContactTimer.expires_from_now(boost::posix_time::seconds(Router::pending_contacts_period));
-  m_pendingContactTimer.async_wait(boost::bind(&Router::connectToMoreContacts, this));
 }
 
 void Router::leave()
@@ -202,9 +181,44 @@ void Router::join()
   
   UNISPHERE_LOG(m_manager, Info, "Router: Joining the overlay network.");
   
-  m_state = State::Init;
-  LinkPtr link = m_manager.connect(bootstrapContact);
-  link->callWhenConnected(boost::bind(&Router::bootstrapStart, this, _1));
+  m_state = State::Bootstrap;
+  m_routes.add(bootstrapContact);
+  
+  using namespace Protocol;
+  FindNodeRequest request;
+  request.set_num_contacts(m_routes.maxSiblingsSize());
+  *request.mutable_local_contact() = m_manager.getLocalContact().toMessage();
+  
+  // Route a discovery message to our own identifier
+  m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
+    // Success handler
+    [this](const FindNodeResponse &response, const UniSphere::RoutedMessage &msg) {
+      // Check for identifier collisions (unlikely but could happen)
+      BOOST_ASSERT(msg.sourceNodeId() != m_manager.getLocalNodeId());
+      
+      // Queue all contacts to be contacted
+      for (const Protocol::Contact &ct : response.contacts()) {
+        pingContact(UniSphere::Contact::fromMessage(ct));
+      }
+      
+      UNISPHERE_LOG(m_manager, Info, "Router: Successfully joined the overlay.");
+      
+      // We are now in the "joined" state
+      m_state = State::Joined;
+      m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
+      m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
+      
+      // Notify subscribers
+      signalJoined();
+    },
+    // Error handler
+    [this](RpcErrorCode, const std::string&) {
+      UNISPHERE_LOG(m_manager, Error, "Router: Failed to bootstrap!");
+      join();
+    },
+    // Options
+    RpcCallOptions().setDeliverVia(bootstrapContact)
+  );
 }
 
 void Router::create()
@@ -218,79 +232,29 @@ void Router::create()
   signalJoined();
 }
 
-void Router::bootstrapStart(LinkPtr link)
+void Router::pingContact(const Contact &contact)
 {
-  // Perform bootstrap lookup procedure when we are in init state
-  RecursiveUniqueLock lock(m_mutex);
-  if (m_state == State::Init) {
-    using namespace Protocol;
-    FindNodeRequest request;
-    request.set_num_contacts(m_routes.maxSiblingsSize());
-    *request.mutable_local_contact() = m_manager.getLocalContact().toMessage();
-    
-    UNISPHERE_LOG(m_manager, Info, "Router: Entering bootstrap phase.");
-    
-    // The first phase is to contact the bootstrap node to give us contact information
-    m_state = State::Bootstrap;
-    m_rpc.call<FindNodeRequest, FindNodeResponse>(m_manager.getLocalNodeId(), "Core.FindNode", request,
-      // Success handler
-      [this](const FindNodeResponse &response, const UniSphere::RoutedMessage &msg) {
-        // Check for identifier collisions (unlikely but could happen)
-        BOOST_ASSERT(msg.sourceNodeId() != m_manager.getLocalNodeId());
-        
-        // Queue all contacts to be contacted
-        for (const Protocol::Contact &ct : response.contacts()) {
-          queueContact(UniSphere::Contact::fromMessage(ct));
-        }
-        
-        UNISPHERE_LOG(m_manager, Info, "Router: Successfully joined the overlay.");
-        
-        // We are now in the "joined" state
-        m_state = State::Joined;
-        m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
-        m_routes.signalRejoin.connect(boost::bind(&Router::join, this));
-        
-        // Notify subscribers
-        signalJoined();
-      },
-      // Error handler
-      [this, link](RpcErrorCode, const std::string&) {
-        UNISPHERE_LOG(m_manager, Error, "Router: Failed to bootstrap!");
-        
-        link->close();
-        join();
-      },
-      // Options
-      RpcCallOptions().setDeliverVia(link)
-    );
-  }
-}
-
-void Router::initializeLink(Link &link)
-{
-  link.signalEstablished.connect(boost::bind(&Router::linkEstablished, this, _1));
-  link.signalDisconnected.connect(boost::bind(&Router::linkLost, this, _1));
-  link.signalMessageReceived.connect(boost::bind(&Router::linkMessageReceived, this, _1));
-}
-
-void Router::linkEstablished(LinkPtr link)
-{
-  // Adds the established link to the routing table
-  if (!m_routes.add(link)) {
-    UNISPHERE_LOG(m_manager, Warning, "Router: Unable to add established link to table!");
-    
-    link->close();
+  // Only ping the contact if it is non-routable
+  if (m_routes.get(contact.nodeId()).isValid())
     return;
-  }
+  
+  using namespace Protocol;
+  PingRequest request;
+  request.set_timestamp(0);
+  
+  m_rpc.call<PingRequest, PingResponse>(contact.nodeId(), "Core.Ping", request,
+    // Success handler
+    [this, contact](const PingResponse&, const UniSphere::RoutedMessage&) {
+      m_routes.add(contact);
+    },
+    // Error handler
+    nullptr,
+    // Options
+    RpcCallOptions().setDeliverVia(contact)
+  );
 }
 
-void Router::linkLost(LinkPtr link)
-{
-  // Removes the lost link from the routing table
-  m_routes.remove(link);
-}
-
-void Router::linkMessageReceived(const Message &msg)
+void Router::messageReceived(const Message &msg)
 {
   if (msg.type() != Message::Type::Plexus_Routed)
     return;
@@ -310,8 +274,8 @@ void Router::route(const RoutedMessage &msg)
   }
   
   // Routing options can override the next hop
-  if (LinkPtr deliverVia = msg.options().deliverVia.lock()) {
-    deliverVia->send(Message(Message::Type::Plexus_Routed, *msg.serialize()));
+  if (!msg.options().deliverVia.isNull()) {
+    m_manager.send(msg.options().deliverVia, Message(Message::Type::Plexus_Routed, *msg.serialize()));
     UNISPHERE_MEASURE_INC(m_manager, "messages.forward");
     return;
   }
@@ -320,7 +284,7 @@ void Router::route(const RoutedMessage &msg)
   DistanceOrderedTable nextHops = m_routes.lookup(msg.destinationKeyId(), Router::bucket_size);
   PeerEntry nextHop;
   for (const PeerEntry &entry : nextHops.table().get<DistanceTag>()) {
-    if (entry.link == msg.originator().lock())
+    if (entry.nodeId == msg.originLinkId())
       continue;
     else if (entry.nodeId == m_manager.getLocalNodeId() &&
              !m_routes.isSiblingFor(m_manager.getLocalNodeId(), msg.destinationKeyId()))
@@ -339,14 +303,14 @@ void Router::route(const RoutedMessage &msg)
   // Check if the message is destined to the local node, in this case it should be
   // delivered to an upper layer application/component
   if (nextHop.nodeId == m_manager.getLocalNodeId()) {
-    UNISPHERE_LOG(m_manager, Info, "Received local message.");
+    BOOST_ASSERT(!msg.originLinkId().isNull());
     UNISPHERE_MEASURE_INC(m_manager, "messages.local");
     signalDeliverMessage(msg);
     return;
   } else {
     UNISPHERE_MEASURE_INC(m_manager, "messages.forward");
     signalForwardMessage(msg);
-    nextHop.link->send(Message(Message::Type::Plexus_Routed, *msg.serialize()));
+    m_manager.send(nextHop.contact, Message(Message::Type::Plexus_Routed, *msg.serialize()));
   }
 }
 

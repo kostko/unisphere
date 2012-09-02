@@ -128,6 +128,8 @@ protected:
   std::mutex m_outMessagesMutex;
 };
 
+UNISPHERE_SHARED_POINTER(IPLinklet)
+
 }
 
 #endif

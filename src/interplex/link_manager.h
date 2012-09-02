@@ -22,6 +22,7 @@
 #include "core/context.h"
 #include "interplex/contact.h"
 #include "interplex/linklet_factory.h"
+#include "interplex/message.h"
 
 #ifdef UNISPHERE_DEBUG
 #include "measure/measure.h"
@@ -29,19 +30,19 @@
 
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
+#include <boost/signal.hpp>
 
 namespace UniSphere {
 
 UNISPHERE_SHARED_POINTER(Link)
 
 /**
- * A link manager is used to manage links to all peers in a unified way. Each
- * link is exposed as a Link instance with a simple message-based interface.
- * The underlying mechanism of actually delivering these messages is completely
- * abstracted.
+ * A link manager is used to manage links to all peers in a unified way.
  */
 class UNISPHERE_EXPORT LinkManager {
 public:
+  friend class Link;
+  
   /**
    * Constructs a new link manager instance.
    * 
@@ -59,23 +60,21 @@ public:
   inline Context &context() const { return m_context; }
   
   /**
-   * Creates a new link and starts with the connection procedure.
+   * Sends a message to the given contact address.
    * 
-   * @param contact Peer contact information
-   * @return A shared instance of Link
+   * @param contact Destination node's contact information
+   * @param msg Message to send
    */
-  LinkPtr connect(const Contact &contact);
+  void send(const Contact &contact, const Message &msg);
   
   /**
-   * Creates a new link if one doesn't yet exist for the specified
-   * contact. If a link to this contact already exists, it is returned
-   * instead.
+   * Sends a message to the given peer. If there is no existing link
+   * for the specified peer, message will not be delivered.
    * 
-   * @param contact Peer contact information
-   * @param connect True to immediately start with the connection procedure
-   * @return A shared instance of Link
+   * @param nodeId Destination node's identifier
+   * @param msg Message to send
    */
-  LinkPtr create(const Contact &contact, bool connect);
+  void send(const NodeIdentifier &nodeId, const Message &msg);
   
   /**
    * Opens a listening linklet.
@@ -86,26 +85,17 @@ public:
   bool listen(const Address &address);
   
   /**
-   * Removes the link to a specific node. The link must be in the Closed
-   * state.
-   *
-   * @param nodeId Link node identifier
-   */
-  void remove(const NodeIdentifier &nodeId);
-  
-  /**
    * Closes all existing links and stops listening for any new ones.
    */
-  void closeAll();
+  void close();
   
   /**
-   * Returns an existing link instance if one exists for the specified
-   * node identifier. Otherwise NULL is returned.
+   * Returns the contact for a given link identifier.
    * 
-   * @param nodeId Link node identifier
-   * @return Link instance corresponding to the identifier or NULL
+   * @param linkId Link identifier
+   * @return Contact for the specified link
    */
-  LinkPtr getLink(const NodeIdentifier &nodeId);
+  Contact getLinkContact(const NodeIdentifier &linkId);
   
   /**
    * Returns a list of node identifiers to links that we have established.
@@ -140,21 +130,24 @@ public:
    */
   inline const Address &getLocalAddress() const { return m_localAddress; }
   
-  /**
-   * Sets up a function that will be called each time a new link instance
-   * needs to be initialized. This function should be used to setup any
-   * signals or other link-related resources.
-   *
-   * @param init The initialization function
-   */
-  void setLinkInitializer(std::function<void(Link&)> init);
-  
 #ifdef UNISPHERE_DEBUG
   /**
    * Returns the measure instance that can be used for storing measurements.
    */
   inline Measure &getMeasure() { return m_measure; }
 #endif
+public:
+  /// Signal for received messages
+  boost::signal<void (const Message&)> signalMessageReceived;
+protected:
+  LinkPtr create(const Contact &contact);
+  
+  /**
+   * Removes a specific link.
+   *
+   * @param link Link instance
+   */
+  void remove(LinkPtr link);
 protected:
   /**
    * Called by a listener @ref Linklet when a new connection gets accepted
@@ -163,6 +156,13 @@ protected:
    * @param linklet New linklet for this connection
    */
   void linkletAcceptedConnection(LinkletPtr linklet);
+  
+  /**
+   * Called by a @ref Link when a new message is received.
+   * 
+   * @param msg Received message
+   */
+  void linkMessageReceived(const Message &msg);
 private:
   /// UNISPHERE context this manager belongs to
   Context& m_context;
@@ -182,9 +182,6 @@ private:
   std::list<LinkletPtr> m_listeners;
   /// Mutex protecting the listening linklet list
   std::mutex m_listenersMutex;
-  
-  /// Initialization function for new link instances
-  std::function<void(Link&)> m_linkInitializer;
   
   /// Local outgoing address
   Address m_localAddress;

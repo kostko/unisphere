@@ -34,9 +34,9 @@ PeerEntry::PeerEntry (const NodeIdentifier &nodeId)
 {
 }
   
-PeerEntry::PeerEntry(LinkPtr link)
-  : nodeId(link->nodeId()),
-    link(link),
+PeerEntry::PeerEntry(const Contact &contact)
+  : nodeId(contact.nodeId()),
+    contact(contact),
     bucket(0),
     lastSeen(boost::posix_time::microsec_clock::universal_time())
 {
@@ -101,15 +101,18 @@ size_t RoutingTable::maxSiblingsSize() const
   return m_maxSiblingsSize;
 }
 
-bool RoutingTable::add(LinkPtr link)
+bool RoutingTable::add(const Contact &contact)
 {
   RecursiveUniqueLock lock(m_mutex);
   
+  if (contact.isNull())
+    return false;
+  
   // Generate a peer entry that might be added to the routing tables
-  PeerEntry entry(link);
+  PeerEntry entry(contact);
   BOOST_ASSERT(entry.isValid());
-  entry.lcp = link->nodeId().longestCommonPrefix(m_localId);
-  entry.distance = link->nodeId() ^ m_localId;
+  entry.lcp = contact.nodeId().longestCommonPrefix(m_localId);
+  entry.distance = contact.nodeId() ^ m_localId;
   return insert(entry);
 }
 
@@ -133,7 +136,7 @@ bool RoutingTable::insert(PeerEntry &entry)
   auto sibling = m_siblings.get<NodeIdTag>().find(entry.nodeId);
   if (sibling != m_siblings.end()) {
     m_siblings.modify(sibling, [&](PeerEntry &e) {
-      e.link = entry.link;
+      e.contact = entry.contact;
       e.lastSeen = boost::posix_time::microsec_clock::universal_time();
     });
     return true;
@@ -144,7 +147,7 @@ bool RoutingTable::insert(PeerEntry &entry)
   auto existing = m_peers.get<NodeIdTag>().find(entry.nodeId);
   if (existing != m_peers.end()) {
     m_peers.modify(existing, [&](PeerEntry &e) {
-      e.link = entry.link;
+      e.contact = entry.contact;
       e.lastSeen = boost::posix_time::microsec_clock::universal_time(); 
     });
     return true;
@@ -303,12 +306,7 @@ DistanceOrderedTable RoutingTable::lookup(const NodeIdentifier &destination, siz
   return result;
 }
 
-bool RoutingTable::remove(LinkPtr link)
-{
-  return remove(link->nodeId(), link);
-}
-
-bool RoutingTable::remove(const NodeIdentifier &nodeId, LinkPtr link)
+bool RoutingTable::remove(const NodeIdentifier &nodeId)
 {
   RecursiveUniqueLock lock(m_mutex);
   BOOST_ASSERT(nodeId != m_localId);
@@ -316,8 +314,6 @@ bool RoutingTable::remove(const NodeIdentifier &nodeId, LinkPtr link)
   // Check if the entry is a sibling entry and remove it
   auto sibling = m_siblings.get<NodeIdTag>().find(nodeId);
   if (sibling != m_siblings.end()) {
-    if (link && (*sibling).link != link)
-      return false;
     m_siblings.erase(sibling);
     
     // If there are no more siblings left, this means that the whole routing table
@@ -336,8 +332,6 @@ bool RoutingTable::remove(const NodeIdentifier &nodeId, LinkPtr link)
   // Check if entry is in one of the buckets and remove it
   auto peer = m_peers.get<NodeIdTag>().find(nodeId);
   if (peer != m_peers.end()) {
-    if (link && (*peer).link != link)
-      return false;
     m_peers.erase(peer);
     
     // TODO Implement replacement cache?

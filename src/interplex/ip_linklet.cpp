@@ -96,17 +96,24 @@ void IPLinklet::close()
   if (m_state == State::Closed)
     return;
   
-  UNISPHERE_LOG(m_manager, Info, "IPLinklet: Closing connection.");
-  State state = m_state;
-  m_state = State::Closed;
-  socket().close();
-  
-  // Emit the proper signal accoording to previous connection state
-  if (state == State::Connected) {
-    signalDisconnected(shared_from_this());
-  } else {
-    signalConnectionFailed(shared_from_this());
-  }
+  // Dispatch actual close event via our strand to avoid multiple simultaneous closes
+  IPLinkletPtr self = boost::static_pointer_cast<IPLinklet>(shared_from_this());
+  m_strand.dispatch([this, self]() {
+    if (m_state == State::Closed)
+      return;
+    
+    UNISPHERE_LOG(m_manager, Info, "IPLinklet: Closing connection with " + m_peerContact.nodeId().as(NodeIdentifier::Format::Hex) + ".");
+    State state = m_state;
+    m_state = State::Closed;
+    socket().close();
+    
+    // Emit the proper signal accoording to previous connection state
+    if (state == State::Connected) {
+      signalDisconnected(shared_from_this());
+    } else {
+      signalConnectionFailed(shared_from_this());
+    }
+  });
 }
 
 void IPLinklet::start(bool client)
@@ -261,7 +268,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
         return close();
       }
       
-      UNISPHERE_LOG(m_manager, Info, "IPLinklet: Introductory phase completed.");
+      UNISPHERE_LOG(m_manager, Info, "IPLinklet: Introductory phase with " + peerContact.nodeId().as(NodeIdentifier::Format::Hex) + " completed.");
       m_state = State::Connected;
       signalConnectionSuccess(shared_from_this());
       

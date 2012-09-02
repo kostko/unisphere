@@ -203,7 +203,12 @@ public:
   /**
    * Forces the RPC call to be delivered via a specific link.
    */
-  RpcCallOptions &setDeliverVia(LinkPtr link) { routingOptions.deliverVia = link; return *this; }
+  RpcCallOptions &setDeliverVia(const NodeIdentifier &linkId) { routingOptions.setDeliverVia(linkId); return *this; }
+  
+  /**
+   * Forces the RPC call to be delivered via a specific link.
+   */
+  RpcCallOptions &setDeliverVia(const Contact &contact) { routingOptions.setDeliverVia(contact); return *this; }
 public:
   /// Routing options
   RoutingOptions routingOptions;

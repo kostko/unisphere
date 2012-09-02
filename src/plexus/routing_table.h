@@ -60,30 +60,25 @@ public:
   /**
    * Class constructor.
    *
-   * @param link Pointer to a link established with the peer node
+   * @param contact Peer contact information
    */
-  explicit PeerEntry(LinkPtr link);
+  explicit PeerEntry(const Contact &contact);
   
   /**
    * Returns true if this peer entry has a valid node identifier
-   * and link associated with it.
+   * and contact information associated with it.
    */
-  inline bool isValid() const { return nodeId.isValid() && link; }
+  inline bool isValid() const { return nodeId.isValid() && contact.hasAddresses(); }
   
   /**
    * Returns true if this peer entry has a null node identifier.
    */
   inline bool isNull() const { return nodeId.isNull(); }
-  
-  /**
-   * Returns the contact information for this peer entry.
-   */
-  inline Contact contact() const { return link->contact(); }
 public:
   /// Peer node identifier
   NodeIdentifier nodeId;
-  /// Peer link
-  LinkPtr link;
+  /// Peer contact
+  Contact contact;
   
   /// Index of the bucket the peer falls into
   BucketIndex bucket;
@@ -241,10 +236,10 @@ public:
   /**
    * Adds a new entry into the routing table.
    *
-   * @param link Link to the peer in question
+   * @param contact Peer contact information
    * @return True if routing table has been changed
    */
-  bool add(LinkPtr link);
+  bool add(const Contact &contact);
   
   /**
    * Adds a new entry into the routing table. This will add a linkless
@@ -259,19 +254,10 @@ public:
   /**
    * Removes an entry from the routing table.
    * 
-   * @param link Link to the peer that should be removed
-   * @return True if routing table has been changed
-   */
-  bool remove(LinkPtr link);
-  
-  /**
-   * Removes an entry from the routing table.
-   * 
    * @param nodeId Node identifier of the entry to remove
-   * @param link Set to a link pointer to only remove a specific link
    * @return True if routing table has been changed
    */
-  bool remove(const NodeIdentifier &nodeId, LinkPtr link = LinkPtr());
+  bool remove(const NodeIdentifier &nodeId);
   
   /**
    * Returns a number of contacts closest to the destination.

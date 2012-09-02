@@ -20,6 +20,7 @@
 #define UNISPHERE_INTERPLEX_MESSAGE_H
 
 #include "core/globals.h"
+#include "identity/node_identifier.h"
 
 #include <google/protobuf/message.h>
 
@@ -109,16 +110,16 @@ public:
   void detach();
   
   /**
-   * Sets up the originator link for this message.
+   * Sets up the originator identifier for this message.
    *
-   * @param originator Originator link pointer
+   * @param nodeId Originator identifier
    */
-  void setOriginator(LinkPtr originator);
+  void setOriginator(const NodeIdentifier &nodeId);
   
   /**
-   * Returns the originator link pointer.
+   * Returns the originator link identifier.
    */
-  inline LinkPtr originator() const { return m_originator; }
+  inline NodeIdentifier originator() const { return m_originator; }
   
   /**
    * Parses message header contained in the message buffer and returns
@@ -133,8 +134,8 @@ private:
   /// Buffer that holds the payload
   boost::shared_ptr<std::vector<char> > m_buffer;
   
-  /// Pointer to link that originated the message
-  LinkPtr m_originator;
+  /// Identifier of the message originator
+  NodeIdentifier m_originator;
 };
 
 /**

@@ -30,7 +30,7 @@ RoutedMessage::RoutedMessage(const Message &msg)
   m_hopCount = pmsg.hopcount();
   m_payloadType = pmsg.type();
   m_payload = pmsg.message();
-  m_originator = msg.originator();
+  m_originLinkId = msg.originator();
 }
 
 RoutedMessage::RoutedMessage(const NodeIdentifier &sourceNodeId, uint32_t sourceCompId,

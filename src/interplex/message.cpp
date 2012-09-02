@@ -70,9 +70,9 @@ std::vector<char> &Message::buffer() const
   return *m_buffer;
 }
 
-void Message::setOriginator(LinkPtr originator)
+void Message::setOriginator(const NodeIdentifier &nodeId)
 {
-  m_originator = originator;
+  m_originator = nodeId;
 }
 
 size_t Message::parseHeader()

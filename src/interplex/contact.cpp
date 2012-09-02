@@ -98,6 +98,11 @@ NodeIdentifier Contact::nodeId() const
   return m_nodeId;
 }
 
+bool Contact::hasAddresses() const
+{
+  return !m_addresses.empty();
+}
+
 const AddressMap &Contact::addresses() const
 {
   return m_addresses;

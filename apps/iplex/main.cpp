@@ -80,12 +80,10 @@ int main(int argc, char **argv)
   mgr.listen(Address(vm["host"].as<std::string>(), vm["port"].as<unsigned short>()));
   
   // Subscribe to message received events
-  mgr.setLinkInitializer([](Link &link) {
-    link.signalMessageReceived.connect([](const Message &msg) {
-      ::Protocol::Test::Hello pmsg = message_cast< ::Protocol::Test::Hello>(msg);
-      std::cout << "Received msg: " << pmsg.msg() << std::endl;
-      std::cout << "Sender: " << msg.originator()->nodeId().as(NodeIdentifier::Format::Hex) << std::endl;
-    });
+  mgr.signalMessageReceived.connect([](const Message &msg) {
+    ::Protocol::Test::Hello pmsg = message_cast< ::Protocol::Test::Hello>(msg);
+    std::cout << "Received msg: " << pmsg.msg() << std::endl;
+    std::cout << "Sender: " << msg.originator().as(NodeIdentifier::Format::Hex) << std::endl;
   });
   
   // Check if we should also connect somewhere
@@ -94,13 +92,10 @@ int main(int argc, char **argv)
     Contact peerContact(peerId);
     peerContact.addAddress(Address(vm["peer-host"].as<std::string>(), vm["peer-port"].as<unsigned short>()));
     
-    // Connect to the peer node
-    LinkPtr link = mgr.connect(peerContact);
-    
     // Transmit some test message (this is all done in a non-blocking manner)
     ::Protocol::Test::Hello msg;
     msg.set_msg("hello interplex world!");
-    link->send(Message(Message::Type::UserMsg1, msg));
+    mgr.send(peerContact, Message(Message::Type::UserMsg1, msg));
   }
   
   // Run the context

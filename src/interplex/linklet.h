@@ -142,6 +142,8 @@ protected:
   
   /// ASIO service
   boost::asio::io_service &m_service;
+  /// ASIO strand
+  boost::asio::strand m_strand;
   
   /// Address this linklet is connected to
   Address m_connectAddress;

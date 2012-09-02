@@ -136,59 +136,25 @@ public:
   // in a while (also see "Handling churn in a DHT")
 protected:
   /**
-   * A method that initializes each link by connecting to its signals that
-   * are required to manage the routing table.
-   * 
-   * @param link Link to initialize
-   */
-  void initializeLink(Link &link);
-  
-  /**
    * Called when a message has been received on any link.
    * 
    * @param msg Link-local message that has been received
    */
-  void linkMessageReceived(const Message &msg);
+  void messageReceived(const Message &msg);
   
   /**
-   * Called when a link has been established.
+   * Pings a contact for addition into the routing table. The ping message is
+   * delivered directly and if the contact replies it is added to the routing
+   * table.
    * 
-   * @param link Link that has been established
+   * @param contact Contact to ping
    */
-  void linkEstablished(LinkPtr link);
-  
-  /**
-   * Called when a link has been lost (disconnected).
-   * 
-   * @param link Link that has been lost
-   */
-  void linkLost(LinkPtr link);
+  void pingContact(const Contact &contact);
   
   /**
    * Performs registration of core RPC methods that are required for routing.
    */
   void registerCoreRpcMethods();
-  
-  /**
-   * Attempts to establish a connection with the next contact in the contact
-   * queue.
-   */
-  void connectToMoreContacts();
-  
-  /**
-   * Queues a contact to be connected later. This is done so that we don't
-   * establish lots of connections at once but have control over the rate.
-   * 
-   * @param contact Contact to queue
-   */
-  void queueContact(const Contact &contact);
-  
-  /**
-   * Starts the initial bootstrap lookup procedure.
-   * 
-   * @param link An established bootstrap link
-   */
-  void bootstrapStart(LinkPtr link);
 public:
   /// Signal for delivery of locally-bound messages
   boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
@@ -206,18 +172,6 @@ private:
   RoutingTable m_routes;
   /// The RPC engine
   RpcEngine m_rpc;
-  /// Pending contact queue
-  boost::multi_index_container<
-    Contact,
-    midx::indexed_by<
-      midx::sequenced<>,
-      midx::hashed_unique<
-        midx::const_mem_fun<Contact, NodeIdentifier, &Contact::nodeId>
-      >
-    >
-  > m_pendingContacts;
-  /// Pending contact timer
-  boost::asio::deadline_timer m_pendingContactTimer;
   /// Mutex protecting the router
   std::recursive_mutex m_mutex;
   /// Router state

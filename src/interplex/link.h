@@ -45,7 +45,7 @@ UNISPHERE_SHARED_POINTER(MessageDispatcher)
  * message-based protocol for communication between the nodes with
  * automatic link management and message queuing.
  */
-class UNISPHERE_EXPORT Link : public boost::enable_shared_from_this<Link> {
+class UNISPHERE_NO_EXPORT Link : public boost::enable_shared_from_this<Link> {
 public:
   friend class LinkManager;
   friend class Linklet;
@@ -54,6 +54,7 @@ public:
    * Possible link states.
    */
   enum class State {
+    Invalid,
     Closed,
     Connecting,
     Connected
@@ -63,6 +64,50 @@ public:
    * Class destructor.
    */
   ~Link();
+  
+  /**
+   * Returns true if this link is currently in a connected state.
+   */
+  inline bool isConnected() const { return m_state == State::Connected; }
+  
+  /**
+   * Returns true if this link is currently in the invalid state.
+   */
+  inline bool isValid() const { return m_state != State::Invalid; }
+  
+  /**
+   * Returns the node identifier of the node on the other side of
+   * this link.
+   */
+  NodeIdentifier nodeId() const { return m_nodeId; } 
+  
+  /**
+   * Returns the current link state.
+   */
+  State state() const { return m_state; }
+  
+  /**
+   * Returns contact information about the destination node.
+   */
+  Contact contact();
+protected:
+  /// Signal the recipt of a message
+  boost::signal<void (const Message&)> signalMessageReceived;
+protected:
+  /**
+   * Private constructor.
+   *
+   * @param manager Link manager instance
+   * @param nodeId Identifier of the node on the other end
+   * @param maxIdleTime Maximum number of seconds a link can be idle
+   */
+  Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTime);
+  
+  /**
+   * Performs any post-construct initialization. This is required because
+   * shared_from_this() is not available in the constructor.
+   */
+  void init();
   
   /**
    * Sends a UNISPHERE message through this link.
@@ -79,67 +124,6 @@ public:
    * mutex or it will abort!
    */
   void close();
-  
-  /**
-   * Sets the persistency value of this link. A persistent link will
-   * attempt to always keep the connection established and will cause
-   * automatic reconnection attempts when the link fails.
-   * 
-   * @param value True for the link to be persistent, false otherwise
-   */
-  inline void setPersistant(bool value) { m_persistent = value; }
-  
-  /**
-   * Returns the persistency value of this link.
-   */
-  inline bool isPersistent() const { return m_persistent; }
-  
-  /**
-   * Returns true if this link is currently in a connected state.
-   */
-  inline bool isConnected() const { return m_state == State::Connected; }
-  
-  /**
-   * Returns the node identifier of the node on the other side of
-   * this link.
-   */
-  NodeIdentifier nodeId() const { return m_nodeId; } 
-  
-  /**
-   * Returns the current link state.
-   */
-  State state() const { return m_state; }
-  
-  /**
-   * Returns contact information about the destination node.
-   */
-  Contact contact() const;
-  
-  /**
-   * Ensures that the given function is called when the link is connected. If
-   * the link is currently connected, this function is executed immediately.
-   * This is required because link state might be changed by another thread
-   * and this function holds the mutex.
-   * 
-   * @param function Function that should be called
-   */
-  void callWhenConnected(std::function<void(LinkPtr)> function);
-public:
-  /// Signal the recipt of a message
-  boost::signal<void (const Message&)> signalMessageReceived;
-  /// Signal that all contact addresses have been tried
-  boost::signal<void (LinkPtr)> signalCycledAddresses;
-  /// Signal that the connection has been established
-  boost::signal<void (LinkPtr)> signalEstablished;
-  /// Signal that the connection has been lost
-  boost::signal<void (LinkPtr)> signalDisconnected;
-protected:
-  /**
-   * Private constructor.
-   *
-   * @param nodeId Identifier of the node on the other end
-   */
-  Link(LinkManager &manager, const NodeIdentifier &nodeId);
   
   /**
    * Adds a new linklet to this link. This may cause the link status
@@ -168,9 +152,8 @@ protected:
    * Adds new contact information to this link.
    * 
    * @param contact Contact information
-   * @param connect Should a connection be attempted if the link is closed
    */
-  void addContact(const Contact &contact, bool connect = true);
+  void addContact(const Contact &contact);
   
   /**
    * Attempts to connect to the next address in the address list.
@@ -184,8 +167,9 @@ protected:
   void tryCleanup();
   
   /**
-   * Changes internal link state. This may cause previously queued
-   * messages to be delivered.
+   * Changes the link's state.
+   * 
+   * @param state New state
    */
   void setState(State state);
 protected:
@@ -228,18 +212,29 @@ protected:
    * @param message Received message
    */
   void linkletMessageReceived(LinkletPtr linklet, const Message &message);
+  
+  /**
+   * Called when the retry timer expires.
+   * 
+   * @param error Potential error code
+   */
+  void retryTimeout(const boost::system::error_code &error);
+  
+  /**
+   * Called when the idle timer expires.
+   * 
+   * @param error Potential error code
+   */
+  void idleTimeout(const boost::system::error_code &error);
 private:
   /// Manager responsible for this link
   LinkManager &m_manager;
-  
   /// Other end of this link
   NodeIdentifier m_nodeId;
-  
   /// Current link state
   State m_state;
-  /// Should this connection be persitently maintained
-  bool m_persistent;
-  
+  /// Maximum number of seconds a link can be idle without being closed
+  time_t m_maxIdleTime;
   /// Internal mutex
   std::recursive_mutex m_mutex;
   
@@ -258,6 +253,8 @@ private:
   
   /// Timer for retrying connection attempts
   boost::asio::deadline_timer m_retryTimer;
+  /// Timer for timing out idle links
+  boost::asio::deadline_timer m_idleTimer;
 };
 
 UNISPHERE_SHARED_POINTER(Link)

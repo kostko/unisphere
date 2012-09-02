@@ -38,44 +38,67 @@ LinkManager::LinkManager(Context &context, const NodeIdentifier &nodeId)
 {
 }
 
-void LinkManager::setLinkInitializer(std::function<void(Link&)> init)
-{
-  m_linkInitializer = init;
-}
-
 void LinkManager::setLocalAddress(const Address &address)
 {
   m_localAddress = address;
 }
 
-LinkPtr LinkManager::connect(const Contact &contact)
+void LinkManager::send(const Contact &contact, const Message &msg)
 {
-  // Never attempt to establish a connection with ourselves
-  if (contact.nodeId() == m_nodeId)
-    return LinkPtr();
+  RecursiveUniqueLock lock(m_linksMutex);
+  BOOST_ASSERT(!contact.isNull());
   
-  return create(contact, true);
+  // Ignore attempted deliveries to the local node
+  if (contact.nodeId() == m_nodeId)
+    return;
+  
+  // Create a new link or retrieve an existing link if one exists
+  LinkPtr link = create(contact);
+  if (!link) {
+    // No contact address is available and link is not an existing one; we
+    // can only drop the packet
+    UNISPHERE_LOG(*this, Warning, "LinkManager: No link to destination, dropping message!");
+    return;
+  }
+  
+  link->send(msg);
 }
 
-LinkPtr LinkManager::create(const Contact &contact, bool connect)
+void LinkManager::send(const NodeIdentifier &nodeId, const Message &msg)
+{
+  send(Contact(nodeId), msg);
+}
+
+LinkPtr LinkManager::create(const Contact &contact)
 {
   RecursiveUniqueLock lock(m_linksMutex);
   LinkPtr link;
-  
-  // Find or create a link
   if (m_links.find(contact.nodeId()) != m_links.end()) {
     link = m_links[contact.nodeId()];
-  } else {
-    link = LinkPtr(new Link(*this, contact.nodeId()));
-    if (m_linkInitializer) {
-      m_linkInitializer(*link);
-    }
     
-    m_links[contact.nodeId()] = link;
+    // It can happen that link has switched to invalid and we really should not
+    // queue messages to such a link as they will be lost
+    if (!link->isValid()) {
+      remove(link);
+      link = LinkPtr();
+    }
   }
   
-  // Setup link contact
-  link->addContact(contact, connect);
+  if (!link) {
+    if (contact.hasAddresses()) {
+      link = LinkPtr(new Link(*this, contact.nodeId(), 60));
+      link->init();
+      link->signalMessageReceived.connect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
+      m_links[contact.nodeId()] = link;
+    } else {
+      // No contact address is available and link is not an existing one
+      return LinkPtr();
+    }
+  }
+  
+  if (contact.hasAddresses())
+    link->addContact(contact);
+  
   return link;
 }
 
@@ -95,7 +118,7 @@ bool LinkManager::listen(const Address &address)
   return true;
 }
 
-void LinkManager::closeAll()
+void LinkManager::close()
 {
   // First shut down listeners
   {
@@ -117,26 +140,24 @@ void LinkManager::closeAll()
   }
 }
 
-void LinkManager::remove(const NodeIdentifier &nodeId)
+Contact LinkManager::getLinkContact(const NodeIdentifier &linkId)
 {
   RecursiveUniqueLock lock(m_linksMutex);
-
-  if (m_links.find(nodeId) == m_links.end())
-    return;
+  if (m_links.find(linkId) == m_links.end())
+    return Contact();
   
-  LinkPtr link = m_links[nodeId];
-  if (link->state() != Link::State::Closed)
-    return;
-  
-  m_links.erase(nodeId);
+  return m_links[linkId]->contact();
 }
 
-LinkPtr LinkManager::getLink(const NodeIdentifier &nodeId)
+void LinkManager::remove(LinkPtr link)
 {
-  if (m_links.find(nodeId) == m_links.end())
-    return LinkPtr();
+  RecursiveUniqueLock lock(m_linksMutex);
+  if (m_links.find(link->nodeId()) == m_links.end() ||
+      m_links[link->nodeId()] != link)
+    return;
   
-  return m_links[nodeId];
+  link->signalMessageReceived.disconnect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
+  m_links.erase(link->nodeId());
 }
 
 std::list<NodeIdentifier> LinkManager::getLinkIds()
@@ -149,10 +170,15 @@ std::list<NodeIdentifier> LinkManager::getLinkIds()
   return links;
 }
 
+void LinkManager::linkMessageReceived(const Message &msg)
+{
+  signalMessageReceived(msg);
+}
+
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet
-  LinkPtr link = create(linklet->peerContact(), false);
+  LinkPtr link = create(linklet->peerContact());
   
   try {
     link->addLinklet(linklet);

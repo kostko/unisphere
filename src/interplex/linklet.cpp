@@ -23,6 +23,7 @@ namespace UniSphere {
 Linklet::Linklet(LinkManager &manager)
   : m_manager(manager),
     m_service(manager.context().service()),
+    m_strand(m_service),
     m_state(State::Closed)
 {
 }

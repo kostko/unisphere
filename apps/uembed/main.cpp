@@ -67,7 +67,7 @@ int main(int argc, char **argv)
   
   std::unordered_map<NodeIdentifier, VirtualNode*> nodes;
   unsigned short port = 8473;
-  for (int i = 0; i < 50; i++) {
+  for (int i = 0; i < 10; i++) {
     VirtualNode *node = createNode(ctx, getRandomNodeId(), "127.42.0.1", port++, bootstrap->linkManager->getLocalContact());
     nodes[node->nodeId] = node;
   }
@@ -94,6 +94,7 @@ int main(int argc, char **argv)
   joinTimer.async_wait(boost::bind(joinNode));
   
   // After 3 minutes, check if RPC calls between nodes work
+  /*
   ctx.schedule(180, [&]() {
     for (std::pair<NodeIdentifier, VirtualNode*> p : nodes) {
       VirtualNode *node = p.second;
@@ -115,7 +116,7 @@ int main(int argc, char **argv)
   // After 3 minutes and 30 seconds, bootstrap node leaves the overlay
   ctx.schedule(210, [&]() {
     bootstrap->router->leave();
-  });
+  });*/
   
   // Run the context
   ctx.run(2);

@@ -26,15 +26,23 @@
 
 namespace UniSphere {
 
-Link::Link(LinkManager &manager, const NodeIdentifier &nodeId)
-  : m_manager(manager),
+Link::Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTime)
+  : enable_shared_from_this<Link>(),
+    m_manager(manager),
     m_nodeId(nodeId),
     m_state(Link::State::Closed),
-    m_persistent(false),
+    m_maxIdleTime(maxIdleTime),
     m_dispatcher(new RoundRobinMessageDispatcher(m_linklets)),
     m_addressIterator(m_addressList.end()),
-    m_retryTimer(manager.context().service())
+    m_retryTimer(manager.context().service()),
+    m_idleTimer(manager.context().service())
 {
+}
+
+void Link::init()
+{
+  m_idleTimer.expires_from_now(boost::posix_time::seconds(m_maxIdleTime));
+  m_idleTimer.async_wait(boost::bind(&Link::idleTimeout, shared_from_this(), _1));
 }
 
 Link::~Link()
@@ -45,24 +53,36 @@ Link::~Link()
 
 void Link::close()
 {
+  LinkPtr self = shared_from_this();
   RecursiveUniqueLock lock(m_mutex);
   
-  // Close all linklets and then unregister this link; we have to make a copy
-  // of this list because closing a linklet will cause removal from this list
+  // Move the link to invalid state where it cannot be used anymore
+  if (m_state == Link::State::Invalid)
+    return;
+  m_state = Link::State::Invalid;
+  
+  UNISPHERE_LOG(m_manager, Info, "Link: Closing link with " + m_nodeId.as(NodeIdentifier::Format::Hex) + ".");
+  
+  // Cancel timers
+  m_retryTimer.cancel();
+  m_idleTimer.cancel();
+  
+  // Close all linklets; we have to make a copy of this list because we
+  // are going to modify the list
   std::list<LinkletPtr> linklets = m_linklets;
-  BOOST_FOREACH(LinkletPtr &linklet, linklets) {
+  for (LinkletPtr &linklet : linklets) {
+    removeLinklet(linklet);
     linklet->close();
   }
   
   m_linklets.clear();
-  setState(Link::State::Closed);
-  m_manager.remove(m_nodeId);
+  m_manager.remove(shared_from_this());
 }
 
 void Link::tryCleanup()
 {
   // Must take ownership of self, since close might be called while we
-  // are still locking the mutex 
+  // are still locking the mutex
   LinkPtr self = shared_from_this();
   RecursiveUniqueLock lock(m_mutex);
   
@@ -73,6 +93,11 @@ void Link::tryCleanup()
 void Link::send(const Message &msg)
 {
   RecursiveUniqueLock lock(m_mutex);
+  
+  // When messages are queued to an invalid link, they are lost as the link
+  // is going to be deleted in a moment
+  if (m_state == Link::State::Invalid)
+    return;
   
   if (m_state != Link::State::Connected) {
     // FIXME Make this limit configurable
@@ -87,32 +112,14 @@ void Link::send(const Message &msg)
   }
 }
 
-Contact Link::contact() const
+Contact Link::contact()
 {
-  // TODO mutex
+  RecursiveUniqueLock lock(m_mutex);
   Contact contact(m_nodeId);
   BOOST_FOREACH(const Address &address, m_addressList) {
     contact.addAddress(address);
   }
   return contact;
-}
-
-void Link::callWhenConnected(std::function<void(LinkPtr)> function)
-{
-  RecursiveUniqueLock lock(m_mutex);
-  if (isConnected()) {
-    // When we are connected, call the function immediately
-    lock.unlock();
-    function(shared_from_this());
-  } else {
-    // Ensure that the function will be called when we connect and that it is automatically
-    // disconnected after invocation
-    boost::signals::scoped_connection *connection = new boost::signals::scoped_connection;
-    *connection = signalEstablished.connect([connection, function](LinkPtr link) {
-      function(link);
-      delete connection;
-    });
-  }
 }
 
 void Link::addLinklet(LinkletPtr linklet)
@@ -180,6 +187,8 @@ void Link::removeLinklet(LinkletPtr linklet)
 void Link::checkLinkletState()
 {
   RecursiveUniqueLock lock(m_mutex);
+  if (m_state == Link::State::Invalid)
+    return;
   
   bool connected = false;
   bool connecting = false;
@@ -203,6 +212,8 @@ void Link::checkLinkletState()
 void Link::setState(State state)
 {
   RecursiveUniqueLock lock(m_mutex);
+  BOOST_ASSERT(m_state != Link::State::Invalid);
+  
   State old = m_state;
   m_state = state;
   
@@ -210,32 +221,23 @@ void Link::setState(State state)
   if (old != Link::State::Connected && state == Link::State::Connected) {
     // Deliver queued messages
     if (!m_messages.empty()) {
-      BOOST_FOREACH(Message &msg, m_messages) {
+      for (Message &msg : m_messages) {
         m_dispatcher->send(msg);
       }
+      m_messages.clear();
     }
-    
-    // Emit signal when we connect
-    lock.unlock();
-    signalEstablished(shared_from_this());
-  } else if (old == Link::State::Connected && state != Link::State::Connected) {
-    // Emit signal when we disconnect
-    lock.unlock();
-    signalDisconnected(shared_from_this());
   }
 }
 
-void Link::addContact(const Contact &contact, bool connect)
+void Link::addContact(const Contact &contact)
 {
+  RecursiveUniqueLock lock(m_mutex);
+  
   // Transfer all contact addresses into the queue
   typedef std::pair<int, Address> AddressPair;
   BOOST_FOREACH(const AddressPair &p, contact.addresses()) {
     m_addressList.insert(p.second);
   }
-  
-  // If we are not yet connected, try connecting to some
-  if (connect && m_state == Link::State::Closed && !m_addressList.empty())
-    tryNextAddress();
 }
 
 void Link::tryNextAddress()
@@ -250,7 +252,6 @@ void Link::tryNextAddress()
     return;
   
   if (m_addressIterator == m_addressList.end() || ++m_addressIterator == m_addressList.end()) {
-    signalCycledAddresses(shared_from_this());
     m_addressIterator = m_addressList.begin();
   }
   
@@ -261,11 +262,10 @@ void Link::tryNextAddress()
   }
   
   // Log our attempt
-  UNISPHERE_LOG(m_manager, Info, "Link: Trying next address for outgoing connection.");
+  UNISPHERE_LOG(m_manager, Info, "Link: Trying next address for outgoing connection with " + m_nodeId.as(NodeIdentifier::Format::Hex) +  ".");
   
-  // Change state to connecting if the link has been closed before
-  if (m_state == Link::State::Closed)
-    setState(Link::State::Connecting);
+  // Change state to connecting
+  setState(Link::State::Connecting);
   
   const Address &address = *m_addressIterator;
   LinkletPtr linklet = m_manager.getLinkletFactory().create(address);
@@ -286,7 +286,7 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
   // TODO exponential backoff and limited number of retries
   if (m_state == Link::State::Closed) {
     m_retryTimer.expires_from_now(boost::posix_time::seconds(2));
-    m_retryTimer.async_wait(boost::bind(&Link::tryNextAddress, this));
+    m_retryTimer.async_wait(boost::bind(&Link::retryTimeout, shared_from_this(), _1));
   }
 }
 
@@ -323,24 +323,42 @@ void Link::linkletDisconnected(LinkletPtr linklet)
   LinkPtr self = shared_from_this();
   RecursiveUniqueLock lock(m_mutex);
   
-  // Remove linklet from list of linklets
+  // Remove linklet from list of linklets and close the link when there are no
+  // more linklets to be seen (link has changed state to Closed)
   removeLinklet(linklet);
-  
-  // When removal of this linklet causes the link to become closed, attempt
-  // to reconnect when the link is marked as persistent
   if (m_state == Link::State::Closed) {
-    if (m_persistent)
-      tryNextAddress();
-    else
-      close();
+    close();
   }
 }
 
 void Link::linkletMessageReceived(LinkletPtr linklet, const Message &message)
 {
+  // Reschedule the idle timer for another interval
+  if (m_idleTimer.expires_from_now(boost::posix_time::seconds(m_maxIdleTime)) > 0) {
+    m_idleTimer.async_wait(boost::bind(&Link::idleTimeout, shared_from_this(), _1));
+  }
+  
   Message msg = message;
-  msg.setOriginator(shared_from_this());
+  msg.setOriginator(m_nodeId);
   signalMessageReceived(msg);
+}
+
+void Link::retryTimeout(const boost::system::error_code &error)
+{
+  // Ignore aborted timer operations
+  if (error == boost::asio::error::operation_aborted)
+    return;
+  
+  tryNextAddress();
+}
+
+void Link::idleTimeout(const boost::system::error_code &error)
+{
+  // Ignore aborted timer operations
+  if (error == boost::asio::error::operation_aborted)
+    return;
+  
+  close();
 }
 
 }

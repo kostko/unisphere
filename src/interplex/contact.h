@@ -130,6 +130,11 @@ public:
   NodeIdentifier nodeId() const;
   
   /**
+   * Returns true when the contact contains some addresses.
+   */
+  bool hasAddresses() const;
+  
+  /**
    * Returns the address list.
    */
   const AddressMap &addresses() const;
