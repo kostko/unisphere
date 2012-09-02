@@ -53,7 +53,7 @@ void LinkManager::send(const Contact &contact, const Message &msg)
     return;
   
   // Create a new link or retrieve an existing link if one exists
-  LinkPtr link = create(contact);
+  LinkPtr link = get(contact);
   if (!link) {
     // No contact address is available and link is not an existing one; we
     // can only drop the packet
@@ -69,7 +69,7 @@ void LinkManager::send(const NodeIdentifier &nodeId, const Message &msg)
   send(Contact(nodeId), msg);
 }
 
-LinkPtr LinkManager::create(const Contact &contact)
+LinkPtr LinkManager::get(const Contact &contact, bool create)
 {
   RecursiveUniqueLock lock(m_linksMutex);
   LinkPtr link;
@@ -85,13 +85,13 @@ LinkPtr LinkManager::create(const Contact &contact)
   }
   
   if (!link) {
-    if (contact.hasAddresses()) {
+    if (contact.hasAddresses() && create) {
       link = LinkPtr(new Link(*this, contact.nodeId(), 60));
       link->init();
       link->signalMessageReceived.connect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
       m_links[contact.nodeId()] = link;
     } else {
-      // No contact address is available and link is not an existing one
+      // No contact address is available (or create not allowed) and link is not an existing one
       return LinkPtr();
     }
   }
@@ -178,7 +178,7 @@ void LinkManager::linkMessageReceived(const Message &msg)
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet
-  LinkPtr link = create(linklet->peerContact());
+  LinkPtr link = get(linklet->peerContact());
   
   try {
     link->addLinklet(linklet);

@@ -140,7 +140,14 @@ public:
   /// Signal for received messages
   boost::signal<void (const Message&)> signalMessageReceived;
 protected:
-  LinkPtr create(const Contact &contact);
+  /**
+   * Returns a link suitable for communication with the specified contact.
+   * 
+   * @param contact Contact information
+   * @param create Should a new link be created if none is found
+   * @return A valid link instance or null
+   */
+  LinkPtr get(const Contact &contact, bool create = true);
   
   /**
    * Removes a specific link.
