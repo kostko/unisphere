@@ -1,6 +1,7 @@
 
 set(unisphere_measure_src
 measure.cpp
+aggregate.cpp
 )
 
 add_library(UnisphereMeasure SHARED ${unisphere_measure_src})

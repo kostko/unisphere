@@ -21,6 +21,7 @@
 #include "plexus/bootstrap.h"
 #include "plexus/router.h"
 #include "src/plexus/core_methods.pb.h"
+#include "measure/aggregate.h"
 
 #include <iostream>
 #include <botan/auto_rng.h>
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
   
   std::unordered_map<NodeIdentifier, VirtualNode*> nodes;
   unsigned short port = 8473;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 50; i++) {
     VirtualNode *node = createNode(ctx, getRandomNodeId(), "127.42.0.1", port++, bootstrap->linkManager->getLocalContact());
     nodes[node->nodeId] = node;
   }
@@ -92,6 +93,21 @@ int main(int argc, char **argv)
   
   joinTimer.expires_from_now(boost::posix_time::seconds(delay));
   joinTimer.async_wait(boost::bind(joinNode));
+  
+  // Collect some statistics after 3 minutes
+  ctx.schedule(180, [&]() {
+    AggregateMeasure agg;
+    for (std::pair<NodeIdentifier, VirtualNode*> p : nodes) {
+      agg.add(p.second->linkManager->getMeasure());
+    }
+    
+    for (std::pair<std::string, AggregateMetric> p : agg.metrics()) {
+      std::cout << "Metric: " << p.first << std::endl;
+      std::cout << "Mean: " << p.second.mean() << " Min: " << p.second.min() << " Max: " << p.second.max() << std::endl;
+      std::cout << "StdDev: " << p.second.std() << std::endl;
+      std::cout << std::endl;
+    }
+  });
   
   // After 3 minutes, check if RPC calls between nodes work
   /*
