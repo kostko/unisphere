@@ -61,6 +61,18 @@ public:
     UniqueLock lock(m_mutex);
     m_values.push_back(value);
   }
+  
+  /**
+   * Sets the metric value to a specific amount. Assumes this metric is
+   * a scalar one.
+   * 
+   * @param value Value to set the metric to
+   */
+  void set(double value)
+  {
+    UniqueLock lock(m_mutex);
+    m_values[0] = value;
+  }
 
   /**
    * Return the metric's scalar value.
@@ -112,6 +124,14 @@ public:
    * @param value Value to add
    */
   void add(const std::string &metric, double value) { getMetric(metric)->add(value); }
+  
+  /**
+   * Sets the value of a specific metric.
+   * 
+   * @param metric Metric name
+   * @param value Value to set
+   */
+  void set(const std::string &metric, double value) { getMetric(metric)->set(value); }
   
   /**
    * Returns the specified metric.

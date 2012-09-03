@@ -206,10 +206,12 @@ private:
 #define UNISPHERE_LOG(manager, level, text) (manager).context().logger().output(Logger::Level::level, (text), (manager).getLocalNodeId().as(NodeIdentifier::Format::Hex))
 #define UNISPHERE_MEASURE_ADD(manager, metric, value) (manager).getMeasure().add(metric, value)
 #define UNISPHERE_MEASURE_INC(manager, metric) (manager).getMeasure().increment(metric)
+#define UNISPHERE_MEASURE_SET(manager, metric, value) (manager).getMeasure().set(metric, value)
 #else
 #define UNISPHERE_LOG(manager, level, text)
 #define UNISPHERE_MEASURE_ADD(manager, metric, value)
 #define UNISPHERE_MEASURE_INC(manager, metric)
+#define UNISPHERE_MEASURE_SET(manager, metric, value)
 #endif
 
 #endif
