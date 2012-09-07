@@ -29,6 +29,8 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
+#include <unordered_set>
+
 namespace UniSphere {
   
 class LinkManager;
@@ -176,6 +178,8 @@ private:
   std::recursive_mutex m_mutex;
   /// Router state
   State m_state;
+  /// Pending contacts
+  std::unordered_set<Contact> m_pendingContacts;
 };
   
 }

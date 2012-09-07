@@ -56,9 +56,6 @@ void Router::registerCoreRpcMethods()
       }
       
       Contact backContact = Contact::fromMessage(request.local_contact());
-      if (backContact.nodeId() == msg.sourceNodeId())
-        pingContact(backContact);
-      
       return RpcResponse<Protocol::FindNodeResponse>(
         response,
         RoutingOptions().setDeliverVia(backContact)
@@ -103,7 +100,6 @@ void Router::registerCoreRpcMethods()
       if (backContact.nodeId() != msg.sourceNodeId())
         return;
       
-      pingContact(backContact);
       m_rpc.call<Protocol::ExchangeEntriesRequest>(msg.sourceNodeId(), "Core.ExchangeEntries", backRequest,
         RpcCallOptions().setDeliverVia(backContact)
       );
@@ -119,9 +115,10 @@ void Router::registerCoreRpcMethods()
         return;
       }
       
-      // Queue all contacts to be contacted
+      // Queue all contacts to be contacted later
+      RecursiveUniqueLock lock(m_mutex);
       for (const Protocol::Contact &ct : request.contacts()) {
-        pingContact(Contact::fromMessage(ct));
+        m_pendingContacts.insert(Contact::fromMessage(ct));
       }
     }
   );
@@ -145,6 +142,8 @@ void Router::registerCoreRpcMethods()
 
 void Router::leave()
 {
+  RecursiveUniqueLock lock(m_mutex);
+  
   if (m_state != State::Joined)
     return;
   
@@ -168,6 +167,8 @@ void Router::leave()
 
 void Router::join()
 {
+  RecursiveUniqueLock lock(m_mutex);
+  
   if (m_state == State::Leaving)
     return;
   
@@ -183,6 +184,7 @@ void Router::join()
   
   m_state = State::Bootstrap;
   m_routes.add(bootstrapContact);
+  m_pendingContacts.clear();
   
   using namespace Protocol;
   FindNodeRequest request;
@@ -196,9 +198,18 @@ void Router::join()
       // Check for identifier collisions (unlikely but could happen)
       BOOST_ASSERT(msg.sourceNodeId() != m_manager.getLocalNodeId());
       
-      // Queue all contacts to be contacted
+      // Contact returned neighbours
       for (const Protocol::Contact &ct : response.contacts()) {
         pingContact(UniSphere::Contact::fromMessage(ct));
+      }
+      
+      // Contact all the rest that we have got to know in the join process
+      {
+        RecursiveUniqueLock lock(m_mutex);
+        for (const UniSphere::Contact &ct : m_pendingContacts) {
+          pingContact(ct);
+        }
+        m_pendingContacts.clear();
       }
       
       UNISPHERE_LOG(m_manager, Info, "Router: Successfully joined the overlay.");
