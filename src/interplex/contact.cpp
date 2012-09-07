@@ -153,4 +153,9 @@ Contact Contact::fromMessage(const Protocol::Contact &msg)
   return result;
 }
 
+bool Contact::operator==(const Contact &other) const
+{
+  return m_nodeId == other.m_nodeId;
+}
+
 }

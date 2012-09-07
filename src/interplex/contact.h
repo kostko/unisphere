@@ -173,14 +173,36 @@ public:
    * @return A valid contact
    */
   static Contact fromMessage(const Protocol::Contact &msg);
+  
+  /**
+   * Comparison operator, only compares node identifiers.
+   */
+  bool operator==(const Contact &other) const;
+  
+  // Ensure that our hash function is also our friend
+  friend class std::hash<Contact>;
 private:
   /// Node identifier
   NodeIdentifier m_nodeId;
-  
   /// Contact addresses
   AddressMap m_addresses;
 };
 
+}
+
+namespace std {
+  /**
+   * STL hash function implementation for UniSphere::Contact.
+   */
+  template<>
+  class hash<UniSphere::Contact> {
+  public:
+    size_t operator()(const UniSphere::Contact &contact) const
+    {
+      std::hash<UniSphere::NodeIdentifier> hasher;
+      return hasher(contact.m_nodeId);
+    }
+  };
 }
 
 #endif
