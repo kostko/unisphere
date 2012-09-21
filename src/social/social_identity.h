@@ -25,7 +25,7 @@
 
 namespace UniSphere {
 
-class SocialIdentity {
+class UNISPHERE_EXPORT SocialIdentity {
 public:
   SocialIdentity(const NodeIdentifier &localId);
   

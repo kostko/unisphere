@@ -26,7 +26,7 @@ namespace UniSphere {
 class LinkManager;
 class NetworkSizeEstimator;
 
-class CompactRouter {
+class UNISPHERE_EXPORT CompactRouter {
 public:
   CompactRouter(const SocialIdentity &identity, LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
