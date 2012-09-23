@@ -17,7 +17,7 @@ set(Boost_USE_MULTITHREAD ON)
 set(Boost_USE_STATIC_LIBS OFF)
 
 find_package(Threads REQUIRED)
-find_package(Boost 1.46.0 COMPONENTS system filesystem signals thread program_options date_time REQUIRED)
+find_package(Boost 1.48.0 COMPONENTS system filesystem signals thread program_options date_time REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
