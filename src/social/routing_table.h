@@ -35,35 +35,23 @@ namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
-class UNISPHERE_EXPORT RoutingPath {
-public:
-  RoutingPath();
-  
-  explicit RoutingPath(const std::string &path);
-  
-  inline bool isNull() const { return m_path.empty(); }
-  
-  size_t size() const;
-  
-  std::uint32_t operator[](size_t index) const;
-  
-  RoutingPath reversed() const;
-private:
-  /// Raw encoded representation of a path
-  std::string m_path;
-};
+/// The routing path type that contains a list of vports to reach a destination
+typedef std::vector<std::uint32_t> RoutingPath;
 
 class UNISPHERE_EXPORT RoutingEntry {
 public:
   enum class Type : std::uint8_t {
-    Vicinity    = 0x00,
-    Direct      = 0x01,
-    Landmark    = 0x02,
+    Null        = 0x00,
+    Vicinity    = 0x01,
+    Direct      = 0x02,
+    Landmark    = 0x03,
   };
   
   RoutingEntry();
-  
-  size_t getPathLength() const { return path.size(); }
+
+  bool isNull() const { return destination.isNull() || type == Type::Null; }
+
+  bool operator==(const RoutingEntry &other) const;
 public:
   /// Destination node identifier
   NodeIdentifier destination;
@@ -71,31 +59,37 @@ public:
   RoutingPath path;
   /// Entry type
   Type type;
+  /// Cost to route to that entry
+  std::uint32_t cost;
 };
 
 /// RIB index tags
 namespace RIBTags {
   class DestinationId;
-  class PathLength;
+  class TypeCost;
 }
 
 typedef boost::multi_index_container<
   RoutingEntry,
   midx::indexed_by<
-    // Index by destination identifier and order by path length within
+    // Index by destination identifier and order by cost within
     midx::ordered_non_unique<
       midx::tag<RIBTags::DestinationId>,
       midx::composite_key<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
-        midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::getPathLength>
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint32_t, cost)
       >
     >,
     
-    // Index by path length
+    // Index by type and cost
     midx::ordered_non_unique<
-      midx::tag<RIBTags::PathLength>,
-      midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::getPathLength>
+      midx::tag<RIBTags::TypeCost>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint32_t, cost)
+      >
     >
   >
 > RoutingInformationBase;
@@ -110,6 +104,11 @@ public:
 
 class UNISPHERE_EXPORT CompactRoutingTable {
 public:
+  /**
+   * Class constructor.
+   *
+   * @param sizeEstimator A network size estimator
+   */
   CompactRoutingTable(NetworkSizeEstimator &sizeEstimator);
   
   /**
@@ -119,16 +118,35 @@ public:
    * @return True if routing table has been changed, false otherwise
    */
   bool import(const RoutingEntry &entry);
+
+  /**
+   * Sets the landmark status of the local node.
+   *
+   * @param landmark True for the local node to become a landmark
+   */
+  void setLandmark(bool landmark);
+
+  /**
+   * Returns true if the local node is currently a landmark for other
+   * nodes.
+   */
+  bool isLandmark() const { return m_landmark; }
 public:
   /// Signal gets called when a routing entry should be exported to neighbours
   boost::signal<void(const RoutingEntry&)> signalExportEntry;
+protected:
+  size_t getMaximumVicinitySize() const;
 private:
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
+  /// Mutex protecting the routing table
+  std::recursive_mutex m_mutex;
   /// Information needed for routing to any node
   RoutingInformationBase m_rib;
   /// Local address based on nearest landmark; multiple for redundancy?
   std::list<LandmarkAddress> m_localAddress;
+  /// Landmark status of the current node
+  bool m_landmark;
 };
   
 }
