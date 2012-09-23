@@ -145,6 +145,7 @@ void Link::addLinklet(LinkletPtr linklet)
       setState(Link::State::Connected);
       break;
     }
+    case Linklet::State::IntroWait:
     case Linklet::State::Connecting: {
       if (m_state == Link::State::Closed)
         setState(Link::State::Connecting);
@@ -195,7 +196,7 @@ void Link::checkLinkletState()
   BOOST_FOREACH(LinkletPtr &l, m_linklets) {
     if (l->state() == Linklet::State::Connected) {
       connected = true;
-    } else if (l->state() == Linklet::State::Connecting) {
+    } else if (l->state() == Linklet::State::Connecting || l->state() == Linklet::State::IntroWait) {
       connecting = true;
     }
   }

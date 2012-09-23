@@ -56,6 +56,7 @@ VirtualNode *createNode(Context &context, const NodeIdentifier &nodeId, const st
   if (!bootstrap.isNull())
     node->bootstrap->addContact(bootstrap);
   node->router = new Router(*node->linkManager, *node->bootstrap);
+  return node;
 }
 
 int main(int argc, char **argv)
