@@ -27,7 +27,7 @@ RoutingEntry::RoutingEntry()
 bool RoutingEntry::operator==(const RoutingEntry &other) const
 {
   return destination == other.destination && type == other.type &&
-    cost == other.cost && path == other.path;
+    cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
 }
 
 CompactRoutingTable::CompactRoutingTable(NetworkSizeEstimator &sizeEstimator)
@@ -49,29 +49,97 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
   if (entry.isNull())
     return false;
 
-  // An entry should be inserted if it represents a landmark or if it falls
-  // into the vicinity of the current node
-  if (entry.type == RoutingEntry::Type::Vicinity) {
-    // Verify that it falls into the vicinity
-    auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(boost::make_tuple(RoutingEntry::Type::Vicinity));
-    if (std::distance(entries.first, entries.second) >= getMaximumVicinitySize()) {
-      auto back = --entries.second;
-      if ((*back).cost > entry.cost) {
-        m_rib.get<RIBTags::TypeCost>().erase(back);
+  bool needsInsertion = true;
+
+  // Check if an entry to the same destination from the same vport already exists; in
+  // this case, the announcement counts as an implicit retract
+  auto &ribVport = m_rib.get<RIBTags::VportDestination>();
+  auto existing = ribVport.find(boost::make_tuple(entry.originVport(), entry.destination));
+  if (existing != ribVport.end()) {
+    // Ignore import when the existing entry is the same as the new one
+    if (*existing == entry)
+      return false;
+
+    ribVport.replace(existing, entry);
+    needsInsertion = false;
+  }
+
+  if (needsInsertion) {
+    // An entry should be inserted if it represents a landmark or if it falls
+    // into the vicinity of the current node
+    if (entry.type == RoutingEntry::Type::Vicinity) {
+      // Verify that it falls into the vicinity
+      auto &ribType = m_rib.get<RIBTags::TypeCost>();
+      auto entries = ribType.equal_range(RoutingEntry::Type::Vicinity);
+      if (std::distance(entries.first, entries.second) >= getMaximumVicinitySize()) {
+        auto back = --entries.second;
+        if ((*back).cost > entry.cost) {
+          ribType.erase(back);
+        } else {
+          return false;
+        }
+      }
+    }
+
+    m_rib.insert(entry);
+  }
+
+  // Importing an entry might cause the best path to destination to change; if it
+  // does, we need to export the entry to others as well
+  if (getPrimaryRoute(entry.destination) == entry)
+    signalExportEntry(entry);
+
+  return true;
+}
+
+const RoutingEntry &CompactRoutingTable::getPrimaryRoute(const NodeIdentifier &destination) const
+{
+  return *m_rib.get<RIBTags::DestinationId>().find(destination);
+}
+
+bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  auto &ribVport = m_rib.get<RIBTags::VportDestination>();
+  decltype(ribVport.equal_range(boost::make_tuple())) routes;
+
+  if (destination.isNull()) {
+    // Retract all routes going via the specified vport
+    routes = ribVport.equal_range(boost::make_tuple(vport));
+  } else {
+    // Only retract the route going via the specified vport and to the specified
+    // destination address
+    routes = ribVport.equal_range(boost::make_tuple(vport, destination));
+  }
+
+  // Erase selected entries and then export/retract routes for removed destinations
+  for (auto it = routes.first; it != routes.second;) {
+    const RoutingEntry &entry = *it;
+    auto candidates = m_rib.get<RIBTags::DestinationId>().equal_range(boost::make_tuple(entry.destination));
+    bool explicitRetract = false;
+    if (*candidates.first == entry) {
+      // The entry that is going to be erased is currently part of an active route
+      // as it is the top-level entry for the given destination
+      explicitRetract = true;
+    }
+
+    candidates.first++;
+    // Call the erasure method to ensure that the routing table is updated before any
+    // announcements are sent
+    ribVport.erase(it);
+
+    if (explicitRetract) {
+      if (candidates.first != candidates.second) {
+        // No need for an explicit retract as export counts as an implicit one
+        signalExportEntry(*candidates.first);
       } else {
-        return false;
+        signalRetractEntry(entry);
       }
     }
   }
 
-  m_rib.insert(entry);
-
-  // Importing an entry might cause the best path to destination to change; if it
-  // does, we need to export the entry to others as well
-  if (*m_rib.get<RIBTags::DestinationId>().find(entry.destination) == entry)
-    signalExportEntry(entry);
-
-  return true;
+  return false;
 }
 
 void CompactRoutingTable::setLandmark(bool landmark)

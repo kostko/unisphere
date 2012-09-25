@@ -20,6 +20,7 @@
 #define UNISPHERE_SOCIAL_COMPACTROUTER_H
 
 #include "social/social_identity.h"
+#include "social/routing_table.h"
 
 namespace UniSphere {
 
@@ -37,6 +38,8 @@ private:
   LinkManager &m_manager;
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
+  /// Compact routing table
+  CompactRoutingTable m_routes;
 };
   
 }

@@ -35,8 +35,11 @@ namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
+/// Vport identifier type
+typedef std::uint32_t Vport;
+
 /// The routing path type that contains a list of vports to reach a destination
-typedef std::vector<std::uint32_t> RoutingPath;
+typedef std::vector<Vport> RoutingPath;
 
 class UNISPHERE_EXPORT RoutingEntry {
 public:
@@ -51,12 +54,16 @@ public:
 
   bool isNull() const { return destination.isNull() || type == Type::Null; }
 
+  Vport originVport() const { return forwardPath[0]; }
+
   bool operator==(const RoutingEntry &other) const;
 public:
   /// Destination node identifier
   NodeIdentifier destination;
   /// Path of vports to destination
-  RoutingPath path;
+  RoutingPath forwardPath;
+  /// Path of vports from destination
+  RoutingPath reversePath;
   /// Entry type
   Type type;
   /// Cost to route to that entry
@@ -67,6 +74,7 @@ public:
 namespace RIBTags {
   class DestinationId;
   class TypeCost;
+  class VportDestination;
 }
 
 typedef boost::multi_index_container<
@@ -90,6 +98,16 @@ typedef boost::multi_index_container<
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint32_t, cost)
       >
+    >,
+
+    // Index by origin vport
+    midx::ordered_unique<
+      midx::tag<RIBTags::VportDestination>,
+      midx::composite_key<
+        RoutingEntry,
+        midx::const_mem_fun<RoutingEntry, Vport, &RoutingEntry::originVport>,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
+      >
     >
   >
 > RoutingInformationBase;
@@ -97,7 +115,11 @@ typedef boost::multi_index_container<
 class LandmarkAddress {
 public:
   LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path);
-public:
+
+  const NodeIdentifier &landmarkId() const { return m_landmarkId; }
+
+  const RoutingPath &path() const { return m_path; }
+private:
   NodeIdentifier m_landmarkId;
   RoutingPath m_path;
 };
@@ -111,6 +133,8 @@ public:
    */
   CompactRoutingTable(NetworkSizeEstimator &sizeEstimator);
   
+  const RoutingEntry &getPrimaryRoute(const NodeIdentifier &destination) const;
+
   /**
    * Attempts to import a routing entry into the routing table.
    * 
@@ -118,6 +142,16 @@ public:
    * @return True if routing table has been changed, false otherwise
    */
   bool import(const RoutingEntry &entry);
+
+  /**
+   * Retract all routes originating from the specified vport (optionally
+   * only for a specific destination).
+   *
+   * @param vport Virtual port identifier
+   * @param destination Optional destination identifier
+   * @return True if routing table has been changed, false otherwise
+   */
+  bool retract(Vport vport, const NodeIdentifier &destination = NodeIdentifier());
 
   /**
    * Sets the landmark status of the local node.
@@ -132,8 +166,12 @@ public:
    */
   bool isLandmark() const { return m_landmark; }
 public:
-  /// Signal gets called when a routing entry should be exported to neighbours
+  /// Signal that gets called when a routing entry should be exported to neighbours
   boost::signal<void(const RoutingEntry&)> signalExportEntry;
+  /// Signal that gets called when a routing entry should be retracted to neighbours
+  boost::signal<void(const RoutingEntry&)> signalRetractEntry;
+  /// Signal that gets called when the local address changes
+  boost::signal<void(const LandmarkAddress&)> signalAddressChanged;
 protected:
   size_t getMaximumVicinitySize() const;
 private:

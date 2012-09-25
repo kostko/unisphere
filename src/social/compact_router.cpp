@@ -25,7 +25,8 @@ CompactRouter::CompactRouter(const SocialIdentity &identity, LinkManager &manage
                              NetworkSizeEstimator &sizeEstimator)
   : m_identity(identity),
     m_manager(manager),
-    m_sizeEstimator(sizeEstimator)
+    m_sizeEstimator(sizeEstimator),
+    m_routes(sizeEstimator)
 {
 }
   
