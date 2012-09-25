@@ -43,6 +43,9 @@ typedef std::vector<Vport> RoutingPath;
 
 class UNISPHERE_EXPORT RoutingEntry {
 public:
+  /// An invalid (default-constructed) routing entry
+  static const RoutingEntry INVALID;
+
   enum class Type : std::uint8_t {
     Null        = 0x00,
     Vicinity    = 0x01,
@@ -50,8 +53,14 @@ public:
     Landmark    = 0x03,
   };
   
+  /**
+   * Constructs an invalid routing entry.
+   */
   RoutingEntry();
 
+  /**
+   * Returns true if the entry is invalid.
+   */
   bool isNull() const { return destination.isNull() || type == Type::Null; }
 
   Vport originVport() const { return forwardPath[0]; }
@@ -133,7 +142,15 @@ public:
    */
   CompactRoutingTable(NetworkSizeEstimator &sizeEstimator);
   
-  const RoutingEntry &getPrimaryRoute(const NodeIdentifier &destination) const;
+  /**
+   * Returns the currently active route to the given destination
+   * based only on local information. If there is no known direct
+   * route an invalid entry is returned.
+   *
+   * @param destination Destination address
+   * @return A routing entry that can be used to forward to destination
+   */
+  const RoutingEntry &getActiveRoute(const NodeIdentifier &destination) const;
 
   /**
    * Attempts to import a routing entry into the routing table.

@@ -20,6 +20,10 @@
 
 namespace UniSphere {
 
+// Define the invalid routing entry instance that can be used for
+// returning references to invalid entries
+const RoutingEntry RoutingEntry::INVALID = RoutingEntry();
+
 RoutingEntry::RoutingEntry()
 {
 }
@@ -86,15 +90,19 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
 
   // Importing an entry might cause the best path to destination to change; if it
   // does, we need to export the entry to others as well
-  if (getPrimaryRoute(entry.destination) == entry)
+  if (getActiveRoute(entry.destination) == entry)
     signalExportEntry(entry);
 
   return true;
 }
 
-const RoutingEntry &CompactRoutingTable::getPrimaryRoute(const NodeIdentifier &destination) const
+const RoutingEntry &CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination) const
 {
-  return *m_rib.get<RIBTags::DestinationId>().find(destination);
+  auto entry = m_rib.get<RIBTags::DestinationId>().find(destination);
+  if (entry == m_rib.end())
+    return RoutingEntry::INVALID;
+
+  return *entry;
 }
 
 bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination)
