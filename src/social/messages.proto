@@ -1,0 +1,33 @@
+//
+// Protocol messages for constructing paths over the social
+// network
+//
+
+package UniSphere.Protocol;
+
+message PathAnnounce {
+  // Valid announce types
+  enum Type {
+    VICINITY = 0;
+    LANDMARK = 1;
+  }
+
+  // Destination identifier
+  required bytes destinationId = 1;
+  // Forward path
+  repeated uint32 forwardPath = 2;
+  // Reverse path
+  repeated uint32 reversePath = 3;
+  // Announce type
+  required Type type = 4;
+}
+
+message PathRetract {
+  // Destination identifier
+  required bytes destinationId = 1;
+}
+
+message PathRefresh {
+  // Destination identifier
+  required bytes destinationId = 1;
+}

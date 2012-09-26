@@ -5,5 +5,9 @@ compact_router.cpp
 routing_table.cpp
 )
 
-add_library(UnisphereSocial SHARED ${unisphere_social_src})
+PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr
+messages.proto
+)
+
+add_library(UnisphereSocial SHARED ${unisphere_social_src} ${unisphere_social_proto_src})
 target_link_libraries(UnisphereSocial UnisphereCore UnisphereIdentity UnisphereInterplex ${unisphere_external_libraries})

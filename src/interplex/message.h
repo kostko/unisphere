@@ -49,9 +49,10 @@ public:
     Interplex_KeepAlive = 0x01,
     Interplex_Measure   = 0x02,
     Interplex_Hello     = 0x03,
-    Plexus_RpcRequest   = 0x04,
-    Plexus_RpcResponse  = 0x05,
-    Plexus_Routed       = 0x06,
+    Plexus_Routed       = 0x04,
+    Social_Announce     = 0x05,
+    Social_Retract      = 0x06,
+    Social_Refresh      = 0x07,
     
     /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
     
