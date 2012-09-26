@@ -121,7 +121,7 @@ typedef boost::multi_index_container<
   >
 > RoutingInformationBase;
 
-class LandmarkAddress {
+class UNISPHERE_EXPORT LandmarkAddress {
 public:
   LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path);
 
