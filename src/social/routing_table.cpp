@@ -96,8 +96,10 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
   return true;
 }
 
-const RoutingEntry &CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination) const
+const RoutingEntry &CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   auto entry = m_rib.get<RIBTags::DestinationId>().find(destination);
   if (entry == m_rib.end())
     return RoutingEntry::INVALID;

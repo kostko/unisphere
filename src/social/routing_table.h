@@ -150,7 +150,7 @@ public:
    * @param destination Destination address
    * @return A routing entry that can be used to forward to destination
    */
-  const RoutingEntry &getActiveRoute(const NodeIdentifier &destination) const;
+  const RoutingEntry &getActiveRoute(const NodeIdentifier &destination);
 
   /**
    * Attempts to import a routing entry into the routing table.
