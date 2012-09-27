@@ -28,6 +28,11 @@ LibraryInitializer::LibraryInitializer()
 Context::Context()
   : m_work(m_io)
 {
+  // Seed the basic random generator from the cryptographic random number generator
+  std::uint32_t seed;
+  m_rng.randomize((Botan::byte*) &seed, sizeof(seed));
+  m_basicRng.seed(seed);
+
   // Log context initialization
   UNISPHERE_CLOG(*this, Info, "UNISPHERE Context initialized.");
 }

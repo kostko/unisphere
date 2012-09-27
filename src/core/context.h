@@ -22,6 +22,7 @@
 #include <botan/botan.h>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <random>
 
 #include "core/globals.h"
 #include "core/logger.h"
@@ -85,9 +86,15 @@ public:
   inline Logger &logger() { return m_logger; }
 
   /**
-   * Returns the random number generator.
+   * Returns the cryptographically secure random number generator.
    */
   inline Botan::RandomNumberGenerator &rng() { return m_rng; }
+
+  /**
+   * Returns a basic random number generator that should NOT be used for any
+   * cryptographic operations.
+   */
+  inline std::mt19937 &basicRng() { return m_basicRng; }
   
   /**
    * Enters the main event loop. Passing a thread pool size of greater than
@@ -112,8 +119,10 @@ private:
   /// Logger instance
   Logger m_logger;
 
-  /// Random number generator
+  /// Cryptographically secure random number generator
   Botan::AutoSeeded_RNG m_rng;
+  /// Basic random generator that should not be used for crypto ops
+  std::mt19937 m_basicRng;
 };
 
 }
