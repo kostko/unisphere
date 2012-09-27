@@ -83,6 +83,11 @@ public:
    * Returns the debug logger.
    */
   inline Logger &logger() { return m_logger; }
+
+  /**
+   * Returns the random number generator.
+   */
+  inline Botan::RandomNumberGenerator &rng() { return m_rng; }
   
   /**
    * Enters the main event loop. Passing a thread pool size of greater than
@@ -106,6 +111,9 @@ private:
   
   /// Logger instance
   Logger m_logger;
+
+  /// Random number generator
+  Botan::AutoSeeded_RNG m_rng;
 };
 
 }

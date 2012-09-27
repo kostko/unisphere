@@ -89,10 +89,8 @@ RpcEngine::RpcEngine(Router &router)
 
 RpcId RpcEngine::getNextRpcId() const
 {
-  // TODO maybe we should unify the random generator!
-  Botan::AutoSeeded_RNG rng;
   RpcId rpcId;
-  rng.randomize((Botan::byte*) &rpcId, sizeof(rpcId));
+  m_router.linkManager().context().rng().randomize((Botan::byte*) &rpcId, sizeof(rpcId));
   return rpcId;
 }
 
