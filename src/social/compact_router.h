@@ -26,11 +26,25 @@ namespace UniSphere {
 
 class LinkManager;
 class NetworkSizeEstimator;
+class Message;
 
 class UNISPHERE_EXPORT CompactRouter {
 public:
   CompactRouter(const SocialIdentity &identity, LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
+
+  void initialize();
+protected:
+  /**
+   * Called when a message has been received on any link.
+   * 
+   * @param msg Link-local message that has been received
+   */
+  void messageReceived(const Message &msg);
+
+  void networkSizeEstimateChanged(std::uint64_t size);
+
+  void announceOurselves(const boost::system::error_code &error);
 private:
   /// Local node identity
   SocialIdentity m_identity;
@@ -40,6 +54,8 @@ private:
   NetworkSizeEstimator &m_sizeEstimator;
   /// Compact routing table
   CompactRoutingTable m_routes;
+  /// Timer for notifying neighbours about ourselves
+  boost::asio::deadline_timer m_announceTimer;
 };
   
 }

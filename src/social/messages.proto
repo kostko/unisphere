@@ -8,8 +8,8 @@ package UniSphere.Protocol;
 message PathAnnounce {
   // Valid announce types
   enum Type {
-    VICINITY = 0;
-    LANDMARK = 1;
+    VICINITY = 1;
+    LANDMARK = 2;
   }
 
   // Destination identifier

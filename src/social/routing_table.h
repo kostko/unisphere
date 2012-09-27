@@ -49,8 +49,7 @@ public:
   enum class Type : std::uint8_t {
     Null        = 0x00,
     Vicinity    = 0x01,
-    Direct      = 0x02,
-    Landmark    = 0x03,
+    Landmark    = 0x02,
   };
   
   /**

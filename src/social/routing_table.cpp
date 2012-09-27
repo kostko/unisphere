@@ -35,7 +35,8 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
 }
 
 CompactRoutingTable::CompactRoutingTable(NetworkSizeEstimator &sizeEstimator)
-  : m_sizeEstimator(sizeEstimator)
+  : m_sizeEstimator(sizeEstimator),
+    m_landmark(false)
 {
 }
 
