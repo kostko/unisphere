@@ -35,6 +35,8 @@ CompactRouter::CompactRouter(const SocialIdentity &identity, LinkManager &manage
 
   manager.signalMessageReceived.connect(boost::bind(&CompactRouter::messageReceived, this, _1));
   sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouter::networkSizeEstimateChanged, this, _1));
+  m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1));
+  m_routes.signalRetractEntry.connect(boost::bind(&CompactRouter::ribRetractEntry, this, _1));
 }
 
 void CompactRouter::initialize()
@@ -52,7 +54,7 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
   if (error)
     return;
 
-  // TODO Announce ourselves to all neighbours
+  // TODO: Announce ourselves to all neighbours
   Protocol::PathAnnounce announce;
   announce.set_destinationid(m_identity.localId().as(NodeIdentifier::Format::Raw));
   if (m_routes.isLandmark())
@@ -65,6 +67,16 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
   // Redo announce after 60 seconds
   m_announceTimer.expires_from_now(boost::posix_time::seconds(60));
   m_announceTimer.async_wait(boost::bind(&CompactRouter::announceOurselves, this, _1));
+}
+
+void ribExportEntry(const RoutingEntry &entry)
+{
+  // TODO: Export entry to all neighbors
+}
+
+void ribRetractEntry(const RoutingEntry &entry)
+{
+  // TODO: Send retraction message to all neighbors
 }
 
 void CompactRouter::messageReceived(const Message &msg)

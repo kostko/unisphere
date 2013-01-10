@@ -46,6 +46,9 @@ public:
   /// An invalid (default-constructed) routing entry
   static const RoutingEntry INVALID;
 
+  /**
+   * Valid routing entry types.
+   */
   enum class Type : std::uint8_t {
     Null        = 0x00,
     Vicinity    = 0x01,
@@ -76,6 +79,8 @@ public:
   Type type;
   /// Cost to route to that entry
   std::uint32_t cost;
+  /// Entry liveness
+  boost::posix_time::ptime lastUpdate;
 };
 
 /// RIB index tags

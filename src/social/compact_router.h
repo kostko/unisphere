@@ -45,6 +45,22 @@ protected:
   void networkSizeEstimateChanged(std::uint64_t size);
 
   void announceOurselves(const boost::system::error_code &error);
+
+  /**
+   * Called by the routing table when an entry should be exported to
+   * all neighbors.
+   *
+   * @param entry Routing entry to export
+   */
+  void ribExportEntry(const RoutingEntry &entry);
+
+  /**
+   * Called by the routing table when a retraction should be sent to
+   * all neighbors.
+   *
+   * @param entry Routing entry to retract
+   */
+  void ribRetractEntry(const RoutingEntry &entry);
 private:
   /// Local node identity
   SocialIdentity m_identity;

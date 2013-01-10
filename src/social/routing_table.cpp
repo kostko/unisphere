@@ -42,7 +42,7 @@ CompactRoutingTable::CompactRoutingTable(NetworkSizeEstimator &sizeEstimator)
 
 size_t CompactRoutingTable::getMaximumVicinitySize() const
 {
-  // TODO This is probably not the best way (int -> double -> sqrt -> int)
+  // TODO: This is probably not the best way (int -> double -> sqrt -> int)
   double n = static_cast<double>(m_sizeEstimator.getNetworkSize());
   return static_cast<size_t>(std::sqrt(n * std::log(n)));
 }
@@ -62,8 +62,13 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
   auto existing = ribVport.find(boost::make_tuple(entry.originVport(), entry.destination));
   if (existing != ribVport.end()) {
     // Ignore import when the existing entry is the same as the new one
-    if (*existing == entry)
+    if (*existing == entry) {
+      // Update the entry's last seen timestamp
+      ribVport.modify(existing, [&](RoutingEntry &e) {
+        e.lastUpdate = boost::posix_time::microsec_clock::universal_time();
+      });
       return false;
+    }
 
     ribVport.replace(existing, entry);
     needsInsertion = false;
@@ -155,7 +160,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
 
 void CompactRoutingTable::setLandmark(bool landmark)
 {
-  // TODO Handle landmark setup/tear down
+  // TODO: Handle landmark setup/tear down
   m_landmark = landmark;
 }
 
