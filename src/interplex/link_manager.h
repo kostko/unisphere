@@ -37,6 +37,32 @@ namespace UniSphere {
 UNISPHERE_SHARED_POINTER(Link)
 
 /**
+ * The verify peer combiner is used to call slots bound to the verifyPeer
+ * signal. If any slot returns false, further slots are not called and
+ * false is returned as a final result, meaning that the connection will
+ * be aborted.
+ */
+class UNISPHERE_EXPORT VerifyPeerCombiner {
+public:
+  typedef bool result_type;
+  
+  template<typename InputIterator>
+  result_type operator()(InputIterator first, InputIterator last)
+  {
+    if (first == last)
+      return true;
+    
+    while (first != last) {
+      if (*first == false)
+        return false;
+      ++first;
+    }
+    
+    return true;
+  }
+};
+
+/**
  * A link manager is used to manage links to all peers in a unified way.
  */
 class UNISPHERE_EXPORT LinkManager {
@@ -136,9 +162,20 @@ public:
    */
   inline Measure &getMeasure() { return m_measure; }
 #endif
+
+  /**
+   * Invokes registered peer verification hooks (signalVerifyPeer) and
+   * returns the result.
+   *
+   * @param contact Contact to verify
+   * @return True if verification was successful, false otherwise
+   */
+  bool verifyPeer(const Contact &contact);
 public:
   /// Signal for received messages
   boost::signal<void (const Message&)> signalMessageReceived;
+  /// Signal for additional peer verification
+  boost::signal<bool (const Contact&), VerifyPeerCombiner> signalVerifyPeer;
 protected:
   /**
    * Returns a link suitable for communication with the specified contact.

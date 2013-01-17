@@ -256,7 +256,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
       Protocol::Interplex::Hello hello = message_cast<Protocol::Interplex::Hello>(m_inMessage);
       Contact peerContact = Contact::fromMessage(hello.local_contact());
       if (peerContact.isNull()) {
-        UNISPHERE_LOG(m_manager, Error, "IPLinklet: Peer node id mismatch in hello message!");
+        UNISPHERE_LOG(m_manager, Error, "IPLinklet: Invalid peer contact in hello message!");
         return close();
       }
       
@@ -264,7 +264,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
       
       // Perform additional verification on the peer before transitioning into
       // the connected state
-      if (!signalVerifyPeer(shared_from_this())) {
+      if (!signalVerifyPeer(shared_from_this()) || !m_manager.verifyPeer(peerContact)) {
         return close();
       }
       

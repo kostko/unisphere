@@ -28,6 +28,12 @@ RoutingEntry::RoutingEntry()
 {
 }
 
+RoutingEntry::RoutingEntry(const NodeIdentifier &destination, Type type)
+  : destination(destination),
+    type(type)
+{
+}
+
 bool RoutingEntry::operator==(const RoutingEntry &other) const
 {
   return destination == other.destination && type == other.type &&
@@ -36,8 +42,32 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
 
 CompactRoutingTable::CompactRoutingTable(NetworkSizeEstimator &sizeEstimator)
   : m_sizeEstimator(sizeEstimator),
+    m_nextVport(0),
     m_landmark(false)
 {
+}
+
+Vport CompactRoutingTable::getVportForNeighbor(const NodeIdentifier &neighbor)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  VportMap::left_const_iterator i = m_vportMap.left.find(neighbor);
+  if (i == m_vportMap.left.end()) {
+    // No vport has been assigned yet, create a new mapping
+    m_vportMap.insert(VportMap::value_type(neighbor, m_nextVport));
+    return m_nextVport++;
+  }
+
+  return (*i).second;
+}
+
+NodeIdentifier CompactRoutingTable::getNeighborForVport(Vport vport) const
+{
+  VportMap::right_const_iterator i = m_vportMap.right.find(vport);
+  if (i == m_vportMap.right.end())
+    return NodeIdentifier();
+
+  return (*i).second;
 }
 
 size_t CompactRoutingTable::getMaximumVicinitySize() const

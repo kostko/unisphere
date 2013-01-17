@@ -25,6 +25,7 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <boost/bimap.hpp>
 #include <boost/signal.hpp>
 
 #include "core/context.h"
@@ -61,19 +62,33 @@ public:
   RoutingEntry();
 
   /**
+   * Constructs a routing entry.
+   *
+   * @param destination Destination node identifier
+   * @param type Routing entry type
+   */
+  RoutingEntry(const NodeIdentifier &destination, Type type);
+
+  /**
    * Returns true if the entry is invalid.
    */
   bool isNull() const { return destination.isNull() || type == Type::Null; }
 
+  /**
+   * Returns the vport identifier of the first routing hop.
+   */
   Vport originVport() const { return forwardPath[0]; }
 
+  /**
+   * Comparison operator.
+   */
   bool operator==(const RoutingEntry &other) const;
 public:
   /// Destination node identifier
   NodeIdentifier destination;
   /// Path of vports to destination
   RoutingPath forwardPath;
-  /// Path of vports from destination
+  /// Path of vports from destination (only for landmarks)
   RoutingPath reversePath;
   /// Entry type
   Type type;
@@ -125,6 +140,9 @@ typedef boost::multi_index_container<
   >
 > RoutingInformationBase;
 
+/// Bidirectional nodeId-vport mapping
+typedef boost::bimap<NodeIdentifier, Vport> VportMap;
+
 class UNISPHERE_EXPORT LandmarkAddress {
 public:
   LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path);
@@ -155,6 +173,26 @@ public:
    * @return A routing entry that can be used to forward to destination
    */
   const RoutingEntry &getActiveRoute(const NodeIdentifier &destination);
+
+  /**
+   * Returns a vport identifier corresponding to the given neighbor
+   * identifier. If a vport has not yet been assigned, a new one is
+   * assigned on the fly.
+   *
+   * @param neighbor Neighbor node identifier
+   * @return Vport identifier
+   */
+  Vport getVportForNeighbor(const NodeIdentifier &neighbor);
+
+  /**
+   * Returns the neighbor identifier corresponding to the given
+   * vport identifier. If this vport has not been assigned, a
+   * null node identifier is returned.
+   *
+   * @param vport Vport identifier
+   * @return Neighbor node identifier
+   */
+  NodeIdentifier getNeighborForVport(Vport vport) const;
 
   /**
    * Attempts to import a routing entry into the routing table.
@@ -202,6 +240,10 @@ private:
   std::recursive_mutex m_mutex;
   /// Information needed for routing to any node
   RoutingInformationBase m_rib;
+  /// Vport mapping for direct routes
+  VportMap m_vportMap;
+  /// Vport index counter
+  Vport m_nextVport;
   /// Local address based on nearest landmark; multiple for redundancy?
   std::list<LandmarkAddress> m_localAddress;
   /// Landmark status of the current node

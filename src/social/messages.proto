@@ -16,7 +16,7 @@ message PathAnnounce {
   required bytes destinationId = 1;
   // Forward path
   repeated uint32 forwardPath = 2;
-  // Reverse path
+  // Reverse path (included only for landmark announces)
   repeated uint32 reversePath = 3;
   // Announce type
   required Type type = 4;

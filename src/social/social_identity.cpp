@@ -20,22 +20,35 @@
 
 namespace UniSphere {
 
+SocialIdentity::SocialIdentity(const SocialIdentity &identity)
+  : m_localId(identity.m_localId),
+    m_peers(identity.m_peers)
+{
+}
+
 SocialIdentity::SocialIdentity(const NodeIdentifier &localId)
   : m_localId(localId)
 {
+}
+
+bool SocialIdentity::isPeer(const Contact &contact) const
+{
+  return m_peers.find(contact.nodeId()) != m_peers.end();
 }
 
 void SocialIdentity::addPeer(const Contact &peer)
 {
   if (peer.isNull())
     return;
-  
+
   m_peers[peer.nodeId()] = peer;
+  signalPeerAdded(peer);
 }
 
 void SocialIdentity::removePeer(const NodeIdentifier &nodeId)
 {
   m_peers.erase(nodeId);
+  signalPeerRemoved(nodeId);
 }
 
 }

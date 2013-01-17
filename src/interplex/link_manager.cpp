@@ -175,6 +175,18 @@ void LinkManager::linkMessageReceived(const Message &msg)
   signalMessageReceived(msg);
 }
 
+bool LinkManager::verifyPeer(const Contact &contact)
+{
+  // If peer has the same identifier as the local node, we should drop the link
+  if (contact.nodeId() == getLocalNodeId()) {
+    UNISPHERE_LOG(*this, Warning, "LinkManager: Attempted nodeId collision, refusing link.");
+    return false;
+  }
+
+  // Invoke externally registered verification hooks
+  return signalVerifyPeer(contact);
+}
+
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet

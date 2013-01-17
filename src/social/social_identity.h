@@ -21,17 +21,25 @@
 
 #include "interplex/contact.h"
 
+#include <boost/signal.hpp>
 #include <unordered_map>
 
 namespace UniSphere {
 
 class UNISPHERE_EXPORT SocialIdentity {
 public:
-  SocialIdentity(const NodeIdentifier &localId);
+  /**
+   * Copy constructor.
+   */
+  SocialIdentity(const SocialIdentity &identity);
+
+  explicit SocialIdentity(const NodeIdentifier &localId);
   
   inline NodeIdentifier localId() const { return m_localId; }
   
   inline std::unordered_map<NodeIdentifier, Contact> peers() const { return m_peers; }
+
+  bool isPeer(const Contact &contact) const;
   
   void addPeer(const Contact &peer);
   
@@ -40,6 +48,11 @@ public:
   // TODO: Trust weights should be added to individual peers
 
   // TODO: There should be a way to persist the social identity
+public:
+  /// Signal that gets called after a new peer is added
+  boost::signal<void(const Contact&)> signalPeerAdded;
+  /// Signal that gets called after a peer is removed
+  boost::signal<void(const NodeIdentifier&)> signalPeerRemoved;
 private:
   /// Local identifier
   NodeIdentifier m_localId;

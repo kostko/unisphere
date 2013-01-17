@@ -30,7 +30,7 @@ class Message;
 
 class UNISPHERE_EXPORT CompactRouter {
 public:
-  CompactRouter(const SocialIdentity &identity, LinkManager &manager,
+  CompactRouter(SocialIdentity &identity, LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
 
   void initialize();
@@ -45,6 +45,12 @@ protected:
   void networkSizeEstimateChanged(std::uint64_t size);
 
   void announceOurselves(const boost::system::error_code &error);
+
+  void peerAdded(const Contact &peer);
+
+  void peerRemoved(const NodeIdentifier &nodeId);
+
+  bool linkVerifyPeer(const Contact &peer);
 
   /**
    * Called by the routing table when an entry should be exported to
@@ -63,7 +69,7 @@ protected:
   void ribRetractEntry(const RoutingEntry &entry);
 private:
   /// Local node identity
-  SocialIdentity m_identity;
+  SocialIdentity &m_identity;
   /// Link manager associated with this router
   LinkManager &m_manager;
   /// Network size estimator

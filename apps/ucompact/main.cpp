@@ -63,6 +63,8 @@ int main(int argc, char **argv)
   Context ctx;
   OracleNetworkSizeEstimator sizeEstimator(2);
 
+  // TODO: Build a graph of nodes based on some predefined topology
+
   // Create the bootstrap node
   VirtualNode *bootstrap = createNode(ctx, sizeEstimator, getRandomNodeId(), "127.42.0.1", 8472);
   
@@ -70,6 +72,7 @@ int main(int argc, char **argv)
   unsigned short port = 8473;
   for (int i = 0; i < sizeEstimator.getNetworkSize() - 1; i++) {
     VirtualNode *node = createNode(ctx, sizeEstimator, getRandomNodeId(), "127.42.0.1", port++, bootstrap->linkManager->getLocalContact());
+    bootstrap->identity->addPeer(node->linkManager->getLocalContact());
     nodes[node->nodeId] = node;
   }
   
