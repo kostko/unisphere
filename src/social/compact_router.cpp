@@ -41,6 +41,8 @@ CompactRouter::CompactRouter(const SocialIdentity &identity, LinkManager &manage
 
 void CompactRouter::initialize()
 {
+  UNISPHERE_LOG(m_manager, Info, "CompactRouter: Initializing router.");
+
   // Compute whether we should become a landmark or not
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
 
@@ -69,12 +71,13 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
   m_announceTimer.async_wait(boost::bind(&CompactRouter::announceOurselves, this, _1));
 }
 
-void ribExportEntry(const RoutingEntry &entry)
+void CompactRouter::ribExportEntry(const RoutingEntry &entry)
 {
   // TODO: Export entry to all neighbors
+  // TODO: Think about compaction/aggregation of multiple entries
 }
 
-void ribRetractEntry(const RoutingEntry &entry)
+void CompactRouter::ribRetractEntry(const RoutingEntry &entry)
 {
   // TODO: Send retraction message to all neighbors
 }
@@ -88,6 +91,8 @@ void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
   // Re-evaluate network size and check if we should alter our landmark status
   double x = std::generate_canonical<double, 32>(m_manager.context().basicRng());
   double n = static_cast<double>(size);
+
+  // TODO: Only flip landmark status if size has changed by at least a factor 2
   if (x < std::sqrt(n * std::log(n)))
     m_routes.setLandmark(true);
 }

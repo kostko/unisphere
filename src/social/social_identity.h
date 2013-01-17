@@ -36,6 +36,10 @@ public:
   void addPeer(const Contact &peer);
   
   void removePeer(const NodeIdentifier &nodeId);
+
+  // TODO: Trust weights should be added to individual peers
+
+  // TODO: There should be a way to persist the social identity
 private:
   /// Local identifier
   NodeIdentifier m_localId;

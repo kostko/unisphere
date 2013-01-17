@@ -27,6 +27,9 @@ SocialIdentity::SocialIdentity(const NodeIdentifier &localId)
 
 void SocialIdentity::addPeer(const Contact &peer)
 {
+  if (peer.isNull())
+    return;
+  
   m_peers[peer.nodeId()] = peer;
 }
 

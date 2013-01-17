@@ -41,7 +41,7 @@ public:
 /**
  * An estimator that knows the exact network size.
  */
-class OracleNetworkSizeEstimator {
+class OracleNetworkSizeEstimator : public NetworkSizeEstimator {
 public:
   /**
    * Class constructor.
