@@ -124,6 +124,8 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
     m_rib.insert(entry);
   }
 
+  // TODO: Update local address(es) based on remote landmark announces
+
   // Importing an entry might cause the best path to destination to change; if it
   // does, we need to export the entry to others as well
   if (getActiveRoute(entry.destination) == entry)

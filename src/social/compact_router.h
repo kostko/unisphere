@@ -44,12 +44,21 @@ protected:
 
   void networkSizeEstimateChanged(std::uint64_t size);
 
+  /**
+   * Announces the current node to all neighbors.
+   */
   void announceOurselves(const boost::system::error_code &error);
 
   void peerAdded(const Contact &peer);
 
   void peerRemoved(const NodeIdentifier &nodeId);
 
+  /**
+   * A handler for verification of peer contacts.
+   *
+   * @param peer Peer contact to verify
+   * @return True if verification is successful, false otherwise
+   */
   bool linkVerifyPeer(const Contact &peer);
 
   /**

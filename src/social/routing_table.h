@@ -75,6 +75,11 @@ public:
   bool isNull() const { return destination.isNull() || type == Type::Null; }
 
   /**
+   * Returns true if the entry is a landmark.
+   */
+  bool isLandmark() const { return type == Type::Landmark; }
+
+  /**
    * Returns the vport identifier of the first routing hop.
    */
   Vport originVport() const { return forwardPath[0]; }

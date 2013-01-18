@@ -94,8 +94,32 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
 
 void CompactRouter::ribExportEntry(const RoutingEntry &entry)
 {
-  // TODO: Export entry to all neighbors, add proper vport to reverse path for each neighbor
-  // TODO: Ensure that the entry is not exported back through the incoming vport
+  // Export entry to all neighbors
+  Protocol::PathAnnounce announce;
+  for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
+    // Retrieve vport for given peer and check that it is not the origin
+    Vport vport = m_routes.getVportForNeighbor(peer.first);
+    if (vport == entry.originVport())
+      continue;
+
+    // Prepare the announce message
+    announce.Clear();
+    announce.set_destinationid(entry.destination.as(NodeIdentifier::Format::Raw));
+    announce.set_type(static_cast<Protocol::PathAnnounce_Type>(entry.type));
+
+    for (Vport v : entry.forwardPath) {
+      announce.add_forwardpath(v);
+    }
+
+    for (Vport v : entry.reversePath) {
+      announce.add_reversepath(v);
+    }
+    announce.add_reversepath(vport);
+
+    // Send the announcement
+    m_manager.send(peer.second, Message(Message::Type::Social_Announce, announce));
+  }
+
   // TODO: Think about compaction/aggregation of multiple entries
 }
 
@@ -127,6 +151,11 @@ void CompactRouter::messageReceived(const Message &msg)
         static_cast<RoutingEntry::Type>(pan.type())
       );
 
+      // Get the incoming vport for this announcement; if none is available a
+      // new vport is automatically assigned
+      Vport vport = m_routes.getVportForNeighbor(msg.originator());
+      entry.forwardPath.push_back(vport);
+
       // Populate the forwarding path
       for (int i = 0; i < pan.forwardpath_size(); i++) {
         entry.forwardPath.push_back(pan.forwardpath(i));
@@ -139,10 +168,8 @@ void CompactRouter::messageReceived(const Message &msg)
         }
       }
 
-      // Get the incoming vport for this announcement; if none is available a
-      // new vport is automatically assigned
-      Vport vport = m_routes.getVportForNeighbor(msg.originator());
-      entry.forwardPath.push_back(vport);
+      // Compute cost based on hop count
+      entry.cost = entry.forwardPath.size();
 
       // Attempt to import the routing entry
       m_routes.import(entry);
