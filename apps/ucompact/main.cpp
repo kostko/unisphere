@@ -77,7 +77,9 @@ int main(int argc, char **argv)
   Context ctx;
   OracleNetworkSizeEstimator sizeEstimator(nodeCount);
 
+  typedef std::unordered_map<std::string, NodeIdentifier> NodeNameMap;
   typedef std::unordered_map<NodeIdentifier, VirtualNode*> VirtualNodeMap;
+  NodeNameMap names;
   VirtualNodeMap nodes;
   unsigned short port = 8473;
 
@@ -87,32 +89,44 @@ int main(int argc, char **argv)
     boost::char_separator<char> sep(",");
     tokenizer tok(line, sep);
     tokenizer::iterator i = tok.begin();
+
+    // Try to resolve names - if none are assigned, generate new ones
+    auto getIdFromName = [&](const std::string &name) -> NodeIdentifier {
+      NodeIdentifier nodeId;
+      auto idi = names.find(name);
+      if (idi == names.end()) {
+        nodeId = getRandomNodeId();
+        names[name] = nodeId;
+      } else {
+        nodeId = (*idi).second;
+      }
+
+      return nodeId;
+    };
     
-    NodeIdentifier nodeA = NodeIdentifier(*i++, NodeIdentifier::Format::Hex);
-    NodeIdentifier nodeB = NodeIdentifier(*i++, NodeIdentifier::Format::Hex);
+    NodeIdentifier nodeA = getIdFromName(*i++);
+    NodeIdentifier nodeB = getIdFromName(*i++);
 
     if (nodeA == nodeB) {
       std::cerr << "ERROR: Invalid link to self (node=" << nodeA.as(NodeIdentifier::Format::Hex) << ")" << std::endl;
       return EXIT_FAILURE;
     }
 
-    VirtualNode *a;
-    VirtualNodeMap::iterator ni = nodes.find(nodeA);
-    if (ni == nodes.end()) {
-      a = createNode(ctx, sizeEstimator, nodeA, "127.42.0.1", port++);
-      nodes[nodeA] = a;
-    } else {
-      a = (*ni).second;
-    }
+    auto getNodeFromId = [&](const NodeIdentifier &nodeId) -> VirtualNode* {
+      VirtualNode *node;
+      VirtualNodeMap::iterator ni = nodes.find(nodeId);
+      if (ni == nodes.end()) {
+        node = createNode(ctx, sizeEstimator, nodeId, "127.42.0.1", port++);
+        nodes[nodeId] = node;
+      } else {
+        node = (*ni).second;
+      }
 
-    VirtualNode *b;
-    ni = nodes.find(nodeB);
-    if (ni == nodes.end()) {
-      b = createNode(ctx, sizeEstimator, nodeB, "127.42.0.1", port++);
-      nodes[nodeB] = b;
-    } else {
-      b = (*ni).second;
-    }
+      return node;
+    };
+
+    VirtualNode *a = getNodeFromId(nodeA);
+    VirtualNode *b = getNodeFromId(nodeB);
 
     a->identity->addPeer(b->linkManager->getLocalContact());
   }
