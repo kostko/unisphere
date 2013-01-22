@@ -22,8 +22,12 @@
 #include "social/size_estimator.h"
 
 #include <iostream>
+#include <fstream>
+#include <string>
 #include <botan/auto_rng.h>
 #include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/tokenizer.hpp>
 
 using namespace UniSphere;
 
@@ -43,37 +47,79 @@ NodeIdentifier getRandomNodeId()
 }
 
 VirtualNode *createNode(Context &context, NetworkSizeEstimator &sizeEstimator, const NodeIdentifier &nodeId,
-  const std::string &ip, unsigned short port, const Contact &bootstrap = Contact())
+  const std::string &ip, unsigned short port)
 {
   VirtualNode *node = new VirtualNode();
   node->nodeId = nodeId;
   node->identity = new SocialIdentity(nodeId);
-  node->identity->addPeer(bootstrap);
   node->linkManager = new LinkManager(context, nodeId);
   node->linkManager->setLocalAddress(Address(ip, 0));
   node->linkManager->listen(Address(ip, port));
   node->router = new CompactRouter(*node->identity, *node->linkManager, sizeEstimator);
-  node->router->initialize();
   return node;
 }
 
 int main(int argc, char **argv)
 {
+  // Open the social topology datafile
+  std::ifstream socialTopologyFile("../data/social_topology.dat");
+  if (!socialTopologyFile) {
+    std::cerr << "ERROR: Missing ../data/social_topology.dat file!" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  // Read the number of nodes
+  std::string line;
+  std::getline(socialTopologyFile, line);
+  int nodeCount = boost::lexical_cast<int>(line);
+
   LibraryInitializer init;
   Context ctx;
-  OracleNetworkSizeEstimator sizeEstimator(2);
+  OracleNetworkSizeEstimator sizeEstimator(nodeCount);
 
-  // TODO: Build a graph of nodes based on some predefined topology
-
-  // Create the bootstrap node
-  VirtualNode *bootstrap = createNode(ctx, sizeEstimator, getRandomNodeId(), "127.42.0.1", 8472);
-  
-  std::unordered_map<NodeIdentifier, VirtualNode*> nodes;
+  typedef std::unordered_map<NodeIdentifier, VirtualNode*> VirtualNodeMap;
+  VirtualNodeMap nodes;
   unsigned short port = 8473;
-  for (int i = 0; i < sizeEstimator.getNetworkSize() - 1; i++) {
-    VirtualNode *node = createNode(ctx, sizeEstimator, getRandomNodeId(), "127.42.0.1", port++, bootstrap->linkManager->getLocalContact());
-    bootstrap->identity->addPeer(node->linkManager->getLocalContact());
-    nodes[node->nodeId] = node;
+
+  // Parse social topology
+  for (;std::getline(socialTopologyFile, line);) {
+    typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+    boost::char_separator<char> sep(",");
+    tokenizer tok(line, sep);
+    tokenizer::iterator i = tok.begin();
+    
+    NodeIdentifier nodeA = NodeIdentifier(*i++, NodeIdentifier::Format::Hex);
+    NodeIdentifier nodeB = NodeIdentifier(*i++, NodeIdentifier::Format::Hex);
+
+    if (nodeA == nodeB) {
+      std::cerr << "ERROR: Invalid link to self (node=" << nodeA.as(NodeIdentifier::Format::Hex) << ")" << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    VirtualNode *a;
+    VirtualNodeMap::iterator ni = nodes.find(nodeA);
+    if (ni == nodes.end()) {
+      a = createNode(ctx, sizeEstimator, nodeA, "127.42.0.1", port++);
+      nodes[nodeA] = a;
+    } else {
+      a = (*ni).second;
+    }
+
+    VirtualNode *b;
+    ni = nodes.find(nodeB);
+    if (ni == nodes.end()) {
+      b = createNode(ctx, sizeEstimator, nodeB, "127.42.0.1", port++);
+      nodes[nodeB] = b;
+    } else {
+      b = (*ni).second;
+    }
+
+    a->identity->addPeer(b->linkManager->getLocalContact());
+  }
+
+  // Initialize all nodes
+  for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
+    (*i).second->router->initialize();
   }
   
   // Run the context
