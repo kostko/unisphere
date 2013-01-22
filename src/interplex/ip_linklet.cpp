@@ -51,7 +51,7 @@ void IPLinklet::listen(const Address &address)
     m_acceptor.bind(endpoint);
     m_acceptor.listen();
     m_state = State::Listening;
-    m_connectAddress = address;
+    m_connectAddress = Address(m_acceptor.local_endpoint());
   } catch (boost::exception &e) {
     throw LinkletListenFailed();
   }
