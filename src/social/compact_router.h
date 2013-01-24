@@ -34,6 +34,11 @@ public:
                 NetworkSizeEstimator &sizeEstimator);
 
   void initialize();
+
+  /**
+   * Returns the reference to underlying routing table.
+   */
+  CompactRoutingTable &routingTable() { return m_routes; }
 protected:
   /**
    * Called when a message has been received on any link.

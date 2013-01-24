@@ -229,6 +229,13 @@ public:
    * nodes.
    */
   bool isLandmark() const { return m_landmark; }
+
+  /**
+   * Outputs the routing table to a stream.
+   *
+   * @param stream Output stream to dump into
+   */
+  void dump(std::ostream &stream);
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
   boost::signal<void(const RoutingEntry&)> signalExportEntry;

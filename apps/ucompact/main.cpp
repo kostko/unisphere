@@ -24,10 +24,12 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+
 #include <botan/auto_rng.h>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/bimap.hpp>
 
 using namespace UniSphere;
 
@@ -77,7 +79,7 @@ int main(int argc, char **argv)
   Context ctx;
   OracleNetworkSizeEstimator sizeEstimator(nodeCount);
 
-  typedef std::unordered_map<std::string, NodeIdentifier> NodeNameMap;
+  typedef boost::bimap<std::string, NodeIdentifier> NodeNameMap;
   typedef std::unordered_map<NodeIdentifier, VirtualNode*> VirtualNodeMap;
   NodeNameMap names;
   VirtualNodeMap nodes;
@@ -93,10 +95,10 @@ int main(int argc, char **argv)
     // Try to resolve names - if none are assigned, generate new ones
     auto getIdFromName = [&](const std::string &name) -> NodeIdentifier {
       NodeIdentifier nodeId;
-      auto idi = names.find(name);
-      if (idi == names.end()) {
+      auto idi = names.left.find(name);
+      if (idi == names.left.end()) {
         nodeId = getRandomNodeId();
-        names[name] = nodeId;
+        names.insert(NodeNameMap::value_type(name, nodeId));
       } else {
         nodeId = (*idi).second;
       }
@@ -135,6 +137,14 @@ int main(int argc, char **argv)
   for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
     (*i).second->router->initialize();
   }
+
+  // Schedule routing table dump after 80 seconds
+  ctx.schedule(80, [&]() {
+    for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
+      std::cout << "---- ROUTING TABLE FOR: " << (*i).first.as(NodeIdentifier::Format::Hex) << " (" << names.right.at((*i).first) << ") ----" << std::endl;
+      (*i).second->router->routingTable().dump(std::cout);
+    }
+  });
   
   // Run the context
   ctx.run(1);

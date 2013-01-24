@@ -97,6 +97,7 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
       ribVport.modify(existing, [&](RoutingEntry &e) {
         e.lastUpdate = boost::posix_time::microsec_clock::universal_time();
       });
+      std::cout << "updating existing rt entry: vport=" << entry.originVport() << std::endl;
       return false;
     }
 
@@ -111,16 +112,19 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
       // Verify that it falls into the vicinity
       auto &ribType = m_rib.get<RIBTags::TypeCost>();
       auto entries = ribType.equal_range(RoutingEntry::Type::Vicinity);
+      // FIXME: Vicinity should count destinations NOT entries! (there might be multiple entries to same destination)
       if (std::distance(entries.first, entries.second) >= getMaximumVicinitySize()) {
         auto back = --entries.second;
         if ((*back).cost > entry.cost) {
           ribType.erase(back);
         } else {
+          std::cout << "dropping rt entry due to vicinity overflow" << std::endl;
           return false;
         }
       }
     }
 
+    std::cout << "inserting rt entry: vport=" << entry.originVport() << ", type=" << (int) entry.type << ", cost=" << entry.cost << std::endl;
     m_rib.insert(entry);
   }
 
@@ -194,6 +198,52 @@ void CompactRoutingTable::setLandmark(bool landmark)
 {
   // TODO: Handle landmark setup/tear down
   m_landmark = landmark;
+}
+
+void CompactRoutingTable::dump(std::ostream &stream)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Dump vport mappings
+  stream << "*** Vport mappings:" << std::endl;
+  for (VportMap::const_iterator i = m_vportMap.begin(); i != m_vportMap.end(); ++i) {
+    stream << "VPORT[" << i->right << "] = " << i->left.as(NodeIdentifier::Format::Hex) << std::endl;
+  }
+
+  // Dump routing table entries for each destination
+  stream << "*** RT entries:" << std::endl;
+  NodeIdentifier prevId;
+  auto &entries = m_rib.get<RIBTags::DestinationId>();
+  for (auto i = entries.begin(); i != entries.end(); ++i) {
+    bool first = (i->destination != prevId);
+    if (first)
+      stream << i->destination.as(NodeIdentifier::Format::Hex) << std::endl;
+
+    // Output type, cost and forward path
+    stream << "  " << "t=";
+    switch (i->type) {
+      case RoutingEntry::Type::Landmark: stream << "LND"; break;
+      case RoutingEntry::Type::Vicinity: stream << "VIC"; break;
+      default: stream << "???"; break;
+    }
+    stream << " c=" << i->cost << " f-path=";
+    for (auto p = i->forwardPath.begin(); p != i->forwardPath.end(); ++p) {
+      stream << *p << " ";
+    }
+
+    // Mark currently active route
+    if (first)
+      stream << "*";
+    stream << std::endl;
+
+    prevId = i->destination;
+  }
+
+  // Dump vicinity size and maximum
+  stream << "*** Vicinity:" << std::endl;
+  auto ventries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Vicinity);
+  stream << "Current size: " << std::distance(ventries.first, ventries.second) << std::endl;
+  stream << "Maximum size: " << getMaximumVicinitySize() << std::endl;
 }
 
 }

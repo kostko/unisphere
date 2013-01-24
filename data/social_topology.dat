@@ -1,5 +1,15 @@
-3
+6
 a,b
 a,c
 b,a
+b,d
 c,a
+c,e
+d,b
+d,e
+d,f
+e,c
+e,d
+e,f
+f,d
+f,e
