@@ -125,7 +125,23 @@ void CompactRouter::ribExportEntry(const RoutingEntry &entry)
 
 void CompactRouter::ribRetractEntry(const RoutingEntry &entry)
 {
-  // TODO: Send retraction message to all neighbors
+  // Send retraction message to all neighbors
+  Protocol::PathRetract retract;
+  for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
+    // Retrieve vport for given peer and check that it is not the origin
+    Vport vport = m_routes.getVportForNeighbor(peer.first);
+    if (vport == entry.originVport())
+      continue;
+
+    // Prepare the retract message
+    retract.Clear();
+    retract.set_destinationid(entry.destination.as(NodeIdentifier::Format::Raw));
+
+    // Send the announcement
+    m_manager.send(peer.second, Message(Message::Type::Social_Retract, retract));
+  }
+
+  // TODO: Think about compaction/aggregation of multiple entries
 }
 
 bool CompactRouter::linkVerifyPeer(const Contact &peer)
@@ -175,6 +191,16 @@ void CompactRouter::messageReceived(const Message &msg)
       m_routes.import(entry);
       break;
     }
+
+    case Message::Type::Social_Retract: {
+      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Received a routing retraction.");
+
+      Protocol::PathRetract prt = message_cast<Protocol::PathRetract>(msg);
+      Vport vport = m_routes.getVportForNeighbor(msg.originator());
+      m_routes.retract(vport, NodeIdentifier(prt.destinationid(), NodeIdentifier::Format::Raw));
+      break;
+    }
+
     // Drop all other message types
     default: return;
   }
