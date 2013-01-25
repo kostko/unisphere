@@ -77,6 +77,44 @@ size_t CompactRoutingTable::getMaximumVicinitySize() const
   return static_cast<size_t>(std::sqrt(n * std::log(n)));
 }
 
+boost::tuple<size_t, RoutingEntry> CompactRoutingTable::getCurrentVicinity() const
+{
+  auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Vicinity);
+  RoutingEntry maxCostEntry;
+  NodeIdentifier lastDestination;
+  size_t vicinitySize = 0;
+
+  // Count the number of unique destinations in the vicinity
+  for (auto it = entries.first; it != entries.second; ++it) {
+    if (it->destination != lastDestination) {
+      vicinitySize++;
+      if (maxCostEntry.isNull() || it->cost > maxCostEntry.cost)
+        maxCostEntry = *it;
+    }
+
+    lastDestination = it->destination;
+  }
+
+  return boost::make_tuple(vicinitySize, maxCostEntry);
+}
+
+size_t CompactRoutingTable::getLandmarkCount() const
+{
+  auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Landmark);
+  NodeIdentifier lastDestination;
+  size_t landmarkCount = 0;
+
+  // Count the number of unique destinations in the landmark set
+  for (auto it = entries.first; it != entries.second; ++it) {
+    if (it->destination != lastDestination)
+      landmarkCount++;
+
+    lastDestination = it->destination;
+  }
+
+  return landmarkCount;
+}
+
 bool CompactRoutingTable::import(const RoutingEntry &entry)
 {
   RecursiveUniqueLock lock(m_mutex);
@@ -110,13 +148,14 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
     // into the vicinity of the current node
     if (entry.type == RoutingEntry::Type::Vicinity) {
       // Verify that it falls into the vicinity
-      auto &ribType = m_rib.get<RIBTags::TypeCost>();
-      auto entries = ribType.equal_range(RoutingEntry::Type::Vicinity);
-      // FIXME: Vicinity should count destinations NOT entries! (there might be multiple entries to same destination)
-      if (std::distance(entries.first, entries.second) >= getMaximumVicinitySize()) {
-        auto back = --entries.second;
-        if ((*back).cost > entry.cost) {
-          ribType.erase(back);
+      size_t vicinitySize;
+      RoutingEntry maxCostEntry;
+      boost::tie(vicinitySize, maxCostEntry) = getCurrentVicinity();
+
+      if (vicinitySize >= getMaximumVicinitySize()) {
+        if (maxCostEntry.cost > entry.cost) {
+          // Remove the entry with maximum cost
+          retract(maxCostEntry.destination);
         } else {
           std::cout << "dropping rt entry due to vicinity overflow" << std::endl;
           return false;
@@ -149,6 +188,29 @@ const RoutingEntry &CompactRoutingTable::getActiveRoute(const NodeIdentifier &de
   return *entry;
 }
 
+bool CompactRoutingTable::retract(const NodeIdentifier &destination)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
+  auto entries = ribDestination.equal_range(boost::make_tuple(destination));
+  if (entries.first == entries.second)
+    return false;
+
+  for (auto it = entries.first; it != entries.second;) {
+    const RoutingEntry entry = *it;
+
+    // Call the erasure method to ensure that the routing table is updated before any
+    // announcements are sent
+    ribDestination.erase(it);
+
+    // Send retractions
+    signalRetractEntry(entry);
+  }
+
+  return true;
+}
+
 bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
@@ -167,7 +229,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
 
   // Erase selected entries and then export/retract routes for removed destinations
   for (auto it = routes.first; it != routes.second;) {
-    const RoutingEntry &entry = *it;
+    const RoutingEntry entry = *it;
     auto candidates = m_rib.get<RIBTags::DestinationId>().equal_range(boost::make_tuple(entry.destination));
     bool explicitRetract = false;
     if (*candidates.first == entry) {
@@ -241,9 +303,15 @@ void CompactRoutingTable::dump(std::ostream &stream)
 
   // Dump vicinity size and maximum
   stream << "*** Vicinity:" << std::endl;
-  auto ventries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Vicinity);
-  stream << "Current size: " << std::distance(ventries.first, ventries.second) << std::endl;
+  stream << "Current size: " << getCurrentVicinity().get<0>() << std::endl;
   stream << "Maximum size: " << getMaximumVicinitySize() << std::endl;
+
+  // Dump number of landmarks
+  stream << "*** Landmarks:" << std::endl;
+  stream << "Count: " << getLandmarkCount();
+  if (isLandmark())
+    stream << " (+1 current node)";
+  stream << std::endl;
 }
 
 }

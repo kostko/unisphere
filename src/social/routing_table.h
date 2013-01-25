@@ -27,6 +27,7 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/bimap.hpp>
 #include <boost/signal.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "core/context.h"
 #include "identity/node_identifier.h"
@@ -129,6 +130,7 @@ typedef boost::multi_index_container<
       midx::composite_key<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint32_t, cost)
       >
     >,
@@ -208,6 +210,14 @@ public:
   bool import(const RoutingEntry &entry);
 
   /**
+   * Retracts all routing entries for the specified destination.
+   *
+   * @param destination Destination identifier
+   * @return True if routing table has changed, false otherwise
+   */
+  bool retract(const NodeIdentifier &destination);
+
+  /**
    * Retract all routes originating from the specified vport (optionally
    * only for a specific destination).
    *
@@ -244,7 +254,23 @@ public:
   /// Signal that gets called when the local address changes
   boost::signal<void(const LandmarkAddress&)> signalAddressChanged;
 protected:
+  /**
+   * Returns the maximum vicinity size.
+   */
   size_t getMaximumVicinitySize() const;
+
+  /**
+   * Returns the size of the current vicinity together with the routing entry
+   * of a destination with the largest minimum cost.
+   *
+   * @return A tuple (size, entry)
+   */
+  boost::tuple<size_t, RoutingEntry> getCurrentVicinity() const;
+
+  /**
+   * Returns the number of landmarks in the routing table.
+   */
+  size_t getLandmarkCount() const;
 private:
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
