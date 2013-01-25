@@ -259,6 +259,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
 void CompactRoutingTable::setLandmark(bool landmark)
 {
   // TODO: Handle landmark setup/tear down
+  // TODO: Landmarks themselves have null addresses (as all nodes need to have them in RIB)
   m_landmark = landmark;
 }
 

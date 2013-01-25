@@ -150,18 +150,41 @@ typedef boost::multi_index_container<
 /// Bidirectional nodeId-vport mapping
 typedef boost::bimap<NodeIdentifier, Vport> VportMap;
 
+/**
+ * Represents a landmark-relative address of the current node. Such an address
+ * can be used by other nodes to route messages towards this node.
+ */
 class UNISPHERE_EXPORT LandmarkAddress {
 public:
+  /**
+   * Constructs a landmark address.
+   *
+   * @param landmarkId Landmark identifier
+   * @param path Reverse routing path (from landmark to node)
+   */
   LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path);
 
+  /**
+   * Returns the landmark identifier that can be used to route towards this
+   * node.
+   */
   const NodeIdentifier &landmarkId() const { return m_landmarkId; }
 
+  /**
+   * Returns the reverse routing path that can be used to route from the landmark
+   * towards this node.
+   */
   const RoutingPath &path() const { return m_path; }
 private:
+  /// Landmark identifier
   NodeIdentifier m_landmarkId;
+  /// Reverse routing path
   RoutingPath m_path;
 };
 
+/**
+ * The routing table data structure.
+ */
 class UNISPHERE_EXPORT CompactRoutingTable {
 public:
   /**
