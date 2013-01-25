@@ -3,8 +3,10 @@ a,b
 a,c
 b,a
 b,d
+b,g
 c,a
 c,e
+c,h
 d,b
 d,e
 d,f
@@ -13,3 +15,5 @@ e,d
 e,f
 f,d
 f,e
+g,b
+h,c
