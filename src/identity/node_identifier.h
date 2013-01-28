@@ -79,6 +79,16 @@ public:
    * @return Identifier converted to the desired format
    */
   std::string as(Format format) const;
+
+  /**
+   * Convenience alias for as(Format::Hex).
+   */
+  inline std::string hex() const { return as(Format::Hex); }
+
+  /**
+   * Convenience alias for as(Format::Raw).
+   */
+  inline std::string raw() const { return as(Format::Raw); }
   
   /**
    * Comparison operator.
