@@ -157,6 +157,14 @@ typedef boost::bimap<NodeIdentifier, Vport> VportMap;
 class UNISPHERE_EXPORT LandmarkAddress {
 public:
   /**
+   * Constructs a landmark address with an empty routing path. Such an address
+   * designates the landmark itself.
+   *
+   * @param landmarkId Landmark identifier
+   */
+  LandmarkAddress(const NodeIdentifier &landmarkId);
+
+  /**
    * Constructs a landmark address.
    *
    * @param landmarkId Landmark identifier
@@ -190,9 +198,10 @@ public:
   /**
    * Class constructor.
    *
+   * @param localId Local node identifier
    * @param sizeEstimator A network size estimator
    */
-  CompactRoutingTable(NetworkSizeEstimator &sizeEstimator);
+  CompactRoutingTable(const NodeIdentifier &localId, NetworkSizeEstimator &sizeEstimator);
   
   /**
    * Returns the currently active route to the given destination
@@ -264,6 +273,14 @@ public:
   bool isLandmark() const { return m_landmark; }
 
   /**
+   * Returns a list of landmark-relative local addresses.
+   *
+   * @param count Number of addresses to return
+   * @return A list of landmark addresses
+   */
+  std::list<LandmarkAddress> getLocalAddresses(size_t count = 1);
+
+  /**
    * Outputs the routing table to a stream.
    *
    * @param stream Output stream to dump into
@@ -295,6 +312,8 @@ protected:
    */
   size_t getLandmarkCount() const;
 private:
+  /// Local node identifier
+  NodeIdentifier m_localId;
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
   /// Mutex protecting the routing table

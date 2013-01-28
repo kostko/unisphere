@@ -40,8 +40,20 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
 }
 
-CompactRoutingTable::CompactRoutingTable(NetworkSizeEstimator &sizeEstimator)
-  : m_sizeEstimator(sizeEstimator),
+LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId)
+  : m_landmarkId(landmarkId)
+{
+}
+
+LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path)
+  : m_landmarkId(landmarkId),
+    m_path(path)
+{
+}
+
+CompactRoutingTable::CompactRoutingTable(const NodeIdentifier &localId, NetworkSizeEstimator &sizeEstimator)
+  : m_localId(localId),
+    m_sizeEstimator(sizeEstimator),
     m_nextVport(0),
     m_landmark(false)
 {
@@ -261,6 +273,30 @@ void CompactRoutingTable::setLandmark(bool landmark)
   // TODO: Handle landmark setup/tear down
   // TODO: Landmarks themselves have null addresses (as all nodes need to have them in RIB)
   m_landmark = landmark;
+}
+
+std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count)
+{
+  std::list<LandmarkAddress> addresses;
+
+  if (isLandmark()) {
+    // Landmark nodes don't need an explicit address as all the other nodes have them in RIB
+    addresses.push_back(LandmarkAddress(m_localId));
+  } else {
+    // Extract nearest count landmarks from RIB and return reverse paths as addresses
+    auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Landmark);
+    for (auto it = entries.first; it != entries.second; ++it) {
+      if (!addresses.empty() && it->destination == addresses.back().landmarkId())
+        continue;
+
+      addresses.push_back(LandmarkAddress(it->destination, it->reversePath));
+
+      if (addresses.size() >= count)
+        break;
+    }
+  }
+
+  return addresses;
 }
 
 void CompactRoutingTable::dump(std::ostream &stream)

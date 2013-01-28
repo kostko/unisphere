@@ -28,7 +28,7 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
   : m_identity(identity),
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
-    m_routes(sizeEstimator),
+    m_routes(identity.localId(), sizeEstimator),
     m_announceTimer(manager.context().service())
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
