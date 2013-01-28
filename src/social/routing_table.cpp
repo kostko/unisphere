@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "social/routing_table.h"
+#include "social/compact_router.h"
 
 namespace UniSphere {
 
@@ -34,10 +35,24 @@ RoutingEntry::RoutingEntry(const NodeIdentifier &destination, Type type)
 {
 }
 
+RoutingEntry::~RoutingEntry()
+{
+}
+
+boost::posix_time::time_duration RoutingEntry::age() const
+{
+  return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
+}
+
 bool RoutingEntry::operator==(const RoutingEntry &other) const
 {
   return destination == other.destination && type == other.type &&
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
+}
+
+RoutingEntry::Timers::Timers(boost::asio::io_service &service)
+  : expiryTimer(service)
+{
 }
 
 LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId)
@@ -51,8 +66,10 @@ LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const Routing
 {
 }
 
-CompactRoutingTable::CompactRoutingTable(const NodeIdentifier &localId, NetworkSizeEstimator &sizeEstimator)
-  : m_localId(localId),
+CompactRoutingTable::CompactRoutingTable(Context &context, const NodeIdentifier &localId,
+  NetworkSizeEstimator &sizeEstimator)
+  : m_context(context),
+    m_localId(localId),
     m_sizeEstimator(sizeEstimator),
     m_nextVport(0),
     m_landmark(false)
@@ -127,6 +144,15 @@ size_t CompactRoutingTable::getLandmarkCount() const
   return landmarkCount;
 }
 
+void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &error,
+  const RoutingEntry &entry)
+{
+  if (error)
+    return;
+
+  std::cout << "entry timer has expired! " << entry.destination.hex() << std::endl;
+}
+
 bool CompactRoutingTable::import(const RoutingEntry &entry)
 {
   RecursiveUniqueLock lock(m_mutex);
@@ -145,9 +171,15 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
     if (*existing == entry) {
       // Update the entry's last seen timestamp
       ribVport.modify(existing, [&](RoutingEntry &e) {
-        e.lastUpdate = boost::posix_time::microsec_clock::universal_time();
+        e.lastUpdate = entry.lastUpdate;
+
+        // Restart expiry timer for direct entries
+        if (e.isDirect()) {
+          if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+            e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
+          }
+        }
       });
-      std::cout << "updating existing rt entry: vport=" << entry.originVport() << std::endl;
       return false;
     }
 
@@ -169,17 +201,20 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
           // Remove the entry with maximum cost
           retract(maxCostEntry.destination);
         } else {
-          std::cout << "dropping rt entry due to vicinity overflow" << std::endl;
           return false;
         }
       }
     }
 
-    std::cout << "inserting rt entry: vport=" << entry.originVport() << ", type=" << (int) entry.type << ", cost=" << entry.cost << std::endl;
-    m_rib.insert(entry);
-  }
+    auto rentry = m_rib.insert(entry);
 
-  // TODO: Update local address(es) based on remote landmark announces
+    if (entry.isDirect()) {
+      const RoutingEntry &eref = *rentry.first;
+      eref.timers = boost::shared_ptr<RoutingEntry::Timers>(new RoutingEntry::Timers(m_context.service()));
+      eref.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
+      eref.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, eref));
+    }
+  }
 
   // Importing an entry might cause the best path to destination to change; if it
   // does, we need to export the entry to others as well
@@ -268,6 +303,14 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
   return false;
 }
 
+void CompactRoutingTable::clear()
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  m_rib.clear();
+  m_vportMap.clear();
+}
+
 void CompactRoutingTable::setLandmark(bool landmark)
 {
   // TODO: Handle landmark setup/tear down
@@ -329,6 +372,8 @@ void CompactRoutingTable::dump(std::ostream &stream)
     for (auto p = i->forwardPath.begin(); p != i->forwardPath.end(); ++p) {
       stream << *p << " ";
     }
+
+    stream << "age=" << i->age().total_seconds() << "s ";
 
     // Mark currently active route
     if (first)

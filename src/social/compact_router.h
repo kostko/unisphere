@@ -30,10 +30,27 @@ class Message;
 
 class UNISPHERE_EXPORT CompactRouter {
 public:
+  /// Self-announce refresh interval
+  static const int interval_announce = 10;
+  /// Neighbor expiry interval
+  static const int interval_neighbor_expiry = 30;
+
   CompactRouter(SocialIdentity &identity, LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
 
   void initialize();
+
+  void shutdown();
+
+  /**
+   * Returns the UNISPHERE context this router belongs to.
+   */
+  inline Context &context() const { return m_context; }
+
+  /**
+   * Returns the reference to underlying social identity.
+   */
+  const SocialIdentity &identity() const { return m_identity; }
 
   /**
    * Returns the reference to underlying routing table.
@@ -82,6 +99,8 @@ protected:
    */
   void ribRetractEntry(const RoutingEntry &entry);
 private:
+  /// UNISPHERE context
+  Context &m_context;
   /// Local node identity
   SocialIdentity &m_identity;
   /// Link manager associated with this router
@@ -92,6 +111,8 @@ private:
   CompactRoutingTable m_routes;
   /// Timer for notifying neighbours about ourselves
   boost::asio::deadline_timer m_announceTimer;
+  /// Active subscriptions to other components
+  std::list<boost::signals::connection> m_subscriptions;
 };
   
 }

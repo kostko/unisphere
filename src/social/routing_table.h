@@ -56,6 +56,18 @@ public:
     Vicinity    = 0x01,
     Landmark    = 0x02,
   };
+
+  /**
+   * A routing entry extension for storing timers. It is not included in
+   * the main class in order to reduce overhead for entries that don't
+   * need any timers.
+   */
+  struct Timers {
+    Timers(boost::asio::io_service &service);
+
+    /// Expiration timer
+    boost::asio::deadline_timer expiryTimer;
+  };
   
   /**
    * Constructs an invalid routing entry.
@@ -71,6 +83,11 @@ public:
   RoutingEntry(const NodeIdentifier &destination, Type type);
 
   /**
+   * Class destructor.
+   */
+  ~RoutingEntry();
+
+  /**
    * Returns true if the entry is invalid.
    */
   bool isNull() const { return destination.isNull() || type == Type::Null; }
@@ -81,9 +98,19 @@ public:
   bool isLandmark() const { return type == Type::Landmark; }
 
   /**
+   * Returns true if this entry represents a direct route.
+   */
+  bool isDirect() const { return forwardPath.size() == 1; }
+
+  /**
    * Returns the vport identifier of the first routing hop.
    */
   Vport originVport() const { return forwardPath[0]; }
+
+  /**
+   * Returns the age of this routing entry.
+   */
+  boost::posix_time::time_duration age() const;
 
   /**
    * Comparison operator.
@@ -102,6 +129,8 @@ public:
   std::uint32_t cost;
   /// Entry liveness
   boost::posix_time::ptime lastUpdate;
+  /// Optional timer extensions
+  mutable boost::shared_ptr<RoutingEntry::Timers> timers;
 };
 
 /// RIB index tags
@@ -190,6 +219,8 @@ private:
   RoutingPath m_path;
 };
 
+class CompactRouter;
+
 /**
  * The routing table data structure.
  */
@@ -198,10 +229,12 @@ public:
   /**
    * Class constructor.
    *
+   * @param context UNISPHERE context
    * @param localId Local node identifier
    * @param sizeEstimator A network size estimator
    */
-  CompactRoutingTable(const NodeIdentifier &localId, NetworkSizeEstimator &sizeEstimator);
+  CompactRoutingTable(Context &context, const NodeIdentifier &localId,
+    NetworkSizeEstimator &sizeEstimator);
   
   /**
    * Returns the currently active route to the given destination
@@ -260,6 +293,11 @@ public:
   bool retract(Vport vport, const NodeIdentifier &destination = NodeIdentifier());
 
   /**
+   * Clears the whole routing table (RIB and vport mappings).
+   */
+  void clear();
+
+  /**
    * Sets the landmark status of the local node.
    *
    * @param landmark True for the local node to become a landmark
@@ -311,7 +349,11 @@ protected:
    * Returns the number of landmarks in the routing table.
    */
   size_t getLandmarkCount() const;
+
+  void entryTimerExpired(const boost::system::error_code &error, const RoutingEntry &entry);
 private:
+  /// UNISPHERE context
+  Context &m_context;
   /// Local node identifier
   NodeIdentifier m_localId;
   /// Network size estimator

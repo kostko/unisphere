@@ -138,6 +138,11 @@ int main(int argc, char **argv)
     (*i).second->router->initialize();
   }
 
+  // Shutdown the first node after 40 seconds
+  ctx.schedule(40, [&]() {
+    nodes.begin()->second->router->shutdown();
+  });
+
   // Schedule routing table dump after 80 seconds
   ctx.schedule(80, [&]() {
     for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {

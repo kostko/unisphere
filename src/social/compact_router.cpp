@@ -20,37 +20,58 @@
 #include "social/size_estimator.h"
 #include "interplex/link_manager.h"
 #include "src/social/messages.pb.h"
+#include "core/operators.h"
 
 namespace UniSphere {
 
 CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
                              NetworkSizeEstimator &sizeEstimator)
-  : m_identity(identity),
+  : m_context(manager.context()),
+    m_identity(identity),
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
-    m_routes(identity.localId(), sizeEstimator),
+    m_routes(m_context, identity.localId(), sizeEstimator),
     m_announceTimer(manager.context().service())
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
-
-  manager.signalMessageReceived.connect(boost::bind(&CompactRouter::messageReceived, this, _1));
-  manager.signalVerifyPeer.connect(boost::bind(&CompactRouter::linkVerifyPeer, this, _1));
-  sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouter::networkSizeEstimateChanged, this, _1));
-  m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1));
-  m_routes.signalRetractEntry.connect(boost::bind(&CompactRouter::ribRetractEntry, this, _1));
-  m_identity.signalPeerAdded.connect(boost::bind(&CompactRouter::peerAdded, this, _1));
-  m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouter::peerRemoved, this, _1));
 }
 
 void CompactRouter::initialize()
 {
   UNISPHERE_LOG(m_manager, Info, "CompactRouter: Initializing router.");
 
+  // Subscribe to all events
+  m_subscriptions
+    << m_manager.signalMessageReceived.connect(boost::bind(&CompactRouter::messageReceived, this, _1))
+    << m_manager.signalVerifyPeer.connect(boost::bind(&CompactRouter::linkVerifyPeer, this, _1))
+    << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouter::networkSizeEstimateChanged, this, _1))
+    << m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1))
+    << m_routes.signalRetractEntry.connect(boost::bind(&CompactRouter::ribRetractEntry, this, _1))
+    << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouter::peerAdded, this, _1))
+    << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouter::peerRemoved, this, _1))
+  ;
+
   // Compute whether we should become a landmark or not
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
 
   // Start announcing ourselves to all neighbours
   announceOurselves(boost::system::error_code());
+}
+
+void CompactRouter::shutdown()
+{
+  UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Shutting down router.");
+
+  // Unsubscribe from all events
+  for (boost::signals::connection c : m_subscriptions)
+    c.disconnect();
+  m_subscriptions.clear();
+
+  // Stop announcing ourselves
+  m_announceTimer.cancel();
+
+  // Clear the routing table
+  m_routes.clear();
 }
 
 void CompactRouter::peerAdded(const Contact &peer)
@@ -87,8 +108,8 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
     m_manager.send(peer.second, Message(Message::Type::Social_Announce, announce));
   }
 
-  // Redo announce after 60 seconds
-  m_announceTimer.expires_from_now(boost::posix_time::seconds(60));
+  // Redo announce after 10 seconds
+  m_announceTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_announce));
   m_announceTimer.async_wait(boost::bind(&CompactRouter::announceOurselves, this, _1));
 }
 
@@ -159,8 +180,6 @@ void CompactRouter::messageReceived(const Message &msg)
 {
   switch (msg.type()) {
     case Message::Type::Social_Announce: {
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Received a routing announce.");
-
       Protocol::PathAnnounce pan = message_cast<Protocol::PathAnnounce>(msg);
       RoutingEntry entry(
         NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
@@ -184,17 +203,16 @@ void CompactRouter::messageReceived(const Message &msg)
         }
       }
 
-      // Compute cost based on hop count
+      // Compute cost based on hop count and set entry timestamp
       entry.cost = entry.forwardPath.size();
+      entry.lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
-      // Attempt to import the routing entry
+      // Attempt to import the entry into the routing table
       m_routes.import(entry);
       break;
     }
 
     case Message::Type::Social_Retract: {
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Received a routing retraction.");
-
       Protocol::PathRetract prt = message_cast<Protocol::PathRetract>(msg);
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
       m_routes.retract(vport, NodeIdentifier(prt.destinationid(), NodeIdentifier::Format::Raw));
