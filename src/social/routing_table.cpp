@@ -176,7 +176,7 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
         // Restart expiry timer for direct entries
         if (e.isDirect()) {
           if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
-            e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
+            e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(e)));
           }
         }
       });
@@ -212,7 +212,7 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
       const RoutingEntry &eref = *rentry.first;
       eref.timers = boost::shared_ptr<RoutingEntry::Timers>(new RoutingEntry::Timers(m_context.service()));
       eref.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
-      eref.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, eref));
+      eref.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(eref)));
     }
   }
 
