@@ -350,7 +350,14 @@ protected:
    */
   size_t getLandmarkCount() const;
 
-  void entryTimerExpired(const boost::system::error_code &error, const RoutingEntry &entry);
+  /**
+   * Called when the freshness timer expires on a direct routing entry.
+   *
+   * @param error Boost error code (in case timer was interrupted)
+   * @param entry Routing entry that expired
+   */
+  void entryTimerExpired(const boost::system::error_code &error,
+    const RoutingEntry &entry);
 private:
   /// UNISPHERE context
   Context &m_context;

@@ -150,7 +150,10 @@ void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &err
   if (error)
     return;
 
-  std::cout << "entry timer has expired! " << entry.destination.hex() << std::endl;
+  BOOST_ASSERT(entry.isDirect());
+
+  // Retract all routing entries established over this vport
+  retract(entry.originVport());
 }
 
 bool CompactRoutingTable::import(const RoutingEntry &entry)
@@ -288,7 +291,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
     candidates.first++;
     // Call the erasure method to ensure that the routing table is updated before any
     // announcements are sent
-    ribVport.erase(it);
+    it = ribVport.erase(it);
 
     if (explicitRetract) {
       if (candidates.first != candidates.second) {
