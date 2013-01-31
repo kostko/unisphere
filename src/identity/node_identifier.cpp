@@ -24,6 +24,10 @@
 
 namespace UniSphere {
 
+// Define the invalid node identifier instance that can be used for
+// returning references to invalid identifiers
+const NodeIdentifier NodeIdentifier::INVALID = NodeIdentifier();
+
 NodeIdentifier::NodeIdentifier()
 {
 }
