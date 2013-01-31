@@ -25,13 +25,25 @@ namespace UniSphere {
 // returning references to invalid entries
 const RoutingEntry RoutingEntry::INVALID = RoutingEntry();
 
+RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId, std::uint16_t seqno)
+  : identifier(nodeId),
+    seqno(seqno)
+{
+}
+
+boost::posix_time::time_duration RouteOriginator::age() const
+{
+  return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
+}
+
 RoutingEntry::RoutingEntry()
 {
 }
 
-RoutingEntry::RoutingEntry(const NodeIdentifier &destination, Type type)
+RoutingEntry::RoutingEntry(const NodeIdentifier &destination, Type type, std::uint16_t seqno)
   : destination(destination),
-    type(type)
+    type(type),
+    seqno(seqno)
 {
 }
 
@@ -156,6 +168,21 @@ void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &err
   retract(entry.originVport());
 }
 
+void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
+{
+  auto &entries = m_rib.get<RIBTags::DestinationId>();
+  NodeIdentifier lastDestination;
+
+  // Export all active routes to the selected peer
+  for (auto it = entries.begin(); it != entries.end(); ++it) {
+    if (it->destination == lastDestination)
+      continue;
+
+    signalExportEntry(*it, peer);
+    lastDestination = it->destination;
+  }
+}
+
 bool CompactRoutingTable::import(const RoutingEntry &entry)
 {
   RecursiveUniqueLock lock(m_mutex);
@@ -163,7 +190,21 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
   if (entry.isNull())
     return false;
 
-  bool needsInsertion = true;
+  if (!entry.originator) {
+    // Discover the originator for this entry
+    auto it = m_originatorMap.find(entry.destination);
+    if (it == m_originatorMap.end()) {
+      RouteOriginatorPtr nro(new RouteOriginator(entry.destination, entry.seqno));
+      entry.originator = nro;
+      m_originatorMap.insert({{entry.destination, nro}});
+    } else {
+      entry.originator = it->second;
+    }
+  }
+
+  // TODO: Ensure that this route is feasible before importing it
+
+  // TODO: Update route originator sequence number and liveness
 
   // Check if an entry to the same destination from the same vport already exists; in
   // this case, the announcement counts as an implicit retract
@@ -186,11 +227,10 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
       return false;
     }
 
+    // Note that we don't need to setup timers for direct routes here, because direct routes will always exactly match
+    // an existing entry (forwarding path is always one hop and the vport is the same)
     ribVport.replace(existing, entry);
-    needsInsertion = false;
-  }
-
-  if (needsInsertion) {
+  } else {
     // An entry should be inserted if it represents a landmark or if it falls
     // into the vicinity of the current node
     if (entry.type == RoutingEntry::Type::Vicinity) {
@@ -222,7 +262,7 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
   // Importing an entry might cause the best path to destination to change; if it
   // does, we need to export the entry to others as well
   if (getActiveRoute(entry.destination) == entry)
-    signalExportEntry(entry);
+    signalExportEntry(entry, NodeIdentifier::INVALID);
 
   return true;
 }
@@ -296,7 +336,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
     if (explicitRetract) {
       if (candidates.first != candidates.second) {
         // No need for an explicit retract as export counts as an implicit one
-        signalExportEntry(*candidates.first);
+        signalExportEntry(*candidates.first, NodeIdentifier::INVALID);
       } else {
         signalRetractEntry(entry);
       }

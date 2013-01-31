@@ -31,7 +31,8 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
-    m_announceTimer(manager.context().service())
+    m_announceTimer(manager.context().service()),
+    m_seqno(0)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
 }
@@ -45,7 +46,7 @@ void CompactRouter::initialize()
     << m_manager.signalMessageReceived.connect(boost::bind(&CompactRouter::messageReceived, this, _1))
     << m_manager.signalVerifyPeer.connect(boost::bind(&CompactRouter::linkVerifyPeer, this, _1))
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouter::networkSizeEstimateChanged, this, _1))
-    << m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1))
+    << m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1, _2))
     << m_routes.signalRetractEntry.connect(boost::bind(&CompactRouter::ribRetractEntry, this, _1))
     << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouter::peerAdded, this, _1))
     << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouter::peerRemoved, this, _1))
@@ -56,6 +57,9 @@ void CompactRouter::initialize()
 
   // Start announcing ourselves to all neighbours
   announceOurselves(boost::system::error_code());
+
+  // Request full routing table dump from neighbors
+  requestFullRoutes();
 }
 
 void CompactRouter::shutdown()
@@ -104,6 +108,8 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
       announce.set_type(Protocol::PathAnnounce::VICINITY);
     }
 
+    announce.set_seqno(m_seqno);
+
     // Send the announcement
     m_manager.send(peer.second, Message(Message::Type::Social_Announce, announce));
   }
@@ -113,15 +119,30 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
   m_announceTimer.async_wait(boost::bind(&CompactRouter::announceOurselves, this, _1));
 }
 
-void CompactRouter::ribExportEntry(const RoutingEntry &entry)
+void CompactRouter::requestFullRoutes()
 {
-  // Export entry to all neighbors
-  Protocol::PathAnnounce announce;
+  // Request full routing table dump from all neighbors
+  Protocol::PathRefresh request;
+  request.set_destinationid(NodeIdentifier().as(NodeIdentifier::Format::Raw));
+
   for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
+    m_manager.send(peer.second, Message(Message::Type::Social_Refresh, request));
+  }
+}
+
+void CompactRouter::ribExportEntry(const RoutingEntry &entry, const NodeIdentifier &peer)
+{
+  Protocol::PathAnnounce announce;
+  auto exportEntry = [&](const Contact &contact) {
+    if (contact.isNull()) {
+      UNISPHERE_LOG(m_manager, Error, "CompactRouter: Attempted export for null contact!");
+      return;
+    }
+
     // Retrieve vport for given peer and check that it is not the origin
-    Vport vport = m_routes.getVportForNeighbor(peer.first);
+    Vport vport = m_routes.getVportForNeighbor(contact.nodeId());
     if (vport == entry.originVport())
-      continue;
+      return;
 
     // Prepare the announce message
     announce.Clear();
@@ -137,8 +158,19 @@ void CompactRouter::ribExportEntry(const RoutingEntry &entry)
     }
     announce.add_reversepath(vport);
 
+    announce.set_seqno(m_seqno);
+
     // Send the announcement
-    m_manager.send(peer.second, Message(Message::Type::Social_Announce, announce));
+    m_manager.send(contact, Message(Message::Type::Social_Announce, announce));
+  };
+
+  if (peer.isNull()) {
+    // Export entry to all neighbors
+    for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
+      exportEntry(peer.second);
+    }
+  } else {
+    exportEntry(m_identity.getPeerContact(peer));
   }
 
   // TODO: Think about compaction/aggregation of multiple entries
@@ -183,7 +215,8 @@ void CompactRouter::messageReceived(const Message &msg)
       Protocol::PathAnnounce pan = message_cast<Protocol::PathAnnounce>(msg);
       RoutingEntry entry(
         NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
-        static_cast<RoutingEntry::Type>(pan.type())
+        static_cast<RoutingEntry::Type>(pan.type()),
+        pan.seqno()
       );
 
       // Get the incoming vport for this announcement; if none is available a
@@ -216,6 +249,17 @@ void CompactRouter::messageReceived(const Message &msg)
       Protocol::PathRetract prt = message_cast<Protocol::PathRetract>(msg);
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
       m_routes.retract(vport, NodeIdentifier(prt.destinationid(), NodeIdentifier::Format::Raw));
+      break;
+    }
+
+    case Message::Type::Social_Refresh: {
+      Protocol::PathRefresh prf = message_cast<Protocol::PathRefresh>(msg);
+      NodeIdentifier destinationId = NodeIdentifier(prf.destinationid(), NodeIdentifier::Format::Raw);
+      if (destinationId.isNull()) {
+        m_routes.fullUpdate(msg.originator());
+      } else {
+        // TODO: Only send back routes for a specific destination
+      }
       break;
     }
 

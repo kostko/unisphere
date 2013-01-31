@@ -20,6 +20,8 @@ message PathAnnounce {
   repeated uint32 reversePath = 3;
   // Announce type
   required Type type = 4;
+  // Sequence number
+  required uint32 seqno = 5;
 }
 
 message PathRetract {

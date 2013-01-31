@@ -51,4 +51,13 @@ void SocialIdentity::removePeer(const NodeIdentifier &nodeId)
   signalPeerRemoved(nodeId);
 }
 
+Contact SocialIdentity::getPeerContact(const NodeIdentifier &nodeId) const
+{
+  auto it = m_peers.find(nodeId);
+  if (it == m_peers.end())
+    return Contact();
+
+  return it->second;
+}
+
 }

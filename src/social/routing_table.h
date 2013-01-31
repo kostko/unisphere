@@ -19,6 +19,8 @@
 #ifndef UNISPHERE_SOCIAL_ROUTINGTABLE_H
 #define UNISPHERE_SOCIAL_ROUTINGTABLE_H
 
+#include <unordered_map>
+
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -36,6 +38,25 @@
 namespace midx = boost::multi_index;
 
 namespace UniSphere {
+
+class UNISPHERE_EXPORT RouteOriginator {
+public:
+  RouteOriginator(const NodeIdentifier &nodeId, std::uint16_t seqno);
+
+  /**
+   * Returns the age of this route originator descriptor.
+   */
+  boost::posix_time::time_duration age() const;
+public:
+  /// Node identifier
+  NodeIdentifier identifier;
+  /// Sequence number
+  std::uint16_t seqno;
+  /// Entry liveness
+  boost::posix_time::ptime lastUpdate;
+};
+
+UNISPHERE_SHARED_POINTER(RouteOriginator)
 
 /// Vport identifier type
 typedef std::uint32_t Vport;
@@ -79,8 +100,9 @@ public:
    *
    * @param destination Destination node identifier
    * @param type Routing entry type
+   * @param seqno Sequence number
    */
-  RoutingEntry(const NodeIdentifier &destination, Type type);
+  RoutingEntry(const NodeIdentifier &destination, Type type, std::uint16_t seqno);
 
   /**
    * Class destructor.
@@ -117,6 +139,8 @@ public:
    */
   bool operator==(const RoutingEntry &other) const;
 public:
+  /// Route originator descriptor
+  mutable RouteOriginatorPtr originator;
   /// Destination node identifier
   NodeIdentifier destination;
   /// Path of vports to destination
@@ -125,6 +149,8 @@ public:
   RoutingPath reversePath;
   /// Entry type
   Type type;
+  /// Sequence number
+  std::uint16_t seqno;
   /// Cost to route to that entry
   std::uint32_t cost;
   /// Entry liveness
@@ -178,6 +204,9 @@ typedef boost::multi_index_container<
 
 /// Bidirectional nodeId-vport mapping
 typedef boost::bimap<NodeIdentifier, Vport> VportMap;
+
+/// Mapping of identifiers to route originator descriptors
+typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMap;
 
 /**
  * Represents a landmark-relative address of the current node. Such an address
@@ -288,7 +317,14 @@ public:
    * @param destination Optional destination identifier
    * @return True if routing table has been changed, false otherwise
    */
-  bool retract(Vport vport, const NodeIdentifier &destination = NodeIdentifier());
+  bool retract(Vport vport, const NodeIdentifier &destination = NodeIdentifier::INVALID);
+
+  /**
+   * Exports the full routing table to the specified peer.
+   *
+   * @param peer Peer to export the routing table to
+   */
+  void fullUpdate(const NodeIdentifier &peer);
 
   /**
    * Clears the whole routing table (RIB and vport mappings).
@@ -324,7 +360,7 @@ public:
   void dump(std::ostream &stream);
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
-  boost::signal<void(const RoutingEntry&)> signalExportEntry;
+  boost::signal<void(const RoutingEntry&, const NodeIdentifier&)> signalExportEntry;
   /// Signal that gets called when a routing entry should be retracted to neighbours
   boost::signal<void(const RoutingEntry&)> signalRetractEntry;
   /// Signal that gets called when the local address changes
@@ -367,6 +403,8 @@ private:
   std::recursive_mutex m_mutex;
   /// Information needed for routing to any node
   RoutingInformationBase m_rib;
+  /// Route originator mapping
+  RouteOriginatorMap m_originatorMap;
   /// Vport mapping for direct routes
   VportMap m_vportMap;
   /// Vport index counter

@@ -71,6 +71,8 @@ protected:
    */
   void announceOurselves(const boost::system::error_code &error);
 
+  void requestFullRoutes();
+
   void peerAdded(const Contact &peer);
 
   void peerRemoved(const NodeIdentifier &nodeId);
@@ -88,8 +90,10 @@ protected:
    * all neighbors.
    *
    * @param entry Routing entry to export
+   * @param peer Optional peer identifier to export to
    */
-  void ribExportEntry(const RoutingEntry &entry);
+  void ribExportEntry(const RoutingEntry &entry,
+    const NodeIdentifier &peer = NodeIdentifier::INVALID);
 
   /**
    * Called by the routing table when a retraction should be sent to
@@ -113,6 +117,8 @@ private:
   boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components
   std::list<boost::signals::connection> m_subscriptions;
+  /// Local sequence number
+  std::uint16_t m_seqno;
 };
   
 }
