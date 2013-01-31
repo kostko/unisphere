@@ -219,8 +219,6 @@ private:
   RoutingPath m_path;
 };
 
-class CompactRouter;
-
 /**
  * The routing table data structure.
  */
