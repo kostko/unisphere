@@ -41,7 +41,7 @@ namespace UniSphere {
 
 class UNISPHERE_EXPORT RouteOriginator {
 public:
-  RouteOriginator(const NodeIdentifier &nodeId, std::uint16_t seqno);
+  RouteOriginator(const NodeIdentifier &nodeId);
 
   /**
    * Returns the age of this route originator descriptor.
@@ -52,6 +52,8 @@ public:
   NodeIdentifier identifier;
   /// Sequence number
   std::uint16_t seqno;
+  /// Smallest cost that was ever advertised by the local node for this originator
+  std::uint16_t smallestCost;
   /// Entry liveness
   boost::posix_time::ptime lastUpdate;
 };
@@ -79,9 +81,7 @@ public:
   };
 
   /**
-   * A routing entry extension for storing timers. It is not included in
-   * the main class in order to reduce overhead for entries that don't
-   * need any timers.
+   * A routing entry extension for storing timers.
    */
   struct Timers {
     Timers(boost::asio::io_service &service);
@@ -125,6 +125,11 @@ public:
   bool isDirect() const { return forwardPath.size() == 1; }
 
   /**
+   * Returns true if this is a feasible route.
+   */
+  bool isFeasible() const;
+
+  /**
    * Returns the vport identifier of the first routing hop.
    */
   Vport originVport() const { return forwardPath[0]; }
@@ -152,12 +157,14 @@ public:
   /// Sequence number
   std::uint16_t seqno;
   /// Cost to route to that entry
-  std::uint32_t cost;
+  std::uint16_t cost;
   /// Entry liveness
   boost::posix_time::ptime lastUpdate;
   /// Optional timer extensions
   mutable boost::shared_ptr<RoutingEntry::Timers> timers;
 };
+
+UNISPHERE_SHARED_POINTER(RoutingEntry)
 
 /// RIB index tags
 namespace RIBTags {
@@ -165,6 +172,8 @@ namespace RIBTags {
   class TypeCost;
   class VportDestination;
 }
+
+// TODO: Migrate routing entries to shared pointers
 
 typedef boost::multi_index_container<
   RoutingEntry,
@@ -175,7 +184,7 @@ typedef boost::multi_index_container<
       midx::composite_key<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint32_t, cost)
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
       >
     >,
     
@@ -186,7 +195,7 @@ typedef boost::multi_index_container<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint32_t, cost)
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
       >
     >,
 

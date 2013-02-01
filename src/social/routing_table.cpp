@@ -25,9 +25,10 @@ namespace UniSphere {
 // returning references to invalid entries
 const RoutingEntry RoutingEntry::INVALID = RoutingEntry();
 
-RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId, std::uint16_t seqno)
+RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
   : identifier(nodeId),
-    seqno(seqno)
+    seqno(0),
+    smallestCost(0xFFFF)
 {
 }
 
@@ -51,6 +52,23 @@ RoutingEntry::~RoutingEntry()
 {
 }
 
+bool RoutingEntry::isFeasible() const
+{
+  // If originator is not yet defined, this entry is feasible
+  if (!originator)
+    return true;
+
+  // If sequence number is greater, this entry is feasible
+  if ((originator->seqno - seqno) & 0x8000)
+    return true;
+
+  // If cost is strictly smaller than known minimum cost, this entry is feasible
+  if (cost < originator->smallestCost)
+    return true;
+
+  return false;
+}
+
 boost::posix_time::time_duration RoutingEntry::age() const
 {
   return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
@@ -58,7 +76,7 @@ boost::posix_time::time_duration RoutingEntry::age() const
 
 bool RoutingEntry::operator==(const RoutingEntry &other) const
 {
-  return destination == other.destination && type == other.type &&
+  return destination == other.destination && type == other.type && seqno == other.seqno &&
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
 }
 
@@ -162,10 +180,8 @@ void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &err
   if (error)
     return;
 
-  BOOST_ASSERT(entry.isDirect());
-
-  // Retract all routing entries established over this vport
-  retract(entry.originVport());
+  // Retract the entry from the routing table
+  retract(entry.originVport(), entry.destination);
 }
 
 void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
@@ -194,7 +210,7 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
     // Discover the originator for this entry
     auto it = m_originatorMap.find(entry.destination);
     if (it == m_originatorMap.end()) {
-      RouteOriginatorPtr nro(new RouteOriginator(entry.destination, entry.seqno));
+      RouteOriginatorPtr nro(new RouteOriginator(entry.destination));
       entry.originator = nro;
       m_originatorMap.insert({{entry.destination, nro}});
     } else {
@@ -202,9 +218,16 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
     }
   }
 
-  // TODO: Ensure that this route is feasible before importing it
+  // Ensure that this route is feasible before importing it
+  if (!entry.isFeasible()) {
+    // TODO: Request new sequence number from the originator
+    return false;
+  }
 
-  // TODO: Update route originator sequence number and liveness
+  // Update route originator sequence number and liveness
+  entry.originator->seqno = entry.seqno;
+  entry.originator->smallestCost = entry.cost;
+  entry.originator->lastUpdate = entry.lastUpdate;
 
   // Check if an entry to the same destination from the same vport already exists; in
   // this case, the announcement counts as an implicit retract
@@ -217,19 +240,28 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
       ribVport.modify(existing, [&](RoutingEntry &e) {
         e.lastUpdate = entry.lastUpdate;
 
-        // Restart expiry timer for direct entries
-        if (e.isDirect()) {
-          if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
-            e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(e)));
-          }
+        // Restart expiry timer
+        if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+          e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(e)));
         }
       });
       return false;
     }
 
-    // Note that we don't need to setup timers for direct routes here, because direct routes will always exactly match
-    // an existing entry (forwarding path is always one hop and the vport is the same)
-    ribVport.replace(existing, entry);
+    // Update certain attributes of the routing entry
+    ribVport.modify(existing, [&](RoutingEntry &e) {
+      e.forwardPath = entry.forwardPath;
+      e.reversePath = entry.reversePath;
+      e.type = entry.type;
+      e.seqno = entry.seqno;
+      e.cost = entry.cost;
+      e.lastUpdate = entry.lastUpdate;
+
+      // Restart expiry timer
+      if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+        e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(e)));
+      }
+    });
   } else {
     // An entry should be inserted if it represents a landmark or if it falls
     // into the vicinity of the current node
@@ -251,12 +283,11 @@ bool CompactRoutingTable::import(const RoutingEntry &entry)
 
     auto rentry = m_rib.insert(entry);
 
-    if (entry.isDirect()) {
-      const RoutingEntry &eref = *rentry.first;
-      eref.timers = boost::shared_ptr<RoutingEntry::Timers>(new RoutingEntry::Timers(m_context.service()));
-      eref.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
-      eref.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(eref)));
-    }
+    // Setup timers for the routing entry
+    const RoutingEntry &eref = *rentry.first;
+    eref.timers = boost::shared_ptr<RoutingEntry::Timers>(new RoutingEntry::Timers(m_context.service()));
+    eref.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
+    eref.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(eref)));
   }
 
   // Importing an entry might cause the best path to destination to change; if it

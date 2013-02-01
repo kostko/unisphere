@@ -32,7 +32,7 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
     m_announceTimer(manager.context().service()),
-    m_seqno(0)
+    m_seqno(1)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
 }
@@ -57,9 +57,6 @@ void CompactRouter::initialize()
 
   // Start announcing ourselves to all neighbours
   announceOurselves(boost::system::error_code());
-
-  // Request full routing table dump from neighbors
-  requestFullRoutes();
 }
 
 void CompactRouter::shutdown()
@@ -93,7 +90,7 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
   if (error)
     return;
 
-  // Announce ourselves to all neighbours
+  // Announce ourselves to all neighbours and send them routing updates
   Protocol::PathAnnounce announce;
   for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
     announce.Clear();
@@ -112,6 +109,9 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
 
     // Send the announcement
     m_manager.send(peer.second, Message(Message::Type::Social_Announce, announce));
+
+    // Send full routing table to neighbor
+    m_routes.fullUpdate(peer.first);
   }
 
   // Redo announce after 10 seconds
