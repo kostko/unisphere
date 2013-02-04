@@ -147,7 +147,7 @@ int main(int argc, char **argv)
   ctx.schedule(80, [&]() {
     for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
       std::cout << "---- ROUTING TABLE FOR: " << (*i).first.as(NodeIdentifier::Format::Hex) << " (" << names.right.at((*i).first) << ") ----" << std::endl;
-      (*i).second->router->routingTable().dump(std::cout);
+      (*i).second->router->routingTable().dump(std::cout, [&](const NodeIdentifier &n) -> std::string { return names.right.at(n); });
     }
   });
   

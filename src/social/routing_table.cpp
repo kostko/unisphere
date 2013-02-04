@@ -453,7 +453,7 @@ std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count)
   return addresses;
 }
 
-void CompactRoutingTable::dump(std::ostream &stream)
+void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -471,8 +471,12 @@ void CompactRoutingTable::dump(std::ostream &stream)
   for (auto i = entries.begin(); i != entries.end(); ++i) {
     RoutingEntryPtr e = *i;
     bool first = (e->destination != prevId);
-    if (first)
-      stream << e->destination.as(NodeIdentifier::Format::Hex) << std::endl;
+    if (first) {
+      stream << e->destination.as(NodeIdentifier::Format::Hex);
+      if (resolve)
+        stream << " (" << resolve(e->destination) << ")";
+      stream << std::endl;
+    }
 
     // Output type, cost and forward path
     stream << "  " << "t=";

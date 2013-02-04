@@ -362,8 +362,9 @@ public:
    * Outputs the routing table to a stream.
    *
    * @param stream Output stream to dump into
+   * @param resolve Optional name resolver
    */
-  void dump(std::ostream &stream);
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
   boost::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
