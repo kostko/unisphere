@@ -34,6 +34,8 @@ public:
   static const int interval_announce = 10;
   /// Neighbor expiry interval
   static const int interval_neighbor_expiry = 30;
+  /// Route origin descriptor expiry time
+  static const int origin_expiry_time = 300;
 
   CompactRouter(SocialIdentity &identity, LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
@@ -92,7 +94,7 @@ protected:
    * @param entry Routing entry to export
    * @param peer Optional peer identifier to export to
    */
-  void ribExportEntry(const RoutingEntry &entry,
+  void ribExportEntry(RoutingEntryPtr entry,
     const NodeIdentifier &peer = NodeIdentifier::INVALID);
 
   /**
@@ -101,7 +103,7 @@ protected:
    *
    * @param entry Routing entry to retract
    */
-  void ribRetractEntry(const RoutingEntry &entry);
+  void ribRetractEntry(RoutingEntryPtr entry);
 private:
   /// UNISPHERE context
   Context &m_context;

@@ -130,7 +130,7 @@ void CompactRouter::requestFullRoutes()
   }
 }
 
-void CompactRouter::ribExportEntry(const RoutingEntry &entry, const NodeIdentifier &peer)
+void CompactRouter::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
 {
   Protocol::PathAnnounce announce;
   auto exportEntry = [&](const Contact &contact) {
@@ -141,19 +141,19 @@ void CompactRouter::ribExportEntry(const RoutingEntry &entry, const NodeIdentifi
 
     // Retrieve vport for given peer and check that it is not the origin
     Vport vport = m_routes.getVportForNeighbor(contact.nodeId());
-    if (vport == entry.originVport())
+    if (vport == entry->originVport())
       return;
 
     // Prepare the announce message
     announce.Clear();
-    announce.set_destinationid(entry.destination.as(NodeIdentifier::Format::Raw));
-    announce.set_type(static_cast<Protocol::PathAnnounce_Type>(entry.type));
+    announce.set_destinationid(entry->destination.as(NodeIdentifier::Format::Raw));
+    announce.set_type(static_cast<Protocol::PathAnnounce_Type>(entry->type));
 
-    for (Vport v : entry.forwardPath) {
+    for (Vport v : entry->forwardPath) {
       announce.add_forwardpath(v);
     }
 
-    for (Vport v : entry.reversePath) {
+    for (Vport v : entry->reversePath) {
       announce.add_reversepath(v);
     }
     announce.add_reversepath(vport);
@@ -176,19 +176,19 @@ void CompactRouter::ribExportEntry(const RoutingEntry &entry, const NodeIdentifi
   // TODO: Think about compaction/aggregation of multiple entries
 }
 
-void CompactRouter::ribRetractEntry(const RoutingEntry &entry)
+void CompactRouter::ribRetractEntry(RoutingEntryPtr entry)
 {
   // Send retraction message to all neighbors
   Protocol::PathRetract retract;
   for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
     // Retrieve vport for given peer and check that it is not the origin
     Vport vport = m_routes.getVportForNeighbor(peer.first);
-    if (vport == entry.originVport())
+    if (vport == entry->originVport())
       continue;
 
     // Prepare the retract message
     retract.Clear();
-    retract.set_destinationid(entry.destination.as(NodeIdentifier::Format::Raw));
+    retract.set_destinationid(entry->destination.as(NodeIdentifier::Format::Raw));
 
     // Send the announcement
     m_manager.send(peer.second, Message(Message::Type::Social_Retract, retract));
@@ -213,32 +213,33 @@ void CompactRouter::messageReceived(const Message &msg)
   switch (msg.type()) {
     case Message::Type::Social_Announce: {
       Protocol::PathAnnounce pan = message_cast<Protocol::PathAnnounce>(msg);
-      RoutingEntry entry(
+      RoutingEntryPtr entry(new RoutingEntry(
+        m_context.service(),
         NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
         static_cast<RoutingEntry::Type>(pan.type()),
         pan.seqno()
-      );
+      ));
 
       // Get the incoming vport for this announcement; if none is available a
       // new vport is automatically assigned
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
-      entry.forwardPath.push_back(vport);
+      entry->forwardPath.push_back(vport);
 
       // Populate the forwarding path
       for (int i = 0; i < pan.forwardpath_size(); i++) {
-        entry.forwardPath.push_back(pan.forwardpath(i));
+        entry->forwardPath.push_back(pan.forwardpath(i));
       }
 
       // Populate the reverse path (for landmarks)
-      if (entry.type == RoutingEntry::Type::Landmark) {
+      if (entry->type == RoutingEntry::Type::Landmark) {
         for (int i = 0; i < pan.reversepath_size(); i++) {
-          entry.reversePath.push_back(pan.reversepath(i));
+          entry->reversePath.push_back(pan.reversepath(i));
         }
       }
 
       // Compute cost based on hop count and set entry timestamp
-      entry.cost = entry.forwardPath.size();
-      entry.lastUpdate = boost::posix_time::microsec_clock::universal_time();
+      entry->cost = entry->forwardPath.size();
+      entry->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
       // Attempt to import the entry into the routing table
       m_routes.import(entry);

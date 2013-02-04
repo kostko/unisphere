@@ -21,10 +21,6 @@
 
 namespace UniSphere {
 
-// Define the invalid routing entry instance that can be used for
-// returning references to invalid entries
-const RoutingEntry RoutingEntry::INVALID = RoutingEntry();
-
 RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
   : identifier(nodeId),
     seqno(0),
@@ -32,19 +28,23 @@ RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
 {
 }
 
+bool RouteOriginator::isNewer(std::uint16_t seq) const
+{
+  return (seqno - seq) & 0x8000;
+}
+
 boost::posix_time::time_duration RouteOriginator::age() const
 {
   return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
 }
 
-RoutingEntry::RoutingEntry()
-{
-}
-
-RoutingEntry::RoutingEntry(const NodeIdentifier &destination, Type type, std::uint16_t seqno)
+RoutingEntry::RoutingEntry(boost::asio::io_service &service, const NodeIdentifier &destination,
+  Type type, std::uint16_t seqno)
   : destination(destination),
     type(type),
-    seqno(seqno)
+    seqno(seqno),
+    active(false),
+    expiryTimer(service)
 {
 }
 
@@ -59,7 +59,7 @@ bool RoutingEntry::isFeasible() const
     return true;
 
   // If sequence number is greater, this entry is feasible
-  if ((originator->seqno - seqno) & 0x8000)
+  if (originator->isNewer(seqno))
     return true;
 
   // If cost is strictly smaller than known minimum cost, this entry is feasible
@@ -78,11 +78,6 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
 {
   return destination == other.destination && type == other.type && seqno == other.seqno &&
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
-}
-
-RoutingEntry::Timers::Timers(boost::asio::io_service &service)
-  : expiryTimer(service)
-{
 }
 
 LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId)
@@ -136,22 +131,22 @@ size_t CompactRoutingTable::getMaximumVicinitySize() const
   return static_cast<size_t>(std::sqrt(n * std::log(n)));
 }
 
-boost::tuple<size_t, RoutingEntry> CompactRoutingTable::getCurrentVicinity() const
+boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTable::getCurrentVicinity() const
 {
   auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Vicinity);
-  RoutingEntry maxCostEntry;
+  RoutingEntryPtr maxCostEntry;
   NodeIdentifier lastDestination;
   size_t vicinitySize = 0;
 
   // Count the number of unique destinations in the vicinity
   for (auto it = entries.first; it != entries.second; ++it) {
-    if (it->destination != lastDestination) {
+    if ((*it)->destination != lastDestination) {
       vicinitySize++;
-      if (maxCostEntry.isNull() || it->cost > maxCostEntry.cost)
+      if (!maxCostEntry || (*it)->cost > maxCostEntry->cost)
         maxCostEntry = *it;
     }
 
-    lastDestination = it->destination;
+    lastDestination = (*it)->destination;
   }
 
   return boost::make_tuple(vicinitySize, maxCostEntry);
@@ -165,23 +160,23 @@ size_t CompactRoutingTable::getLandmarkCount() const
 
   // Count the number of unique destinations in the landmark set
   for (auto it = entries.first; it != entries.second; ++it) {
-    if (it->destination != lastDestination)
+    if ((*it)->destination != lastDestination)
       landmarkCount++;
 
-    lastDestination = it->destination;
+    lastDestination = (*it)->destination;
   }
 
   return landmarkCount;
 }
 
 void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &error,
-  const RoutingEntry &entry)
+  RoutingEntryPtr entry)
 {
   if (error)
     return;
 
   // Retract the entry from the routing table
-  retract(entry.originVport(), entry.destination);
+  retract(entry->originVport(), entry->destination);
 }
 
 void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
@@ -191,120 +186,172 @@ void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
 
   // Export all active routes to the selected peer
   for (auto it = entries.begin(); it != entries.end(); ++it) {
-    if (it->destination == lastDestination)
+    if ((*it)->destination == lastDestination)
       continue;
 
-    signalExportEntry(*it, peer);
-    lastDestination = it->destination;
+    exportEntry(*it, peer);
+    lastDestination = (*it)->destination;
   }
 }
 
-bool CompactRoutingTable::import(const RoutingEntry &entry)
+bool CompactRoutingTable::import(RoutingEntryPtr entry)
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  if (entry.isNull())
+  if (!entry || entry->isNull())
     return false;
 
-  if (!entry.originator) {
+  if (!entry->originator) {
     // Discover the originator for this entry
-    auto it = m_originatorMap.find(entry.destination);
+    auto it = m_originatorMap.find(entry->destination);
     if (it == m_originatorMap.end()) {
-      RouteOriginatorPtr nro(new RouteOriginator(entry.destination));
-      entry.originator = nro;
-      m_originatorMap.insert({{entry.destination, nro}});
+      RouteOriginatorPtr nro(new RouteOriginator(entry->destination));
+      entry->originator = nro;
+      m_originatorMap.insert({{entry->destination, nro}});
     } else {
-      entry.originator = it->second;
+      entry->originator = it->second;
     }
   }
-
-  // Ensure that this route is feasible before importing it
-  if (!entry.isFeasible()) {
-    // TODO: Request new sequence number from the originator
-    return false;
-  }
-
-  // Update route originator sequence number and liveness
-  entry.originator->seqno = entry.seqno;
-  entry.originator->smallestCost = entry.cost;
-  entry.originator->lastUpdate = entry.lastUpdate;
 
   // Check if an entry to the same destination from the same vport already exists; in
   // this case, the announcement counts as an implicit retract
   auto &ribVport = m_rib.get<RIBTags::VportDestination>();
-  auto existing = ribVport.find(boost::make_tuple(entry.originVport(), entry.destination));
+  auto existing = ribVport.find(boost::make_tuple(entry->originVport(), entry->destination));
   if (existing != ribVport.end()) {
     // Ignore import when the existing entry is the same as the new one
-    if (*existing == entry) {
+    if (**existing == *entry) {
       // Update the entry's last seen timestamp
-      ribVport.modify(existing, [&](RoutingEntry &e) {
-        e.lastUpdate = entry.lastUpdate;
+      ribVport.modify(existing, [&](RoutingEntryPtr e) {
+        e->lastUpdate = entry->lastUpdate;
 
         // Restart expiry timer
-        if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
-          e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(e)));
+        if (e->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+          e->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
         }
       });
       return false;
     }
 
     // Update certain attributes of the routing entry
-    ribVport.modify(existing, [&](RoutingEntry &e) {
-      e.forwardPath = entry.forwardPath;
-      e.reversePath = entry.reversePath;
-      e.type = entry.type;
-      e.seqno = entry.seqno;
-      e.cost = entry.cost;
-      e.lastUpdate = entry.lastUpdate;
+    ribVport.modify(existing, [&](RoutingEntryPtr e) {
+      e->forwardPath = entry->forwardPath;
+      e->reversePath = entry->reversePath;
+      e->type = entry->type;
+      e->seqno = entry->seqno;
+      e->cost = entry->cost;
+      e->lastUpdate = entry->lastUpdate;
 
       // Restart expiry timer
-      if (e.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
-        e.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(e)));
+      if (e->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+        e->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
       }
     });
   } else {
     // An entry should be inserted if it represents a landmark or if it falls
     // into the vicinity of the current node
-    if (entry.type == RoutingEntry::Type::Vicinity) {
+    if (entry->type == RoutingEntry::Type::Vicinity) {
       // Verify that it falls into the vicinity
       size_t vicinitySize;
-      RoutingEntry maxCostEntry;
+      RoutingEntryPtr maxCostEntry;
       boost::tie(vicinitySize, maxCostEntry) = getCurrentVicinity();
 
       if (vicinitySize >= getMaximumVicinitySize()) {
-        if (maxCostEntry.cost > entry.cost) {
+        if (maxCostEntry->cost > entry->cost) {
           // Remove the entry with maximum cost
-          retract(maxCostEntry.destination);
+          retract(maxCostEntry->destination);
         } else {
           return false;
         }
       }
     }
 
-    auto rentry = m_rib.insert(entry);
+    m_rib.insert(entry);
 
-    // Setup timers for the routing entry
-    const RoutingEntry &eref = *rentry.first;
-    eref.timers = boost::shared_ptr<RoutingEntry::Timers>(new RoutingEntry::Timers(m_context.service()));
-    eref.timers->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
-    eref.timers->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, boost::cref(eref)));
+    // Setup expiry timer for the routing entry
+    entry->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
+    entry->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, entry));
   }
 
-  // Importing an entry might cause the best path to destination to change; if it
-  // does, we need to export the entry to others as well
-  if (getActiveRoute(entry.destination) == entry)
-    signalExportEntry(entry, NodeIdentifier::INVALID);
+  // Determine what the new best route for this destination is
+  selectBestRoute(entry->destination);
 
   return true;
 }
 
-const RoutingEntry &CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
+void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
+{
+  RouteOriginatorPtr orig = entry->originator;
+
+  // Update route originator sequence number and liveness
+  if (orig->age().total_seconds() > CompactRouter::origin_expiry_time ||
+      orig->isNewer(entry->seqno) ||
+      (entry->seqno == orig->seqno && entry->cost < orig->smallestCost)) {
+    orig->seqno = entry->seqno;
+    orig->smallestCost = entry->cost;
+  }
+  orig->lastUpdate = boost::posix_time::microsec_clock::universal_time();
+
+  // Export the entry
+  signalExportEntry(entry, peer);
+}
+
+bool CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
+{
+  auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
+  auto entries = ribDestination.equal_range(boost::make_tuple(destination));
+  auto oldBest = ribDestination.end();
+  auto newBest = ribDestination.end();
+
+  // If there are no routes to choose from, return early
+  if (entries.first == entries.second)
+    return false;
+
+  // Finds the first feasible route with minimum cost
+  for (auto it = entries.first; it != entries.second; ++it) {
+    RoutingEntryPtr e = *it;
+    if (e->active)
+      oldBest = it;
+
+    if (!e->isFeasible())
+      continue;
+
+    newBest = it;
+    break;
+  }
+
+  // If there are no feasible routes, return early
+  if (newBest == ribDestination.end()) {
+    // TODO: Request a new sequence number from route originator
+    return false;
+  }
+
+  if (newBest != oldBest) {
+    // Update the routing table
+    if (oldBest != ribDestination.end()) {
+      ribDestination.modify(oldBest, [&](RoutingEntryPtr e) {
+        e->active = false;
+      });
+    }
+
+    ribDestination.modify(newBest, [&](RoutingEntryPtr e) {
+      e->active = true;
+    });
+
+    // Export new active route to neighbors
+    exportEntry(*newBest);
+  }
+
+  return true;
+}
+
+RoutingEntryPtr CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  auto entry = m_rib.get<RIBTags::DestinationId>().find(destination);
-  if (entry == m_rib.end())
-    return RoutingEntry::INVALID;
+  auto &ribActive =  m_rib.get<RIBTags::ActiveRoutes>();
+  auto entry = ribActive.find(boost::make_tuple(true, destination));
+  if (entry == ribActive.end())
+    return RoutingEntryPtr();
 
   return *entry;
 }
@@ -319,14 +366,15 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
     return false;
 
   for (auto it = entries.first; it != entries.second;) {
-    const RoutingEntry entry = *it;
+    RoutingEntryPtr entry = *it;
 
     // Call the erasure method to ensure that the routing table is updated before any
     // announcements are sent
     ribDestination.erase(it);
 
-    // Send retractions
-    signalRetractEntry(entry);
+    // Send retractions for active entries
+    if (entry->active)
+      signalRetractEntry(entry);
   }
 
   return true;
@@ -350,27 +398,16 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
 
   // Erase selected entries and then export/retract routes for removed destinations
   for (auto it = routes.first; it != routes.second;) {
-    const RoutingEntry entry = *it;
-    auto candidates = m_rib.get<RIBTags::DestinationId>().equal_range(boost::make_tuple(entry.destination));
-    bool explicitRetract = false;
-    if (*candidates.first == entry) {
-      // The entry that is going to be erased is currently part of an active route
-      // as it is the top-level entry for the given destination
-      explicitRetract = true;
-    }
+    RoutingEntryPtr entry = *it;
 
-    candidates.first++;
     // Call the erasure method to ensure that the routing table is updated before any
     // announcements are sent
     it = ribVport.erase(it);
 
-    if (explicitRetract) {
-      if (candidates.first != candidates.second) {
-        // No need for an explicit retract as export counts as an implicit one
-        signalExportEntry(*candidates.first, NodeIdentifier::INVALID);
-      } else {
+    // If entry was part of an active route, we must determine a new active route for this destination
+    if (entry->active) {
+      if (!selectBestRoute(entry->destination))
         signalRetractEntry(entry);
-      }
     }
   }
 
@@ -403,10 +440,10 @@ std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count)
     // Extract nearest count landmarks from RIB and return reverse paths as addresses
     auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Landmark);
     for (auto it = entries.first; it != entries.second; ++it) {
-      if (!addresses.empty() && it->destination == addresses.back().landmarkId())
+      if (!addresses.empty() && (*it)->destination == addresses.back().landmarkId())
         continue;
 
-      addresses.push_back(LandmarkAddress(it->destination, it->reversePath));
+      addresses.push_back(LandmarkAddress((*it)->destination, (*it)->reversePath));
 
       if (addresses.size() >= count)
         break;
@@ -428,33 +465,35 @@ void CompactRoutingTable::dump(std::ostream &stream)
 
   // Dump routing table entries for each destination
   stream << "*** RT entries:" << std::endl;
+  stream << "Count: " << m_rib.size() << std::endl;
   NodeIdentifier prevId;
   auto &entries = m_rib.get<RIBTags::DestinationId>();
   for (auto i = entries.begin(); i != entries.end(); ++i) {
-    bool first = (i->destination != prevId);
+    RoutingEntryPtr e = *i;
+    bool first = (e->destination != prevId);
     if (first)
-      stream << i->destination.as(NodeIdentifier::Format::Hex) << std::endl;
+      stream << e->destination.as(NodeIdentifier::Format::Hex) << std::endl;
 
     // Output type, cost and forward path
     stream << "  " << "t=";
-    switch (i->type) {
+    switch (e->type) {
       case RoutingEntry::Type::Landmark: stream << "LND"; break;
       case RoutingEntry::Type::Vicinity: stream << "VIC"; break;
       default: stream << "???"; break;
     }
-    stream << " c=" << i->cost << " f-path=";
-    for (auto p = i->forwardPath.begin(); p != i->forwardPath.end(); ++p) {
+    stream << " c=" << e->cost << " f-path=";
+    for (auto p = e->forwardPath.begin(); p != e->forwardPath.end(); ++p) {
       stream << *p << " ";
     }
 
-    stream << "age=" << i->age().total_seconds() << "s ";
+    stream << "age=" << e->age().total_seconds() << "s ";
 
     // Mark currently active route
-    if (first)
+    if (e->active)
       stream << "*";
     stream << std::endl;
 
-    prevId = i->destination;
+    prevId = e->destination;
   }
 
   // Dump vicinity size and maximum

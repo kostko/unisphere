@@ -43,6 +43,8 @@ class UNISPHERE_EXPORT RouteOriginator {
 public:
   RouteOriginator(const NodeIdentifier &nodeId);
 
+  bool isNewer(std::uint16_t seq) const;
+
   /**
    * Returns the age of this route originator descriptor.
    */
@@ -68,9 +70,6 @@ typedef std::vector<Vport> RoutingPath;
 
 class UNISPHERE_EXPORT RoutingEntry {
 public:
-  /// An invalid (default-constructed) routing entry
-  static const RoutingEntry INVALID;
-
   /**
    * Valid routing entry types.
    */
@@ -81,28 +80,15 @@ public:
   };
 
   /**
-   * A routing entry extension for storing timers.
-   */
-  struct Timers {
-    Timers(boost::asio::io_service &service);
-
-    /// Expiration timer
-    boost::asio::deadline_timer expiryTimer;
-  };
-  
-  /**
-   * Constructs an invalid routing entry.
-   */
-  RoutingEntry();
-
-  /**
    * Constructs a routing entry.
    *
+   * @param service IO service for timer handling
    * @param destination Destination node identifier
    * @param type Routing entry type
    * @param seqno Sequence number
    */
-  RoutingEntry(const NodeIdentifier &destination, Type type, std::uint16_t seqno);
+  RoutingEntry(boost::asio::io_service &service, const NodeIdentifier &destination,
+    Type type, std::uint16_t seqno);
 
   /**
    * Class destructor.
@@ -145,7 +131,7 @@ public:
   bool operator==(const RoutingEntry &other) const;
 public:
   /// Route originator descriptor
-  mutable RouteOriginatorPtr originator;
+  RouteOriginatorPtr originator;
   /// Destination node identifier
   NodeIdentifier destination;
   /// Path of vports to destination
@@ -158,10 +144,12 @@ public:
   std::uint16_t seqno;
   /// Cost to route to that entry
   std::uint16_t cost;
+  /// Active mark
+  bool active;
   /// Entry liveness
   boost::posix_time::ptime lastUpdate;
-  /// Optional timer extensions
-  mutable boost::shared_ptr<RoutingEntry::Timers> timers;
+  /// Expiration timer
+  boost::asio::deadline_timer expiryTimer;
 };
 
 UNISPHERE_SHARED_POINTER(RoutingEntry)
@@ -169,14 +157,13 @@ UNISPHERE_SHARED_POINTER(RoutingEntry)
 /// RIB index tags
 namespace RIBTags {
   class DestinationId;
+  class ActiveRoutes;
   class TypeCost;
   class VportDestination;
 }
 
-// TODO: Migrate routing entries to shared pointers
-
 typedef boost::multi_index_container<
-  RoutingEntry,
+  RoutingEntryPtr,
   midx::indexed_by<
     // Index by destination identifier and order by cost within
     midx::ordered_non_unique<
@@ -185,6 +172,16 @@ typedef boost::multi_index_container<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
+      >
+    >,
+
+    // Indey by activeness and destination identifier
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::ActiveRoutes>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, active),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
       >
     >,
     
@@ -280,7 +277,7 @@ public:
    * @param destination Destination address
    * @return A routing entry that can be used to forward to destination
    */
-  const RoutingEntry &getActiveRoute(const NodeIdentifier &destination);
+  RoutingEntryPtr getActiveRoute(const NodeIdentifier &destination);
 
   /**
    * Returns a vport identifier corresponding to the given neighbor
@@ -308,7 +305,7 @@ public:
    * @param entry Routing entry to import
    * @return True if routing table has been changed, false otherwise
    */
-  bool import(const RoutingEntry &entry);
+  bool import(RoutingEntryPtr entry);
 
   /**
    * Retracts all routing entries for the specified destination.
@@ -369,9 +366,9 @@ public:
   void dump(std::ostream &stream);
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
-  boost::signal<void(const RoutingEntry&, const NodeIdentifier&)> signalExportEntry;
+  boost::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
   /// Signal that gets called when a routing entry should be retracted to neighbours
-  boost::signal<void(const RoutingEntry&)> signalRetractEntry;
+  boost::signal<void(RoutingEntryPtr)> signalRetractEntry;
   /// Signal that gets called when the local address changes
   boost::signal<void(const LandmarkAddress&)> signalAddressChanged;
 protected:
@@ -386,7 +383,7 @@ protected:
    *
    * @return A tuple (size, entry)
    */
-  boost::tuple<size_t, RoutingEntry> getCurrentVicinity() const;
+  boost::tuple<size_t, RoutingEntryPtr> getCurrentVicinity() const;
 
   /**
    * Returns the number of landmarks in the routing table.
@@ -400,7 +397,25 @@ protected:
    * @param entry Routing entry that expired
    */
   void entryTimerExpired(const boost::system::error_code &error,
-    const RoutingEntry &entry);
+    RoutingEntryPtr entry);
+
+  /**
+   * Notifies the router that an entry should be exported to neighbor
+   * nodes.
+   *
+   * @param entry Routing entry to export
+   * @param peer Optional peer to limit the export to
+   */
+  void exportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer = NodeIdentifier::INVALID);
+
+  /**
+   * Performs best route selection for a specific destination and
+   * activates the best route (if found).
+   *
+   * @param destination Destination identifier
+   * @return True if a route was activated, false otherwise
+   */
+  bool selectBestRoute(const NodeIdentifier &destination);
 private:
   /// UNISPHERE context
   Context &m_context;
