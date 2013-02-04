@@ -370,7 +370,7 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
 
     // Call the erasure method to ensure that the routing table is updated before any
     // announcements are sent
-    ribDestination.erase(it);
+    it = ribDestination.erase(it);
 
     // Send retractions for active entries
     if (entry->active)
