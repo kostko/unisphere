@@ -139,9 +139,9 @@ int main(int argc, char **argv)
   }
 
   // Shutdown the first node after 40 seconds
-  ctx.schedule(40, [&]() {
+  /*ctx.schedule(40, [&]() {
     nodes.begin()->second->router->shutdown();
-  });
+  });*/
 
   // Schedule routing table dump after 80 seconds
   ctx.schedule(80, [&]() {
