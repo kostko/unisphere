@@ -39,7 +39,7 @@ typedef std::list<Vport> RoutingPath;
 class UNISPHERE_EXPORT LandmarkAddress {
 public:
   /**
-   * Constructs an invalid landmark address.
+   * Constructs a null landmark address.
    */
   LandmarkAddress();
 
@@ -66,6 +66,11 @@ public:
    * @param path Reverse routing path (from landmark to node)
    */
   LandmarkAddress(const NodeIdentifier &landmarkId, const google::protobuf::RepeatedField<google::protobuf::uint32> &path);
+
+  /**
+   * Returns true if this landmark-relative address is null.
+   */
+  inline bool isNull() const { return m_landmarkId.isNull(); }
 
   /**
    * Returns the landmark identifier that can be used to route towards this

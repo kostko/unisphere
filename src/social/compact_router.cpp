@@ -284,7 +284,53 @@ void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
 
 void CompactRouter::route(const RoutedMessage &msg)
 {
-  // TODO: Implement message routing
+  // Drop invalid messages
+  if (!msg.isValid()) {
+    UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping invalid message.");
+    return;
+  }
+
+  // Check if we are the destination - deliver to local component
+  if (msg.destinationNodeId() == m_manager.getLocalNodeId()) {
+    signalDeliverMessage(msg);
+    return;
+  }
+
+  Contact nextHop;
+
+  if (!msg.destinationAddress().isNull()) {
+    // Message must first be routed to a specific landmark
+    if (msg.destinationAddress() == m_manager.getLocalNodeId()) {
+      // We are the landmark, enter delivery mode
+      msg.setDeliveryMode(true);
+    }
+
+    if (!msg.deliveryMode()) {
+      // We must route towards the landmark
+    } else {
+      // We must route based on source path
+      nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(msg.destinationAddress().path().front()));
+    }
+  }
+
+  // Check local routing table to see if we can route directly (no landmark-relative address needed)
+  RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationNodeId());
+  if (entry) {
+    nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+  } else {
+    // Check local sloppy group state to see if we have the address (landmark-relative address)
+
+    // Route via best sloppy group member (use sloppy group member as "landmark")
+  }
+
+  // Drop messages where no next hop can be determined
+  if (nextHop.isNull()) {
+    UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping message - no route to destination.");
+    return;
+  }
+
+  // Route to next hop
+  m_manager.send(nextHop, Message(Message::Type::Social_Routed, *msg.serialize()));
 }
 
 void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &destination,

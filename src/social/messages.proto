@@ -45,7 +45,7 @@ message RoutedMessage {
   required uint32 sourceComp = 4;
   
   // Destination landmark
-  required bytes destinationLandmark = 5;
+  optional bytes destinationLandmark = 5;
   // Destination node landmark-relative address
   repeated uint32 destinationAddress = 6;
   // Destination node identifier

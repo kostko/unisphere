@@ -104,6 +104,11 @@ public:
   void processHop();
 
   /**
+   * Sets the delivery mode flag on this message.
+   */
+  inline void setDeliveryMode(bool delivery) { m_deliveryMode = delivery; }
+
+  /**
    * Returns the source landmark-relative address.
    */
   inline const LandmarkAddress &sourceAddress() const { return m_sourceAddress; }
@@ -147,6 +152,11 @@ public:
    * Returns the hop count.
    */
   inline std::uint8_t hopCount() const { return m_hopCount; }
+
+  /**
+   * Returns the delivery mode.
+   */
+  inline bool deliveryMode() const { return m_deliveryMode; }
   
   /**
    * Returns the originator link node identifier. When the originator is null, this

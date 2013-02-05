@@ -29,10 +29,14 @@ RoutedMessage::RoutedMessage(const Message &msg)
   );
   m_sourceNodeId = NodeIdentifier(pmsg.sourcenode(), NodeIdentifier::Format::Raw);
   m_sourceCompId = pmsg.sourcecomp();
-  m_destinationAddress = LandmarkAddress(
-    NodeIdentifier(pmsg.destinationlandmark(), NodeIdentifier::Format::Raw),
-    pmsg.destinationaddress()
-  );
+
+  if (pmsg.has_destinationlandmark()) {
+    m_destinationAddress = LandmarkAddress(
+      NodeIdentifier(pmsg.destinationlandmark(), NodeIdentifier::Format::Raw),
+      pmsg.destinationaddress()
+    );
+  }
+  
   m_destinationNodeId = NodeIdentifier(pmsg.destinationnode(), NodeIdentifier::Format::Raw);
   m_destinationCompId = pmsg.destinationcomp();
   m_hopCount = pmsg.hopcount();
