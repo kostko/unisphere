@@ -21,6 +21,7 @@
 
 #include "social/social_identity.h"
 #include "social/routing_table.h"
+#include "social/routed_message.h"
 
 namespace UniSphere {
 
@@ -68,9 +69,41 @@ public:
   const SocialIdentity &identity() const { return m_identity; }
 
   /**
+   * Returns the link manager instance associated with this router.
+   */
+  const LinkManager &linkManager() const { return m_manager; }
+
+  /**
    * Returns the reference to underlying routing table.
    */
   CompactRoutingTable &routingTable() { return m_routes; }
+
+  /**
+   * Routes the specified message via the overlay.
+   * 
+   * @param msg A valid message to be routed
+   */
+  void route(const RoutedMessage &msg);
+  
+  /**
+   * Generates a new message and routes it via the overlay.
+   * 
+   * @param sourceCompId Source component identifier
+   * @param destination Destination node identifier
+   * @param destinationCompId Destination component identifier
+   * @param type Message type
+   * @param msg Protocol Buffers message
+   * @param opts Routing options
+   */
+  void route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
+             std::uint32_t destinationCompId, std::uint32_t type,
+             const google::protobuf::Message &msg,
+             const RoutingOptions &opts = RoutingOptions());
+public:
+  /// Signal for delivery of locally-bound messages
+  boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
+  /// Signal for forwarding transit messages
+  boost::signal<void(const RoutedMessage&)> signalForwardMessage;
 protected:
   /**
    * Called when a message has been received on any link.

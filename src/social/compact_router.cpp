@@ -281,5 +281,18 @@ void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
     m_routes.setLandmark(true);
   }
 }
+
+void CompactRouter::route(const RoutedMessage &msg)
+{
+  // TODO: Implement message routing
+}
+
+void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
+                          std::uint32_t destinationCompId, std::uint32_t type,
+                          const google::protobuf::Message &msg,
+                          const RoutingOptions &opts)
+{
+  // TODO: Implement message routing
+}
   
 }
