@@ -106,7 +106,7 @@ public:
   /**
    * Sets the delivery mode flag on this message.
    */
-  inline void setDeliveryMode(bool delivery) { m_deliveryMode = delivery; }
+  inline void setDeliveryMode(bool delivery) const { m_deliveryMode = delivery; }
 
   /**
    * Returns the source landmark-relative address.
@@ -188,9 +188,9 @@ private:
   std::uint32_t m_destinationCompId;
   
   /// Hop count
-  std::uint8_t m_hopCount;
+  mutable std::uint8_t m_hopCount;
   /// Delivery mode
-  bool m_deliveryMode;
+  mutable bool m_deliveryMode;
   
   /// Payload type
   std::uint32_t m_payloadType;

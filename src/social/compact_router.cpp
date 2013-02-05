@@ -300,7 +300,7 @@ void CompactRouter::route(const RoutedMessage &msg)
 
   if (!msg.destinationAddress().isNull()) {
     // Message must first be routed to a specific landmark
-    if (msg.destinationAddress() == m_manager.getLocalNodeId()) {
+    if (msg.destinationAddress().landmarkId() == m_manager.getLocalNodeId()) {
       // We are the landmark, enter delivery mode
       msg.setDeliveryMode(true);
     }
