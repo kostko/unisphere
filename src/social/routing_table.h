@@ -34,6 +34,7 @@
 #include "core/context.h"
 #include "identity/node_identifier.h"
 #include "social/size_estimator.h"
+#include "social/address.h"
 
 namespace midx = boost::multi_index;
 
@@ -61,12 +62,6 @@ public:
 };
 
 UNISPHERE_SHARED_POINTER(RouteOriginator)
-
-/// Vport identifier type
-typedef std::uint32_t Vport;
-
-/// The routing path type that contains a list of vports to reach a destination
-typedef std::vector<Vport> RoutingPath;
 
 class UNISPHERE_EXPORT RoutingEntry {
 public:
@@ -213,46 +208,6 @@ typedef boost::bimap<NodeIdentifier, Vport> VportMap;
 
 /// Mapping of identifiers to route originator descriptors
 typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMap;
-
-/**
- * Represents a landmark-relative address of the current node. Such an address
- * can be used by other nodes to route messages towards this node.
- */
-class UNISPHERE_EXPORT LandmarkAddress {
-public:
-  /**
-   * Constructs a landmark address with an empty routing path. Such an address
-   * designates the landmark itself.
-   *
-   * @param landmarkId Landmark identifier
-   */
-  LandmarkAddress(const NodeIdentifier &landmarkId);
-
-  /**
-   * Constructs a landmark address.
-   *
-   * @param landmarkId Landmark identifier
-   * @param path Reverse routing path (from landmark to node)
-   */
-  LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path);
-
-  /**
-   * Returns the landmark identifier that can be used to route towards this
-   * node.
-   */
-  const NodeIdentifier &landmarkId() const { return m_landmarkId; }
-
-  /**
-   * Returns the reverse routing path that can be used to route from the landmark
-   * towards this node.
-   */
-  const RoutingPath &path() const { return m_path; }
-private:
-  /// Landmark identifier
-  NodeIdentifier m_landmarkId;
-  /// Reverse routing path
-  RoutingPath m_path;
-};
 
 /**
  * The routing table data structure.

@@ -2,6 +2,7 @@
 set(unisphere_social_src
 social_identity.cpp
 compact_router.cpp
+address.cpp
 routing_table.cpp
 )
 

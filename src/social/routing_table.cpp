@@ -80,17 +80,6 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
 }
 
-LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId)
-  : m_landmarkId(landmarkId)
-{
-}
-
-LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path)
-  : m_landmarkId(landmarkId),
-    m_path(path)
-{
-}
-
 CompactRoutingTable::CompactRoutingTable(Context &context, const NodeIdentifier &localId,
   NetworkSizeEstimator &sizeEstimator)
   : m_context(context),
