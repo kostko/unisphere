@@ -33,3 +33,33 @@ message PathRefresh {
   // Destination identifier
   required bytes destinationId = 1;
 }
+
+message RoutedMessage {
+  // Source landmark
+  required bytes sourceLandmark = 1;
+  // Source node landmark-relative address
+  repeated uint32 sourceAddress = 2;
+  // Source node identifier
+  required bytes sourceNode = 3;
+  // Source component identifier
+  required uint32 sourceComp = 4;
+  
+  // Destination landmark
+  required bytes destinationLandmark = 5;
+  // Destination node landmark-relative address
+  repeated uint32 destinationAddress = 6;
+  // Destination node identifier
+  required bytes destinationNode = 7;
+  // Destination component identifier
+  required uint32 destinationComp = 8;
+  
+  // Hop count
+  required uint32 hopCount = 9;
+  // Delivery mode flag
+  required bool delivery = 10;
+  
+  // Message type (component dependent)
+  required uint32 type = 11;
+  // Message payload (type dependent)
+  required bytes payload = 12;
+}

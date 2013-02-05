@@ -37,8 +37,21 @@ public:
   /// Route origin descriptor expiry time
   static const int origin_expiry_time = 300;
 
+  /**
+   * Identifiers of components that can be routed to. These components
+   * may differ between nodes, but system components must always be
+   * implemented.
+   */
+  enum class Component : std::uint32_t {
+    /* 0x00 - 0xFF RESERVED FOR SYSTEM PROTOCOLS */
+    RPC_Engine    = 0x01,
+  };
+
   CompactRouter(SocialIdentity &identity, LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
+
+  CompactRouter(const CompactRouter&) = delete;
+  CompactRouter &operator=(const CompactRouter&) = delete;
 
   void initialize();
 

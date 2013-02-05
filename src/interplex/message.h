@@ -53,6 +53,7 @@ public:
     Social_Announce     = 0x05,
     Social_Retract      = 0x06,
     Social_Refresh      = 0x07,
+    Social_Routed       = 0x08,
     
     /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
     

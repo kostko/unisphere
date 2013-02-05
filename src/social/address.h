@@ -19,6 +19,9 @@
 #ifndef UNISPHERE_SOCIAL_ADDRESS_H
 #define UNISPHERE_SOCIAL_ADDRESS_H
 
+#include <google/protobuf/repeated_field.h>
+#include <list>
+
 #include "identity/node_identifier.h"
 
 namespace UniSphere {
@@ -27,7 +30,7 @@ namespace UniSphere {
 typedef std::uint32_t Vport;
 
 /// The routing path type that contains a list of vports to reach a destination
-typedef std::vector<Vport> RoutingPath;
+typedef std::list<Vport> RoutingPath;
 
 /**
  * Represents a landmark-relative address of the current node. Such an address
@@ -35,6 +38,11 @@ typedef std::vector<Vport> RoutingPath;
  */
 class UNISPHERE_EXPORT LandmarkAddress {
 public:
+  /**
+   * Constructs an invalid landmark address.
+   */
+  LandmarkAddress();
+
   /**
    * Constructs a landmark address with an empty routing path. Such an address
    * designates the landmark itself.
@@ -52,6 +60,14 @@ public:
   LandmarkAddress(const NodeIdentifier &landmarkId, const RoutingPath &path);
 
   /**
+   * Constructs a landmark address.
+   *
+   * @param landmarkId Landmark identifier
+   * @param path Reverse routing path (from landmark to node)
+   */
+  LandmarkAddress(const NodeIdentifier &landmarkId, const google::protobuf::RepeatedField<google::protobuf::uint32> &path);
+
+  /**
    * Returns the landmark identifier that can be used to route towards this
    * node.
    */
@@ -62,6 +78,12 @@ public:
    * towards this node.
    */
   const RoutingPath &path() const { return m_path; }
+
+  /**
+   * Moves the address one hop forward by removing the first element in
+   * the reverse routing path.
+   */
+  inline void hop() { m_path.pop_front(); }
 private:
   /// Landmark identifier
   NodeIdentifier m_landmarkId;

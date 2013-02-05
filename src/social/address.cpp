@@ -20,6 +20,10 @@
 
 namespace UniSphere {
 
+LandmarkAddress::LandmarkAddress()
+{
+}
+
 LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId)
   : m_landmarkId(landmarkId)
 {
@@ -29,6 +33,14 @@ LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const Routing
   : m_landmarkId(landmarkId),
     m_path(path)
 {
+}
+
+LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const google::protobuf::RepeatedField<google::protobuf::uint32> &path)
+  : m_landmarkId(landmarkId)
+{
+  for (auto it = path.begin(); it != path.end(); ++it) {
+    m_path.push_back(*it);
+  }
 }
 
 }

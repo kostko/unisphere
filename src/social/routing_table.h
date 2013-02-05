@@ -113,7 +113,7 @@ public:
   /**
    * Returns the vport identifier of the first routing hop.
    */
-  Vport originVport() const { return forwardPath[0]; }
+  Vport originVport() const { return forwardPath.front(); }
 
   /**
    * Returns the age of this routing entry.

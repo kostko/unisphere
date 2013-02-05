@@ -4,6 +4,7 @@ social_identity.cpp
 compact_router.cpp
 address.cpp
 routing_table.cpp
+routed_message.cpp
 )
 
 PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr
