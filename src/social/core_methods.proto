@@ -1,0 +1,13 @@
+//
+// RPC messages for core routing methods
+//
+
+package UniSphere.Protocol;
+
+message PingRequest {
+  required uint64 timestamp = 1;
+}
+
+message PingResponse {
+  required uint64 timestamp = 1;
+}

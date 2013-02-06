@@ -12,6 +12,7 @@ name_database.cpp
 PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr
 messages.proto
 rpc.proto
+core_methods.proto
 )
 
 add_library(UnisphereSocial SHARED ${unisphere_social_src} ${unisphere_social_proto_src})

@@ -19,8 +19,11 @@
 #include "social/compact_router.h"
 #include "social/size_estimator.h"
 #include "interplex/link_manager.h"
-#include "src/social/messages.pb.h"
 #include "core/operators.h"
+
+#include "src/social/messages.pb.h"
+#include "src/social/core_methods.pb.h"
+
 
 namespace UniSphere {
 
@@ -32,10 +35,14 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
     m_nameDb(*this),
+    m_rpc(*this),
     m_announceTimer(manager.context().service()),
     m_seqno(1)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
+
+  // Register core routing RPC methods
+  registerCoreRpcMethods();
 }
 
 void CompactRouter::initialize()
@@ -380,6 +387,18 @@ void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &dest
   );
 
   route(rmsg);
+}
+
+void CompactRouter::registerCoreRpcMethods()
+{
+  // Simple ping messages
+  m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
+    [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::PingResponse> {
+      Protocol::PingResponse response;
+      response.set_timestamp(1);
+      return response;
+    }
+  );
 }
 
 }

@@ -23,6 +23,7 @@
 #include "social/routing_table.h"
 #include "social/routed_message.h"
 #include "social/name_database.h"
+#include "social/rpc_engine.h"
 
 namespace UniSphere {
 
@@ -151,6 +152,11 @@ protected:
    * @param entry Routing entry to retract
    */
   void ribRetractEntry(RoutingEntryPtr entry);
+
+  /**
+   * Performs registration of core RPC methods that are required for routing.
+   */
+  void registerCoreRpcMethods();
 private:
   /// UNISPHERE context
   Context &m_context;
@@ -164,6 +170,8 @@ private:
   CompactRoutingTable m_routes;
   /// Name database
   NameDatabase m_nameDb;
+  /// RPC engine
+  RpcEngine m_rpc;
   /// Timer for notifying neighbours about ourselves
   boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components
