@@ -81,6 +81,11 @@ public:
   CompactRoutingTable &routingTable() { return m_routes; }
 
   /**
+   * Returns the reference to underlying RPC engine.
+   */
+  RpcEngine &rpcEngine() { return m_rpc; }
+
+  /**
    * Routes the specified message via the overlay.
    * 
    * @param msg A valid message to be routed
