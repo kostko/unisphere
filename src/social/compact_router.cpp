@@ -31,6 +31,7 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
+    m_nameDb(*this),
     m_announceTimer(manager.context().service()),
     m_seqno(1)
 {
@@ -301,26 +302,52 @@ void CompactRouter::route(const RoutedMessage &msg)
   if (!msg.destinationAddress().isNull()) {
     // Message must first be routed to a specific landmark
     if (msg.destinationAddress().landmarkId() == m_manager.getLocalNodeId()) {
-      // We are the landmark, enter delivery mode
-      msg.setDeliveryMode(true);
+      if (msg.destinationAddress().path().empty()) {
+        // Landmark-relative address is empty but we are the designated landmark; this
+        // means that we are responsible for resolving the destination L-R address
+        NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
+        if (record)
+          msg.setDestinationAddress(record->landmarkAddress());
+      } else {
+        // We are the landmark, enter delivery mode
+        msg.setDeliveryMode(true);
+      }
     }
 
-    if (!msg.deliveryMode()) {
-      // We must route towards the landmark
-    } else {
+    if (msg.deliveryMode()) {
       // We must route based on source path
       nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(msg.destinationAddress().path().front()));
+    } else {
+      // We must route to landmark node
+      RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
+      if (entry)
+        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
     }
   }
 
-  // Check local routing table to see if we can route directly (no landmark-relative address needed)
-  RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationNodeId());
-  if (entry) {
-    nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
-  } else {
-    // Check local sloppy group state to see if we have the address (landmark-relative address)
+  if (nextHop.isNull()) {
+    // Check local routing table to see if we can route directly (no landmark-relative address needed)
+    RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationNodeId());
+    if (entry) {
+      nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+    } else {
+      // Check local sloppy group state to see if we have the address (landmark-relative address)
+      NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
+      if (record) {
+        msg.setDestinationAddress(record->landmarkAddress());
+        entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
+        if (entry)
+          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+      }
 
-    // Route via best sloppy group member (use sloppy group member as "landmark")
+      if (nextHop.isNull()) {
+        // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
+        entry = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
+        msg.setDestinationAddress(LandmarkAddress(entry->destination));
+        if (entry)
+          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+      }
+    }
   }
 
   // Drop messages where no next hop can be determined
@@ -330,6 +357,7 @@ void CompactRouter::route(const RoutedMessage &msg)
   }
 
   // Route to next hop
+  signalForwardMessage(msg);
   m_manager.send(nextHop, Message(Message::Type::Social_Routed, *msg.serialize()));
 }
 
@@ -338,7 +366,20 @@ void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &dest
                           const google::protobuf::Message &msg,
                           const RoutingOptions &opts)
 {
-  // TODO: Implement message routing
+  // Create a new routed message without a known destination L-R address
+  RoutedMessage rmsg(
+    m_routes.getLocalAddress(),
+    m_manager.getLocalNodeId(),
+    sourceCompId,
+    LandmarkAddress(),
+    destination,
+    destinationCompId,
+    type,
+    msg,
+    opts
+  );
+
+  route(rmsg);
 }
-  
+
 }

@@ -235,6 +235,15 @@ public:
   RoutingEntryPtr getActiveRoute(const NodeIdentifier &destination);
 
   /**
+   * Returns the routing entry with the longest prefix match in
+   * its node identifier.
+   *
+   * @param destination Destiantion address
+   * @return A routing entry that has the longest prefix match
+   */
+  RoutingEntryPtr getLongestPrefixMatch(const NodeIdentifier &destination);
+
+  /**
    * Returns a vport identifier corresponding to the given neighbor
    * identifier. If a vport has not yet been assigned, a new one is
    * assigned on the fly.
@@ -311,7 +320,12 @@ public:
    * @param count Number of addresses to return
    * @return A list of landmark addresses
    */
-  std::list<LandmarkAddress> getLocalAddresses(size_t count = 1);
+  std::list<LandmarkAddress> getLocalAddresses(size_t count = 1) const;
+
+  /**
+   * Returns the first local address.
+   */
+  LandmarkAddress getLocalAddress() const;
 
   /**
    * Outputs the routing table to a stream.

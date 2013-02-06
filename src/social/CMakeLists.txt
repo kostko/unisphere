@@ -6,6 +6,7 @@ address.cpp
 routing_table.cpp
 routed_message.cpp
 rpc_engine.cpp
+name_database.cpp
 )
 
 PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr

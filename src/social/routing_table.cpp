@@ -345,6 +345,31 @@ RoutingEntryPtr CompactRoutingTable::getActiveRoute(const NodeIdentifier &destin
   return *entry;
 }
 
+RoutingEntryPtr CompactRoutingTable::getLongestPrefixMatch(const NodeIdentifier &destination)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // If the RIB is empty, return a null entry
+  if (m_rib.empty())
+    return RoutingEntryPtr();
+
+  // Find the entry with longest common prefix
+  auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
+  auto it = ribDestination.upper_bound(boost::make_tuple(destination));
+  if (it == ribDestination.end())
+    return *(--it);
+
+  // Check if previous entry has longer common prefix
+  if (it != ribDestination.begin()) {
+    auto pit = it;
+    if ((*(--pit))->destination.longestCommonPrefix(destination) >
+        (*it)->destination.longestCommonPrefix(destination))
+      return *pit;
+  }
+
+  return *it;
+}
+
 bool CompactRoutingTable::retract(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
@@ -418,7 +443,7 @@ void CompactRoutingTable::setLandmark(bool landmark)
   m_landmark = landmark;
 }
 
-std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count)
+std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count) const
 {
   std::list<LandmarkAddress> addresses;
 
@@ -440,6 +465,15 @@ std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count)
   }
 
   return addresses;
+}
+
+LandmarkAddress CompactRoutingTable::getLocalAddress() const
+{
+  std::list<LandmarkAddress> addresses = getLocalAddresses(1);
+  if (addresses.empty())
+    return LandmarkAddress();
+
+  return addresses.front();
 }
 
 void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)

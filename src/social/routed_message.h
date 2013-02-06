@@ -109,6 +109,11 @@ public:
   inline void setDeliveryMode(bool delivery) const { m_deliveryMode = delivery; }
 
   /**
+   * Modifies the landmark-relative destination address.
+   */
+  inline void setDestinationAddress(const LandmarkAddress &address) const { m_destinationAddress = address; }
+
+  /**
    * Returns the source landmark-relative address.
    */
   inline const LandmarkAddress &sourceAddress() const { return m_sourceAddress; }
@@ -181,7 +186,7 @@ private:
   /// Source component identifier
   std::uint32_t m_sourceCompId;
   /// Destination node landmark-relative address
-  LandmarkAddress m_destinationAddress;
+  mutable LandmarkAddress m_destinationAddress;
   /// Destination key identifier
   NodeIdentifier m_destinationNodeId;
   /// Destination component identifier

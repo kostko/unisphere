@@ -22,6 +22,7 @@
 #include "social/social_identity.h"
 #include "social/routing_table.h"
 #include "social/routed_message.h"
+#include "social/name_database.h"
 
 namespace UniSphere {
 
@@ -161,6 +162,8 @@ private:
   NetworkSizeEstimator &m_sizeEstimator;
   /// Compact routing table
   CompactRoutingTable m_routes;
+  /// Name database
+  NameDatabase m_nameDb;
   /// Timer for notifying neighbours about ourselves
   boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components
