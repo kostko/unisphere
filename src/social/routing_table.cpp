@@ -122,7 +122,7 @@ size_t CompactRoutingTable::getMaximumVicinitySize() const
 
 boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTable::getCurrentVicinity() const
 {
-  auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Vicinity);
+  auto entries = m_rib.get<RIBTags::TypeDestinationCost>().equal_range(RoutingEntry::Type::Vicinity);
   RoutingEntryPtr maxCostEntry;
   NodeIdentifier lastDestination;
   size_t vicinitySize = 0;
@@ -143,7 +143,7 @@ boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTable::getCurrentVicinity() 
 
 size_t CompactRoutingTable::getLandmarkCount() const
 {
-  auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Landmark);
+  auto entries = m_rib.get<RIBTags::TypeDestinationCost>().equal_range(RoutingEntry::Type::Landmark);
   NodeIdentifier lastDestination;
   size_t landmarkCount = 0;
 

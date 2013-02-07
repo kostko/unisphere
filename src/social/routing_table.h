@@ -154,6 +154,7 @@ namespace RIBTags {
   class DestinationId;
   class ActiveRoutes;
   class TypeCost;
+  class TypeDestinationCost;
   class VportDestination;
 }
 
@@ -179,10 +180,20 @@ typedef boost::multi_index_container<
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
       >
     >,
-    
+
     // Index by type and cost
     midx::ordered_non_unique<
       midx::tag<RIBTags::TypeCost>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
+      >
+    >,
+    
+    // Index by type, destination and cost
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::TypeDestinationCost>,
       midx::composite_key<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
