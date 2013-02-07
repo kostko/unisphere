@@ -47,6 +47,7 @@ public:
    */
   enum class Component : std::uint32_t {
     /* 0x00 - 0xFF RESERVED FOR SYSTEM PROTOCOLS */
+    Null          = 0x00,
     RPC_Engine    = 0x01,
   };
 

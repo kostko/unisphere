@@ -20,6 +20,7 @@
 #include "interplex/link_manager.h"
 #include "social/compact_router.h"
 #include "social/size_estimator.h"
+#include "src/social/core_methods.pb.h"
 
 #include <iostream>
 #include <fstream>
@@ -149,6 +150,37 @@ int main(int argc, char **argv)
       std::cout << "---- ROUTING TABLE FOR: " << (*i).first.as(NodeIdentifier::Format::Hex) << " (" << names.right.at((*i).first) << ") ----" << std::endl;
       (*i).second->router->routingTable().dump(std::cout, [&](const NodeIdentifier &n) -> std::string { return names.right.at(n); });
     }
+  });
+
+  // Schedule routings tests after 85 seconds
+  ctx.schedule(85, [&]() {
+    VirtualNode *a = nodes.begin()->second;
+    VirtualNode *b;
+    for (auto it = nodes.begin(); it != nodes.end(); ++it) {
+      if (!it->second->router->routingTable().isLandmark())
+        b = it->second;
+    }
+
+    // Send message from a to b
+    LandmarkAddress addr = b->router->routingTable().getLocalAddress();
+    std::cout << "Sending message from " << names.right.at(a->nodeId) << " to " << names.right.at(b->nodeId) << std::endl;
+    std::cout << "Destination L-R address: " << addr << std::endl;
+
+    Protocol::PingRequest request;
+    request.set_timestamp(1);
+
+    RoutedMessage msg(
+      a->router->routingTable().getLocalAddress(),
+      a->nodeId,
+      static_cast<std::uint32_t>(CompactRouter::Component::Null),
+      b->router->routingTable().getLocalAddress(),
+      b->nodeId,
+      static_cast<std::uint32_t>(CompactRouter::Component::Null),
+      0,
+      request
+    );
+
+    a->router->route(msg);
   });
   
   // Run the context
