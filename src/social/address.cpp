@@ -43,4 +43,26 @@ LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const google:
   }
 }
 
+bool LandmarkAddress::operator==(const LandmarkAddress &other) const
+{
+  return m_landmarkId == other.m_landmarkId && m_path == other.m_path;
+}
+
+std::ostream &operator<<(std::ostream &stream, const LandmarkAddress &address)
+{
+  stream << "[" << address.landmarkId().hex() << ", ";
+
+  if (address.path().empty()) {
+    stream << "<>]";
+  } else {
+    auto it = address.path().begin();
+    stream << "<" << *it;
+    while (++it != address.path().end())
+      stream << "-" << *it;
+    stream << ">]";
+  }
+
+  return stream;
+}
+
 }

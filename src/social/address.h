@@ -89,12 +89,20 @@ public:
    * the reverse routing path.
    */
   inline void hop() { m_path.pop_front(); }
+
+  /**
+   * Compares two landmark addresses for equality.
+   */
+  bool operator==(const LandmarkAddress &other) const;
 private:
   /// Landmark identifier
   NodeIdentifier m_landmarkId;
   /// Reverse routing path
   RoutingPath m_path;
 };
+
+/// Operator for easier display of L-R addresses
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const LandmarkAddress &address);
 
 }
 
