@@ -314,7 +314,12 @@ void CompactRouter::route(const RoutedMessage &msg)
 
   Contact nextHop;
 
-  if (!msg.destinationAddress().isNull()) {
+  // Always attempt to first route directly without L-R addressing
+  RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationNodeId());
+  if (entry)
+    nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+
+  if (nextHop.isNull() && !msg.destinationAddress().isNull()) {
     // Message must first be routed to a specific landmark
     UNISPHERE_LOG(m_manager, Info, "CompactRouter: RT to L, addr known.");
     if (msg.destinationAddress().landmarkId() == m_manager.getLocalNodeId()) {
@@ -346,30 +351,23 @@ void CompactRouter::route(const RoutedMessage &msg)
   }
 
   if (nextHop.isNull()) {
-    // Check local routing table to see if we can route directly (no landmark-relative address needed)
     UNISPHERE_LOG(m_manager, Info, "CompactRouter: No next hop and addr unknown.");
-    RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationNodeId());
-    if (entry) {
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Direct delivery.");
-      nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
-    } else {
-      // Check local sloppy group state to see if we have the address (landmark-relative address)
-      NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
-      if (record) {
-        msg.setDestinationAddress(record->landmarkAddress());
-        entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
-        if (entry)
-          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
-      }
+    // Check local sloppy group state to see if we have the address (landmark-relative address)
+    NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
+    if (record) {
+      msg.setDestinationAddress(record->landmarkAddress());
+      entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
+      if (entry)
+        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+    }
 
-      if (nextHop.isNull()) {
-        // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
-        UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery via S-G.");
-        entry = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
-        msg.setDestinationAddress(LandmarkAddress(entry->destination));
-        if (entry)
-          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
-      }
+    if (nextHop.isNull()) {
+      // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
+      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery via S-G.");
+      entry = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
+      msg.setDestinationAddress(LandmarkAddress(entry->destination));
+      if (entry)
+        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
     }
   }
 
