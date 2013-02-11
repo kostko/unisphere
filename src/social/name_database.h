@@ -31,12 +31,27 @@ class CompactRouter;
 
 class NameRecord {
 public:
-  NameRecord(boost::asio::io_service &service, const NodeIdentifier &nodeId);
+  enum class Type : std::uint8_t {
+    Cache       = 0x01,
+    SloppyGroup = 0x02,
+  };
+
+  NameRecord(boost::asio::io_service &service, const NodeIdentifier &nodeId,
+    Type type);
 
   LandmarkAddress landmarkAddress() const;
+
+  boost::posix_time::seconds ttl() const;
+
+  /**
+   * Returns the age of this name record.
+   */
+  boost::posix_time::time_duration age() const;
 public:
   /// Node identifier
   NodeIdentifier nodeId;
+  /// Record type
+  Type type;
   /// Current node landmark-relative addresses
   std::list<LandmarkAddress> addresses;
   /// Record liveness
@@ -49,13 +64,33 @@ UNISPHERE_SHARED_POINTER(NameRecord)
 
 class NameDatabase {
 public:
+  /// Number of landmarks to replicate the name cache to
+  static const int cache_redundancy = 3;
+
   NameDatabase(CompactRouter &router);
 
-  void store(NameRecordPtr record);
+  void store(const NodeIdentifier &nodeId, const LandmarkAddress &address,
+    NameRecord::Type type);
+
+  void remove(const NodeIdentifier &nodeId);
 
   void clear();
 
   NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
+
+  void registerLandmark(const NodeIdentifier &landmarkId);
+
+  void unregisterLandmark(const NodeIdentifier &landmarkId);
+
+  /**
+   * Returns a list of landmarks that are responsible for caching the given address.
+   *
+   * @param nodeId Destination node identifier that needs to be resolved
+   * @return A list of landmark identifiers that should have the address
+   */
+  std::list<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId) const;
+protected:
+  void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
 private:
   /// Router
   CompactRouter &m_router;
