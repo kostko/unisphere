@@ -204,6 +204,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
 
   // Check if an entry to the same destination from the same vport already exists; in
   // this case, the announcement counts as an implicit retract
+  bool landmarkChangedType = false;
   auto &ribVport = m_rib.get<RIBTags::VportDestination>();
   auto existing = ribVport.find(boost::make_tuple(entry->originVport(), entry->destination));
   if (existing != ribVport.end()) {
@@ -223,6 +224,9 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
 
     // Update certain attributes of the routing entry
     ribVport.modify(existing, [&](RoutingEntryPtr e) {
+      if (e->type != entry->type)
+        landmarkChangedType = true;
+
       e->forwardPath = entry->forwardPath;
       e->reversePath = entry->reversePath;
       e->type = entry->type;
@@ -262,7 +266,16 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
   }
 
   // Determine what the new best route for this destination is
-  selectBestRoute(entry->destination);
+  RoutingEntryPtr newBest, oldBest;
+  boost::tie(boost::tuples::ignore, newBest, oldBest) = selectBestRoute(entry->destination);
+
+  if (newBest == oldBest && entry == newBest && landmarkChangedType) {
+    // Landmark type of the currently active route has changed
+    if (entry->isLandmark())
+      signalLandmarkLearned(entry->destination);
+    else
+      signalLandmarkRemoved(entry->destination);
+  }
 
   return true;
 }
@@ -284,7 +297,7 @@ void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifie
   signalExportEntry(entry, peer);
 }
 
-bool CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
+boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
 {
   auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
   auto entries = ribDestination.equal_range(boost::make_tuple(destination));
@@ -293,7 +306,7 @@ bool CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
 
   // If there are no routes to choose from, return early
   if (entries.first == entries.second)
-    return false;
+    return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
 
   // Finds the first feasible route with minimum cost
   for (auto it = entries.first; it != entries.second; ++it) {
@@ -311,8 +324,13 @@ bool CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
   // If there are no feasible routes, return early
   if (newBest == ribDestination.end()) {
     // TODO: Request a new sequence number from route originator
-    return false;
+    return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
   }
+
+  RoutingEntryPtr newBestEntry = *newBest;
+  RoutingEntryPtr oldBestEntry;
+  if (oldBest != ribDestination.end())
+    oldBestEntry = *oldBest;
 
   if (newBest != oldBest) {
     // Update the routing table
@@ -326,11 +344,23 @@ bool CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
       e->active = true;
     });
 
+    // Check if any landmarks have changed status because of this update
+    if (oldBestEntry) {
+      // Check if landmark type for the active entry has changed
+      if (oldBestEntry->isLandmark() && !newBestEntry->isLandmark())
+        signalLandmarkRemoved(destination);
+      else if (!oldBestEntry->isLandmark() && newBestEntry->isLandmark())
+        signalLandmarkLearned(destination);
+    } else if (newBestEntry->isLandmark()) {
+      // A landmark has become the active route
+      signalLandmarkLearned(destination);
+    }
+
     // Export new active route to neighbors
-    exportEntry(*newBest);
+    exportEntry(newBestEntry);
   }
 
-  return true;
+  return boost::make_tuple(true, *newBest, oldBestEntry);
 }
 
 RoutingEntryPtr CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
@@ -379,8 +409,12 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
   if (entries.first == entries.second)
     return false;
 
+  bool wasLandmark = false;
+
   for (auto it = entries.first; it != entries.second;) {
     RoutingEntryPtr entry = *it;
+    if (entry->isLandmark())
+      wasLandmark = true;
 
     // Call the erasure method to ensure that the routing table is updated before any
     // announcements are sent
@@ -390,6 +424,10 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
     if (entry->active)
       signalRetractEntry(entry);
   }
+
+  // If this was a landmark, we have just unlearned it
+  if (wasLandmark)
+    signalLandmarkRemoved(destination);
 
   return true;
 }
@@ -420,7 +458,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
 
     // If entry was part of an active route, we must determine a new active route for this destination
     if (entry->active) {
-      if (!selectBestRoute(entry->destination))
+      if (!selectBestRoute(entry->destination).get<0>())
         signalRetractEntry(entry);
     }
   }

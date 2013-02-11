@@ -352,6 +352,10 @@ public:
   boost::signal<void(RoutingEntryPtr)> signalRetractEntry;
   /// Signal that gets called when the local address changes
   boost::signal<void(const LandmarkAddress&)> signalAddressChanged;
+  /// Signal that gets called when a new landmark is learned
+  boost::signal<void(const NodeIdentifier&)> signalLandmarkLearned;
+  /// Signal that gets called when a landmark is removed
+  boost::signal<void(const NodeIdentifier&)> signalLandmarkRemoved;
 protected:
   /**
    * Returns the maximum vicinity size.
@@ -394,9 +398,12 @@ protected:
    * activates the best route (if found).
    *
    * @param destination Destination identifier
-   * @return True if a route was activated, false otherwise
+   * @return Tuple (activated, new_best, old_best), where activated is true if a
+   *   route was activated, false otherwise; in case activated is true, new_best
+   *   contains the routing entry that was activated while old_best contains the
+   *   previously active entry or null if there was no such entry before
    */
-  bool selectBestRoute(const NodeIdentifier &destination);
+  boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> selectBestRoute(const NodeIdentifier &destination);
 private:
   /// UNISPHERE context
   Context &m_context;
