@@ -59,6 +59,8 @@ enum class RpcMessageType : std::uint32_t {
 enum class RpcErrorCode : std::uint32_t {
   MethodNotFound  = 0x01,
   RequestTimedOut = 0x02,
+  BadRequest      = 0x03,
+  NoAuthorization = 0x04,
 };
 
 /// Callback type for successful RPC method responses
@@ -373,6 +375,13 @@ public:
     RecursiveUniqueLock lock(m_mutex);
     m_interceptMethods[method] = createBasicMethodHandler<RequestType>(method, impl);
   }
+
+  /**
+   * Removes an already registered method.
+   *
+   * @param method Method name
+   */
+  void unregisterMethod(const std::string &method);
 protected:
   /**
    * Generates a new RPC identifier.

@@ -92,6 +92,12 @@ RpcId RpcEngine::getNextRpcId() const
   return rpcId;
 }
 
+void RpcEngine::unregisterMethod(const std::string &method)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  m_interceptMethods.erase(method);
+}
+
 RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::string &method,
                                  const std::vector<char> &payload, RpcCallSuccess success,
                                  RpcResponseFailure failure, const RpcCallOptions &opts)
