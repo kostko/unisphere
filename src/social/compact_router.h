@@ -159,10 +159,19 @@ protected:
    */
   void ribRetractEntry(RoutingEntryPtr entry);
 
+  void landmarkLearned(const NodeIdentifier &landmarkId);
+
+  void landmarkRemoved(const NodeIdentifier &landmarkId);
+
   /**
    * Performs registration of core RPC methods that are required for routing.
    */
   void registerCoreRpcMethods();
+
+  /**
+   * Performs unregistration of core RPC methods that are required for routing.
+   */
+  void unregisterCoreRpcMethods();
 private:
   /// UNISPHERE context
   Context &m_context;

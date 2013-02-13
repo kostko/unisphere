@@ -19,7 +19,9 @@
 #ifndef UNISPHERE_SOCIAL_NAMEDATABASE_H
 #define UNISPHERE_SOCIAL_NAMEDATABASE_H
 
+#include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <boost/asio.hpp>
 
 #include "core/globals.h"
@@ -31,9 +33,16 @@ class CompactRouter;
 
 class NameRecord {
 public:
+  /**
+   * Types of name records.
+   */
   enum class Type : std::uint8_t {
+    /// Locally cached name record
     Cache       = 0x01,
-    SloppyGroup = 0x02,
+    /// Current node is landmark authority for this record
+    Authority   = 0x02,
+    /// Record received via sloppy group dissemination protocol
+    SloppyGroup = 0x03,
   };
 
   NameRecord(boost::asio::io_service &service, const NodeIdentifier &nodeId,
@@ -66,8 +75,23 @@ class NameDatabase {
 public:
   /// Number of landmarks to replicate the name cache to
   static const int cache_redundancy = 3;
+  /// Maximum number of addresses stored in a record
+  static const int max_stored_addresses = 3;
 
   NameDatabase(CompactRouter &router);
+
+  /**
+   * Initializes the name database.
+   */
+  void initialize();
+
+  /**
+   * Shuts down the name database.
+   */
+  void shutdown();
+
+  void store(const NodeIdentifier &nodeId, const std::list<LandmarkAddress> &addresses,
+    NameRecord::Type type);
 
   void store(const NodeIdentifier &nodeId, const LandmarkAddress &address,
     NameRecord::Type type);
@@ -86,18 +110,56 @@ public:
    * Returns a list of landmarks that are responsible for caching the given address.
    *
    * @param nodeId Destination node identifier that needs to be resolved
-   * @return A list of landmark identifiers that should have the address
+   * @return A set of landmark identifiers that should have the address
    */
-  std::list<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId) const;
+  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId) const;
+
+  /**
+   * Publishes local address information to designated landmarks. This method
+   * should be called when the local address changes or when the set of destination
+   * landmarks change.
+   */
+  void publishLocalAddress();
 protected:
   void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
+
+  /**
+   * Periodically refreshes the local address.
+   */
+  void refreshLocalAddress(const boost::system::error_code &error);
+
+  /**
+   * Hashes a node identifier for use in consistent hashing.
+   *
+   * @param nodeId Node identifier
+   * @return Hashed node identifier
+   */
+  std::string hashIdentifier(const NodeIdentifier &nodeId) const;
+
+  /**
+   * Performs registration of core RPC methods that are required for name database
+   * management.
+   */
+  void registerCoreRpcMethods();
+
+  /**
+   * Performs unregistration of core RPC methods that are required for name database
+   * management.
+   */
+  void unregisterCoreRpcMethods();
 private:
   /// Router
   CompactRouter &m_router;
   /// Mutex protecting the name database
   mutable std::recursive_mutex m_mutex;
-  /// Name database (populated only if local node is a landmark)
+  /// Name database
   std::unordered_map<NodeIdentifier, NameRecordPtr> m_nameDb;
+  /// Bucket tree for consistent hashing
+  std::map<std::string, NodeIdentifier> m_bucketTree;
+  /// Landmarks that we have previously published into
+  std::unordered_set<NodeIdentifier> m_publishLandmarks;
+  /// Timer for periodic local address refresh
+  boost::asio::deadline_timer m_localRefreshTimer;
 };
 
 }

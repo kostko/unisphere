@@ -1,5 +1,5 @@
 //
-// RPC messages for core routing methods
+// RPC messages for core methods
 //
 
 package UniSphere.Protocol;
@@ -10,4 +10,28 @@ message PingRequest {
 
 message PingResponse {
   required uint64 timestamp = 1;
+}
+
+message LandmarkAddress {
+  // Landmark identifier
+  required bytes landmarkId = 1;
+  // L-R address
+  repeated uint32 address = 2;
+}
+
+message PublishAddressRequest {
+  // Addresses to be published for this node
+  repeated LandmarkAddress addresses = 1;
+}
+
+message LookupAddressRequest {
+  // Identifier to lookup the address for
+  required bytes nodeId = 1;
+}
+
+message LookupAddressResponse {
+  // Identifier whose addresses are returned
+  required bytes nodeId = 1;
+  // Published L-R addresses
+  repeated LandmarkAddress addresses = 2;
 }

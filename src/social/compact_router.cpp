@@ -40,14 +40,14 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
     m_seqno(1)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
-
-  // Register core routing RPC methods
-  registerCoreRpcMethods();
 }
 
 void CompactRouter::initialize()
 {
   UNISPHERE_LOG(m_manager, Info, "CompactRouter: Initializing router.");
+
+  // Register core routing RPC methods
+  registerCoreRpcMethods();
 
   // Subscribe to all events
   m_subscriptions
@@ -56,6 +56,8 @@ void CompactRouter::initialize()
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouter::networkSizeEstimateChanged, this, _1))
     << m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1, _2))
     << m_routes.signalRetractEntry.connect(boost::bind(&CompactRouter::ribRetractEntry, this, _1))
+    << m_routes.signalLandmarkLearned.connect(boost::bind(&CompactRouter::landmarkLearned, this, _1))
+    << m_routes.signalLandmarkRemoved.connect(boost::bind(&CompactRouter::landmarkRemoved, this, _1))
     << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouter::peerAdded, this, _1))
     << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouter::peerRemoved, this, _1))
   ;
@@ -65,11 +67,20 @@ void CompactRouter::initialize()
 
   // Start announcing ourselves to all neighbours
   announceOurselves(boost::system::error_code());
+
+  // Initialize the name database
+  m_nameDb.initialize();
 }
 
 void CompactRouter::shutdown()
 {
   UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Shutting down router.");
+
+  // Unregister core routing RPC methods
+  unregisterCoreRpcMethods();
+
+  // Shutdown the name database
+  m_nameDb.shutdown();
 
   // Unsubscribe from all events
   for (boost::signals::connection c : m_subscriptions)
@@ -307,6 +318,10 @@ void CompactRouter::route(const RoutedMessage &msg)
 
   // Check if we are the destination - deliver to local component
   if (msg.destinationNodeId() == m_manager.getLocalNodeId()) {
+    // Cache source address when one is available
+    if (!msg.sourceAddress().isNull())
+      m_nameDb.store(msg.sourceNodeId(), msg.sourceAddress(), NameRecord::Type::Cache);
+
     UNISPHERE_LOG(m_manager, Info, "CompactRouter: Local delivery.");
     signalDeliverMessage(msg);
     return;
@@ -403,6 +418,16 @@ void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &dest
   route(rmsg);
 }
 
+void CompactRouter::landmarkLearned(const NodeIdentifier &landmarkId)
+{
+  m_nameDb.registerLandmark(landmarkId);
+}
+
+void CompactRouter::landmarkRemoved(const NodeIdentifier &landmarkId)
+{
+  m_nameDb.unregisterLandmark(landmarkId);
+}
+
 void CompactRouter::registerCoreRpcMethods()
 {
   // Simple ping messages
@@ -413,6 +438,11 @@ void CompactRouter::registerCoreRpcMethods()
       return response;
     }
   );
+}
+
+void CompactRouter::unregisterCoreRpcMethods()
+{
+  m_rpc.unregisterMethod("Core.Ping");
 }
 
 }
