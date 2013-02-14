@@ -29,14 +29,24 @@
 namespace UniSphere {
 
 /**
- * Routing options that can be attached to outgoing routed packets.
+ * Routing options that can be attached to outgoing routed messages. These
+ * options are only visible within the router and are not encoded in
+ * messages.
  */
 class UNISPHERE_EXPORT RoutingOptions {
 public:
   /**
    * Constructs default options.
    */
-  RoutingOptions() {};
+  RoutingOptions()
+    : directDelivery(false)
+  {};
+
+  /**
+   * Sets direct delivery requirement - this means that the local routing decision
+   * will never try to handle destination identifier resolution.
+   */
+  RoutingOptions &setDirectDelivery(bool delivery) { directDelivery = delivery; return *this; }
   
   /**
    * Forces the packet to be delivered over a specific link.
@@ -50,6 +60,8 @@ public:
 public:
   /// Force delivery over a specific link
   Contact deliverVia;
+  /// Force direct delivery
+  bool directDelivery;
 };
   
 /**

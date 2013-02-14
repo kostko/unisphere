@@ -211,6 +211,12 @@ public:
    * Forces the RPC call to be delivered via a specific link.
    */
   RpcCallOptions &setDeliverVia(const Contact &contact) { routingOptions.setDeliverVia(contact); return *this; }
+
+  /**
+   * Sets direct delivery requirement - this means that the local routing decision
+   * will never try to handle destination identifier resolution.
+   */
+  RpcCallOptions &setDirectDelivery(bool delivery) { routingOptions.setDirectDelivery(delivery); return *this; }
 public:
   /// Routing options
   RoutingOptions routingOptions;

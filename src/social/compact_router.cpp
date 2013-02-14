@@ -334,55 +334,57 @@ void CompactRouter::route(const RoutedMessage &msg)
   if (entry)
     nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
 
-  if (nextHop.isNull() && !msg.destinationAddress().isNull()) {
-    // Message must first be routed to a specific landmark
-    UNISPHERE_LOG(m_manager, Info, "CompactRouter: RT to L, addr known.");
-    if (msg.destinationAddress().landmarkId() == m_manager.getLocalNodeId()) {
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: L reached.");
-      if (msg.destinationAddress().path().empty()) {
-        // Landmark-relative address is empty but we are the designated landmark; this
-        // means that we are responsible for resolving the destination L-R address
-        NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
-        if (record)
-          msg.setDestinationAddress(record->landmarkAddress());
+  if (!msg.options().directDelivery) {
+    if (nextHop.isNull() && !msg.destinationAddress().isNull()) {
+      // Message must first be routed to a specific landmark
+      UNISPHERE_LOG(m_manager, Info, "CompactRouter: RT to L, addr known.");
+      if (msg.destinationAddress().landmarkId() == m_manager.getLocalNodeId()) {
+        UNISPHERE_LOG(m_manager, Info, "CompactRouter: L reached.");
+        if (msg.destinationAddress().path().empty()) {
+          // Landmark-relative address is empty but we are the designated landmark; this
+          // means that we are responsible for resolving the destination L-R address
+          NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
+          if (record)
+            msg.setDestinationAddress(record->landmarkAddress());
+        } else {
+          // We are the landmark, enter delivery mode
+          UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery mode entered.");
+          msg.setDeliveryMode(true);
+        }
+      }
+
+      if (msg.deliveryMode()) {
+        // We must route based on source path
+        UNISPHERE_LOG(m_manager, Info, "CompactRouter: Source-route delivery.");
+        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(msg.destinationAddress().path().front()));
       } else {
-        // We are the landmark, enter delivery mode
-        UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery mode entered.");
-        msg.setDeliveryMode(true);
+        // We must route to landmark node
+        UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery via L.");
+        RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
+        if (entry)
+          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
       }
     }
 
-    if (msg.deliveryMode()) {
-      // We must route based on source path
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Source-route delivery.");
-      nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(msg.destinationAddress().path().front()));
-    } else {
-      // We must route to landmark node
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery via L.");
-      RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
-      if (entry)
-        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
-    }
-  }
-
-  if (nextHop.isNull()) {
-    UNISPHERE_LOG(m_manager, Info, "CompactRouter: No next hop and addr unknown.");
-    // Check local sloppy group state to see if we have the address (landmark-relative address)
-    NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
-    if (record) {
-      msg.setDestinationAddress(record->landmarkAddress());
-      entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
-      if (entry)
-        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
-    }
-
     if (nextHop.isNull()) {
-      // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
-      UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery via S-G.");
-      entry = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
-      msg.setDestinationAddress(LandmarkAddress(entry->destination));
-      if (entry)
-        nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+      UNISPHERE_LOG(m_manager, Info, "CompactRouter: No next hop and addr unknown.");
+      // Check local sloppy group state to see if we have the address (landmark-relative address)
+      NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
+      if (record) {
+        msg.setDestinationAddress(record->landmarkAddress());
+        entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
+        if (entry)
+          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+      }
+
+      if (nextHop.isNull()) {
+        // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
+        UNISPHERE_LOG(m_manager, Info, "CompactRouter: Delivery via S-G.");
+        entry = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
+        msg.setDestinationAddress(LandmarkAddress(entry->destination));
+        if (entry)
+          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+      }
     }
   }
 
