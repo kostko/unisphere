@@ -217,11 +217,29 @@ std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIde
 void NameDatabase::publishLocalAddress()
 {
   RecursiveUniqueLock lock(m_mutex);
+  RpcEngine &rpc = m_router.rpcEngine();
+
+  // TODO: Ensure that publish requests are buffered and rate limited
+
+  // Prepare request for publishing the local address(es)
+  Protocol::PublishAddressRequest request;
+  for (const LandmarkAddress &address : m_router.routingTable().getLocalAddresses(NameDatabase::max_stored_addresses)) {
+    Protocol::LandmarkAddress *laddr = request.add_addresses();
+    laddr->set_landmarkid(address.landmarkId().raw());
+    for (Vport port : address.path())
+      laddr->add_address(port);
+  }
 
   // Determine which landmarks are responsible for our local address
   m_publishLandmarks = getLandmarkCaches(m_router.identity().localId());
   for (const NodeIdentifier &landmarkId : m_publishLandmarks) {
-    // TODO: Send RPC to publish the address
+    // Send RPC to publish the address
+    rpc.call<Protocol::PublishAddressRequest>(
+      landmarkId,
+      "Core.NameDatabase.PublishAddress",
+      request,
+      RpcCallOptions().setDirectDelivery(true)
+    );
   }
 }
 
