@@ -45,11 +45,24 @@ public:
     SloppyGroup = 0x03,
   };
 
+  /**
+   * Constructs a new name record.
+   *
+   * @param service IO service
+   * @param nodeId Destination node identifier
+   * @param type Record type
+   */
   NameRecord(boost::asio::io_service &service, const NodeIdentifier &nodeId,
     Type type);
 
+  /**
+   * Returns the first L-R address in this record.
+   */
   LandmarkAddress landmarkAddress() const;
 
+  /**
+   * Returns the time-to-live for this record.
+   */
   boost::posix_time::seconds ttl() const;
 
   /**
@@ -90,20 +103,60 @@ public:
    */
   void shutdown();
 
+  /**
+   * Stores a name record into the database.
+   *
+   * @param nodeId Destination node identifier
+   * @param addresses A list of L-R addresses for this node
+   * @param type Type of record
+   */
   void store(const NodeIdentifier &nodeId, const std::list<LandmarkAddress> &addresses,
     NameRecord::Type type);
 
+  /**
+   * Stores a name record into the database.
+   *
+   * @param nodeId Destination node identifier
+   * @param address A L-R address for this node
+   * @param type Type of record
+   */
   void store(const NodeIdentifier &nodeId, const LandmarkAddress &address,
     NameRecord::Type type);
 
+  /**
+   * Removes an existing name record from the database.
+   *
+   * @param nodeId Destination node identifier
+   */
   void remove(const NodeIdentifier &nodeId);
 
+  /**
+   * Clears the name database.
+   */
   void clear();
 
+  /**
+   * Performs a local lookup of a name record.
+   *
+   * @param nodeId Destination node identifier
+   * @return Name record pointer or null if no name record exists
+   */
   NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
+  /**
+   * Registers a landmark node. This is needed for determining which landmarks
+   * store which name records by the use of consistent hashing.
+   *
+   * @param landmarkId Landmark identifier
+   */
   void registerLandmark(const NodeIdentifier &landmarkId);
 
+  /**
+   * Unregisters a landmark node. This is needed for determining which landmarks
+   * store which name records by the use of consistent hashing.
+   *
+   * @param landmarkId Landmark identifier
+   */
   void unregisterLandmark(const NodeIdentifier &landmarkId);
 
   /**
@@ -129,6 +182,9 @@ public:
    */
   void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 protected:
+  /**
+   * Called when a record expires.
+   */
   void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
 
   /**
