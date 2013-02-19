@@ -31,7 +31,7 @@ namespace UniSphere {
 
 class CompactRouter;
 
-class NameRecord {
+class UNISPHERE_EXPORT NameRecord {
 public:
   /**
    * Types of name records.
@@ -71,7 +71,7 @@ public:
 
 UNISPHERE_SHARED_POINTER(NameRecord)
 
-class NameDatabase {
+class UNISPHERE_EXPORT NameDatabase {
 public:
   /// Number of landmarks to replicate the name cache to
   static const int cache_redundancy = 3;
@@ -120,6 +120,14 @@ public:
    * landmarks change.
    */
   void publishLocalAddress();
+
+  /**
+   * Outputs the name database to a stream.
+   *
+   * @param stream Output stream to dump into
+   * @param resolve Optional name resolver
+   */
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 protected:
   void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
 

@@ -131,7 +131,11 @@ void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkA
 
 void NameDatabase::store(const NodeIdentifier &nodeId, const LandmarkAddress &address, NameRecord::Type type)
 {
-  store(nodeId, { address }, type);
+  // Refuse to store records for landmark addresses
+  if (address.path().empty())
+    return;
+
+  store(nodeId, std::list<LandmarkAddress>{ address }, type);
 }
 
 void NameDatabase::remove(const NodeIdentifier &nodeId)
@@ -200,6 +204,9 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
 std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId) const
 {
   std::unordered_set<NodeIdentifier> landmarks;
+  if (m_bucketTree.empty())
+    return landmarks;
+
   std::string itemHash = hashIdentifier(nodeId);
   if (m_bucketTree.find(itemHash) != m_bucketTree.end()) {
     landmarks.insert(m_bucketTree.at(itemHash));
@@ -219,6 +226,10 @@ void NameDatabase::publishLocalAddress()
   RecursiveUniqueLock lock(m_mutex);
   RpcEngine &rpc = m_router.rpcEngine();
 
+  // No need to publish our address if we are a landmark node
+  if (m_router.routingTable().isLandmark())
+    return;
+
   // TODO: Ensure that publish requests are buffered and rate limited
 
   // Prepare request for publishing the local address(es)
@@ -236,7 +247,7 @@ void NameDatabase::publishLocalAddress()
     // Send RPC to publish the address
     rpc.call<Protocol::PublishAddressRequest>(
       landmarkId,
-      "Core.NameDatabase.PublishAddress",
+      "Core.NameDb.PublishAddress",
       request,
       RpcCallOptions().setDirectDelivery(true)
     );
@@ -315,6 +326,38 @@ void NameDatabase::unregisterCoreRpcMethods()
   RpcEngine &rpc = m_router.rpcEngine();
   rpc.unregisterMethod("Core.NameDb.PublishAddress");
   rpc.unregisterMethod("Core.NameDb.LookupAddress");
+}
+
+void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  stream << "*** Stored name records:" << std::endl;
+  for (auto rp : m_nameDb) {
+    NameRecordPtr record = rp.second;
+    stream << "  " << record->nodeId.hex() << " ";
+    if (resolve)
+      stream << "(" << resolve(record->nodeId) << ") t=";
+
+    switch (record->type) {
+      case NameRecord::Type::Cache: stream << "C"; break;
+      case NameRecord::Type::Authority: stream << "A"; break;
+      case NameRecord::Type::SloppyGroup: stream << "S"; break;
+      default: stream << "?"; break;
+    }
+    stream << " laddr=" << record->landmarkAddress() << " ";
+    stream << " age=" << record->age().total_seconds() << "s";
+    stream << std::endl;
+  }
+
+  stream << "*** Registred landmarks:" << std::endl;
+  for (auto lp : m_bucketTree) {
+    stream << "  " << lp.second.hex();
+    if (resolve)
+      stream << " (" << resolve(lp.second) << ")";
+
+    stream << std::endl;
+  }
 }
 
 }

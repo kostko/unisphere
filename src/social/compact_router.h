@@ -82,6 +82,11 @@ public:
   CompactRoutingTable &routingTable() { return m_routes; }
 
   /**
+   * Returns the reference to underlying name database.
+   */
+  NameDatabase &nameDb() { return m_nameDb; }
+
+  /**
    * Returns the reference to underlying RPC engine.
    */
   RpcEngine &rpcEngine() { return m_rpc; }

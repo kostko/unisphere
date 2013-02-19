@@ -305,6 +305,8 @@ void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
   if (x < std::sqrt(std::log(n) / n)) {
     UNISPHERE_LOG(m_manager, Info, "CompactRouter: Becoming a LANDMARK.");
     m_routes.setLandmark(true);
+    m_nameDb.registerLandmark(m_manager.getLocalNodeId());
+    // TODO: Unregister landmark when local node ceases to be one
   }
 }
 
@@ -322,7 +324,6 @@ void CompactRouter::route(const RoutedMessage &msg)
     if (!msg.sourceAddress().isNull())
       m_nameDb.store(msg.sourceNodeId(), msg.sourceAddress(), NameRecord::Type::Cache);
 
-    UNISPHERE_LOG(m_manager, Info, "CompactRouter: Local delivery.");
     signalDeliverMessage(msg);
     return;
   }

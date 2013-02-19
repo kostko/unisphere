@@ -146,9 +146,12 @@ int main(int argc, char **argv)
 
   // Schedule routing table dump after 80 seconds
   ctx.schedule(80, [&]() {
+    auto resolveNodeName = [&](const NodeIdentifier &n) -> std::string { return names.right.at(n); };
+    
     for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
       std::cout << "---- ROUTING TABLE FOR: " << (*i).first.as(NodeIdentifier::Format::Hex) << " (" << names.right.at((*i).first) << ") ----" << std::endl;
-      (*i).second->router->routingTable().dump(std::cout, [&](const NodeIdentifier &n) -> std::string { return names.right.at(n); });
+      (*i).second->router->routingTable().dump(std::cout, resolveNodeName);
+      (*i).second->router->nameDb().dump(std::cout, resolveNodeName);
     }
   });
 
