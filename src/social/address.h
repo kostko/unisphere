@@ -49,7 +49,7 @@ public:
    *
    * @param landmarkId Landmark identifier
    */
-  LandmarkAddress(const NodeIdentifier &landmarkId);
+  explicit LandmarkAddress(const NodeIdentifier &landmarkId);
 
   /**
    * Constructs a landmark address.
