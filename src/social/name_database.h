@@ -24,7 +24,7 @@
 #include <unordered_set>
 #include <boost/asio.hpp>
 
-#include "core/globals.h"
+#include "core/context.h"
 #include "social/address.h"
 
 namespace UniSphere {
@@ -48,12 +48,11 @@ public:
   /**
    * Constructs a new name record.
    *
-   * @param service IO service
+   * @param context UNISPHERE context
    * @param nodeId Destination node identifier
    * @param type Record type
    */
-  NameRecord(boost::asio::io_service &service, const NodeIdentifier &nodeId,
-    Type type);
+  NameRecord(Context &context, const NodeIdentifier &nodeId, Type type);
 
   /**
    * Returns the first L-R address in this record.

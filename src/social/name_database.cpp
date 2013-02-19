@@ -26,10 +26,10 @@
 
 namespace UniSphere {
 
-NameRecord::NameRecord(boost::asio::io_service &service, const NodeIdentifier &nodeId, Type type)
+NameRecord::NameRecord(Context &context, const NodeIdentifier &nodeId, Type type)
   : nodeId(nodeId),
     type(type),
-    expiryTimer(service)
+    expiryTimer(context.service())
 {
 }
 
@@ -99,7 +99,7 @@ void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkA
   auto it = m_nameDb.find(nodeId);
   if (it == m_nameDb.end()) {
     // Insertion of a new record
-    record = NameRecordPtr(new NameRecord(m_router.context().service(), nodeId, type));
+    record = NameRecordPtr(new NameRecord(m_router.context(), nodeId, type));
     m_nameDb[record->nodeId] = record;
     // TODO: Ensure that only sqrt(n*logn) Authority entries are stored at the local node
   } else {
