@@ -319,7 +319,7 @@ void NameDatabase::registerCoreRpcMethods()
     }
   );
 
-  // Address lookup mechanism
+  // Exact address lookup mechanism
   rpc.registerMethod<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>("Core.NameDb.LookupAddress",
     [this](const Protocol::LookupAddressRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::LookupAddressResponse> {
       Protocol::LookupAddressResponse response;
@@ -343,6 +343,31 @@ void NameDatabase::registerCoreRpcMethods()
       return response;
     }
   );
+
+  // Closest address lookup mechanism
+  rpc.registerMethod<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>("Core.NameDb.LookupClosestAddress",
+    [this](const Protocol::LookupAddressRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::LookupAddressResponse> {
+      Protocol::LookupAddressResponse response;
+      response.set_nodeid(request.nodeid());
+
+      // If this node is not a landmark, ignore lookup request
+      if (!m_router.routingTable().isLandmark())
+        throw RpcException(RpcErrorCode::BadRequest, "Not a landmark node!");
+
+      // Lookup the proper name record and include it in response
+      NameRecordPtr record = lookupClosest(NodeIdentifier(request.nodeid(), NodeIdentifier::Format::Raw));
+      if (record && record->type == NameRecord::Type::Authority) {
+        for (const LandmarkAddress &address : record->addresses) {
+          Protocol::LandmarkAddress *laddr = response.add_addresses();
+          laddr->set_landmarkid(address.landmarkId().raw());
+          for (Vport port : address.path())
+            laddr->add_address(port);
+        }
+      }
+
+      return response;
+    }
+  );
 }
 
 void NameDatabase::unregisterCoreRpcMethods()
@@ -350,6 +375,7 @@ void NameDatabase::unregisterCoreRpcMethods()
   RpcEngine &rpc = m_router.rpcEngine();
   rpc.unregisterMethod("Core.NameDb.PublishAddress");
   rpc.unregisterMethod("Core.NameDb.LookupAddress");
+  rpc.unregisterMethod("Core.NameDb.LookupClosestAddress");
 }
 
 void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
