@@ -20,7 +20,6 @@
 #define UNISPHERE_SOCIAL_NAMEDATABASE_H
 
 #include <map>
-#include <unordered_map>
 #include <unordered_set>
 #include <boost/asio.hpp>
 
@@ -143,6 +142,14 @@ public:
   NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
   /**
+   * Looks up the closest node identifier to the one given.
+   *
+   * @param nodeId Destination node identifier
+   * @return Name record pointer or null if the database is empty
+   */
+  NameRecordPtr lookupClosest(const NodeIdentifier &nodeId) const;
+
+  /**
    * Registers a landmark node. This is needed for determining which landmarks
    * store which name records by the use of consistent hashing.
    *
@@ -216,7 +223,7 @@ private:
   /// Mutex protecting the name database
   mutable std::recursive_mutex m_mutex;
   /// Name database
-  std::unordered_map<NodeIdentifier, NameRecordPtr> m_nameDb;
+  std::map<NodeIdentifier, NameRecordPtr> m_nameDb;
   /// Bucket tree for consistent hashing
   std::map<std::string, NodeIdentifier> m_bucketTree;
   /// Landmarks that we have previously published into

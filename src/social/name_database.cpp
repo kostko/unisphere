@@ -160,6 +160,30 @@ NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
   return it->second;
 }
 
+NameRecordPtr NameDatabase::lookupClosest(const NodeIdentifier &nodeId) const
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // If the name database is empty, return a null entry
+  if (m_nameDb.empty())
+    return NameRecordPtr();
+
+  // Find the entry with longest common prefix
+  auto it = m_nameDb.upper_bound(nodeId);
+  if (it == m_nameDb.end())
+    return (*(--it)).second;
+
+  // Check if previous entry has longer common prefix
+  if (it != m_nameDb.begin()) {
+    auto pit = it;
+    if ((*(--pit)).second->nodeId.longestCommonPrefix(nodeId) >
+        (*it).second->nodeId.longestCommonPrefix(nodeId))
+      return (*pit).second;
+  }
+
+  return (*it).second;
+}
+
 void NameDatabase::entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record)
 {
   if (error)
