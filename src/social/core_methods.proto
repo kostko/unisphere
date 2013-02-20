@@ -25,13 +25,26 @@ message PublishAddressRequest {
 }
 
 message LookupAddressRequest {
+  enum LookupType {
+    EXACT = 0;
+    CLOSEST = 1;
+    CLOSEST_NEIGHBORS = 2;
+  }
+
   // Identifier to lookup the address for
   required bytes nodeId = 1;
+  // Lookup type
+  required LookupType type = 2;
 }
 
 message LookupAddressResponse {
-  // Identifier whose addresses are returned
-  required bytes nodeId = 1;
-  // Published L-R addresses
-  repeated LandmarkAddress addresses = 2;
+  message Record {
+    // Identifier whose addresses are returned
+    required bytes nodeId = 1;
+    // Published L-R addresses
+    repeated LandmarkAddress addresses = 2;
+  }
+  
+  // Returned records
+  repeated Record records = 1;
 }

@@ -160,28 +160,106 @@ NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
   return it->second;
 }
 
-NameRecordPtr NameDatabase::lookupClosest(const NodeIdentifier &nodeId) const
+std::list<NameRecordPtr> NameDatabase::lookupClosest(const NodeIdentifier &nodeId, bool neighbors) const
 {
   RecursiveUniqueLock lock(m_mutex);
+  std::list<NameRecordPtr> records;
 
-  // If the name database is empty, return a null entry
+  // If the name database is empty, return an empty list
   if (m_nameDb.empty())
-    return NameRecordPtr();
+    return records;
 
   // Find the entry with longest common prefix
   auto it = m_nameDb.upper_bound(nodeId);
-  if (it == m_nameDb.end())
-    return (*(--it)).second;
+  if (it == m_nameDb.end()) {
+    --it;
 
-  // Check if previous entry has longer common prefix
-  if (it != m_nameDb.begin()) {
-    auto pit = it;
-    if ((*(--pit)).second->nodeId.longestCommonPrefix(nodeId) >
-        (*it).second->nodeId.longestCommonPrefix(nodeId))
-      return (*pit).second;
+    // If we are looking for the match itself, we have found it
+    if (!neighbors) {
+      records.push_back(it->second);
+      return records;
+    }
   }
 
-  return (*it).second;
+  // Check if previous entry has longer common prefix
+  auto pit = it;
+  if (it != m_nameDb.begin()) {
+    if ((*(--pit)).second->nodeId.longestCommonPrefix(nodeId) >
+        (*it).second->nodeId.longestCommonPrefix(nodeId))
+      it = pit;
+  }
+
+  if (neighbors) {
+    // Predecessor
+    pit = it;
+    if (it != m_nameDb.begin())
+      records.push_back((--pit)->second);
+    else
+      records.push_back((--m_nameDb.end())->second);
+
+    // Successor
+    pit = it;
+    if (++pit != m_nameDb.end())
+      records.push_back(pit->second);
+    else
+      records.push_back(m_nameDb.begin()->second);
+  } else {
+    records.push_back(it->second);
+  }
+
+  return records;
+}
+
+void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
+                                       bool neighbors,
+                                       std::function<void(const std::list<NameRecordPtr>&)> success,
+                                       std::function<void()> failure) const
+{
+  RpcEngine &rpc = m_router.rpcEngine();
+
+  for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, true)) {
+    Protocol::LookupAddressRequest request;
+    request.set_nodeid(nodeId.raw());
+    if (neighbors)
+      request.set_type(Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS);
+    else
+      request.set_type(Protocol::LookupAddressRequest::CLOSEST);
+
+    rpc.call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
+      landmarkId,
+      "Core.NameDb.LookupAddress",
+      request,
+      [&](const Protocol::LookupAddressResponse &response, const RoutedMessage&) {
+        std::list<NameRecordPtr> records;
+
+        for (int i = 0; i < response.records_size(); i++) {
+          const Protocol::LookupAddressResponse::Record &rr = response.records(i);
+          NameRecordPtr record(new NameRecord(
+            m_router.context(),
+            NodeIdentifier(rr.nodeid(), NodeIdentifier::Format::Raw),
+            NameRecord::Type::Authority
+          ));
+          records.push_back(record);
+
+          std::list<LandmarkAddress> addresses;
+          for (int j = 0; j < rr.addresses_size(); j++) {
+            const Protocol::LandmarkAddress &laddr = rr.addresses(j);
+            record->addresses.push_back(LandmarkAddress(
+              NodeIdentifier(laddr.landmarkid(), NodeIdentifier::Format::Raw),
+              laddr.address()
+            ));
+          }
+        }
+
+        success(records);
+      },
+      [&](RpcErrorCode, const std::string&) {
+        if (failure)
+          failure();
+      },
+      RpcCallOptions().setDirectDelivery(true)
+    );
+  }
 }
 
 void NameDatabase::entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record)
@@ -225,21 +303,37 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
     publishLocalAddress();
 }
 
-std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId) const
+std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId, bool neighbors) const
 {
   std::unordered_set<NodeIdentifier> landmarks;
   if (m_bucketTree.empty())
     return landmarks;
 
   std::string itemHash = hashIdentifier(nodeId);
-  if (m_bucketTree.find(itemHash) != m_bucketTree.end()) {
-    landmarks.insert(m_bucketTree.at(itemHash));
-  } else {
-    auto it = m_bucketTree.upper_bound(itemHash);
+  auto it = m_bucketTree.find(itemHash);
+  if (it == m_bucketTree.end()) {
+    it = m_bucketTree.upper_bound(itemHash);
     if (it == m_bucketTree.end())
-      landmarks.insert(m_bucketTree.begin()->second);
+      it = m_bucketTree.begin();
+  }
+
+  landmarks.insert(it->second);
+
+  if (neighbors) {
+    auto pit = it;
+
+    // Include predecessor
+    if (pit != m_bucketTree.begin())
+      landmarks.insert((--pit)->second);
     else
-      landmarks.insert(it->second);
+      landmarks.insert((--m_bucketTree.end())->second);
+
+    // Include successor
+    pit = it;
+    if (++pit != m_bucketTree.end())
+      landmarks.insert(pit->second);
+    else
+      landmarks.insert(m_bucketTree.begin()->second);
   }
   
   return landmarks;
@@ -323,45 +417,36 @@ void NameDatabase::registerCoreRpcMethods()
   rpc.registerMethod<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>("Core.NameDb.LookupAddress",
     [this](const Protocol::LookupAddressRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::LookupAddressResponse> {
       Protocol::LookupAddressResponse response;
-      response.set_nodeid(request.nodeid());
 
       // If this node is not a landmark, ignore lookup request
       if (!m_router.routingTable().isLandmark())
         throw RpcException(RpcErrorCode::BadRequest, "Not a landmark node!");
 
-      // Lookup the proper name record and include it in response
-      NameRecordPtr record = lookup(NodeIdentifier(request.nodeid(), NodeIdentifier::Format::Raw));
-      if (record && record->type == NameRecord::Type::Authority) {
-        for (const LandmarkAddress &address : record->addresses) {
-          Protocol::LandmarkAddress *laddr = response.add_addresses();
-          laddr->set_landmarkid(address.landmarkId().raw());
-          for (Vport port : address.path())
-            laddr->add_address(port);
-        }
+      NodeIdentifier nodeId(request.nodeid(), NodeIdentifier::Format::Raw);
+      std::list<NameRecordPtr> records;
+      if (request.type() == Protocol::LookupAddressRequest::EXACT) {
+        NameRecordPtr record = lookup(nodeId);
+        if (record)
+          records.push_back(record);
+      } else if (request.type() == Protocol::LookupAddressRequest::CLOSEST ||
+                 request.type() == Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS) {
+        records = lookupClosest(nodeId, request.type() == Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS);
+      } else {
+        throw RpcException(RpcErrorCode::BadRequest, "Unsupported lookup type!");
       }
 
-      return response;
-    }
-  );
+      for (NameRecordPtr record : records) {
+        Protocol::LookupAddressResponse::Record *rr = response.add_records();
+        rr->set_nodeid(record->nodeId.raw());
 
-  // Closest address lookup mechanism
-  rpc.registerMethod<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>("Core.NameDb.LookupClosestAddress",
-    [this](const Protocol::LookupAddressRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::LookupAddressResponse> {
-      Protocol::LookupAddressResponse response;
-      response.set_nodeid(request.nodeid());
-
-      // If this node is not a landmark, ignore lookup request
-      if (!m_router.routingTable().isLandmark())
-        throw RpcException(RpcErrorCode::BadRequest, "Not a landmark node!");
-
-      // Lookup the proper name record and include it in response
-      NameRecordPtr record = lookupClosest(NodeIdentifier(request.nodeid(), NodeIdentifier::Format::Raw));
-      if (record && record->type == NameRecord::Type::Authority) {
-        for (const LandmarkAddress &address : record->addresses) {
-          Protocol::LandmarkAddress *laddr = response.add_addresses();
-          laddr->set_landmarkid(address.landmarkId().raw());
-          for (Vport port : address.path())
-            laddr->add_address(port);
+        // Lookup the proper name record and include it in response
+        if (record && record->type == NameRecord::Type::Authority) {
+          for (const LandmarkAddress &address : record->addresses) {
+            Protocol::LandmarkAddress *laddr = rr->add_addresses();
+            laddr->set_landmarkid(address.landmarkId().raw());
+            for (Vport port : address.path())
+              laddr->add_address(port);
+          }
         }
       }
 
@@ -375,7 +460,6 @@ void NameDatabase::unregisterCoreRpcMethods()
   RpcEngine &rpc = m_router.rpcEngine();
   rpc.unregisterMethod("Core.NameDb.PublishAddress");
   rpc.unregisterMethod("Core.NameDb.LookupAddress");
-  rpc.unregisterMethod("Core.NameDb.LookupClosestAddress");
 }
 
 void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)

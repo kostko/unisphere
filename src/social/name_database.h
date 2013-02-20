@@ -145,9 +145,26 @@ public:
    * Looks up the closest node identifier to the one given.
    *
    * @param nodeId Destination node identifier
-   * @return Name record pointer or null if the database is empty
+   * @param neighbors Should neighbors be returned instead
+   * @return Resulting name records or an empty list
    */
-  NameRecordPtr lookupClosest(const NodeIdentifier &nodeId) const;
+  std::list<NameRecordPtr> lookupClosest(const NodeIdentifier &nodeId, bool neighbors = false) const;
+
+  /**
+   * Looks up the closest node identifier to the one given on a
+   * remote node.
+   *
+   * @param nodeId Destination node identifier
+   * @param neighbors Should neighbors be returned instead
+   * @param success Success handler
+   * @param failure Failure handler
+   */
+  void remoteLookupClosest(
+    const NodeIdentifier &nodeId,
+    bool neighbors,
+    std::function<void(const std::list<NameRecordPtr>&)> success,
+    std::function<void()> failure = nullptr
+  ) const;
 
   /**
    * Registers a landmark node. This is needed for determining which landmarks
@@ -169,9 +186,10 @@ public:
    * Returns a list of landmarks that are responsible for caching the given address.
    *
    * @param nodeId Destination node identifier that needs to be resolved
+   * @param neighbors Should the neighboring two caches be also returned
    * @return A set of landmark identifiers that should have the address
    */
-  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId) const;
+  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId, bool neighbors = false) const;
 
   /**
    * Publishes local address information to designated landmarks. This method
