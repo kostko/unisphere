@@ -63,16 +63,19 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
     return;
 
   RecursiveUniqueLock lock(m_mutex);
+  RpcEngine &rpc = m_router.rpcEngine();
   NameDatabase &ndb = m_router.nameDb();
   m_oldNeighbors = m_neighbors;
 
+  auto group = rpc.group(boost::bind(&SloppyGroupManager::ndbRefreshCompleted, this));
+
   // Lookup successor and predecessor
-  ndb.remoteLookupClosest(m_router.identity().localId(), true, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
+  ndb.remoteLookupClosest(m_router.identity().localId(), true, group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
 
   for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
     NodeIdentifier fingerId;
     // TODO: Generate random finger identifier in our sloppy group
-    ndb.remoteLookupClosest(fingerId, false, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
+    ndb.remoteLookupClosest(fingerId, false, group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
   }
 }
 
@@ -84,6 +87,10 @@ void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &recor
   for (NameRecordPtr record : records) {
     m_neighbors.insert(SloppyPeer(record));
   }
+}
+
+void SloppyGroupManager::ndbRefreshCompleted()
+{
 }
 
 }

@@ -67,6 +67,8 @@ protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
   void ndbHandleResponse(const std::list<NameRecordPtr> &records);
+
+  void ndbRefreshCompleted();
 private:
   /// Router instance
   CompactRouter &m_router;
