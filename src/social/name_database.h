@@ -25,6 +25,7 @@
 
 #include "core/context.h"
 #include "social/address.h"
+#include "social/rpc_engine.h"
 
 namespace UniSphere {
 
@@ -162,6 +163,24 @@ public:
   void remoteLookupClosest(
     const NodeIdentifier &nodeId,
     bool neighbors,
+    std::function<void(const std::list<NameRecordPtr>&)> success,
+    std::function<void()> failure = nullptr
+  ) const;
+
+  /**
+   * Looks up the closest node identifier to the one given on a
+   * remote node.
+   *
+   * @param nodeId Destination node identifier
+   * @param neighbors Should neighbors be returned instead
+   * @param rpcGroup RPC call group
+   * @param success Success handler
+   * @param failure Failure handler
+   */
+  void remoteLookupClosest(
+    const NodeIdentifier &nodeId,
+    bool neighbors,
+    RpcCallGroupPtr rpcGroup,
     std::function<void(const std::list<NameRecordPtr>&)> success,
     std::function<void()> failure = nullptr
   ) const;

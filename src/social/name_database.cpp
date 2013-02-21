@@ -215,7 +215,46 @@ void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
                                        std::function<void(const std::list<NameRecordPtr>&)> success,
                                        std::function<void()> failure) const
 {
+  remoteLookupClosest(nodeId, neighbors, RpcCallGroupPtr(), success, failure);
+}
+
+void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
+                                       bool neighbors,
+                                       RpcCallGroupPtr rpcGroup,
+                                       std::function<void(const std::list<NameRecordPtr>&)> success,
+                                       std::function<void()> failure) const
+{
   RpcEngine &rpc = m_router.rpcEngine();
+
+  auto successHandler = [success, this](const Protocol::LookupAddressResponse &response, const RoutedMessage&) {
+    std::list<NameRecordPtr> records;
+
+    for (int i = 0; i < response.records_size(); i++) {
+      const Protocol::LookupAddressResponse::Record &rr = response.records(i);
+      NameRecordPtr record(new NameRecord(
+        m_router.context(),
+        NodeIdentifier(rr.nodeid(), NodeIdentifier::Format::Raw),
+        NameRecord::Type::Authority
+      ));
+      records.push_back(record);
+
+      std::list<LandmarkAddress> addresses;
+      for (int j = 0; j < rr.addresses_size(); j++) {
+        const Protocol::LandmarkAddress &laddr = rr.addresses(j);
+        record->addresses.push_back(LandmarkAddress(
+          NodeIdentifier(laddr.landmarkid(), NodeIdentifier::Format::Raw),
+          laddr.address()
+        ));
+      }
+    }
+
+    success(records);
+  };
+
+  auto failureHandler = [failure](RpcErrorCode, const std::string&) {
+    if (failure)
+      failure();
+  };
 
   for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, true)) {
     Protocol::LookupAddressRequest request;
@@ -225,40 +264,17 @@ void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
     else
       request.set_type(Protocol::LookupAddressRequest::CLOSEST);
 
-    rpc.call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
-      landmarkId,
-      "Core.NameDb.LookupAddress",
-      request,
-      [&](const Protocol::LookupAddressResponse &response, const RoutedMessage&) {
-        std::list<NameRecordPtr> records;
-
-        for (int i = 0; i < response.records_size(); i++) {
-          const Protocol::LookupAddressResponse::Record &rr = response.records(i);
-          NameRecordPtr record(new NameRecord(
-            m_router.context(),
-            NodeIdentifier(rr.nodeid(), NodeIdentifier::Format::Raw),
-            NameRecord::Type::Authority
-          ));
-          records.push_back(record);
-
-          std::list<LandmarkAddress> addresses;
-          for (int j = 0; j < rr.addresses_size(); j++) {
-            const Protocol::LandmarkAddress &laddr = rr.addresses(j);
-            record->addresses.push_back(LandmarkAddress(
-              NodeIdentifier(laddr.landmarkid(), NodeIdentifier::Format::Raw),
-              laddr.address()
-            ));
-          }
-        }
-
-        success(records);
-      },
-      [&](RpcErrorCode, const std::string&) {
-        if (failure)
-          failure();
-      },
-      RpcCallOptions().setDirectDelivery(true)
-    );
+    if (rpcGroup) {
+      rpcGroup->call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
+        landmarkId, "Core.NameDb.LookupAddress", request, successHandler, failureHandler,
+        RpcCallOptions().setDirectDelivery(true)
+      );
+    } else {
+      rpc.call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
+        landmarkId, "Core.NameDb.LookupAddress", request, successHandler, failureHandler,
+        RpcCallOptions().setDirectDelivery(true)
+      );
+    }
   }
 }
 
