@@ -28,6 +28,20 @@ RpcException::RpcException(RpcErrorCode code, const std::string &msg)
     m_message(msg)
 {
 }
+
+RpcCallGroup::RpcCallGroup(RpcEngine &engine, RpcGroupCompletionHandler complete)
+  : m_engine(engine),
+    m_handler(complete),
+    m_calls(0)
+{
+}
+
+void RpcCallGroup::checkCompletion()
+{
+  // Invoke handler when all calls have completed
+  if (--m_calls <= 0 && m_handler)
+    m_handler();
+}
   
 RpcCall::RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination, RpcCallSuccess success,
                  RpcResponseFailure failure, boost::posix_time::time_duration timeout)
@@ -236,6 +250,11 @@ void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &r
 bool RpcEngine::isRecentCall(RpcId rpcId)
 {
   return m_recentCalls.get<1>().find(rpcId) != m_recentCalls.get<1>().end();
+}
+
+RpcCallGroupPtr RpcEngine::group(RpcGroupCompletionHandler complete)
+{
+  return RpcCallGroupPtr(new RpcCallGroup(*this, complete));
 }
 
 }

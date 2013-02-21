@@ -71,6 +71,8 @@ typedef std::function<void(const Protocol::RpcResponse&, const RoutedMessage&)> 
 typedef std::function<void(RpcErrorCode, const std::string&)> RpcResponseFailure;
 /// Callback type for RPC method handlers
 typedef std::function<void(const RoutedMessage&, const Protocol::RpcRequest&, RpcResponseSuccess, RpcResponseFailure)> RpcHandler;
+/// Callback type for RPC group completion handlers
+typedef std::function<void()> RpcGroupCompletionHandler;
 
 /**
  * An RPC exception can be raised by RPC method implementations and
@@ -257,6 +259,10 @@ public:
   RoutingOptions routingOptions;
 };
 
+// Forward declaration of RpcCallGroup
+class RpcCallGroup;
+UNISPHERE_SHARED_POINTER(RpcCallGroup);
+
 /**
  * This class handles RPC calls between nodes. Each RPC call is composed of
  * two parts - request and response, both formatted as Protocol Buffers
@@ -281,6 +287,14 @@ public:
    * Returns the router instance associated with this RPC engine.
    */
   inline CompactRouter &router() const { return m_router; }
+
+  /**
+   * Starts an RPC call group.
+   *
+   * @param complete Completion handler that gets invoked when all grouped
+   *   calls are completed
+   */
+  RpcCallGroupPtr group(RpcGroupCompletionHandler complete);
   
   /**
    * Calls a remote procedure.
@@ -516,6 +530,68 @@ private:
     >
   > m_recentCalls;
 };
+
+class UNISPHERE_EXPORT RpcCallGroup : public boost::enable_shared_from_this<RpcCallGroup> {
+public:
+  friend class RpcEngine;
+  
+  /**
+   * Calls a remote procedure.
+   *
+   * @param destination Destination key
+   * @param method Method name
+   * @param request Request payload
+   * @param success Success callback
+   * @param failure Failure callback
+   * @param opts Call options
+   */
+  template<typename RequestType, typename ResponseType>
+  void call(const NodeIdentifier &destination, const std::string &method,
+            const RequestType &request, std::function<void(const ResponseType&, const RoutedMessage&)> success,
+            RpcResponseFailure failure = nullptr, const RpcCallOptions &opts = RpcCallOptions())
+  {
+    // Call group is stored in call handler closures and will be destroyed after all
+    // handlers are completed
+    auto self = shared_from_this();
+
+    m_calls++;
+    m_engine.call<RequestType, ResponseType>(
+      destination, method, request,
+      [self, success](const ResponseType &rsp, const RoutedMessage &msg) {
+        if (success)
+          success(rsp, msg);
+        self->checkCompletion();
+      },
+      [self, failure](RpcErrorCode code, const std::string &msg) {
+        if (failure)
+          failure(code, msg);
+        self->checkCompletion();
+      },
+      opts
+    );
+  }
+protected:
+  /**
+   * Constructs an RPC call group.
+   *
+   * @param complete Completion handler
+   */
+  RpcCallGroup(RpcEngine &engine, RpcGroupCompletionHandler complete);
+
+  /**
+   * Checks whether the completion handler needs to be invoked.
+   */
+  void checkCompletion();
+private:
+  /// Reference to the RPC engine
+  RpcEngine &m_engine;
+  /// Completion handler
+  RpcGroupCompletionHandler m_handler;
+  /// Number of pending calls
+  int m_calls;
+};
+
+UNISPHERE_SHARED_POINTER(RpcCallGroup);
   
 }
 
