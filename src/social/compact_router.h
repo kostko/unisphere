@@ -24,6 +24,7 @@
 #include "social/routed_message.h"
 #include "social/name_database.h"
 #include "social/rpc_engine.h"
+#include "social/sloppy_group.h"
 
 namespace UniSphere {
 
@@ -85,6 +86,11 @@ public:
    * Returns the reference to underlying name database.
    */
   NameDatabase &nameDb() { return m_nameDb; }
+
+  /**
+   * Returns the reference to the sloppy group manager.
+   */
+  SloppyGroupManager &sloppyGroup() { return m_sloppyGroup; }
 
   /**
    * Returns the reference to underlying RPC engine.
@@ -188,10 +194,12 @@ private:
   NetworkSizeEstimator &m_sizeEstimator;
   /// Compact routing table
   CompactRoutingTable m_routes;
-  /// Name database
-  NameDatabase m_nameDb;
   /// RPC engine
   RpcEngine m_rpc;
+  /// Name database
+  NameDatabase m_nameDb;
+  /// Sloppy group manager
+  SloppyGroupManager m_sloppyGroup;
   /// Timer for notifying neighbours about ourselves
   boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components

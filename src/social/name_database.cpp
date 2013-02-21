@@ -66,7 +66,7 @@ NameDatabase::NameDatabase(CompactRouter &router)
 
 void NameDatabase::initialize()
 {
-  UNISPHERE_LOG(m_router.linkManager(), Warning, "NameDatabase: Initializing name database.");
+  UNISPHERE_LOG(m_router.linkManager(), Info, "NameDatabase: Initializing name database.");
 
   // Register core name database RPC methods
   registerCoreRpcMethods();
@@ -78,6 +78,8 @@ void NameDatabase::initialize()
 
 void NameDatabase::shutdown()
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   UNISPHERE_LOG(m_router.linkManager(), Warning, "NameDatabase: Shutting down name database.");
 
   // Unregister core name database RPC methods

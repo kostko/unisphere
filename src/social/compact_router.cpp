@@ -34,8 +34,9 @@ CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
-    m_nameDb(*this),
     m_rpc(*this),
+    m_nameDb(*this),
+    m_sloppyGroup(*this, sizeEstimator),
     m_announceTimer(manager.context().service()),
     m_seqno(1)
 {
@@ -70,6 +71,9 @@ void CompactRouter::initialize()
 
   // Initialize the name database
   m_nameDb.initialize();
+
+  // Initialize the sloppy group manager
+  m_sloppyGroup.initialize();
 }
 
 void CompactRouter::shutdown()
@@ -78,6 +82,9 @@ void CompactRouter::shutdown()
 
   // Unregister core routing RPC methods
   unregisterCoreRpcMethods();
+
+  // Shutdown the sloppy group manager
+  m_sloppyGroup.shutdown();
 
   // Shutdown the name database
   m_nameDb.shutdown();

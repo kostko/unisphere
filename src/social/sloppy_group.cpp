@@ -18,6 +18,7 @@
  */
 #include "social/sloppy_group.h"
 #include "social/compact_router.h"
+#include "interplex/link_manager.h"
 
 namespace UniSphere {
 
@@ -49,12 +50,24 @@ SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimat
 
 void SloppyGroupManager::initialize()
 {
+  UNISPHERE_LOG(m_router.linkManager(), Info, "SloppyGroupManager: Initializing sloppy group manager.");
 
+  // TODO: Start periodic refresh timer
+
+  // TODO: Wait for the landmark set to stabilize and then refresh the neighbor set for the first time
 }
 
 void SloppyGroupManager::shutdown()
 {
+  RecursiveUniqueLock lock(m_mutex);
 
+  UNISPHERE_LOG(m_router.linkManager(), Warning, "SloppyGroupManager: Shutting down sloppy group manager.");
+
+  // Cancel refresh timer
+  m_neighborRefreshTimer.cancel();
+
+  // Clear the neighbor set
+  m_neighbors.clear();
 }
 
 void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &error)
@@ -65,7 +78,6 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
   RecursiveUniqueLock lock(m_mutex);
   RpcEngine &rpc = m_router.rpcEngine();
   NameDatabase &ndb = m_router.nameDb();
-  m_oldNeighbors = m_neighbors;
 
   auto group = rpc.group(boost::bind(&SloppyGroupManager::ndbRefreshCompleted, this));
 
@@ -83,14 +95,32 @@ void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &recor
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  // TODO: LRU set
   for (NameRecordPtr record : records) {
-    m_neighbors.insert(SloppyPeer(record));
+    m_newNeighbors.insert(SloppyPeer(record));
   }
 }
 
 void SloppyGroupManager::ndbRefreshCompleted()
 {
+  RecursiveUniqueLock lock(m_mutex);
+
+  m_neighbors = m_newNeighbors;
+  m_newNeighbors.clear();
+}
+
+void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  stream << "*** Sloppy group fingers:" << std::endl;
+  for (const SloppyPeer &peer : m_neighbors) {
+    stream << "  " << peer.nodeId.hex();
+    if (resolve)
+      stream << " (" << resolve(peer.nodeId) << ")";
+
+    stream << " laddr=" << peer.landmarkAddress();
+    stream << std::endl;
+  }
 }
 
 }

@@ -63,6 +63,14 @@ public:
   void initialize();
 
   void shutdown();
+
+  /**
+   * Outputs the sloppy group to a stream.
+   *
+   * @param stream Output stream to dump into
+   * @param resolve Optional name resolver
+   */
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
@@ -78,8 +86,8 @@ private:
   mutable std::recursive_mutex m_mutex;
   /// Neighbors in the overlay
   std::set<SloppyPeer> m_neighbors;
-  /// Neighbors in the overlay before last refresh
-  std::set<SloppyPeer> m_oldNeighbors;
+  /// The set of newly discovered neighbors
+  std::set<SloppyPeer> m_newNeighbors;
   /// Timer for periodic neighbor set refresh
   boost::asio::deadline_timer m_neighborRefreshTimer;
 };
