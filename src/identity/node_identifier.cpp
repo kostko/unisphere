@@ -177,4 +177,28 @@ size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
   return lcp;
 }
 
+NodeIdentifier NodeIdentifier::prefix(size_t bits) const
+{
+  NodeIdentifier prefix;
+  if (!isValid())
+    return prefix;
+
+  // Resize destination identifier
+  prefix.m_identifier.resize(NodeIdentifier::length);
+
+  // First copy the first few complete bytes
+  std::copy(m_identifier.begin(), m_identifier.begin() + bits / 8, prefix.m_identifier.begin());
+
+  // Copy the remaining bits
+  if (bits % 8 != 0) {
+    std::uint8_t mask = 0;
+    for (int i = 0; i < bits % 8; i++)
+      mask |= (1 << (7 - i));
+
+    prefix.m_identifier[bits / 8] = m_identifier[bits / 8] & mask;
+  }
+
+  return prefix;
+}
+
 }

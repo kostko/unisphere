@@ -140,6 +140,14 @@ public:
    * @return Longest common prefix length (in bits)
    */ 
   size_t longestCommonPrefix(const NodeIdentifier &other) const;
+
+  /**
+   * Returns a prefix of this identifier.
+   *
+   * @param bits Prefix length in bits
+   * @return Identifier representing a prefix
+   */
+  NodeIdentifier prefix(size_t bits) const;
   
   /**
    * Hasher implementation for node identifiers.
