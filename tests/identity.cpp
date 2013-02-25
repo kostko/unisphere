@@ -90,4 +90,12 @@ TEST_CASE("identity/identifiers", "verify that node identifiers work")
     
     REQUIRE((n8 ^ n9).as(NodeIdentifier::Format::Hex) == "0000000001fc70d5909c088c27e8225e8e015bf4");
   }
+
+  SECTION("s7", "increment operator")
+  {
+    NodeIdentifier n8("83d4211788762ffc7edc1e39187978db49334426", NodeIdentifier::Format::Hex);
+    n8 += 1337.0;
+
+    REQUIRE(n8.hex() == "83d4211788762ffc7edc1e39187978db4933495f");
+  }
 }

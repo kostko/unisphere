@@ -126,6 +126,11 @@ public:
    * Assignment operator.
    */
   NodeIdentifier &operator=(const NodeIdentifier &other);
+
+  /**
+   * Increment operator.
+   */
+  NodeIdentifier &operator+=(double x);
   
   /**
    * Computes XOR function between two node identifiers.

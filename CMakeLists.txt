@@ -21,6 +21,7 @@ find_package(Boost 1.48.0 COMPONENTS system filesystem signals thread program_op
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
+find_package(GMP REQUIRED)
 
 # Uncomment these lines for optimization
 #set(CMAKE_BUILD_TYPE distribution)
@@ -41,6 +42,7 @@ include_directories(
   ${PROTOBUF_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
   ${Botan_INCLUDE_DIR}
+  ${GMP_INCLUDE_DIR}
   
   # Internal includes
   ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -53,6 +55,8 @@ set(unisphere_external_libraries
   ${Boost_LIBRARIES}
   ${OPENSSL_LIBRARIES}
   ${Botan_LIBRARIES}
+  ${GMP_LIBRARIES}
+  ${GMPXX_LIBRARIES}
 )
 
 enable_testing()

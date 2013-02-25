@@ -19,7 +19,7 @@
 #include "identity/node_identifier.h"
 
 #include <bitset>
-
+#include <gmpxx.h>
 #include <botan/botan.h>
 
 namespace UniSphere {
@@ -148,6 +148,19 @@ const NodeIdentifier NodeIdentifier::operator^(const NodeIdentifier &other) cons
   }
   
   return result;
+}
+
+NodeIdentifier &NodeIdentifier::operator+=(double x)
+{
+  if (!isValid())
+    return *this;
+
+  mpz_class id;
+  id.set_str(hex(), 16);
+  id += x;
+  setIdentifier(id.get_str(16), Format::Hex);
+
+  return *this;
 }
 
 size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
