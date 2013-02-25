@@ -19,6 +19,7 @@
 #include "social/sloppy_group.h"
 #include "social/compact_router.h"
 #include "interplex/link_manager.h"
+#include "core/operators.h"
 
 namespace UniSphere {
 
@@ -44,13 +45,22 @@ bool SloppyPeer::operator<(const SloppyPeer &other) const
 SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator)
   : m_router(router),
     m_sizeEstimator(sizeEstimator),
-    m_neighborRefreshTimer(router.context().service())
+    m_neighborRefreshTimer(router.context().service()),
+    m_groupPrefixLength(0)
 {
 }
 
 void SloppyGroupManager::initialize()
 {
   UNISPHERE_LOG(m_router.linkManager(), Info, "SloppyGroupManager: Initializing sloppy group manager.");
+
+  // Subscribe to all events
+  m_subscriptions
+    << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManager::networkSizeEstimateChanged, this, _1))
+  ;
+
+  // Initialize sloppy group prefix length
+  networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
 
   // TODO: Start periodic refresh timer
 
@@ -63,11 +73,26 @@ void SloppyGroupManager::shutdown()
 
   UNISPHERE_LOG(m_router.linkManager(), Warning, "SloppyGroupManager: Shutting down sloppy group manager.");
 
+  // Unsubscribe from all events
+  for (boost::signals::connection c : m_subscriptions)
+    c.disconnect();
+  m_subscriptions.clear();
+
   // Cancel refresh timer
   m_neighborRefreshTimer.cancel();
 
   // Clear the neighbor set
   m_neighbors.clear();
+}
+
+void SloppyGroupManager::networkSizeEstimateChanged(std::uint64_t size)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  double n = static_cast<double>(size);
+  m_groupPrefixLength = static_cast<int>(std::floor(std::log(std::sqrt(n / std::log(n))) / std::log(2.0)));
+  // TODO: Only change the prefix length when n changes by at least some constant factor (eg. 10%)
+
+  m_groupPrefix = m_router.identity().localId().prefix(m_groupPrefixLength);
 }
 
 void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &error)
@@ -85,8 +110,12 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
   ndb.remoteLookupClosest(m_router.identity().localId(), true, group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
 
   for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
-    NodeIdentifier fingerId;
-    // TODO: Generate random finger identifier in our sloppy group
+    NodeIdentifier fingerId = m_groupPrefix;
+
+    // Compute random distance from current node; smaller distances have greater probabilities of being chosen
+    double r = std::generate_canonical<double, 32>(m_router.context().basicRng());
+    fingerId += std::exp(std::log(std::pow(2, 160 - m_groupPrefixLength) - 1) * r - 1.0);
+
     ndb.remoteLookupClosest(fingerId, false, group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
   }
 }
@@ -111,6 +140,10 @@ void SloppyGroupManager::ndbRefreshCompleted()
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
   RecursiveUniqueLock lock(m_mutex);
+
+  stream << "*** Sloppy group:" << std::endl;
+  stream << "Prefix length: " << m_groupPrefixLength << std::endl;
+  stream << "Prefix: " << m_groupPrefix.hex() << std::endl;
 
   stream << "*** Sloppy group fingers:" << std::endl;
   for (const SloppyPeer &peer : m_neighbors) {

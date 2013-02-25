@@ -77,6 +77,8 @@ protected:
   void ndbHandleResponse(const std::list<NameRecordPtr> &records);
 
   void ndbRefreshCompleted();
+
+  void networkSizeEstimateChanged(std::uint64_t size);
 private:
   /// Router instance
   CompactRouter &m_router;
@@ -90,6 +92,12 @@ private:
   std::set<SloppyPeer> m_newNeighbors;
   /// Timer for periodic neighbor set refresh
   boost::asio::deadline_timer m_neighborRefreshTimer;
+  /// Active subscriptions to other components
+  std::list<boost::signals::connection> m_subscriptions;
+  /// Sloppy group prefix length
+  size_t m_groupPrefixLength;
+  /// Sloppy group prefix
+  NodeIdentifier m_groupPrefix;
 };
 
 }

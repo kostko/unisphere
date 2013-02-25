@@ -133,10 +133,6 @@ void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkA
 
 void NameDatabase::store(const NodeIdentifier &nodeId, const LandmarkAddress &address, NameRecord::Type type)
 {
-  // Refuse to store records for landmark addresses
-  if (address.path().empty())
-    return;
-
   store(nodeId, std::list<LandmarkAddress>{ address }, type);
 }
 
@@ -361,10 +357,6 @@ void NameDatabase::publishLocalAddress()
 {
   RecursiveUniqueLock lock(m_mutex);
   RpcEngine &rpc = m_router.rpcEngine();
-
-  // No need to publish our address if we are a landmark node
-  if (m_router.routingTable().isLandmark())
-    return;
 
   // TODO: Ensure that publish requests are buffered and rate limited
 
