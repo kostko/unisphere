@@ -514,7 +514,7 @@ LandmarkAddress CompactRoutingTable::getLocalAddress() const
   return addresses.front();
 }
 
-void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
 {
   RecursiveUniqueLock lock(m_mutex);
 

@@ -344,7 +344,7 @@ public:
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
-  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
   boost::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
@@ -412,7 +412,7 @@ private:
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
   /// Mutex protecting the routing table
-  std::recursive_mutex m_mutex;
+  mutable std::recursive_mutex m_mutex;
   /// Information needed for routing to any node
   RoutingInformationBase m_rib;
   /// Route originator mapping
