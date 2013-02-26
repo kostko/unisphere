@@ -29,6 +29,7 @@ message LookupAddressRequest {
     EXACT = 0;
     CLOSEST = 1;
     CLOSEST_NEIGHBORS = 2;
+    CLOSEST_NOT_SELF = 3;
   }
 
   // Identifier to lookup the address for

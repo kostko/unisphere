@@ -102,11 +102,11 @@ void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkA
   if (it == m_nameDb.end()) {
     // Insertion of a new record
     record = NameRecordPtr(new NameRecord(m_router.context(), nodeId, type));
-    m_nameDb[record->nodeId] = record;
+    m_nameDb.insert(record);
     // TODO: Ensure that only sqrt(n*logn) Authority entries are stored at the local node
   } else {
     // Update of an existing record
-    record = it->second;
+    record = *it;
 
     // Prevent non-cached entries from changing type into cached entries
     if (record->type != NameRecord::Type::Cache && type == NameRecord::Type::Cache)
@@ -115,7 +115,9 @@ void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkA
     if (record->type == NameRecord::Type::Authority && type != NameRecord::Type::Authority)
       return;
 
-    record->type = type;
+    m_nameDb.modify(it, [&](NameRecordPtr r) {
+      r->type = type;
+    });
     record->addresses.clear();
   }
 
@@ -148,76 +150,119 @@ void NameDatabase::clear()
   m_nameDb.clear();
 }
 
-NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
+const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
 {
   RecursiveUniqueLock lock(m_mutex);
   auto it = m_nameDb.find(nodeId);
   if (it == m_nameDb.end())
     return NameRecordPtr();
 
-  return it->second;
+  return *it;
 }
 
-std::list<NameRecordPtr> NameDatabase::lookupClosest(const NodeIdentifier &nodeId, bool neighbors) const
+const std::list<NameRecordPtr> NameDatabase::lookupClosest(const NodeIdentifier &nodeId,
+                                                           LookupType type,
+                                                           const NodeIdentifier &origin) const
 {
   RecursiveUniqueLock lock(m_mutex);
   std::list<NameRecordPtr> records;
 
-  // If the name database is empty, return an empty list
-  if (m_nameDb.empty())
+  // Limit selection to authoritative records; if no authoritative records are
+  // available in the name database, return an empty list
+  auto &nibType = m_nameDb.get<NIBTags::TypeDestination>();
+  const auto authRecords = nibType.equal_range(NameRecord::Type::Authority);
+  if (authRecords.first == authRecords.second)
     return records;
 
   // Find the entry with longest common prefix
-  auto it = m_nameDb.upper_bound(nodeId);
-  if (it == m_nameDb.end()) {
+  auto it = nibType.upper_bound(boost::make_tuple(NameRecord::Type::Authority, nodeId));
+  if (it == authRecords.second) {
     --it;
 
-    // If we are looking for the match itself, we have found it
-    if (!neighbors) {
-      records.push_back(it->second);
+    // If we are looking for the closest match itself, we have found it
+    if (type == LookupType::Closest) {
+      records.push_back(*it);
       return records;
     }
   }
 
   // Check if previous entry has longer common prefix
   auto pit = it;
-  if (it != m_nameDb.begin()) {
-    if ((*(--pit)).second->nodeId.longestCommonPrefix(nodeId) >
-        (*it).second->nodeId.longestCommonPrefix(nodeId))
+  if (it != authRecords.first) {
+    if ((*(--pit))->nodeId.longestCommonPrefix(nodeId) >
+        (*it)->nodeId.longestCommonPrefix(nodeId))
       it = pit;
   }
 
-  if (neighbors) {
-    // Predecessor
-    pit = it;
-    if (it != m_nameDb.begin())
-      records.push_back((--pit)->second);
-    else
-      records.push_back((--m_nameDb.end())->second);
+  switch (type) {
+    case LookupType::Closest: {
+      records.push_back(*it);
+      break;
+    }
 
-    // Successor
-    pit = it;
-    if (++pit != m_nameDb.end())
-      records.push_back(pit->second);
-    else
-      records.push_back(m_nameDb.begin()->second);
-  } else {
-    records.push_back(it->second);
+    case LookupType::ClosestNeighbors: {
+      // Predecessor
+      pit = it;
+      if (pit == authRecords.first)
+        pit = authRecords.second;
+
+      records.push_back(*(--pit));
+
+      // Successor
+      pit = it;
+      if (++pit != authRecords.second)
+        records.push_back(*pit);
+      else
+        records.push_back(*authRecords.first);
+      break;
+    }
+
+    case LookupType::ClosestNotSelf: {
+      if (origin.isValid() && (*it)->nodeId == origin) {
+        auto sit = it;
+        if (++sit == authRecords.second)
+          sit = authRecords.first;
+        pit = it;
+        if (pit == authRecords.first)
+          pit = authRecords.second;
+        --pit;
+
+        if (sit == it)
+          sit = pit;
+        if (pit == it)
+          pit = sit;
+
+        // Choose the record that is closest
+        if ((*sit)->nodeId.longestCommonPrefix(nodeId) >
+            (*pit)->nodeId.longestCommonPrefix(nodeId))
+          it = sit;
+        else
+          it = pit;
+
+        // If there are no other records available in the name database, we return
+        // an empty set instead
+        if ((*it)->nodeId == nodeId)
+          return records;
+      }
+
+      records.push_back(*it);
+      break;
+    }
   }
 
   return records;
 }
 
 void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
-                                       bool neighbors,
+                                       LookupType type,
                                        std::function<void(const std::list<NameRecordPtr>&)> success,
                                        std::function<void()> failure) const
 {
-  remoteLookupClosest(nodeId, neighbors, RpcCallGroupPtr(), success, failure);
+  remoteLookupClosest(nodeId, type, RpcCallGroupPtr(), success, failure);
 }
 
 void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
-                                       bool neighbors,
+                                       LookupType type,
                                        RpcCallGroupPtr rpcGroup,
                                        std::function<void(const std::list<NameRecordPtr>&)> success,
                                        std::function<void()> failure) const
@@ -257,10 +302,11 @@ void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
   for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, true)) {
     Protocol::LookupAddressRequest request;
     request.set_nodeid(nodeId.raw());
-    if (neighbors)
-      request.set_type(Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS);
-    else
-      request.set_type(Protocol::LookupAddressRequest::CLOSEST);
+    switch (type) {
+      case LookupType::Closest: request.set_type(Protocol::LookupAddressRequest::CLOSEST); break;
+      case LookupType::ClosestNeighbors: request.set_type(Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS); break;
+      case LookupType::ClosestNotSelf: request.set_type(Protocol::LookupAddressRequest::CLOSEST_NOT_SELF); break;
+    }
 
     if (rpcGroup) {
       rpcGroup->call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
@@ -434,15 +480,32 @@ void NameDatabase::registerCoreRpcMethods()
 
       NodeIdentifier nodeId(request.nodeid(), NodeIdentifier::Format::Raw);
       std::list<NameRecordPtr> records;
-      if (request.type() == Protocol::LookupAddressRequest::EXACT) {
-        NameRecordPtr record = lookup(nodeId);
-        if (record)
-          records.push_back(record);
-      } else if (request.type() == Protocol::LookupAddressRequest::CLOSEST ||
-                 request.type() == Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS) {
-        records = lookupClosest(nodeId, request.type() == Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS);
-      } else {
-        throw RpcException(RpcErrorCode::BadRequest, "Unsupported lookup type!");
+      switch (request.type()) {
+        case Protocol::LookupAddressRequest::EXACT: {
+          NameRecordPtr record = lookup(nodeId);
+          if (record)
+            records.push_back(record);
+          break;
+        }
+
+        case Protocol::LookupAddressRequest::CLOSEST: {
+          records = lookupClosest(nodeId, LookupType::Closest);
+          break;
+        }
+
+        case Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS: {
+          records = lookupClosest(nodeId, LookupType::ClosestNeighbors);
+          break;
+        }
+
+        case Protocol::LookupAddressRequest::CLOSEST_NOT_SELF: {
+          records = lookupClosest(nodeId, LookupType::ClosestNotSelf, msg.sourceNodeId());
+          break;
+        }
+
+        default: {
+          throw RpcException(RpcErrorCode::BadRequest, "Unsupported lookup type!");
+        }
       }
 
       for (NameRecordPtr record : records) {
@@ -472,13 +535,13 @@ void NameDatabase::unregisterCoreRpcMethods()
   rpc.unregisterMethod("Core.NameDb.LookupAddress");
 }
 
-void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
 {
   RecursiveUniqueLock lock(m_mutex);
 
   stream << "*** Stored name records:" << std::endl;
   for (auto rp : m_nameDb) {
-    NameRecordPtr record = rp.second;
+    NameRecordPtr record = rp;
     stream << "  " << record->nodeId.hex() << " ";
     if (resolve)
       stream << "(" << resolve(record->nodeId) << ") t=";

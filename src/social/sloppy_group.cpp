@@ -62,7 +62,9 @@ void SloppyGroupManager::initialize()
   // Initialize sloppy group prefix length
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
 
-  // TODO: Start periodic refresh timer
+  // Start periodic neighbor set refresh timer
+  m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(30));
+  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
 
   // TODO: Wait for the landmark set to stabilize and then refresh the neighbor set for the first time
 }
@@ -107,7 +109,8 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
   auto group = rpc.group(boost::bind(&SloppyGroupManager::ndbRefreshCompleted, this));
 
   // Lookup successor and predecessor
-  ndb.remoteLookupClosest(m_router.identity().localId(), true, group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
+  ndb.remoteLookupClosest(m_router.identity().localId(), NameDatabase::LookupType::ClosestNeighbors,
+    group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
 
   for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
     NodeIdentifier fingerId = m_groupPrefix;
@@ -116,8 +119,13 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
     double r = std::generate_canonical<double, 32>(m_router.context().basicRng());
     fingerId += std::exp(std::log(std::pow(2, 160 - m_groupPrefixLength) - 1) * r - 1.0);
 
-    ndb.remoteLookupClosest(fingerId, false, group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
+    ndb.remoteLookupClosest(fingerId, NameDatabase::LookupType::ClosestNotSelf,
+      group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
   }
+
+  // Reschedule neighbor set refresh
+  m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
+  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
 }
 
 void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &records)
@@ -125,6 +133,10 @@ void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &recor
   RecursiveUniqueLock lock(m_mutex);
 
   for (NameRecordPtr record : records) {
+    // Skip records that are not in our sloppy group
+    if (record->nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
+      continue;
+
     m_newNeighbors.insert(SloppyPeer(record));
   }
 }

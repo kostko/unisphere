@@ -21,6 +21,13 @@
 
 #include <map>
 #include <unordered_set>
+
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/composite_key.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/mem_fun.hpp>
 #include <boost/asio.hpp>
 
 #include "core/context.h"
@@ -83,12 +90,51 @@ public:
 
 UNISPHERE_SHARED_POINTER(NameRecord)
 
+/// NIB index tags
+namespace NIBTags {
+  class DestinationId;
+  class TypeDestination;
+}
+
+typedef boost::multi_index_container<
+  NameRecordPtr,
+  midx::indexed_by<
+    // Index by node identifier
+    midx::ordered_unique<
+      midx::tag<NIBTags::DestinationId>,
+      BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId)
+    >,
+
+    // Indey by record type and destination identifier
+    midx::ordered_unique<
+      midx::tag<NIBTags::TypeDestination>,
+      midx::composite_key<
+        NameRecord,
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId)
+      >
+    >
+  >
+> NameInformationBase;
+
 class UNISPHERE_EXPORT NameDatabase {
 public:
   /// Number of landmarks to replicate the name cache to
   static const int cache_redundancy = 3;
   /// Maximum number of addresses stored in a record
   static const int max_stored_addresses = 3;
+
+  /**
+   * Lookup types.
+   */
+  enum class LookupType : std::uint8_t {
+    /// Return the closest name record
+    Closest = 1,
+    /// Return the left and right neighbor of the closest name record
+    ClosestNeighbors = 2,
+    /// Return the closest name record that is not the one being looked up
+    ClosestNotSelf = 3
+  };
 
   NameDatabase(CompactRouter &router);
 
@@ -140,29 +186,31 @@ public:
    * @param nodeId Destination node identifier
    * @return Name record pointer or null if no name record exists
    */
-  NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
+  const NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
   /**
    * Looks up the closest node identifier to the one given.
    *
    * @param nodeId Destination node identifier
-   * @param neighbors Should neighbors be returned instead
+   * @param type Lookup type
+   * @param origin Node that initiated the lookup (optional)
    * @return Resulting name records or an empty list
    */
-  std::list<NameRecordPtr> lookupClosest(const NodeIdentifier &nodeId, bool neighbors = false) const;
+  const std::list<NameRecordPtr> lookupClosest(const NodeIdentifier &nodeId,
+    LookupType type = LookupType::Closest, const NodeIdentifier &origin = NodeIdentifier::INVALID) const;
 
   /**
    * Looks up the closest node identifier to the one given on a
    * remote node.
    *
    * @param nodeId Destination node identifier
-   * @param neighbors Should neighbors be returned instead
+   * @param type Lookup type
    * @param success Success handler
    * @param failure Failure handler
    */
   void remoteLookupClosest(
     const NodeIdentifier &nodeId,
-    bool neighbors,
+    LookupType type,
     std::function<void(const std::list<NameRecordPtr>&)> success,
     std::function<void()> failure = nullptr
   ) const;
@@ -172,14 +220,14 @@ public:
    * remote node.
    *
    * @param nodeId Destination node identifier
-   * @param neighbors Should neighbors be returned instead
+   * @param type Lookup type
    * @param rpcGroup RPC call group
    * @param success Success handler
    * @param failure Failure handler
    */
   void remoteLookupClosest(
     const NodeIdentifier &nodeId,
-    bool neighbors,
+    LookupType type,
     RpcCallGroupPtr rpcGroup,
     std::function<void(const std::list<NameRecordPtr>&)> success,
     std::function<void()> failure = nullptr
@@ -223,7 +271,7 @@ public:
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
-  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
 protected:
   /**
    * Called when a record expires.
@@ -260,7 +308,7 @@ private:
   /// Mutex protecting the name database
   mutable std::recursive_mutex m_mutex;
   /// Name database
-  std::map<NodeIdentifier, NameRecordPtr> m_nameDb;
+  NameInformationBase m_nameDb;
   /// Bucket tree for consistent hashing
   std::map<std::string, NodeIdentifier> m_bucketTree;
   /// Landmarks that we have previously published into
