@@ -109,12 +109,14 @@ public:
    * 
    * @param sourceCompId Source component identifier
    * @param destination Destination node identifier
+   * @param destinationAddress Destination L-R address (if known)
    * @param destinationCompId Destination component identifier
    * @param type Message type
    * @param msg Protocol Buffers message
    * @param opts Routing options
    */
   void route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
+             const LandmarkAddress &destinationAddress,
              std::uint32_t destinationCompId, std::uint32_t type,
              const google::protobuf::Message &msg,
              const RoutingOptions &opts = RoutingOptions());

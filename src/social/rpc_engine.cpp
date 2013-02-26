@@ -137,6 +137,7 @@ RpcCallPtr RpcEngine::createCall(const NodeIdentifier &destination, const std::s
   m_router.route(
     static_cast<std::uint32_t>(CompactRouter::Component::RPC_Engine),
     destination,
+    LandmarkAddress(),
     static_cast<std::uint32_t>(CompactRouter::Component::RPC_Engine),
     static_cast<std::uint32_t>(RpcMessageType::Request),
     msg,
@@ -240,6 +241,7 @@ void RpcEngine::respond(const RoutedMessage &msg, const Protocol::RpcResponse &r
   m_router.route(
     static_cast<std::uint32_t>(CompactRouter::Component::RPC_Engine),
     msg.sourceNodeId(),
+    msg.sourceAddress(),
     static_cast<std::uint32_t>(CompactRouter::Component::RPC_Engine),
     static_cast<std::uint32_t>(RpcMessageType::Response),
     response,

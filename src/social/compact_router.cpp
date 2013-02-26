@@ -408,6 +408,7 @@ void CompactRouter::route(const RoutedMessage &msg)
 }
 
 void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
+                          const LandmarkAddress &destinationAddress,
                           std::uint32_t destinationCompId, std::uint32_t type,
                           const google::protobuf::Message &msg,
                           const RoutingOptions &opts)
@@ -417,7 +418,7 @@ void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &dest
     m_routes.getLocalAddress(),
     m_manager.getLocalNodeId(),
     sourceCompId,
-    LandmarkAddress(),
+    destinationAddress,
     destination,
     destinationCompId,
     type,
