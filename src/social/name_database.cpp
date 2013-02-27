@@ -72,7 +72,7 @@ void NameDatabase::initialize()
   registerCoreRpcMethods();
 
   // Schedule local address refresh
-  m_localRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
+  m_localRefreshTimer.expires_from_now(boost::posix_time::seconds(15));
   m_localRefreshTimer.async_wait(boost::bind(&NameDatabase::refreshLocalAddress, this, _1));
 }
 
@@ -449,10 +449,6 @@ void NameDatabase::registerCoreRpcMethods()
     [this](const Protocol::PublishAddressRequest &request, const RoutedMessage &msg, RpcId) {
       // If this node is not a landmark, ignore publish request
       if (!m_router.routingTable().isLandmark())
-        return;
-
-      // Verify that this node is actually responsible for the node that wants to publish
-      if (getLandmarkCaches(msg.sourceNodeId()).count(m_router.identity().localId()) == 0)
         return;
 
       // Store address in local name database
