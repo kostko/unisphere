@@ -137,6 +137,10 @@ void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &recor
     if (record->nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
       continue;
 
+    // Skip records that are equal to our node identifier
+    if (record->nodeId == m_router.identity().localId())
+      continue;
+
     m_newNeighbors.insert(SloppyPeer(record));
   }
 }
