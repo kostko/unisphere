@@ -136,6 +136,11 @@ public:
    * Computes XOR function between two node identifiers.
    */
   const NodeIdentifier operator^(const NodeIdentifier &other) const;
+
+  /**
+   * Computes the numerical distance between two node identifiers.
+   */
+  NodeIdentifier distanceTo(const NodeIdentifier &other) const;
   
   /**
    * Returns the length of the longest common prefix (in bits) between two
@@ -150,9 +155,10 @@ public:
    * Returns a prefix of this identifier.
    *
    * @param bits Prefix length in bits
+   * @param fill What to initialize the new identifier with
    * @return Identifier representing a prefix
    */
-  NodeIdentifier prefix(size_t bits) const;
+  NodeIdentifier prefix(size_t bits, unsigned char fill = 0x00) const;
   
   /**
    * Hasher implementation for node identifiers.

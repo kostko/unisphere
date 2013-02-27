@@ -128,12 +128,10 @@ public:
    * Lookup types.
    */
   enum class LookupType : std::uint8_t {
-    /// Return the closest name record
+    /// Return the closest name record that is not equal to the query originator
     Closest = 1,
-    /// Return the left and right neighbor of the closest name record
+    /// Return the left and right neighbors of the looked up identifier
     ClosestNeighbors = 2,
-    /// Return the closest name record that is not the one being looked up
-    ClosestNotSelf = 3
   };
 
   NameDatabase(CompactRouter &router);
@@ -189,44 +187,47 @@ public:
   const NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
   /**
-   * Looks up the closest node identifier to the one given.
+   * Performs sloppy-group related lookups.
    *
-   * @param nodeId Destination node identifier
+   * @param nodeId Node identifier to look up
+   * @param prefixLength Sloppy group prefix length
+   * @param origin Node that initiated the lookup
    * @param type Lookup type
-   * @param origin Node that initiated the lookup (optional)
    * @return Resulting name records or an empty list
    */
-  const std::list<NameRecordPtr> lookupClosest(const NodeIdentifier &nodeId,
-    LookupType type = LookupType::Closest, const NodeIdentifier &origin = NodeIdentifier::INVALID) const;
+  const std::list<NameRecordPtr> lookupSloppyGroup(const NodeIdentifier &nodeId,
+    size_t prefixLength, const NodeIdentifier &origin, LookupType type) const;
 
   /**
-   * Looks up the closest node identifier to the one given on a
-   * remote node.
+   * Performs sloppy-group related lookups on a remote node.
    *
-   * @param nodeId Destination node identifier
+   * @param nodeId Node identifier to look up
+   * @param prefixLength Sloppy group prefix length
    * @param type Lookup type
    * @param success Success handler
    * @param failure Failure handler
    */
-  void remoteLookupClosest(
+  void remoteLookupSloppyGroup(
     const NodeIdentifier &nodeId,
+    size_t prefixLength,
     LookupType type,
     std::function<void(const std::list<NameRecordPtr>&)> success,
     std::function<void()> failure = nullptr
   ) const;
 
   /**
-   * Looks up the closest node identifier to the one given on a
-   * remote node.
+   * Performs sloppy-group related lookups on a remote node.
    *
-   * @param nodeId Destination node identifier
+   * @param nodeId Node identifier to look up
+   * @param prefixLength Sloppy group prefix length
    * @param type Lookup type
    * @param rpcGroup RPC call group
    * @param success Success handler
    * @param failure Failure handler
    */
-  void remoteLookupClosest(
+  void remoteLookupSloppyGroup(
     const NodeIdentifier &nodeId,
+    size_t prefixLength,
     LookupType type,
     RpcCallGroupPtr rpcGroup,
     std::function<void(const std::list<NameRecordPtr>&)> success,

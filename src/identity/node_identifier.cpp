@@ -163,6 +163,21 @@ NodeIdentifier &NodeIdentifier::operator+=(double x)
   return *this;
 }
 
+NodeIdentifier NodeIdentifier::distanceTo(const NodeIdentifier &other) const
+{
+  NodeIdentifier distance;
+  if (!isValid() || !other.isValid())
+    return distance;
+
+  mpz_class a, b, c;
+  a.set_str(hex(), 16);
+  b.set_str(other.hex(), 16);
+  c = (a > b) ? a - b : b - a;
+
+  distance.setIdentifier(c.get_str(16), Format::Hex);
+  return distance;
+}
+
 size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
 {
   // In case of invalid identifiers return zero
@@ -190,14 +205,14 @@ size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
   return lcp;
 }
 
-NodeIdentifier NodeIdentifier::prefix(size_t bits) const
+NodeIdentifier NodeIdentifier::prefix(size_t bits, unsigned char fill) const
 {
   NodeIdentifier prefix;
   if (!isValid())
     return prefix;
 
   // Resize destination identifier
-  prefix.m_identifier.resize(NodeIdentifier::length);
+  prefix.m_identifier.resize(NodeIdentifier::length, fill);
 
   // First copy the first few complete bytes
   std::copy(m_identifier.begin(), m_identifier.begin() + bits / 8, prefix.m_identifier.begin());
@@ -208,7 +223,8 @@ NodeIdentifier NodeIdentifier::prefix(size_t bits) const
     for (int i = 0; i < bits % 8; i++)
       mask |= (1 << (7 - i));
 
-    prefix.m_identifier[bits / 8] = m_identifier[bits / 8] & mask;
+    prefix.m_identifier[bits / 8] &= ~mask;
+    prefix.m_identifier[bits / 8] |= m_identifier[bits / 8] & mask;
   }
 
   return prefix;

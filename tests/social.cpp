@@ -69,10 +69,46 @@ TEST_CASE("social", "verify that compact routing operations work")
       REQUIRE(record->type == NameRecord::Type::Authority);
     }
 
-    // Ensure that neighbor lookup works with exact match (middle)
-    std::list<NameRecordPtr> records = ndb.lookupClosest(c, NameDatabase::LookupType::ClosestNeighbors);
+    // Ensure that neighbor lookup works
+    auto records = ndb.lookupSloppyGroup(localId, 1, localId, NameDatabase::LookupType::ClosestNeighbors);
     REQUIRE(records.size() == 2);
-    REQUIRE(records.front()->nodeId == b);
+    REQUIRE(records.front()->nodeId == d);
+    REQUIRE(records.back()->nodeId == c);
+
+    // Ensure that neighbor lookup works the same when entry exists
+    ndb.store(localId, laddr, NameRecord::Type::Authority);
+    records = ndb.lookupSloppyGroup(localId, 1, localId, NameDatabase::LookupType::ClosestNeighbors);
+    REQUIRE(records.size() == 2);
+    REQUIRE(records.front()->nodeId == d);
+    REQUIRE(records.back()->nodeId == c);
+
+    // Ensure that neighbor lookup works for middle node
+    records = ndb.lookupSloppyGroup(c, 1, localId, NameDatabase::LookupType::ClosestNeighbors);
+    REQUIRE(records.size() == 2);
+    REQUIRE(records.front()->nodeId == localId);
     REQUIRE(records.back()->nodeId == d);
+
+    // Ensure that neighbor lookup works for last node
+    records = ndb.lookupSloppyGroup(d, 1, localId, NameDatabase::LookupType::ClosestNeighbors);
+    REQUIRE(records.size() == 2);
+    REQUIRE(records.front()->nodeId == c);
+    REQUIRE(records.back()->nodeId == localId);
+
+    // Ensure that bad lookup returns an empty list
+    records = ndb.lookupSloppyGroup(a, 1, localId, NameDatabase::LookupType::ClosestNeighbors);
+    REQUIRE(records.size() == 0);
+
+    // Ensure that lookup works the same in lower sloppy group (corner case of only two nodes in group)
+    records = ndb.lookupSloppyGroup(a, 1, a, NameDatabase::LookupType::ClosestNeighbors);
+    REQUIRE(records.size() == 2);
+    REQUIRE(records.front()->nodeId == records.back()->nodeId);
+    REQUIRE(records.front()->nodeId == b);
+
+    // Ensure that lookup works the same in lower sloppy group
+    NodeIdentifier e("3535d22982da1ebbbb4b299a9f9a3d9dc14d60e9", NodeIdentifier::Format::Hex);
+    records = ndb.lookupSloppyGroup(e, 1, a, NameDatabase::LookupType::ClosestNeighbors);
+    REQUIRE(records.size() == 2);
+    REQUIRE(records.front()->nodeId == a);
+    REQUIRE(records.back()->nodeId == b);
   }
 }

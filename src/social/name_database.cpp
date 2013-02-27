@@ -160,71 +160,50 @@ const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
   return *it;
 }
 
-const std::list<NameRecordPtr> NameDatabase::lookupClosest(const NodeIdentifier &nodeId,
-                                                           LookupType type,
-                                                           const NodeIdentifier &origin) const
+const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentifier &nodeId,
+                                                               size_t prefixLength,
+                                                               const NodeIdentifier &origin,
+                                                               LookupType type) const
 {
   RecursiveUniqueLock lock(m_mutex);
   std::list<NameRecordPtr> records;
 
-  // Limit selection to authoritative records; if no authoritative records are
-  // available in the name database, return an empty list
+  // Limit selection to authoritative records within the sloppy group; if no such
+  // records are available in the name database, return an empty list
   auto &nibType = m_nameDb.get<NIBTags::TypeDestination>();
-  const auto authRecords = nibType.equal_range(NameRecord::Type::Authority);
-  if (authRecords.first == authRecords.second)
+  NodeIdentifier groupStart = origin.prefix(prefixLength);
+  NodeIdentifier groupEnd = origin.prefix(prefixLength, 0xFF);
+
+  // Check for invalid queries and return an empty list in this case
+  if (nodeId < groupStart || nodeId > groupEnd)
+    return records;
+
+  const auto lowerLimit = nibType.lower_bound(boost::make_tuple(NameRecord::Type::Authority, groupStart));
+  const auto upperLimit = nibType.upper_bound(boost::make_tuple(NameRecord::Type::Authority, groupEnd));
+  if (lowerLimit == upperLimit)
     return records;
 
   // Find the entry with longest common prefix
   auto it = nibType.upper_bound(boost::make_tuple(NameRecord::Type::Authority, nodeId));
-  if (it == authRecords.second) {
+  if (it == upperLimit)
     --it;
 
-    // If we are looking for the closest match itself, we have found it
-    if (type == LookupType::Closest) {
-      records.push_back(*it);
-      return records;
-    }
-  }
-
-  // Check if previous entry has longer common prefix
+  // Check if previous entry is closer
   auto pit = it;
-  if (it != authRecords.first) {
-    if ((*(--pit))->nodeId.longestCommonPrefix(nodeId) >
-        (*it)->nodeId.longestCommonPrefix(nodeId))
+  if (it != lowerLimit) {
+    if ((*(--pit))->nodeId.distanceTo(nodeId) < (*it)->nodeId.distanceTo(nodeId))
       it = pit;
   }
 
   switch (type) {
     case LookupType::Closest: {
-      records.push_back(*it);
-      break;
-    }
-
-    case LookupType::ClosestNeighbors: {
-      // Predecessor
-      pit = it;
-      if (pit == authRecords.first)
-        pit = authRecords.second;
-
-      records.push_back(*(--pit));
-
-      // Successor
-      pit = it;
-      if (++pit != authRecords.second)
-        records.push_back(*pit);
-      else
-        records.push_back(*authRecords.first);
-      break;
-    }
-
-    case LookupType::ClosestNotSelf: {
       if (origin.isValid() && (*it)->nodeId == origin) {
         auto sit = it;
-        if (++sit == authRecords.second)
-          sit = authRecords.first;
+        if (++sit == upperLimit)
+          sit = lowerLimit;
         pit = it;
-        if (pit == authRecords.first)
-          pit = authRecords.second;
+        if (pit == lowerLimit)
+          pit = upperLimit;
         --pit;
 
         if (sit == it)
@@ -233,8 +212,7 @@ const std::list<NameRecordPtr> NameDatabase::lookupClosest(const NodeIdentifier 
           pit = sit;
 
         // Choose the record that is closest
-        if ((*sit)->nodeId.longestCommonPrefix(nodeId) >
-            (*pit)->nodeId.longestCommonPrefix(nodeId))
+        if ((*sit)->nodeId.distanceTo(nodeId) < (*pit)->nodeId.distanceTo(nodeId))
           it = sit;
         else
           it = pit;
@@ -248,24 +226,51 @@ const std::list<NameRecordPtr> NameDatabase::lookupClosest(const NodeIdentifier 
       records.push_back(*it);
       break;
     }
+
+    case LookupType::ClosestNeighbors: {
+      // Predecessor
+      if ((*it)->nodeId < nodeId) {
+        records.push_back(*it);
+      } else {
+        pit = it;
+        if (pit == lowerLimit)
+          pit = upperLimit;
+
+        records.push_back(*(--pit));
+      }
+
+      // Successor
+      if ((*it)->nodeId > nodeId) {
+        records.push_back(*it);
+      } else {
+        pit = it;
+        if (++pit != upperLimit)
+          records.push_back(*pit);
+        else
+          records.push_back(*lowerLimit);
+      }
+      break;
+    }
   }
 
   return records;
 }
 
-void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
-                                       LookupType type,
-                                       std::function<void(const std::list<NameRecordPtr>&)> success,
-                                       std::function<void()> failure) const
+void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                                           size_t prefixLength,
+                                           LookupType type,
+                                           std::function<void(const std::list<NameRecordPtr>&)> success,
+                                           std::function<void()> failure) const
 {
-  remoteLookupClosest(nodeId, type, RpcCallGroupPtr(), success, failure);
+  remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr(), success, failure);
 }
 
-void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
-                                       LookupType type,
-                                       RpcCallGroupPtr rpcGroup,
-                                       std::function<void(const std::list<NameRecordPtr>&)> success,
-                                       std::function<void()> failure) const
+void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                                           size_t prefixLength,
+                                           LookupType type,
+                                           RpcCallGroupPtr rpcGroup,
+                                           std::function<void(const std::list<NameRecordPtr>&)> success,
+                                           std::function<void()> failure) const
 {
   RpcEngine &rpc = m_router.rpcEngine();
 
@@ -302,10 +307,10 @@ void NameDatabase::remoteLookupClosest(const NodeIdentifier &nodeId,
   for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, true)) {
     Protocol::LookupAddressRequest request;
     request.set_nodeid(nodeId.raw());
+    request.set_prefixlength(prefixLength);
     switch (type) {
-      case LookupType::Closest: request.set_type(Protocol::LookupAddressRequest::CLOSEST); break;
-      case LookupType::ClosestNeighbors: request.set_type(Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS); break;
-      case LookupType::ClosestNotSelf: request.set_type(Protocol::LookupAddressRequest::CLOSEST_NOT_SELF); break;
+      case LookupType::Closest: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST); break;
+      case LookupType::ClosestNeighbors: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST_NEIGHBORS); break;
     }
 
     if (rpcGroup) {
@@ -484,18 +489,19 @@ void NameDatabase::registerCoreRpcMethods()
           break;
         }
 
-        case Protocol::LookupAddressRequest::CLOSEST: {
-          records = lookupClosest(nodeId, LookupType::Closest);
+        case Protocol::LookupAddressRequest::SG_CLOSEST: {
+          if (!request.has_prefixlength())
+            throw RpcException(RpcErrorCode::BadRequest, "Missing prefix length!");
+
+          records = lookupSloppyGroup(nodeId, request.prefixlength(), msg.sourceNodeId(), LookupType::Closest);
           break;
         }
 
-        case Protocol::LookupAddressRequest::CLOSEST_NEIGHBORS: {
-          records = lookupClosest(nodeId, LookupType::ClosestNeighbors);
-          break;
-        }
+        case Protocol::LookupAddressRequest::SG_CLOSEST_NEIGHBORS: {
+          if (!request.has_prefixlength())
+            throw RpcException(RpcErrorCode::BadRequest, "Missing prefix length!");
 
-        case Protocol::LookupAddressRequest::CLOSEST_NOT_SELF: {
-          records = lookupClosest(nodeId, LookupType::ClosestNotSelf, msg.sourceNodeId());
+          records = lookupSloppyGroup(nodeId, request.prefixlength(), msg.sourceNodeId(), LookupType::ClosestNeighbors);
           break;
         }
 

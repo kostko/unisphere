@@ -27,15 +27,16 @@ message PublishAddressRequest {
 message LookupAddressRequest {
   enum LookupType {
     EXACT = 0;
-    CLOSEST = 1;
-    CLOSEST_NEIGHBORS = 2;
-    CLOSEST_NOT_SELF = 3;
+    SG_CLOSEST = 1;
+    SG_CLOSEST_NEIGHBORS = 2;
   }
 
   // Identifier to lookup the address for
   required bytes nodeId = 1;
   // Lookup type
   required LookupType type = 2;
+  // Sloppy group prefix length
+  optional uint32 prefixLength = 3;
 }
 
 message LookupAddressResponse {

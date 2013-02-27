@@ -33,6 +33,8 @@ class NetworkSizeEstimator;
 
 class UNISPHERE_EXPORT SloppyPeer {
 public:
+  SloppyPeer();
+
   /**
    * Constructs a sloppy peer from a name record.
    *
@@ -40,9 +42,15 @@ public:
    */
   explicit SloppyPeer(NameRecordPtr record);
 
+  bool isNull() const { return nodeId.isNull(); }
+
+  void clear();
+
   LandmarkAddress landmarkAddress() const;
 
   bool operator<(const SloppyPeer &other) const;
+
+  bool operator>(const SloppyPeer &other) const;
 public:
   /// Sloppy peer node identifier
   NodeIdentifier nodeId;
@@ -65,11 +73,6 @@ public:
   void shutdown();
 
   /**
-   * Returnst a list of current sloppy neighbors.
-   */
-  const std::set<SloppyPeer> getNeighbors() const { return m_neighbors; }
-
-  /**
    * Outputs the sloppy group to a stream.
    *
    * @param stream Output stream to dump into
@@ -81,7 +84,9 @@ public:
 protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
-  void ndbHandleResponse(const std::list<NameRecordPtr> &records);
+  void ndbHandleFingerResponse(const std::list<NameRecordPtr> &records);
+
+  void ndbHandleNeighborResponse(const std::list<NameRecordPtr> &records);
 
   void ndbRefreshCompleted();
 
@@ -93,10 +98,14 @@ private:
   NetworkSizeEstimator &m_sizeEstimator;
   /// Mutex protecting the sloppy group manager
   mutable std::recursive_mutex m_mutex;
-  /// Neighbors in the overlay
-  std::set<SloppyPeer> m_neighbors;
-  /// The set of newly discovered neighbors
-  std::set<SloppyPeer> m_newNeighbors;
+  /// Predecessor in the overlay
+  SloppyPeer m_predecessor;
+  /// Successor in the overlay
+  SloppyPeer m_successor;
+  /// Long distance fingers in the overlay
+  std::set<SloppyPeer> m_fingers;
+  /// The set of newly discovered fingers
+  std::set<SloppyPeer> m_newFingers;
   /// Timer for periodic neighbor set refresh
   boost::asio::deadline_timer m_neighborRefreshTimer;
   /// Active subscriptions to other components
