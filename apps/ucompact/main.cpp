@@ -147,13 +147,25 @@ int main(int argc, char **argv)
   // Schedule routing table dump after 80 seconds
   ctx.schedule(80, [&]() {
     auto resolveNodeName = [&](const NodeIdentifier &n) -> std::string { return names.right.at(n); };
+    std::unordered_set<NodeIdentifier> authRecords;
 
     for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
+      VirtualNode *node = (*i).second;
+
       std::cout << "---- ROUTING STATE FOR: " << (*i).first.as(NodeIdentifier::Format::Hex) << " (" << names.right.at((*i).first) << ") ----" << std::endl;
-      (*i).second->router->routingTable().dump(std::cout, resolveNodeName);
-      (*i).second->router->nameDb().dump(std::cout, resolveNodeName);
-      (*i).second->router->sloppyGroup().dump(std::cout, resolveNodeName);
+      node->router->routingTable().dump(std::cout, resolveNodeName);
+      node->router->nameDb().dump(std::cout, resolveNodeName);
+      node->router->sloppyGroup().dump(std::cout, resolveNodeName);
+
+      for (NameRecordPtr record : node->router->nameDb().getNIB()) {
+        if (record->type == NameRecord::Type::Authority)
+          authRecords.insert(record->nodeId);
+      }
     }
+
+    std::cout << "---- GLOBAL AUTHORITATIVE NAME RECORDS (" << authRecords.size() << ") ----" << std::endl;
+    for (NodeIdentifier nodeId : authRecords)
+      std::cout << "  " << nodeId.hex() << " (" << names.right.at(nodeId) << ")" << std::endl;
   });
 
   // Schedule routings tests after 85 seconds

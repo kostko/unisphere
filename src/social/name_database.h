@@ -266,6 +266,11 @@ public:
   void publishLocalAddress();
 
   /**
+   * Returns a reference to the underlying name information base.
+   */
+  const NameInformationBase &getNIB() const { return m_nameDb; }
+
+  /**
    * Outputs the name database to a stream.
    *
    * @param stream Output stream to dump into
