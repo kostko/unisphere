@@ -166,6 +166,12 @@ int main(int argc, char **argv)
     std::cout << "---- GLOBAL AUTHORITATIVE NAME RECORDS (" << authRecords.size() << ") ----" << std::endl;
     for (NodeIdentifier nodeId : authRecords)
       std::cout << "  " << nodeId.hex() << " (" << names.right.at(nodeId) << ")" << std::endl;
+
+    std::cout << "---- SLOPPY GROUP TOPOLOGY ----" << std::endl;
+    for (VirtualNodeMap::iterator i = nodes.begin(); i != nodes.end(); ++i) {
+      VirtualNode *node = (*i).second;
+      node->router->sloppyGroup().dumpTopology(std::cout, resolveNodeName);
+    }
   });
 
   // Schedule routings tests after 85 seconds

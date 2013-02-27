@@ -168,4 +168,18 @@ void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(co
   }
 }
 
+void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  if (!resolve)
+    resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
+
+  std::string localId = resolve(m_router.identity().localId());
+  stream << localId << ";" << std::endl;
+  for (const SloppyPeer &peer : m_neighbors) {
+    stream << localId << " -> " << resolve(peer.nodeId) << ";" << std::endl;
+  }
+}
+
 }

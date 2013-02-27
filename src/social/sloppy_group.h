@@ -65,12 +65,19 @@ public:
   void shutdown();
 
   /**
+   * Returnst a list of current sloppy neighbors.
+   */
+  const std::set<SloppyPeer> getNeighbors() const { return m_neighbors; }
+
+  /**
    * Outputs the sloppy group to a stream.
    *
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
   void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
+
+  void dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
