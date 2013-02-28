@@ -35,6 +35,8 @@ class UNISPHERE_EXPORT SloppyPeer {
 public:
   SloppyPeer();
 
+  explicit SloppyPeer(const NodeIdentifier &nodeId);
+
   /**
    * Constructs a sloppy peer from a name record.
    *
@@ -84,9 +86,7 @@ public:
 protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
-  void ndbHandleFingerResponse(const std::list<NameRecordPtr> &records);
-
-  void ndbHandleNeighborResponse(const std::list<NameRecordPtr> &records);
+  void ndbHandleResponse(const std::list<NameRecordPtr> &records);
 
   void ndbRefreshCompleted();
 
