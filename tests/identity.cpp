@@ -98,4 +98,15 @@ TEST_CASE("identity/identifiers", "verify that node identifiers work")
 
     REQUIRE(n8.hex() == "83d4211788762ffc7edc1e39187978db4933495f");
   }
+
+  SECTION("s8", "distance operator")
+  {
+    NodeIdentifier zero("0000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+    NodeIdentifier n8("83d4211788762ffc7edc1e39187978db49334426", NodeIdentifier::Format::Hex);
+    NodeIdentifier n9("83d4211788762ffc7edc1e39187978dc27e10315", NodeIdentifier::Format::Hex);
+
+    REQUIRE(n8.distanceTo(n8) == zero);
+    REQUIRE(n8.distanceTo(n9).hex() == "00000000000000000000000000000000deadbeef");
+    REQUIRE(n8.distanceTo(n9) == n9.distanceTo(n8));
+  }
 }

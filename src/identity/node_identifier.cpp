@@ -174,7 +174,11 @@ NodeIdentifier NodeIdentifier::distanceTo(const NodeIdentifier &other) const
   b.set_str(other.hex(), 16);
   c = (a > b) ? a - b : b - a;
 
-  distance.setIdentifier(c.get_str(16), Format::Hex);
+  // Pad resulting string with zeroes to achieve proper size
+  std::string result = c.get_str(16);
+  result.insert(0, 2*NodeIdentifier::length - result.size(), '0');
+
+  distance.setIdentifier(result, Format::Hex);
   return distance;
 }
 
