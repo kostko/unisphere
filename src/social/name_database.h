@@ -19,7 +19,7 @@
 #ifndef UNISPHERE_SOCIAL_NAMEDATABASE_H
 #define UNISPHERE_SOCIAL_NAMEDATABASE_H
 
-#include <map>
+#include <set>
 #include <unordered_set>
 
 #include <boost/multi_index_container.hpp>
@@ -257,7 +257,8 @@ public:
    * @param neighbors Should the neighboring two caches be also returned
    * @return A set of landmark identifiers that should have the address
    */
-  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId, bool neighbors = false) const;
+  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId, bool neighbors = false,
+    size_t sgPrefixLength = 0) const;
 
   /**
    * Publishes local address information to designated landmarks. This method
@@ -290,14 +291,6 @@ protected:
   void refreshLocalAddress(const boost::system::error_code &error);
 
   /**
-   * Hashes a node identifier for use in consistent hashing.
-   *
-   * @param nodeId Node identifier
-   * @return Hashed node identifier
-   */
-  std::string hashIdentifier(const NodeIdentifier &nodeId) const;
-
-  /**
    * Performs registration of core RPC methods that are required for name database
    * management.
    */
@@ -316,7 +309,7 @@ private:
   /// Name database
   NameInformationBase m_nameDb;
   /// Bucket tree for consistent hashing
-  std::map<std::string, NodeIdentifier> m_bucketTree;
+  std::set<NodeIdentifier> m_bucketTree;
   /// Landmarks that we have previously published into
   std::unordered_set<NodeIdentifier> m_publishLandmarks;
   /// Timer for periodic local address refresh

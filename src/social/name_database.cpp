@@ -22,8 +22,6 @@
 
 #include "src/social/core_methods.pb.h"
 
-#include <botan/botan.h>
-
 namespace UniSphere {
 
 NameRecord::NameRecord(Context &context, const NodeIdentifier &nodeId, Type type)
@@ -335,19 +333,12 @@ void NameDatabase::entryTimerExpired(const boost::system::error_code &error, Nam
   remove(record->nodeId);
 }
 
-std::string NameDatabase::hashIdentifier(const NodeIdentifier &nodeId) const
-{
-  Botan::Pipe pipe(new Botan::Hash_Filter("MD5"));
-  pipe.process_msg(nodeId.raw());
-  return pipe.read_all_as_string(0);
-}
-
 void NameDatabase::registerLandmark(const NodeIdentifier &landmarkId)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   // Register landmark into the consistent hashing ring
-  m_bucketTree[hashIdentifier(landmarkId)] = landmarkId;
+  m_bucketTree.insert(landmarkId);
   // TODO: Multiple replicas
 
   // Check if local address needs to be republished
@@ -360,7 +351,7 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
   RecursiveUniqueLock lock(m_mutex);
 
   // Remove landmark from the consistent hashing ring
-  m_bucketTree.erase(hashIdentifier(landmarkId));
+  m_bucketTree.erase(landmarkId);
   // TODO: Multiple replicas
 
   // Check if local address needs to be republished
@@ -368,37 +359,38 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
     publishLocalAddress();
 }
 
-std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId, bool neighbors) const
+std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId,
+                                                                   bool neighbors,
+                                                                   size_t sgPrefixLength) const
 {
   std::unordered_set<NodeIdentifier> landmarks;
   if (m_bucketTree.empty())
     return landmarks;
 
-  std::string itemHash = hashIdentifier(nodeId);
-  auto it = m_bucketTree.find(itemHash);
+  auto it = m_bucketTree.find(nodeId);
   if (it == m_bucketTree.end()) {
-    it = m_bucketTree.upper_bound(itemHash);
+    it = m_bucketTree.upper_bound(nodeId);
     if (it == m_bucketTree.end())
       it = m_bucketTree.begin();
   }
 
-  landmarks.insert(it->second);
+  landmarks.insert(*it);
 
   if (neighbors) {
     auto pit = it;
 
     // Include predecessor
     if (pit != m_bucketTree.begin())
-      landmarks.insert((--pit)->second);
+      landmarks.insert(*(--pit));
     else
-      landmarks.insert((--m_bucketTree.end())->second);
+      landmarks.insert(*(--m_bucketTree.end()));
 
     // Include successor
     pit = it;
     if (++pit != m_bucketTree.end())
-      landmarks.insert(pit->second);
+      landmarks.insert(*pit);
     else
-      landmarks.insert(m_bucketTree.begin()->second);
+      landmarks.insert(*m_bucketTree.begin());
   }
   
   return landmarks;
@@ -560,10 +552,10 @@ void NameDatabase::dump(std::ostream &stream, std::function<std::string(const No
   }
 
   stream << "*** Registred landmarks:" << std::endl;
-  for (auto lp : m_bucketTree) {
-    stream << "  " << lp.second.hex();
+  for (const NodeIdentifier &landmarkId : m_bucketTree) {
+    stream << "  " << landmarkId.hex();
     if (resolve)
-      stream << " (" << resolve(lp.second) << ")";
+      stream << " (" << resolve(landmarkId) << ")";
 
     stream << std::endl;
   }

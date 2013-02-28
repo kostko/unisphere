@@ -85,8 +85,6 @@ void SloppyGroupManager::initialize()
   // Start periodic neighbor set refresh timer
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(30));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
-
-  // TODO: Wait for the landmark set to stabilize and then refresh the neighbor set for the first time
 }
 
 void SloppyGroupManager::shutdown()
@@ -175,8 +173,10 @@ void SloppyGroupManager::ndbRefreshCompleted()
   RecursiveUniqueLock lock(m_mutex);
 
   // Ensure that we have enough fingers
-  if (m_newFingers.size() < 2)
+  if (m_newFingers.size() < 2) {
+    std::cout << "missing fingers?!?" << std::endl;
     return;
+  }
 
   // Determine successor and predecessor from our fingers list
   NodeIdentifier self = m_router.identity().localId();
@@ -216,6 +216,14 @@ void SloppyGroupManager::ndbRefreshCompleted()
       m_successor = *m_newFingers.begin();
   }
 
+  std::cout << "node " << self.hex() << " got fingers:" << std::endl;
+  for (const SloppyPeer &peer : m_newFingers)
+    std::cout << "  " << peer.nodeId.hex() << std::endl;
+  std::cout << "--- queried landmarks:" << std::endl;
+  for (const NodeIdentifier &landmarkId : m_router.nameDb().getLandmarkCaches(self, true))
+    std::cout << "  " << landmarkId.hex() << std::endl;
+  std::cout << "===" << std::endl;
+
   m_newFingers.erase(m_successor);
   m_newFingers.erase(m_predecessor);
   //m_fingers = m_newFingers;
@@ -230,11 +238,11 @@ void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(co
   stream << "Prefix length: " << m_groupPrefixLength << std::endl;
   stream << "Prefix: " << m_groupPrefix.hex() << std::endl;
   stream << "Predecessor: " << m_predecessor.nodeId.hex();
-  if (resolve)
+  if (resolve && !m_predecessor.isNull())
     stream << " (" << resolve(m_predecessor.nodeId) << ")";
   stream << std::endl;
   stream << "Successor: " << m_successor.nodeId.hex();
-  if (resolve)
+  if (resolve && !m_successor.isNull())
     stream << " (" << resolve(m_successor.nodeId) << ")";
   stream << std::endl;
 
@@ -258,8 +266,10 @@ void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::s
 
   std::string localId = resolve(m_router.identity().localId());
   stream << localId << ";" << std::endl;
-  stream << localId << " -> " << resolve(m_predecessor.nodeId) << ";" << std::endl;
-  stream << localId << " -> " << resolve(m_successor.nodeId) << ";" << std::endl;
+  if (!m_predecessor.isNull())
+    stream << localId << " -> " << resolve(m_predecessor.nodeId) << ";" << std::endl;
+  if (!m_successor.isNull())
+    stream << localId << " -> " << resolve(m_successor.nodeId) << ";" << std::endl;
   for (const SloppyPeer &peer : m_fingers) {
     stream << localId << " -> " << resolve(peer.nodeId) << ";" << std::endl;
   }
