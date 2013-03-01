@@ -302,7 +302,7 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
       failure();
   };
 
-  for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, true)) {
+  for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, prefixLength)) {
     Protocol::LookupAddressRequest request;
     request.set_nodeid(nodeId.raw());
     request.set_prefixlength(prefixLength);
@@ -360,37 +360,69 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
 }
 
 std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId,
-                                                                   bool neighbors,
                                                                    size_t sgPrefixLength) const
 {
   std::unordered_set<NodeIdentifier> landmarks;
   if (m_bucketTree.empty())
     return landmarks;
 
+  bool exact = true;
+  bool wrap = false;
   auto it = m_bucketTree.find(nodeId);
   if (it == m_bucketTree.end()) {
+    exact = false;
     it = m_bucketTree.upper_bound(nodeId);
-    if (it == m_bucketTree.end())
+    if (it == m_bucketTree.end()) {
       it = m_bucketTree.begin();
+      wrap = true;
+    }
   }
 
   landmarks.insert(*it);
 
-  if (neighbors) {
-    auto pit = it;
+  if (sgPrefixLength > 0) {
+    NodeIdentifier groupStart = nodeId.prefix(sgPrefixLength);
+    NodeIdentifier groupEnd = nodeId.prefix(sgPrefixLength, 0xFF);
+    auto lowerLimit = m_bucketTree.lower_bound(nodeId.prefix(sgPrefixLength));
+    auto upperLimit = m_bucketTree.upper_bound(groupEnd);
 
     // Include predecessor
-    if (pit != m_bucketTree.begin())
-      landmarks.insert(*(--pit));
-    else
-      landmarks.insert(*(--m_bucketTree.end()));
+    auto pit = it;
+    if (pit == lowerLimit) {
+      if (upperLimit == m_bucketTree.end())
+        landmarks.insert(*m_bucketTree.begin());
+      else
+        landmarks.insert(*upperLimit);
 
-    // Include successor
+      pit = upperLimit;
+    } else if (pit == m_bucketTree.begin()) {
+      pit = m_bucketTree.end();
+    }
+
+    landmarks.insert(*(--pit));
+
+    // Include successor; note that we should not check for upper limit here,
+    // because the next landmark can contain entries for this sloppy group even
+    // if itself is not in this sloppy group
     pit = it;
-    if (++pit != m_bucketTree.end())
-      landmarks.insert(*pit);
-    else
-      landmarks.insert(*m_bucketTree.begin());
+    if (exact) {
+      if (*it == groupEnd) {
+        landmarks.insert(*lowerLimit);
+      } else {
+        ++pit;
+        if (pit == upperLimit) {
+          landmarks.insert(*lowerLimit);
+          if (pit == m_bucketTree.end())
+            landmarks.insert(*m_bucketTree.begin());
+          else
+            landmarks.insert(*pit);
+        } else {
+          landmarks.insert(*pit);
+        }
+      }
+    } else if (pit == upperLimit || wrap) {
+      landmarks.insert(*lowerLimit);
+    }
   }
   
   return landmarks;

@@ -254,10 +254,11 @@ public:
    * Returns a list of landmarks that are responsible for caching the given address.
    *
    * @param nodeId Destination node identifier that needs to be resolved
-   * @param neighbors Should the neighboring two caches be also returned
+   * @param sgPrefixLength Sloppy group prefix length (optional); this is to return
+   *   caches that contain predecessor and successor fingers
    * @return A set of landmark identifiers that should have the address
    */
-  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId, bool neighbors = false,
+  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId,
     size_t sgPrefixLength = 0) const;
 
   /**

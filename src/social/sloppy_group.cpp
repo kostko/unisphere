@@ -220,7 +220,7 @@ void SloppyGroupManager::ndbRefreshCompleted()
   for (const SloppyPeer &peer : m_newFingers)
     std::cout << "  " << peer.nodeId.hex() << std::endl;
   std::cout << "--- queried landmarks:" << std::endl;
-  for (const NodeIdentifier &landmarkId : m_router.nameDb().getLandmarkCaches(self, true))
+  for (const NodeIdentifier &landmarkId : m_router.nameDb().getLandmarkCaches(self, m_groupPrefixLength))
     std::cout << "  " << landmarkId.hex() << std::endl;
   std::cout << "===" << std::endl;
 
