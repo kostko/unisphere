@@ -401,9 +401,7 @@ std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIde
 
     landmarks.insert(*(--pit));
 
-    // Include successor; note that we should not check for upper limit here,
-    // because the next landmark can contain entries for this sloppy group even
-    // if itself is not in this sloppy group
+    // Include successor
     pit = it;
     if (exact) {
       if (*it == groupEnd) {
