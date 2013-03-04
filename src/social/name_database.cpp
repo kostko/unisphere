@@ -362,6 +362,8 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
 std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId,
                                                                    size_t sgPrefixLength) const
 {
+  assert(nodeId.isValid());
+
   std::unordered_set<NodeIdentifier> landmarks;
   if (m_bucketTree.empty())
     return landmarks;

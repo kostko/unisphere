@@ -133,25 +133,29 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
   // Lookup successor and predecessor
   ndb.remoteLookupSloppyGroup(m_router.identity().localId(), m_groupPrefixLength,
     NameDatabase::LookupType::ClosestNeighbors,
-    group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
+    group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1, boost::ref(m_newShortFingers)));
 
-  /*for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
+  for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
     NodeIdentifier fingerId = m_groupPrefix;
 
     // Compute random distance from current node; smaller distances have greater probabilities of being chosen
     double r = std::generate_canonical<double, 32>(m_router.context().basicRng());
-    fingerId += std::exp(std::log(std::pow(2, 160 - m_groupPrefixLength) - 1) * r - 1.0);
+    int d = std::exp(std::log(160 - m_groupPrefixLength) * r);
+    // fingerId.randomize(159 - d)?
+    std::cout << "r = " << r << " d = " << d << std::endl;
+    fingerId += std::exp(std::log(std::pow(2, 160 - m_groupPrefixLength) - 1) * (r - 1.0));
 
+    std::cout << "finger id = " << fingerId.hex() << " for node " << m_router.identity().localId().hex() << std::endl;
     ndb.remoteLookupSloppyGroup(fingerId, m_groupPrefixLength, NameDatabase::LookupType::Closest,
-      group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1));
-  }*/
+      group, boost::bind(&SloppyGroupManager::ndbHandleResponse, this, _1, boost::ref(m_newLongFingers)));
+  }
 
   // Reschedule neighbor set refresh
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
 }
 
-void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &records)
+void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &records, std::set<SloppyPeer> &fingers)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -164,7 +168,7 @@ void SloppyGroupManager::ndbHandleResponse(const std::list<NameRecordPtr> &recor
     if (record->nodeId == m_router.identity().localId())
       continue;
 
-    m_newFingers.insert(SloppyPeer(record));
+    fingers.insert(SloppyPeer(record));
   }
 }
 
@@ -172,21 +176,19 @@ void SloppyGroupManager::ndbRefreshCompleted()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  // Ensure that we have enough fingers
-  if (m_newFingers.size() < 2) {
-    std::cout << "missing fingers?!?" << std::endl;
+  // Ensure that we have enough short fingers
+  if (m_newShortFingers.size() < 2)
     return;
-  }
 
   // Determine successor and predecessor from our fingers list
   NodeIdentifier self = m_router.identity().localId();
-  auto it = m_newFingers.upper_bound(SloppyPeer(self));
-  if (it == m_newFingers.end())
+  auto it = m_newShortFingers.upper_bound(SloppyPeer(self));
+  if (it == m_newShortFingers.end())
     --it;
 
   // Check if previous entry is closer
   auto pit = it;
-  if (it != m_newFingers.begin()) {
+  if (it != m_newShortFingers.begin()) {
     if ((*(--pit)).nodeId.distanceTo(self) < (*it).nodeId.distanceTo(self))
       it = pit;
   }
@@ -199,8 +201,8 @@ void SloppyGroupManager::ndbRefreshCompleted()
     m_predecessor = *it;
   } else {
     pit = it;
-    if (pit == m_newFingers.begin())
-      pit = m_newFingers.end();
+    if (pit == m_newShortFingers.begin())
+      pit = m_newShortFingers.end();
 
     m_predecessor = *(--pit);
   }
@@ -210,24 +212,27 @@ void SloppyGroupManager::ndbRefreshCompleted()
     m_successor = *it;
   } else {
     pit = it;
-    if (++pit != m_newFingers.end())
+    if (++pit != m_newShortFingers.end())
       m_successor = *pit;
     else
-      m_successor = *m_newFingers.begin();
+      m_successor = *m_newShortFingers.begin();
   }
 
   std::cout << "node " << self.hex() << " got fingers:" << std::endl;
-  for (const SloppyPeer &peer : m_newFingers)
-    std::cout << "  " << peer.nodeId.hex() << std::endl;
+  for (const SloppyPeer &peer : m_newShortFingers)
+    std::cout << "  S " << peer.nodeId.hex() << std::endl;
+  for (const SloppyPeer &peer : m_newLongFingers)
+    std::cout << "  L " << peer.nodeId.hex() << std::endl;
   std::cout << "--- queried landmarks:" << std::endl;
   for (const NodeIdentifier &landmarkId : m_router.nameDb().getLandmarkCaches(self, m_groupPrefixLength))
     std::cout << "  " << landmarkId.hex() << std::endl;
   std::cout << "===" << std::endl;
 
-  m_newFingers.erase(m_successor);
-  m_newFingers.erase(m_predecessor);
-  //m_fingers = m_newFingers;
-  m_newFingers.clear();
+  m_newShortFingers.erase(m_successor);
+  m_newShortFingers.erase(m_predecessor);
+  //m_fingers = m_newShortFingers;
+  m_newShortFingers.clear();
+  m_newLongFingers.clear();
 }
 
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)

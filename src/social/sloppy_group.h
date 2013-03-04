@@ -86,7 +86,7 @@ public:
 protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
-  void ndbHandleResponse(const std::list<NameRecordPtr> &records);
+  void ndbHandleResponse(const std::list<NameRecordPtr> &records, std::set<SloppyPeer> &fingers);
 
   void ndbRefreshCompleted();
 
@@ -104,8 +104,10 @@ private:
   SloppyPeer m_successor;
   /// Long distance fingers in the overlay
   std::set<SloppyPeer> m_fingers;
-  /// The set of newly discovered fingers
-  std::set<SloppyPeer> m_newFingers;
+  /// The set of newly discovered short fingers
+  std::set<SloppyPeer> m_newShortFingers;
+  /// The set of newly discovered long fingers
+  std::set<SloppyPeer> m_newLongFingers;
   /// Timer for periodic neighbor set refresh
   boost::asio::deadline_timer m_neighborRefreshTimer;
   /// Active subscriptions to other components
