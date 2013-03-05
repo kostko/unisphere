@@ -204,15 +204,13 @@ public:
    * @param nodeId Node identifier to look up
    * @param prefixLength Sloppy group prefix length
    * @param type Lookup type
-   * @param success Success handler
-   * @param failure Failure handler
+   * @param complete Completion handler
    */
   void remoteLookupSloppyGroup(
     const NodeIdentifier &nodeId,
     size_t prefixLength,
     LookupType type,
-    std::function<void(const std::list<NameRecordPtr>&)> success,
-    std::function<void()> failure = nullptr
+    std::function<void(const std::list<NameRecordPtr>&)> complete
   ) const;
 
   /**
@@ -222,16 +220,14 @@ public:
    * @param prefixLength Sloppy group prefix length
    * @param type Lookup type
    * @param rpcGroup RPC call group
-   * @param success Success handler
-   * @param failure Failure handler
+   * @param complete Completion handler
    */
   void remoteLookupSloppyGroup(
     const NodeIdentifier &nodeId,
     size_t prefixLength,
     LookupType type,
     RpcCallGroupPtr rpcGroup,
-    std::function<void(const std::list<NameRecordPtr>&)> success,
-    std::function<void()> failure = nullptr
+    std::function<void(const std::list<NameRecordPtr>&)> complete
   ) const;
 
   /**

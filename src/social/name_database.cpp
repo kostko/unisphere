@@ -257,24 +257,25 @@ const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentif
 void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                            size_t prefixLength,
                                            LookupType type,
-                                           std::function<void(const std::list<NameRecordPtr>&)> success,
-                                           std::function<void()> failure) const
+                                           std::function<void(const std::list<NameRecordPtr>&)> complete) const
 {
-  remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr(), success, failure);
+  remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr(), complete);
 }
 
 void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                            size_t prefixLength,
                                            LookupType type,
                                            RpcCallGroupPtr rpcGroup,
-                                           std::function<void(const std::list<NameRecordPtr>&)> success,
-                                           std::function<void()> failure) const
+                                           std::function<void(const std::list<NameRecordPtr>&)> complete) const
 {
   RpcEngine &rpc = m_router.rpcEngine();
+  // A shared pointer to list of records that will be accumulated during the lookup; this
+  // is needed because multiple RPC calls might be needed to fulfill this request. This
+  // pointer is stored in closures so after the completion handler is invoked, the pointer
+  // will also be destroyed
+  boost::shared_ptr<std::list<NameRecordPtr>> records(new std::list<NameRecordPtr>);
 
-  auto successHandler = [success, this](const Protocol::LookupAddressResponse &response, const RoutedMessage&) {
-    std::list<NameRecordPtr> records;
-
+  auto successHandler = [records, this](const Protocol::LookupAddressResponse &response, const RoutedMessage&) {
     for (int i = 0; i < response.records_size(); i++) {
       const Protocol::LookupAddressResponse::Record &rr = response.records(i);
       NameRecordPtr record(new NameRecord(
@@ -282,7 +283,7 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
         NodeIdentifier(rr.nodeid(), NodeIdentifier::Format::Raw),
         NameRecord::Type::Authority
       ));
-      records.push_back(record);
+      records->push_back(record);
 
       std::list<LandmarkAddress> addresses;
       for (int j = 0; j < rr.addresses_size(); j++) {
@@ -293,14 +294,15 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
         ));
       }
     }
-
-    success(records);
   };
 
-  auto failureHandler = [failure](RpcErrorCode, const std::string&) {
-    if (failure)
-      failure();
+  auto completeHandler = [complete, records]() {
+    // Call the completion handler and pass it the records reference
+    complete(*records);
+    // After this point the records list will be destroyed
   };
+
+  RpcCallGroupPtr subgroup = rpcGroup ? rpcGroup->group(completeHandler) : rpc.group(completeHandler);
 
   for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, prefixLength)) {
     Protocol::LookupAddressRequest request;
@@ -311,17 +313,10 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
       case LookupType::ClosestNeighbors: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST_NEIGHBORS); break;
     }
 
-    if (rpcGroup) {
-      rpcGroup->call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
-        landmarkId, "Core.NameDb.LookupAddress", request, successHandler, failureHandler,
-        RpcCallOptions().setDirectDelivery(true)
-      );
-    } else {
-      rpc.call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
-        landmarkId, "Core.NameDb.LookupAddress", request, successHandler, failureHandler,
-        RpcCallOptions().setDirectDelivery(true)
-      );
-    }
+    subgroup->call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
+      landmarkId, "Core.NameDb.LookupAddress", request, successHandler, nullptr,
+      RpcCallOptions().setDirectDelivery(true)
+    );
   }
 }
 
