@@ -557,19 +557,27 @@ public:
     m_calls++;
     m_engine.call<RequestType, ResponseType>(
       destination, method, request,
-      [self, success](const ResponseType &rsp, const RoutedMessage &msg) {
+      m_strand.wrap([self, success](const ResponseType &rsp, const RoutedMessage &msg) {
         if (success)
           success(rsp, msg);
         self->checkCompletion();
-      },
-      [self, failure](RpcErrorCode code, const std::string &msg) {
+      }),
+      m_strand.wrap([self, failure](RpcErrorCode code, const std::string &msg) {
         if (failure)
           failure(code, msg);
         self->checkCompletion();
-      },
+      }),
       opts
     );
   }
+
+  /**
+   * Starts an RPC call subgroup.
+   *
+   * @param complete Completion handler that gets invoked when all grouped
+   *   calls are completed
+   */
+  RpcCallGroupPtr group(RpcGroupCompletionHandler complete);
 protected:
   /**
    * Constructs an RPC call group.
@@ -589,6 +597,8 @@ private:
   RpcGroupCompletionHandler m_handler;
   /// Number of pending calls
   int m_calls;
+  /// Strand to ensure that all handlers in a group are executed serially
+  boost::asio::strand m_strand;
 };
 
 UNISPHERE_SHARED_POINTER(RpcCallGroup);

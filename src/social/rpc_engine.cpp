@@ -32,8 +32,24 @@ RpcException::RpcException(RpcErrorCode code, const std::string &msg)
 RpcCallGroup::RpcCallGroup(RpcEngine &engine, RpcGroupCompletionHandler complete)
   : m_engine(engine),
     m_handler(complete),
-    m_calls(0)
+    m_calls(0),
+    m_strand(engine.router().context().service())
 {
+}
+
+RpcCallGroupPtr RpcCallGroup::group(RpcGroupCompletionHandler complete)
+{
+  RpcCallGroupPtr self = shared_from_this();
+
+  m_calls++;
+  return RpcCallGroupPtr(new RpcCallGroup(
+    m_engine,
+    m_strand.wrap([self, complete]() {
+      if (complete)
+        complete();
+      self->checkCompletion();
+    })
+  ));
 }
 
 void RpcCallGroup::checkCompletion()
