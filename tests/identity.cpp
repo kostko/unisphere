@@ -94,9 +94,13 @@ TEST_CASE("identity/identifiers", "verify that node identifiers work")
   SECTION("s7", "increment operator")
   {
     NodeIdentifier n8("83d4211788762ffc7edc1e39187978db49334426", NodeIdentifier::Format::Hex);
+    NodeIdentifier n9("0000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
     n8 += 1337.0;
+    n9 += 1337.0;
 
     REQUIRE(n8.hex() == "83d4211788762ffc7edc1e39187978db4933495f");
+    REQUIRE(n9.isValid());
+    REQUIRE(n9.hex() == "0000000000000000000000000000000000000539");
   }
 
   SECTION("s8", "distance operator")

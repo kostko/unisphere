@@ -158,8 +158,12 @@ NodeIdentifier &NodeIdentifier::operator+=(double x)
   mpz_class id;
   id.set_str(hex(), 16);
   id += x;
-  setIdentifier(id.get_str(16), Format::Hex);
 
+  // Pad resulting string with zeroes to achieve proper size
+  std::string result = id.get_str(16);
+  result.insert(0, 2*NodeIdentifier::length - result.size(), '0');
+
+  setIdentifier(result, Format::Hex);
   return *this;
 }
 
