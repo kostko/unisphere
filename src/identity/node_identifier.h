@@ -141,6 +141,12 @@ public:
    * Computes the numerical distance between two node identifiers.
    */
   NodeIdentifier distanceTo(const NodeIdentifier &other) const;
+
+  /**
+   * Computes the numerical distance between two node identifiers. This
+   * method returns an inexact result, for an exact result use distanceTo.
+   */
+  double distanceToAsDouble(const NodeIdentifier &other) const;
   
   /**
    * Returns the length of the longest common prefix (in bits) between two

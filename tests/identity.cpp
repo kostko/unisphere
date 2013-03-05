@@ -112,5 +112,9 @@ TEST_CASE("identity/identifiers", "verify that node identifiers work")
     REQUIRE(n8.distanceTo(n8) == zero);
     REQUIRE(n8.distanceTo(n9).hex() == "00000000000000000000000000000000deadbeef");
     REQUIRE(n8.distanceTo(n9) == n9.distanceTo(n8));
+
+    REQUIRE(n8.distanceToAsDouble(n8) == 0.0);
+    REQUIRE(n8.distanceToAsDouble(n9) == 3735928559.0);
+    REQUIRE(n8.distanceToAsDouble(n9) == n9.distanceToAsDouble(n8));
   }
 }

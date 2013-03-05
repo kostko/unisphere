@@ -186,6 +186,19 @@ NodeIdentifier NodeIdentifier::distanceTo(const NodeIdentifier &other) const
   return distance;
 }
 
+double NodeIdentifier::distanceToAsDouble(const NodeIdentifier &other) const
+{
+  if (!isValid() || !other.isValid())
+    return std::numeric_limits<double>::quiet_NaN();
+
+  mpz_class a, b, c;
+  a.set_str(hex(), 16);
+  b.set_str(other.hex(), 16);
+  c = (a > b) ? a - b : b - a;
+
+  return c.get_d();
+}
+
 size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
 {
   // In case of invalid identifiers return zero
