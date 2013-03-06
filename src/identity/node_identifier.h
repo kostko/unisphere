@@ -33,6 +33,8 @@ class UNISPHERE_EXPORT NodeIdentifier {
 public:
   /// Identifier length in bytes
   static const size_t length = 20;
+  /// Identifier length in bits
+  static const size_t bit_length = length * 8;
   /// An invalid (default-constructed) node identifier
   static const NodeIdentifier INVALID;
   
