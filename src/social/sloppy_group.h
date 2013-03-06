@@ -92,6 +92,13 @@ protected:
 
   void ndbRefreshCompleted();
 
+  /**
+   * Announces local sloppy group name records to the neighbor set.
+   */
+  void announceToNeighborSet(const boost::system::error_code &error);
+
+  void nibExportRecord(NameRecordPtr record, const SloppyPeer &peer);
+
   void networkSizeEstimateChanged(std::uint64_t size);
 private:
   /// Router instance
@@ -100,6 +107,8 @@ private:
   NetworkSizeEstimator &m_sizeEstimator;
   /// Mutex protecting the sloppy group manager
   mutable std::recursive_mutex m_mutex;
+  /// Local node identifier (cached from social identity)
+  NodeIdentifier m_localId;
   /// Predecessor in the overlay
   SloppyPeer m_predecessor;
   /// Successor in the overlay
@@ -120,8 +129,8 @@ private:
   size_t m_groupPrefixLength;
   /// Sloppy group prefix
   NodeIdentifier m_groupPrefix;
-  /// Sloppy group boundary
-  NodeIdentifier m_groupBoundary;
+  /// Expected sloppy group size
+  double m_groupSize;
 };
 
 }
