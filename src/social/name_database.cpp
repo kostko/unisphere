@@ -87,7 +87,10 @@ void NameDatabase::shutdown()
   m_localRefreshTimer.cancel();
 }
 
-void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkAddress> &addresses, NameRecord::Type type)
+void NameDatabase::store(const NodeIdentifier &nodeId,
+                         const std::list<LandmarkAddress> &addresses,
+                         NameRecord::Type type,
+                         const NodeIdentifier &originId)
 {
   // Prevent storage of null node identifiers or null L-R addresses
   if (nodeId.isNull() || addresses.empty() || addresses.size() > NameDatabase::max_stored_addresses)
@@ -126,14 +129,18 @@ void NameDatabase::store(const NodeIdentifier &nodeId, const std::list<LandmarkA
     record->addresses.push_back(address);
   }
   record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
+  record->originId = originId;
 
   record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
   record->expiryTimer.async_wait(boost::bind(&NameDatabase::entryTimerExpired, this, _1, record));
 }
 
-void NameDatabase::store(const NodeIdentifier &nodeId, const LandmarkAddress &address, NameRecord::Type type)
+void NameDatabase::store(const NodeIdentifier &nodeId,
+                         const LandmarkAddress &address,
+                         NameRecord::Type type,
+                         const NodeIdentifier &originId)
 {
-  store(nodeId, std::list<LandmarkAddress>{ address }, type);
+  store(nodeId, std::list<LandmarkAddress>{ address }, type, originId);
 }
 
 void NameDatabase::remove(const NodeIdentifier &nodeId)

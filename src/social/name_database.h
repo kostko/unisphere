@@ -86,6 +86,9 @@ public:
   boost::posix_time::ptime lastUpdate;
   /// Expiration timer
   boost::asio::deadline_timer expiryTimer;
+  /// Node that this record was received from (for records received via the
+  /// sloppy group dissemination protocol)
+  NodeIdentifier originId;
 };
 
 UNISPHERE_SHARED_POINTER(NameRecord)
@@ -154,7 +157,7 @@ public:
    * @param type Type of record
    */
   void store(const NodeIdentifier &nodeId, const std::list<LandmarkAddress> &addresses,
-    NameRecord::Type type);
+    NameRecord::Type type, const NodeIdentifier &originId = NodeIdentifier::INVALID);
 
   /**
    * Stores a name record into the database.
@@ -164,7 +167,7 @@ public:
    * @param type Type of record
    */
   void store(const NodeIdentifier &nodeId, const LandmarkAddress &address,
-    NameRecord::Type type);
+    NameRecord::Type type, const NodeIdentifier &originId = NodeIdentifier::INVALID);
 
   /**
    * Removes an existing name record from the database.
