@@ -67,6 +67,7 @@ SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimat
     m_sizeEstimator(sizeEstimator),
     m_localId(router.identity().localId()),
     m_neighborRefreshTimer(router.context().service()),
+    m_announceTimer(router.context().service()),
     m_groupPrefixLength(0)
 {
 }
@@ -78,6 +79,7 @@ void SloppyGroupManager::initialize()
   // Subscribe to all events
   m_subscriptions
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManager::networkSizeEstimateChanged, this, _1))
+    << m_router.nameDb().signalExportRecord.connect(boost::bind(&SloppyGroupManager::nibExportRecord, this, _1, _2))
   ;
 
   // Initialize sloppy group prefix length
@@ -86,6 +88,10 @@ void SloppyGroupManager::initialize()
   // Start periodic neighbor set refresh timer
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(30));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
+
+  // Start periodic full announce timer
+  m_announceTimer.expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
+  m_announceTimer.async_wait(boost::bind(&SloppyGroupManager::announceFullRecords, this, _1));
 }
 
 void SloppyGroupManager::shutdown()
@@ -257,35 +263,28 @@ void SloppyGroupManager::ndbRefreshCompleted()
 
   // TODO: If there are no long fingers, retry the selection (a limited amount of times)
 
-  announceToNeighborSet(boost::system::error_code());
+  // Preempt full records announce
+  // TODO: Do this only when the neighbor set has changed
+  announceFullRecords(boost::system::error_code());
 }
 
-void SloppyGroupManager::announceToNeighborSet(const boost::system::error_code &error)
+void SloppyGroupManager::announceFullRecords(const boost::system::error_code &error)
 {
-  RecursiveUniqueLock lock(m_mutex);
+  if (error)
+    return;
   
-  // TODO: Announce full updates to the neighbor set
+  // Announce full updates to the neighbor set
   NameDatabase &ndb = m_router.nameDb();
-  auto records = ndb.getNIB().get<NIBTags::TypeDestination>().equal_range(NameRecord::Type::SloppyGroup);
-  for (auto it = records.first; it != records.second; ++it) {
-    NameRecordPtr record = *it;
-    int forwardDirection = (record->originId > m_localId) ? -1 : 1;
-
-    for (const SloppyPeer &peer : m_fingersOut) {
-      // Only forward in the given direction, never backtrack
-      if (forwardDirection == 1 && peer.nodeId < m_localId)
-        continue;
-      else if (forwardDirection == -1 && peer.nodeId > m_localId)
-        continue;
-
-      nibExportRecord(record, peer);
-    }
+  for (const SloppyPeer &peer : m_fingersOut) {
+    ndb.fullUpdate(peer.nodeId);
   }
 
-  // TODO: Schedule next periodic export
+  // Schedule next periodic export
+  m_announceTimer.expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
+  m_announceTimer.async_wait(boost::bind(&SloppyGroupManager::announceFullRecords, this, _1));
 }
 
-void SloppyGroupManager::nibExportRecord(NameRecordPtr record, const SloppyPeer &peer)
+void SloppyGroupManager::nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId)
 {
   // TODO
 }

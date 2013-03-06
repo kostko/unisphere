@@ -99,12 +99,14 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
   RecursiveUniqueLock lock(m_mutex);
 
   NameRecordPtr record;
+  bool exportNib = false;
   auto it = m_nameDb.find(nodeId);
   if (it == m_nameDb.end()) {
     // Insertion of a new record
     record = NameRecordPtr(new NameRecord(m_router.context(), nodeId, type));
     m_nameDb.insert(record);
     // TODO: Ensure that only sqrt(n*logn) Authority entries are stored at the local node
+    exportNib = true;
   } else {
     // Update of an existing record
     record = *it;
@@ -115,6 +117,12 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
     // Prevent authoritative records from being overwritten by other records
     if (record->type == NameRecord::Type::Authority && type != NameRecord::Type::Authority)
       return;
+    // If type has changed into sloppy group, we need to export
+    if (record->type != NameRecord::Type::SloppyGroup && type == NameRecord::Type::SloppyGroup)
+      exportNib = true;
+    // If primary address has changed, we need to export
+    if (record->landmarkAddress() != addresses.front())
+      exportNib = true;
 
     m_nameDb.modify(it, [&](NameRecordPtr r) {
       r->type = type;
@@ -133,6 +141,10 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
 
   record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
   record->expiryTimer.async_wait(boost::bind(&NameDatabase::entryTimerExpired, this, _1, record));
+
+  // Sloppy group entries should be exported to neighbors
+  if (type == NameRecord::Type::SloppyGroup && exportNib)
+    signalExportRecord(record, NodeIdentifier::INVALID);
 }
 
 void NameDatabase::store(const NodeIdentifier &nodeId,
@@ -153,6 +165,26 @@ void NameDatabase::clear()
 {
   RecursiveUniqueLock lock(m_mutex);
   m_nameDb.clear();
+}
+
+void NameDatabase::fullUpdate(const NodeIdentifier &peer)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  NodeIdentifier localId = m_router.identity().localId();
+  auto records = m_nameDb.get<NIBTags::TypeDestination>().equal_range(NameRecord::Type::SloppyGroup);
+  for (auto it = records.first; it != records.second; ++it) {
+    NameRecordPtr record = *it;
+    int forwardDirection = (record->originId > localId) ? -1 : 1;
+
+    // Only forward in the given direction, never backtrack
+    if (forwardDirection == 1 && peer < localId)
+      continue;
+    else if (forwardDirection == -1 && peer > localId)
+      continue;
+
+    signalExportRecord(record, peer);
+  }
 }
 
 const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const

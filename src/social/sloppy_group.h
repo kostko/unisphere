@@ -67,6 +67,8 @@ class UNISPHERE_EXPORT SloppyGroupManager {
 public:
   /// Number of long-distance fingers to establish
   static const int finger_count = 1;
+  /// Announce interval
+  static const int interval_announce = 600;
 
   SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator);
 
@@ -95,9 +97,9 @@ protected:
   /**
    * Announces local sloppy group name records to the neighbor set.
    */
-  void announceToNeighborSet(const boost::system::error_code &error);
+  void announceFullRecords(const boost::system::error_code &error);
 
-  void nibExportRecord(NameRecordPtr record, const SloppyPeer &peer);
+  void nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId);
 
   void networkSizeEstimateChanged(std::uint64_t size);
 private:
@@ -123,6 +125,8 @@ private:
   std::map<NodeIdentifier, std::list<NameRecordPtr>> m_newLongFingers;
   /// Timer for periodic neighbor set refresh
   boost::asio::deadline_timer m_neighborRefreshTimer;
+  /// Timer for periodic annouces
+  boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components
   std::list<boost::signals::connection> m_subscriptions;
   /// Sloppy group prefix length
