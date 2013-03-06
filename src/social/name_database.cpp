@@ -104,6 +104,7 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
   if (it == m_nameDb.end()) {
     // Insertion of a new record
     record = NameRecordPtr(new NameRecord(m_router.context(), nodeId, type));
+    record->originId = originId;
     m_nameDb.insert(record);
     // TODO: Ensure that only sqrt(n*logn) Authority entries are stored at the local node
     exportNib = true;
@@ -126,6 +127,7 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
 
     m_nameDb.modify(it, [&](NameRecordPtr r) {
       r->type = type;
+      r->originId = originId;
     });
     record->addresses.clear();
   }
@@ -137,7 +139,6 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
     record->addresses.push_back(address);
   }
   record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
-  record->originId = originId;
 
   record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
   record->expiryTimer.async_wait(boost::bind(&NameDatabase::entryTimerExpired, this, _1, record));
