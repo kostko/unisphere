@@ -94,6 +94,11 @@ public:
    * Compares two landmark addresses for equality.
    */
   bool operator==(const LandmarkAddress &other) const;
+
+  /**
+   * Compares two landmark addresses for inequality.
+   */
+  bool operator!=(const LandmarkAddress &other) const { return !operator==(other); }
 private:
   /// Landmark identifier
   NodeIdentifier m_landmarkId;
