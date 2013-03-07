@@ -88,10 +88,6 @@ void SloppyGroupManager::initialize()
   // Start periodic neighbor set refresh timer
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(30));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
-
-  // Start periodic full announce timer
-  m_announceTimer.expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
-  m_announceTimer.async_wait(boost::bind(&SloppyGroupManager::announceFullRecords, this, _1));
 }
 
 void SloppyGroupManager::shutdown()
