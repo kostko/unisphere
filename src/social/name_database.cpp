@@ -325,7 +325,6 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
       ));
       records->push_back(record);
 
-      std::list<LandmarkAddress> addresses;
       for (int j = 0; j < rr.addresses_size(); j++) {
         const Protocol::LandmarkAddress &laddr = rr.addresses(j);
         record->addresses.push_back(LandmarkAddress(
