@@ -170,11 +170,12 @@ void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &err
 
 void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
 {
-  auto &entries = m_rib.get<RIBTags::DestinationId>();
+  RecursiveUniqueLock lock(m_mutex);
   NodeIdentifier lastDestination;
 
   // Export all active routes to the selected peer
-  for (auto it = entries.begin(); it != entries.end(); ++it) {
+  auto entries = m_rib.get<RIBTags::ActiveRoutes>().equal_range(true);
+  for (auto it = entries.first; it != entries.second; ++it) {
     if ((*it)->destination == lastDestination)
       continue;
 
