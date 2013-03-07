@@ -1,0 +1,12 @@
+//
+// Landmark address
+//
+
+package UniSphere.Protocol;
+
+message LandmarkAddress {
+  // Landmark identifier
+  required bytes landmarkId = 1;
+  // L-R address
+  repeated uint32 address = 2;
+}

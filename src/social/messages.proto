@@ -5,6 +5,8 @@
 
 package UniSphere.Protocol;
 
+import "src/social/address.proto";
+
 message PathAnnounce {
   // Valid announce types
   enum Type {
@@ -62,4 +64,14 @@ message RoutedMessage {
   required uint32 type = 11;
   // Message payload (type dependent)
   required bytes payload = 12;
+}
+
+message NameAnnounce {
+  // Originator node identifier
+  required bytes originId = 1;
+  // List of landmark addresses to announce
+  repeated LandmarkAddress addresses = 2;
+}
+
+message SloppyGroupRejectFinger {
 }

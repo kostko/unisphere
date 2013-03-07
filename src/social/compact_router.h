@@ -50,6 +50,7 @@ public:
     /* 0x00 - 0xFF RESERVED FOR SYSTEM PROTOCOLS */
     Null          = 0x00,
     RPC_Engine    = 0x01,
+    SloppyGroup   = 0x02,
   };
 
   CompactRouter(SocialIdentity &identity, LinkManager &manager,

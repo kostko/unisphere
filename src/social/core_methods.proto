@@ -4,19 +4,14 @@
 
 package UniSphere.Protocol;
 
+import "src/social/address.proto";
+
 message PingRequest {
   required uint64 timestamp = 1;
 }
 
 message PingResponse {
   required uint64 timestamp = 1;
-}
-
-message LandmarkAddress {
-  // Landmark identifier
-  required bytes landmarkId = 1;
-  // L-R address
-  repeated uint32 address = 2;
 }
 
 message PublishAddressRequest {

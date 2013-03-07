@@ -37,6 +37,8 @@ public:
 
   explicit SloppyPeer(const NodeIdentifier &nodeId);
 
+  SloppyPeer(const NodeIdentifier &nodeId, const LandmarkAddress &address);
+
   /**
    * Constructs a sloppy peer from a name record.
    *
@@ -50,9 +52,20 @@ public:
 
   LandmarkAddress landmarkAddress() const;
 
-  bool operator<(const SloppyPeer &other) const;
+  bool operator<(const SloppyPeer &other) const
+  {
+    return nodeId < other.nodeId;
+  }
 
-  bool operator>(const SloppyPeer &other) const;
+  bool operator>(const SloppyPeer &other) const
+  {
+    return nodeId > other.nodeId;
+  }
+
+  bool operator==(const SloppyPeer &other) const
+  {
+    return nodeId == other.nodeId;
+  }
 public:
   /// Sloppy peer node identifier
   NodeIdentifier nodeId;
@@ -69,6 +82,16 @@ public:
   static const int finger_count = 1;
   /// Announce interval
   static const int interval_announce = 600;
+
+  /**
+   * Sloppy group message types.
+   */
+  enum class MessageType : std::uint8_t {
+    /// Name announce propagated via DV-like protocol
+    NameAnnounce  = 0x01,
+    /// Finger reject
+    FingerReject  = 0x02
+  };
 
   SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator);
 
@@ -102,11 +125,21 @@ protected:
   void nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId);
 
   void networkSizeEstimateChanged(std::uint64_t size);
+
+  void rejectPeerLink(const RoutedMessage &msg);
+
+  /**
+   * Called by the router when a message is to be delivered to the local
+   * node.
+   */
+  void messageDelivery(const RoutedMessage &msg);
 private:
   /// Router instance
   CompactRouter &m_router;
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
+  /// Name database reference
+  NameDatabase &m_nameDb;
   /// Mutex protecting the sloppy group manager
   mutable std::recursive_mutex m_mutex;
   /// Local node identifier (cached from social identity)
@@ -115,10 +148,10 @@ private:
   SloppyPeer m_predecessor;
   /// Successor in the overlay
   SloppyPeer m_successor;
-  /// Outgoing long distance fingers in the overlay
-  std::set<SloppyPeer> m_fingersOut;
+  /// Outgoing fingers (including predecessor and successor)
+  std::map<NodeIdentifier, SloppyPeer> m_fingersOut;
   /// Incoming fingers
-  std::set<SloppyPeer> m_fingersIn;
+  std::map<NodeIdentifier, SloppyPeer> m_fingersIn;
   /// The set of newly discovered short fingers
   std::set<SloppyPeer> m_newShortFingers;
   /// The set of newly discovered long fingers

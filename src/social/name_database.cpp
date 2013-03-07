@@ -58,6 +58,7 @@ boost::posix_time::time_duration NameRecord::age() const
 
 NameDatabase::NameDatabase(CompactRouter &router)
   : m_router(router),
+    m_localId(router.identity().localId()),
     m_localRefreshTimer(router.context().service())
 {
 }
@@ -100,7 +101,7 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
 
   NameRecordPtr record;
   bool exportNib = false;
-  auto it = m_nameDb.find(nodeId);
+  auto it = m_nameDb.find(boost::make_tuple(nodeId, type));
   if (it == m_nameDb.end()) {
     // Insertion of a new record
     record = NameRecordPtr(new NameRecord(m_router.context(), nodeId, type));
@@ -112,21 +113,11 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
     // Update of an existing record
     record = *it;
 
-    // Prevent non-cached entries from changing type into cached entries
-    if (record->type != NameRecord::Type::Cache && type == NameRecord::Type::Cache)
-      return;
-    // Prevent authoritative records from being overwritten by other records
-    if (record->type == NameRecord::Type::Authority && type != NameRecord::Type::Authority)
-      return;
-    // If type has changed into sloppy group, we need to export
-    if (record->type != NameRecord::Type::SloppyGroup && type == NameRecord::Type::SloppyGroup)
-      exportNib = true;
     // If primary address has changed, we need to export
     if (record->landmarkAddress() != addresses.front())
       exportNib = true;
 
     m_nameDb.modify(it, [&](NameRecordPtr r) {
-      r->type = type;
       r->originId = originId;
     });
     record->addresses.clear();
@@ -140,8 +131,11 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
   }
   record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
-  record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
-  record->expiryTimer.async_wait(boost::bind(&NameDatabase::entryTimerExpired, this, _1, record));
+  // Own records should never expire, so we don't install a timer
+  if (record->nodeId != m_localId) {
+    record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
+    record->expiryTimer.async_wait(boost::bind(&NameDatabase::entryTimerExpired, this, _1, record));
+  }
 
   // Sloppy group entries should be exported to neighbors
   if (type == NameRecord::Type::SloppyGroup && exportNib)
@@ -156,10 +150,10 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
   store(nodeId, std::list<LandmarkAddress>{ address }, type, originId);
 }
 
-void NameDatabase::remove(const NodeIdentifier &nodeId)
+void NameDatabase::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
 {
   RecursiveUniqueLock lock(m_mutex);
-  m_nameDb.erase(nodeId);
+  m_nameDb.erase(m_nameDb.find(boost::make_tuple(nodeId, type)));
 }
 
 void NameDatabase::clear()
@@ -172,19 +166,9 @@ void NameDatabase::fullUpdate(const NodeIdentifier &peer)
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  NodeIdentifier localId = m_router.identity().localId();
   auto records = m_nameDb.get<NIBTags::TypeDestination>().equal_range(NameRecord::Type::SloppyGroup);
   for (auto it = records.first; it != records.second; ++it) {
-    NameRecordPtr record = *it;
-    int forwardDirection = (record->originId > localId) ? -1 : 1;
-
-    // Only forward in the given direction, never backtrack
-    if (forwardDirection == 1 && peer < localId)
-      continue;
-    else if (forwardDirection == -1 && peer > localId)
-      continue;
-
-    signalExportRecord(record, peer);
+    signalExportRecord(*it, peer);
   }
 }
 
@@ -364,7 +348,7 @@ void NameDatabase::entryTimerExpired(const boost::system::error_code &error, Nam
   if (error)
     return;
 
-  remove(record->nodeId);
+  remove(record->nodeId, record->type);
 }
 
 void NameDatabase::registerLandmark(const NodeIdentifier &landmarkId)
@@ -376,7 +360,7 @@ void NameDatabase::registerLandmark(const NodeIdentifier &landmarkId)
   // TODO: Multiple replicas
 
   // Check if local address needs to be republished
-  if (getLandmarkCaches(m_router.identity().localId()) != m_publishLandmarks)
+  if (getLandmarkCaches(m_localId) != m_publishLandmarks)
     publishLocalAddress();
 }
 
@@ -389,7 +373,7 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
   // TODO: Multiple replicas
 
   // Check if local address needs to be republished
-  if (getLandmarkCaches(m_router.identity().localId()) != m_publishLandmarks)
+  if (getLandmarkCaches(m_localId) != m_publishLandmarks)
     publishLocalAddress();
 }
 
@@ -467,11 +451,15 @@ void NameDatabase::publishLocalAddress()
   RecursiveUniqueLock lock(m_mutex);
   RpcEngine &rpc = m_router.rpcEngine();
 
+  // Also update the address in local name database for announcement to the local sloppy group
+  std::list<LandmarkAddress> addresses = m_router.routingTable().getLocalAddresses(NameDatabase::max_stored_addresses);
+  store(m_localId, addresses, NameRecord::Type::SloppyGroup);
+
   // TODO: Ensure that publish requests are buffered and rate limited
 
   // Prepare request for publishing the local address(es)
   Protocol::PublishAddressRequest request;
-  for (const LandmarkAddress &address : m_router.routingTable().getLocalAddresses(NameDatabase::max_stored_addresses)) {
+  for (const LandmarkAddress &address : addresses) {
     Protocol::LandmarkAddress *laddr = request.add_addresses();
     laddr->set_landmarkid(address.landmarkId().raw());
     for (Vport port : address.path())
@@ -479,7 +467,7 @@ void NameDatabase::publishLocalAddress()
   }
 
   // Determine which landmarks are responsible for our local address
-  m_publishLandmarks = getLandmarkCaches(m_router.identity().localId());
+  m_publishLandmarks = getLandmarkCaches(m_localId);
   for (const NodeIdentifier &landmarkId : m_publishLandmarks) {
     // Send RPC to publish the address
     rpc.call<Protocol::PublishAddressRequest>(

@@ -102,10 +102,14 @@ namespace NIBTags {
 typedef boost::multi_index_container<
   NameRecordPtr,
   midx::indexed_by<
-    // Index by node identifier
+    // Index by node identifier, sorted by type
     midx::ordered_unique<
       midx::tag<NIBTags::DestinationId>,
-      BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId)
+      midx::composite_key<
+        NameRecord,
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId),
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type)
+      >
     >,
 
     // Indey by record type and destination identifier
@@ -173,8 +177,9 @@ public:
    * Removes an existing name record from the database.
    *
    * @param nodeId Destination node identifier
+   * @param type Type of record to remove
    */
-  void remove(const NodeIdentifier &nodeId);
+  void remove(const NodeIdentifier &nodeId, NameRecord::Type type);
 
   /**
    * Clears the name database.
@@ -318,6 +323,8 @@ private:
   CompactRouter &m_router;
   /// Mutex protecting the name database
   mutable std::recursive_mutex m_mutex;
+  /// Local node identifier (cached from social identity)
+  NodeIdentifier m_localId;
   /// Name database
   NameInformationBase m_nameDb;
   /// Bucket tree for consistent hashing
