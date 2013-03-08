@@ -141,7 +141,10 @@ public:
     ClosestNeighbors = 2,
   };
 
-  NameDatabase(CompactRouter &router);
+  explicit NameDatabase(CompactRouter &router);
+
+  NameDatabase(const NameDatabase&) = delete;
+  NameDatabase &operator=(const NameDatabase&) = delete;
 
   /**
    * Initializes the name database.

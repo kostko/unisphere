@@ -95,6 +95,9 @@ public:
 
   SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator);
 
+  SloppyGroupManager(const SloppyGroupManager&) = delete;
+  SloppyGroupManager &operator=(const SloppyGroupManager&) = delete;
+
   void initialize();
 
   void shutdown();
