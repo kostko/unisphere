@@ -109,6 +109,7 @@ void SloppyGroupManager::shutdown()
   m_successor.clear();
   m_fingersOut.clear();
   m_fingersIn.clear();
+  m_blacklistedPeers.clear();
 }
 
 void SloppyGroupManager::networkSizeEstimateChanged(std::uint64_t size)
@@ -143,18 +144,24 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
     group, boost::bind(&SloppyGroupManager::ndbHandleResponseShort, this, _1));
 
   for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
-    // Compute long distance finger identifier based on a harmonic probability distribution
-    NodeIdentifier fingerId = m_groupPrefix;
-    double r = std::generate_canonical<double, 32>(m_router.context().basicRng());
-    fingerId += std::exp(std::log(m_groupSize) * (r - 1.0)) * std::pow(2, NodeIdentifier::bit_length - m_groupPrefixLength);
-
-    m_nameDb.remoteLookupSloppyGroup(fingerId, m_groupPrefixLength, NameDatabase::LookupType::Closest,
-      group, boost::bind(&SloppyGroupManager::ndbHandleResponseLong, this, _1, fingerId));
+    refreshOneLongFinger(boost::bind(&SloppyGroupManager::ndbHandleResponseLong, this, _1, _2), group);
   }
 
   // Reschedule neighbor set refresh
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
+}
+
+void SloppyGroupManager::refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
+                                              RpcCallGroupPtr rpcGroup)
+{
+  // Compute long distance finger identifier based on a harmonic probability distribution
+  NodeIdentifier fingerId = m_groupPrefix;
+  double r = std::generate_canonical<double, 32>(m_router.context().basicRng());
+  fingerId += std::exp(std::log(m_groupSize) * (r - 1.0)) * std::pow(2, NodeIdentifier::bit_length - m_groupPrefixLength);
+
+  m_nameDb.remoteLookupSloppyGroup(fingerId, m_groupPrefixLength, NameDatabase::LookupType::Closest, rpcGroup,
+    boost::bind(handler, _1, fingerId));
 }
 
 void SloppyGroupManager::ndbHandleResponseShort(const std::list<NameRecordPtr> &records)
@@ -225,36 +232,17 @@ void SloppyGroupManager::ndbRefreshCompleted()
       m_successor = *m_newShortFingers.begin();
   }
 
-  // Determine long fingers
   m_fingersOut.clear();
+  m_fingersOut.insert({{ m_predecessor.nodeId, m_predecessor }});
+  m_fingersOut.insert({{ m_successor.nodeId, m_successor }});
+
+  // Determine long fingers
   for (auto pr : m_newLongFingers) {
-    NameRecordPtr closest;
-    for (NameRecordPtr record : pr.second) {
-      // Skip records that are not in our sloppy group
-      if (record->nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
-        continue;
-
-      // Skip records that are equal to our node identifier
-      if (record->nodeId == m_localId)
-        continue;
-
-      // Skip records that are already among the short fingers
-      if (record->nodeId == m_successor.nodeId || record->nodeId == m_predecessor.nodeId)
-        continue;
-
-      // Skip records that are further away
-      if (closest && closest->nodeId.distanceTo(pr.first) < record->nodeId.distanceTo(pr.first))
-        continue;
-
-      closest = record;
-    }
+    NameRecordPtr closest = filterLongFingers(pr.second, pr.first);
 
     if (closest)
       m_fingersOut.insert({{ closest->nodeId, SloppyPeer(closest) }});
   }
-
-  m_fingersOut.insert({{ m_predecessor.nodeId, m_predecessor }});
-  m_fingersOut.insert({{ m_successor.nodeId, m_successor }});
 
   m_newShortFingers.clear();
   m_newLongFingers.clear();
@@ -265,6 +253,37 @@ void SloppyGroupManager::ndbRefreshCompleted()
   // TODO: Do this only when the neighbor set has changed
   m_announceTimer.expires_from_now(boost::posix_time::seconds(15));
   m_announceTimer.async_wait(boost::bind(&SloppyGroupManager::announceFullRecords, this, _1));
+}
+
+NameRecordPtr SloppyGroupManager::filterLongFingers(const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  NameRecordPtr closest;
+  for (NameRecordPtr record : records) {
+    // Skip records that are not in our sloppy group
+    if (record->nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
+      continue;
+
+    // Skip records that are equal to our node identifier
+    if (record->nodeId == m_localId)
+      continue;
+
+    // Skip records that are already among the outgoing fingers
+    if (m_fingersOut.find(record->nodeId) != m_fingersOut.end())
+      continue;
+
+    // Skip records that are blacklisted
+    if (m_blacklistedPeers.find(BlacklistedPeer(record->nodeId)) != m_blacklistedPeers.end())
+      continue;
+
+    // Skip records that are further away
+    if (closest && closest->nodeId.distanceTo(referenceId) < record->nodeId.distanceTo(referenceId))
+      continue;
+
+    closest = record;
+  }
+
+  return closest;
 }
 
 void SloppyGroupManager::announceFullRecords(const boost::system::error_code &error)
@@ -414,9 +433,35 @@ void SloppyGroupManager::messageDelivery(const RoutedMessage &msg)
     }
 
     case static_cast<std::uint32_t>(MessageType::FingerReject): {
-      // One of our outgoing fingers got rejected by the destination node; we should
-      // retry the selection of one finger
-      // TODO: Buffer this so we don't flood the landmarks
+      // One of our outgoing fingers got rejected by the destination node; remove the finger
+      // from our outgoing list and retry the selection of a single finger
+      RecursiveUniqueLock lock(m_mutex);
+
+      auto fit = m_fingersOut.find(msg.sourceNodeId());
+      if (fit == m_fingersOut.end())
+        return;
+
+      m_fingersOut.erase(fit);
+      // Move the removed peer to a blacklist, otherwise this same finger may be
+      // selected again and again which will cause a nasty loop
+      NodeIdentifier peerId = msg.sourceNodeId();
+      BlacklistedPeer blacklisted(m_router.context(), peerId);
+      blacklisted.timer->expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
+      blacklisted.timer->async_wait([this, peerId](const boost::system::error_code&) {
+        RecursiveUniqueLock lock(m_mutex);
+        m_blacklistedPeers.erase(BlacklistedPeer(peerId));
+      });
+      m_blacklistedPeers.insert(blacklisted);
+
+      // TODO: Rate limit this so we don't flood the landmarks
+      refreshOneLongFinger([this](const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId) {
+        RecursiveUniqueLock lock(m_mutex);
+        NameRecordPtr record = filterLongFingers(records, referenceId);
+        if (record) {
+          m_fingersOut.insert({{ record->nodeId, SloppyPeer(record) }});
+          m_nameDb.fullUpdate(record->nodeId);
+        }
+      });
       break;
     }
   }

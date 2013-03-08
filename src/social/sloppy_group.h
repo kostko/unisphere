@@ -111,6 +111,12 @@ public:
 protected:
   void refreshNeighborSet(const boost::system::error_code &error);
 
+  void refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
+    RpcCallGroupPtr rpcGroup = RpcCallGroupPtr());
+
+  NameRecordPtr filterLongFingers(const std::list<NameRecordPtr> &records,
+    const NodeIdentifier &referenceId);
+
   void ndbHandleResponseShort(const std::list<NameRecordPtr> &records);
 
   void ndbHandleResponseLong(const std::list<NameRecordPtr> &records, const NodeIdentifier &targetId);
@@ -134,6 +140,33 @@ protected:
    */
   void messageDelivery(const RoutedMessage &msg);
 private:
+  class BlacklistedPeer {
+  public:
+    explicit BlacklistedPeer(const NodeIdentifier &peerId)
+      : peerId(peerId)
+    {
+    }
+
+    BlacklistedPeer(Context &context, const NodeIdentifier &peerId)
+      : peerId(peerId),
+        timer(new boost::asio::deadline_timer(context.service()))
+    {
+    }
+
+    bool operator<(const BlacklistedPeer &other) const
+    {
+      return peerId < other.peerId;
+    }
+
+    bool operator==(const BlacklistedPeer &other) const
+    {
+      return peerId == other.peerId;
+    }
+  public:
+    NodeIdentifier peerId;
+    boost::shared_ptr<boost::asio::deadline_timer> timer;
+  };
+
   /// Router instance
   CompactRouter &m_router;
   /// Network size estimator
@@ -156,6 +189,8 @@ private:
   std::set<SloppyPeer> m_newShortFingers;
   /// The set of newly discovered long fingers
   std::map<NodeIdentifier, std::list<NameRecordPtr>> m_newLongFingers;
+  /// A list of peers that should be temporarily excluded from becoming fingers
+  std::set<BlacklistedPeer> m_blacklistedPeers;
   /// Timer for periodic neighbor set refresh
   boost::asio::deadline_timer m_neighborRefreshTimer;
   /// Timer for periodic annouces
