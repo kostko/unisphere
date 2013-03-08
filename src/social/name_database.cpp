@@ -65,6 +65,8 @@ NameDatabase::NameDatabase(CompactRouter &router)
 
 void NameDatabase::initialize()
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   UNISPHERE_LOG(m_router.linkManager(), Info, "NameDatabase: Initializing name database.");
 
   // Register core name database RPC methods
@@ -380,6 +382,7 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
 std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId,
                                                                    size_t sgPrefixLength) const
 {
+  RecursiveUniqueLock lock(m_mutex);
   assert(nodeId.isValid());
 
   std::unordered_set<NodeIdentifier> landmarks;
