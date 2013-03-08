@@ -52,4 +52,9 @@ typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
   typedef boost::shared_ptr<Class> Class##Ptr; \
   typedef boost::weak_ptr<Class> Class##WeakPtr;
 
+// Helper macro for the pimpl idiom by the use of a d-reference
+#define UNISPHERE_DECLARE_PRIVATE(Class) \
+  friend class Class##Private; \
+  class Class##Private &d;
+
 #endif
