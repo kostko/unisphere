@@ -18,12 +18,180 @@
  */
 #include "social/sloppy_group.h"
 #include "social/compact_router.h"
+#include "social/address.h"
+#include "social/name_database.h"
 #include "interplex/link_manager.h"
 #include "core/operators.h"
 
 #include "src/social/messages.pb.h"
 
+#include <set>
+#include <boost/asio.hpp>
+
 namespace UniSphere {
+
+class SloppyPeer {
+public:
+  SloppyPeer();
+
+  explicit SloppyPeer(const NodeIdentifier &nodeId);
+
+  SloppyPeer(const NodeIdentifier &nodeId, const LandmarkAddress &address);
+
+  /**
+   * Constructs a sloppy peer from a name record.
+   *
+   * @param record Name record pointer
+   */
+  explicit SloppyPeer(NameRecordPtr record);
+
+  bool isNull() const { return nodeId.isNull(); }
+
+  void clear();
+
+  LandmarkAddress landmarkAddress() const;
+
+  bool operator<(const SloppyPeer &other) const
+  {
+    return nodeId < other.nodeId;
+  }
+
+  bool operator>(const SloppyPeer &other) const
+  {
+    return nodeId > other.nodeId;
+  }
+
+  bool operator==(const SloppyPeer &other) const
+  {
+    return nodeId == other.nodeId;
+  }
+public:
+  /// Sloppy peer node identifier
+  NodeIdentifier nodeId;
+  /// A list of L-R addresses for this sloppy peer
+  std::list<LandmarkAddress> addresses;
+};
+
+class BlacklistedPeer {
+public:
+  explicit BlacklistedPeer(const NodeIdentifier &peerId)
+    : peerId(peerId)
+  {
+  }
+
+  BlacklistedPeer(Context &context, const NodeIdentifier &peerId)
+    : peerId(peerId),
+      timer(new boost::asio::deadline_timer(context.service()))
+  {
+  }
+
+  bool operator<(const BlacklistedPeer &other) const
+  {
+    return peerId < other.peerId;
+  }
+
+  bool operator==(const BlacklistedPeer &other) const
+  {
+    return peerId == other.peerId;
+  }
+public:
+  NodeIdentifier peerId;
+  boost::shared_ptr<boost::asio::deadline_timer> timer;
+};
+
+/**
+ * Private details of the sloppy group manager.
+ */
+class SloppyGroupManagerPrivate {
+public:
+  /**
+   * Sloppy group message types.
+   */
+  enum class MessageType : std::uint8_t {
+    /// Name announce propagated via DV-like protocol
+    NameAnnounce  = 0x01,
+    /// Finger reject
+    FingerReject  = 0x02
+  };
+
+  SloppyGroupManagerPrivate(CompactRouter &router, NetworkSizeEstimator &sizeEstimator);
+
+  void initialize();
+
+  void shutdown();
+
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve);
+
+  void dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve);
+
+  void refreshNeighborSet(const boost::system::error_code &error);
+
+  void refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
+    RpcCallGroupPtr rpcGroup = RpcCallGroupPtr());
+
+  NameRecordPtr filterLongFingers(const std::list<NameRecordPtr> &records,
+    const NodeIdentifier &referenceId);
+
+  void ndbHandleResponseShort(const std::list<NameRecordPtr> &records);
+
+  void ndbHandleResponseLong(const std::list<NameRecordPtr> &records, const NodeIdentifier &targetId);
+
+  void ndbRefreshCompleted();
+
+  /**
+   * Announces local sloppy group name records to the neighbor set.
+   */
+  void announceFullRecords(const boost::system::error_code &error);
+
+  void nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId);
+
+  void networkSizeEstimateChanged(std::uint64_t size);
+
+  void rejectPeerLink(const RoutedMessage &msg);
+
+  /**
+   * Called by the router when a message is to be delivered to the local
+   * node.
+   */
+  void messageDelivery(const RoutedMessage &msg);
+public:
+  /// Router instance
+  CompactRouter &m_router;
+  /// Network size estimator
+  NetworkSizeEstimator &m_sizeEstimator;
+  /// Name database reference
+  NameDatabase &m_nameDb;
+  /// Mutex protecting the sloppy group manager
+  mutable std::recursive_mutex m_mutex;
+  /// Local node identifier (cached from social identity)
+  NodeIdentifier m_localId;
+  /// Predecessor in the overlay
+  SloppyPeer m_predecessor;
+  /// Successor in the overlay
+  SloppyPeer m_successor;
+  /// Outgoing fingers (including predecessor and successor)
+  std::map<NodeIdentifier, SloppyPeer> m_fingersOut;
+  /// Incoming fingers
+  std::map<NodeIdentifier, SloppyPeer> m_fingersIn;
+  /// The set of newly discovered short fingers
+  std::set<SloppyPeer> m_newShortFingers;
+  /// The set of newly discovered long fingers
+  std::map<NodeIdentifier, std::list<NameRecordPtr>> m_newLongFingers;
+  /// A list of peers that should be temporarily excluded from becoming fingers
+  std::set<BlacklistedPeer> m_blacklistedPeers;
+  /// Timer for periodic neighbor set refresh
+  boost::asio::deadline_timer m_neighborRefreshTimer;
+  /// Timer for periodic annouces
+  boost::asio::deadline_timer m_announceTimer;
+  /// Active subscriptions to other components
+  std::list<boost::signals::connection> m_subscriptions;
+  /// Sloppy group prefix length
+  size_t m_groupPrefixLength;
+  /// Sloppy group prefix
+  NodeIdentifier m_groupPrefix;
+  /// Expected sloppy group size
+  double m_groupSize;
+};
 
 SloppyPeer::SloppyPeer()
 {
@@ -60,7 +228,7 @@ void SloppyPeer::clear()
   addresses.clear();
 }
 
-SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator)
+SloppyGroupManagerPrivate::SloppyGroupManagerPrivate(CompactRouter &router, NetworkSizeEstimator &sizeEstimator)
   : m_router(router),
     m_sizeEstimator(sizeEstimator),
     m_nameDb(router.nameDb()),
@@ -71,15 +239,17 @@ SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimat
 {
 }
 
-void SloppyGroupManager::initialize()
+void SloppyGroupManagerPrivate::initialize()
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   UNISPHERE_LOG(m_router.linkManager(), Info, "SloppyGroupManager: Initializing sloppy group manager.");
 
   // Subscribe to all events
   m_subscriptions
-    << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManager::networkSizeEstimateChanged, this, _1))
-    << m_nameDb.signalExportRecord.connect(boost::bind(&SloppyGroupManager::nibExportRecord, this, _1, _2))
-    << m_router.signalDeliverMessage.connect(boost::bind(&SloppyGroupManager::messageDelivery, this, _1))
+    << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManagerPrivate::networkSizeEstimateChanged, this, _1))
+    << m_nameDb.signalExportRecord.connect(boost::bind(&SloppyGroupManagerPrivate::nibExportRecord, this, _1, _2))
+    << m_router.signalDeliverMessage.connect(boost::bind(&SloppyGroupManagerPrivate::messageDelivery, this, _1))
   ;
 
   // Initialize sloppy group prefix length
@@ -87,10 +257,10 @@ void SloppyGroupManager::initialize()
 
   // Start periodic neighbor set refresh timer
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(30));
-  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
+  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
 }
 
-void SloppyGroupManager::shutdown()
+void SloppyGroupManagerPrivate::shutdown()
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -112,7 +282,7 @@ void SloppyGroupManager::shutdown()
   m_blacklistedPeers.clear();
 }
 
-void SloppyGroupManager::networkSizeEstimateChanged(std::uint64_t size)
+void SloppyGroupManagerPrivate::networkSizeEstimateChanged(std::uint64_t size)
 {
   RecursiveUniqueLock lock(m_mutex);
   double n = static_cast<double>(size);
@@ -125,7 +295,7 @@ void SloppyGroupManager::networkSizeEstimateChanged(std::uint64_t size)
   // TODO: Refresh neighbor set when the group prefix length has been changed
 }
 
-void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &error)
+void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_code &error)
 {
   if (error)
     return;
@@ -136,24 +306,24 @@ void SloppyGroupManager::refreshNeighborSet(const boost::system::error_code &err
   m_newShortFingers.clear();
   m_newLongFingers.clear();
 
-  auto group = rpc.group(boost::bind(&SloppyGroupManager::ndbRefreshCompleted, this));
+  auto group = rpc.group(boost::bind(&SloppyGroupManagerPrivate::ndbRefreshCompleted, this));
 
   // Lookup successor and predecessor
   m_nameDb.remoteLookupSloppyGroup(m_localId, m_groupPrefixLength,
     NameDatabase::LookupType::ClosestNeighbors,
-    group, boost::bind(&SloppyGroupManager::ndbHandleResponseShort, this, _1));
+    group, boost::bind(&SloppyGroupManagerPrivate::ndbHandleResponseShort, this, _1));
 
   for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
-    refreshOneLongFinger(boost::bind(&SloppyGroupManager::ndbHandleResponseLong, this, _1, _2), group);
+    refreshOneLongFinger(boost::bind(&SloppyGroupManagerPrivate::ndbHandleResponseLong, this, _1, _2), group);
   }
 
   // Reschedule neighbor set refresh
   m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
-  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManager::refreshNeighborSet, this, _1));
+  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
 }
 
-void SloppyGroupManager::refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
-                                              RpcCallGroupPtr rpcGroup)
+void SloppyGroupManagerPrivate::refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
+                                                     RpcCallGroupPtr rpcGroup)
 {
   // Compute long distance finger identifier based on a harmonic probability distribution
   NodeIdentifier fingerId = m_groupPrefix;
@@ -164,7 +334,7 @@ void SloppyGroupManager::refreshOneLongFinger(std::function<void(const std::list
     boost::bind(handler, _1, fingerId));
 }
 
-void SloppyGroupManager::ndbHandleResponseShort(const std::list<NameRecordPtr> &records)
+void SloppyGroupManagerPrivate::ndbHandleResponseShort(const std::list<NameRecordPtr> &records)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -181,13 +351,13 @@ void SloppyGroupManager::ndbHandleResponseShort(const std::list<NameRecordPtr> &
   }
 }
 
-void SloppyGroupManager::ndbHandleResponseLong(const std::list<NameRecordPtr> &records, const NodeIdentifier &targetId)
+void SloppyGroupManagerPrivate::ndbHandleResponseLong(const std::list<NameRecordPtr> &records, const NodeIdentifier &targetId)
 {
   RecursiveUniqueLock lock(m_mutex);
   m_newLongFingers[targetId] = records;
 }
 
-void SloppyGroupManager::ndbRefreshCompleted()
+void SloppyGroupManagerPrivate::ndbRefreshCompleted()
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -252,10 +422,10 @@ void SloppyGroupManager::ndbRefreshCompleted()
   // Preempt full records announce
   // TODO: Do this only when the neighbor set has changed
   m_announceTimer.expires_from_now(boost::posix_time::seconds(15));
-  m_announceTimer.async_wait(boost::bind(&SloppyGroupManager::announceFullRecords, this, _1));
+  m_announceTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, _1));
 }
 
-NameRecordPtr SloppyGroupManager::filterLongFingers(const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId)
+NameRecordPtr SloppyGroupManagerPrivate::filterLongFingers(const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId)
 {
   RecursiveUniqueLock lock(m_mutex);
   NameRecordPtr closest;
@@ -286,7 +456,7 @@ NameRecordPtr SloppyGroupManager::filterLongFingers(const std::list<NameRecordPt
   return closest;
 }
 
-void SloppyGroupManager::announceFullRecords(const boost::system::error_code &error)
+void SloppyGroupManagerPrivate::announceFullRecords(const boost::system::error_code &error)
 {
   if (error)
     return;
@@ -302,10 +472,10 @@ void SloppyGroupManager::announceFullRecords(const boost::system::error_code &er
 
   // Schedule next periodic export
   m_announceTimer.expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
-  m_announceTimer.async_wait(boost::bind(&SloppyGroupManager::announceFullRecords, this, _1));
+  m_announceTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, _1));
 }
 
-void SloppyGroupManager::nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId)
+void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId)
 {
   auto exportRecord = [&](const SloppyPeer &peer) {
     if (!record->originId.isNull()) {
@@ -333,7 +503,7 @@ void SloppyGroupManager::nibExportRecord(NameRecordPtr record, const NodeIdentif
       peer.nodeId,
       peer.landmarkAddress(),
       static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
-      static_cast<std::uint32_t>(SloppyGroupManager::MessageType::NameAnnounce),
+      static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::NameAnnounce),
       announce
     );
   };
@@ -358,7 +528,7 @@ void SloppyGroupManager::nibExportRecord(NameRecordPtr record, const NodeIdentif
   }
 }
 
-void SloppyGroupManager::rejectPeerLink(const RoutedMessage &msg)
+void SloppyGroupManagerPrivate::rejectPeerLink(const RoutedMessage &msg)
 {
   Protocol::SloppyGroupRejectFinger rejection;
   m_router.route(
@@ -366,12 +536,12 @@ void SloppyGroupManager::rejectPeerLink(const RoutedMessage &msg)
     msg.sourceNodeId(),
     msg.sourceAddress(),
     static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
-    static_cast<std::uint32_t>(SloppyGroupManager::MessageType::FingerReject),
+    static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::FingerReject),
     rejection
   );
 }
 
-void SloppyGroupManager::messageDelivery(const RoutedMessage &msg)
+void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
 {
   if (msg.destinationCompId() != static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup))
     return;
@@ -467,7 +637,7 @@ void SloppyGroupManager::messageDelivery(const RoutedMessage &msg)
   }
 }
 
-void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+void SloppyGroupManagerPrivate::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -497,7 +667,7 @@ void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(co
   }
 }
 
-void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+void SloppyGroupManagerPrivate::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -516,6 +686,31 @@ void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::s
 
     stream << localId << " -> " << resolve(pf.second.nodeId) << " [style=dashed,color=red];" << std::endl;
   }
+}
+
+SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator)
+  : d(*new SloppyGroupManagerPrivate(router, sizeEstimator))
+{
+}
+
+void SloppyGroupManager::initialize()
+{
+  d.initialize();
+}
+
+void SloppyGroupManager::shutdown()
+{
+  d.shutdown();
+}
+
+void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  d.dump(stream, resolve);
+}
+
+void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  d.dumpTopology(stream, resolve);
 }
 
 }
