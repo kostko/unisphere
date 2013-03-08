@@ -18,11 +18,19 @@
  */
 #include "core/context.h"
 
+#include <unordered_map>
+#include <thread>
+
 namespace UniSphere {
 
 class ContextPrivate {
 public:
   ContextPrivate();
+
+  /**
+   * Creates the random number generators for the local thread.
+   */
+  void createThreadRNGs();
 public:
   /// ASIO I/O service for all network operations
   boost::asio::io_service m_io;
@@ -30,14 +38,16 @@ public:
   boost::asio::io_service::work m_work;
   /// The thread pool when multiple threads are used
   boost::thread_group m_pool;
+  /// Mutex protecting the context
+  std::recursive_mutex m_mutex;
   
   /// Logger instance
   Logger m_logger;
 
-  /// Cryptographically secure random number generator
-  Botan::AutoSeeded_RNG m_rng;
-  /// Basic random generator that should not be used for crypto ops
-  std::mt19937 m_basicRng;
+  /// Cryptographically secure random number generator (per-thread)
+  std::unordered_map<std::thread::id, Botan::AutoSeeded_RNG*> m_rng;
+  /// Basic random generator that should not be used for crypto ops (per-thread)
+  std::unordered_map<std::thread::id, std::mt19937*> m_basicRng;
 };
 
 LibraryInitializer::LibraryInitializer()
@@ -48,15 +58,31 @@ LibraryInitializer::LibraryInitializer()
 ContextPrivate::ContextPrivate()
   : m_work(m_io)
 {
+}
+
+void ContextPrivate::createThreadRNGs()
+{
+  RecursiveUniqueLock lock(m_mutex);
+  std::thread::id tid = std::this_thread::get_id();
+  Botan::AutoSeeded_RNG *rng = new Botan::AutoSeeded_RNG();
+  std::mt19937 *basicRng = new std::mt19937();
+
   // Seed the basic random generator from the cryptographic random number generator
   std::uint32_t seed;
-  m_rng.randomize((Botan::byte*) &seed, sizeof(seed));
-  m_basicRng.seed(seed);
+  rng->randomize((Botan::byte*) &seed, sizeof(seed));
+  basicRng->seed(seed);
+
+  // Register per-thread RNGs
+  m_rng.insert({{ tid, rng }});
+  m_basicRng.insert({{ tid, basicRng }});
 }
 
 Context::Context()
   : d(*new ContextPrivate)
 {
+  // Create RNGs for the main thread
+  d.createThreadRNGs();
+
   // Log context initialization
   UNISPHERE_CLOG(*this, Info, "UNISPHERE Context initialized.");
 }
@@ -77,12 +103,14 @@ Logger &Context::logger()
 
 Botan::RandomNumberGenerator &Context::rng()
 {
-  return d.m_rng;
+  RecursiveUniqueLock lock(d.m_mutex);
+  return *d.m_rng.at(std::this_thread::get_id());
 }
 
 std::mt19937 &Context::basicRng()
 {
-  return d.m_basicRng;
+  RecursiveUniqueLock lock(d.m_mutex);
+  return *d.m_basicRng.at(std::this_thread::get_id());
 }
 
 void Context::schedule(int timeout, std::function<void()> operation)
@@ -99,7 +127,13 @@ void Context::run(size_t threads)
 {
   // Create as many threads as specified and let them run the I/O service
   for (int i = 0; i < threads; i++) {
-    d.m_pool.create_thread(boost::bind(&boost::asio::io_service::run, &d.m_io));
+    d.m_pool.create_thread([this]() {
+      // Initialize the random number generators
+      d.createThreadRNGs();
+
+      // Run the ASIO service
+      d.m_io.run();
+    });
   }
   
   d.m_pool.join_all();
@@ -108,6 +142,15 @@ void Context::run(size_t threads)
 void Context::stop()
 {
   d.m_io.stop();
+
+  // Destroy all per-thread RNGs
+  for (auto p : d.m_rng)
+    delete p.second;
+  for (auto p : d.m_basicRng)
+    delete p.second;
+
+  d.m_rng.clear();
+  d.m_basicRng.clear();
 }
 
 }
