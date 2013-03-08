@@ -78,23 +78,23 @@ public:
    * Returns the ASIO I/O service for this UNISPHERE context. This service
    * may be used for all I/O operations by context-dependent APIs.
    */
-  inline boost::asio::io_service &service() { return m_io; }
+  boost::asio::io_service &service();
   
   /**
    * Returns the debug logger.
    */
-  inline Logger &logger() { return m_logger; }
+  Logger &logger();
 
   /**
    * Returns the cryptographically secure random number generator.
    */
-  inline Botan::RandomNumberGenerator &rng() { return m_rng; }
+  Botan::RandomNumberGenerator &rng();
 
   /**
    * Returns a basic random number generator that should NOT be used for any
    * cryptographic operations.
    */
-  inline std::mt19937 &basicRng() { return m_basicRng; }
+  std::mt19937 &basicRng();
   
   /**
    * Enters the main event loop. Passing a thread pool size of greater than
@@ -109,20 +109,7 @@ public:
    */
   void stop();
 private:
-  /// ASIO I/O service for all network operations
-  boost::asio::io_service m_io;
-  /// ASIO work grouping for all network operations
-  boost::asio::io_service::work m_work;
-  /// The thread pool when multiple threads are used
-  boost::thread_group m_pool;
-  
-  /// Logger instance
-  Logger m_logger;
-
-  /// Cryptographically secure random number generator
-  Botan::AutoSeeded_RNG m_rng;
-  /// Basic random generator that should not be used for crypto ops
-  std::mt19937 m_basicRng;
+  UNISPHERE_DECLARE_PRIVATE(Context)
 };
 
 }

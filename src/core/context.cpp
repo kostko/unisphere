@@ -20,19 +20,43 @@
 
 namespace UniSphere {
 
+class ContextPrivate {
+public:
+  ContextPrivate();
+public:
+  /// ASIO I/O service for all network operations
+  boost::asio::io_service m_io;
+  /// ASIO work grouping for all network operations
+  boost::asio::io_service::work m_work;
+  /// The thread pool when multiple threads are used
+  boost::thread_group m_pool;
+  
+  /// Logger instance
+  Logger m_logger;
+
+  /// Cryptographically secure random number generator
+  Botan::AutoSeeded_RNG m_rng;
+  /// Basic random generator that should not be used for crypto ops
+  std::mt19937 m_basicRng;
+};
+
 LibraryInitializer::LibraryInitializer()
   : m_botan("thread_safe=true")
 {
 }
 
-Context::Context()
+ContextPrivate::ContextPrivate()
   : m_work(m_io)
 {
   // Seed the basic random generator from the cryptographic random number generator
   std::uint32_t seed;
   m_rng.randomize((Botan::byte*) &seed, sizeof(seed));
   m_basicRng.seed(seed);
+}
 
+Context::Context()
+  : d(*new ContextPrivate)
+{
   // Log context initialization
   UNISPHERE_CLOG(*this, Info, "UNISPHERE Context initialized.");
 }
@@ -41,12 +65,32 @@ Context::~Context()
 {
 }
 
+boost::asio::io_service &Context::service()
+{
+  return d.m_io;
+}
+
+Logger &Context::logger()
+{
+  return d.m_logger;
+}
+
+Botan::RandomNumberGenerator &Context::rng()
+{
+  return d.m_rng;
+}
+
+std::mt19937 &Context::basicRng()
+{
+  return d.m_basicRng;
+}
+
 void Context::schedule(int timeout, std::function<void()> operation)
 {
   // The timer pointer is passed into a closure so it will be automatically removed
   // when the operation is done executing
   typedef boost::shared_ptr<boost::asio::deadline_timer> SharedTimer;
-  SharedTimer timer = SharedTimer(new boost::asio::deadline_timer(m_io));
+  SharedTimer timer = SharedTimer(new boost::asio::deadline_timer(d.m_io));
   timer->expires_from_now(boost::posix_time::seconds(timeout));
   timer->async_wait([timer, operation](const boost::system::error_code&) { operation(); });
 }
@@ -55,15 +99,15 @@ void Context::run(size_t threads)
 {
   // Create as many threads as specified and let them run the I/O service
   for (int i = 0; i < threads; i++) {
-    m_pool.create_thread(boost::bind(&boost::asio::io_service::run, &m_io));
+    d.m_pool.create_thread(boost::bind(&boost::asio::io_service::run, &d.m_io));
   }
   
-  m_pool.join_all();
+  d.m_pool.join_all();
 }
 
 void Context::stop()
 {
-  m_io.stop();
+  d.m_io.stop();
 }
 
 }
