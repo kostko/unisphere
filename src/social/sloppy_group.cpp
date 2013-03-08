@@ -546,41 +546,41 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
   if (msg.destinationCompId() != static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup))
     return;
 
-  // Accept message only if source node belongs to this sloppy group
-  if (msg.sourceNodeId().prefix(m_groupPrefixLength) != m_groupPrefix)
-    return rejectPeerLink(msg);
-
-  // Check if this peer is already registered among the incoming or outgoing fingers
-  {
-    RecursiveUniqueLock lock(m_mutex);
-    auto jt = m_fingersOut.find(msg.sourceNodeId());
-    if (jt != m_fingersOut.end()) {
-      // Update source address of the finger as it should be more recent
-      if (jt->second.landmarkAddress() != msg.sourceAddress()) {
-        jt->second.addresses.clear();
-        jt->second.addresses.push_back(msg.sourceAddress());
-      }
-    } else {
-      auto it = m_fingersIn.find(msg.sourceNodeId());
-      if (it == m_fingersIn.end()) {
-        // Reject the peer if there are too many incoming fingers already
-        if (m_fingersIn.size() >= SloppyGroupManager::finger_count)
-          return rejectPeerLink(msg);
-
-        // Create a new incoming peer entry
-        m_fingersIn.insert({{ msg.sourceNodeId(), SloppyPeer(msg.sourceNodeId(), msg.sourceAddress()) }});
-      } else {
-        // Update source address of the finger as it should be more recent
-        if (it->second.landmarkAddress() != msg.sourceAddress()) {
-          it->second.addresses.clear();
-          it->second.addresses.push_back(msg.sourceAddress());
-        }
-      }
-    }
-  }
-
   switch (msg.payloadType()) {
     case static_cast<std::uint32_t>(MessageType::NameAnnounce): {
+      // Accept message only if source node belongs to this sloppy group
+      if (msg.sourceNodeId().prefix(m_groupPrefixLength) != m_groupPrefix)
+        return rejectPeerLink(msg);
+
+      // Check if this peer is already registered among the incoming or outgoing fingers
+      {
+        RecursiveUniqueLock lock(m_mutex);
+        auto jt = m_fingersOut.find(msg.sourceNodeId());
+        if (jt != m_fingersOut.end()) {
+          // Update source address of the finger as it should be more recent
+          if (jt->second.landmarkAddress() != msg.sourceAddress()) {
+            jt->second.addresses.clear();
+            jt->second.addresses.push_back(msg.sourceAddress());
+          }
+        } else {
+          auto it = m_fingersIn.find(msg.sourceNodeId());
+          if (it == m_fingersIn.end()) {
+            // Reject the peer if there are too many incoming fingers already
+            if (m_fingersIn.size() >= SloppyGroupManager::finger_count)
+              return rejectPeerLink(msg);
+
+            // Create a new incoming peer entry
+            m_fingersIn.insert({{ msg.sourceNodeId(), SloppyPeer(msg.sourceNodeId(), msg.sourceAddress()) }});
+          } else {
+            // Update source address of the finger as it should be more recent
+            if (it->second.landmarkAddress() != msg.sourceAddress()) {
+              it->second.addresses.clear();
+              it->second.addresses.push_back(msg.sourceAddress());
+            }
+          }
+        }
+      }
+
       Protocol::NameAnnounce announce = message_cast<Protocol::NameAnnounce>(msg);
 
       std::list<LandmarkAddress> addresses;
