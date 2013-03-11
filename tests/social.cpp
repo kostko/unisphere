@@ -66,7 +66,7 @@ TEST_CASE("social", "verify that compact routing operations work")
       // Ensure that exact lookup works
       for (NodeIdentifier nodeId : { a, b, c, d }) {
         NameRecordPtr record = ndb.lookup(nodeId);
-        REQUIRE(record);
+        REQUIRE(record.get() != 0);
         REQUIRE(record->nodeId == nodeId);
         REQUIRE(record->type == NameRecord::Type::Authority);
       }
