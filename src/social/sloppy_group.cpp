@@ -184,7 +184,7 @@ public:
   /// Timer for periodic annouces
   boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components
-  std::list<boost::signals::connection> m_subscriptions;
+  std::list<boost::signals2::connection> m_subscriptions;
   /// Sloppy group prefix length
   size_t m_groupPrefixLength;
   /// Sloppy group prefix
@@ -267,7 +267,7 @@ void SloppyGroupManagerPrivate::shutdown()
   UNISPHERE_LOG(m_router.linkManager(), Warning, "SloppyGroupManager: Shutting down sloppy group manager.");
 
   // Unsubscribe from all events
-  for (boost::signals::connection c : m_subscriptions)
+  for (boost::signals2::connection c : m_subscriptions)
     c.disconnect();
   m_subscriptions.clear();
 

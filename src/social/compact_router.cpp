@@ -90,7 +90,7 @@ void CompactRouter::shutdown()
   m_nameDb.shutdown();
 
   // Unsubscribe from all events
-  for (boost::signals::connection c : m_subscriptions)
+  for (boost::signals2::connection c : m_subscriptions)
     c.disconnect();
   m_subscriptions.clear();
 

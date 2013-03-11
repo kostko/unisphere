@@ -6,18 +6,18 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 option(USE_CLANG "Use CLang compiler" ON)
 option(USE_DEBUG "Compile everything in debug mode" ON)
 
-if(USE_CLANG)
-  message(STATUS "UNISPHERE: Using the CLang compiler.")
-
-  set(CMAKE_C_COMPILER "/usr/bin/clang")
-  set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
-endif(USE_CLANG)
+#if(USE_CLANG)
+#  message(STATUS "UNISPHERE: Using the CLang compiler.")
+#
+#  set(CMAKE_C_COMPILER "/usr/bin/clang")
+#  set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+#endif(USE_CLANG)
 
 set(Boost_USE_MULTITHREAD ON)
 set(Boost_USE_STATIC_LIBS OFF)
 
 find_package(Threads REQUIRED)
-find_package(Boost 1.48.0 COMPONENTS system filesystem signals thread program_options date_time REQUIRED)
+find_package(Boost 1.50.0 COMPONENTS system filesystem thread program_options date_time REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)

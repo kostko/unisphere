@@ -30,7 +30,7 @@
 
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 
 namespace UniSphere {
 
@@ -173,9 +173,9 @@ public:
   bool verifyPeer(const Contact &contact);
 public:
   /// Signal for received messages
-  boost::signal<void (const Message&)> signalMessageReceived;
+  boost::signals2::signal<void (const Message&)> signalMessageReceived;
   /// Signal for additional peer verification
-  boost::signal<bool (const Contact&), VerifyPeerCombiner> signalVerifyPeer;
+  boost::signals2::signal<bool (const Contact&), VerifyPeerCombiner> signalVerifyPeer;
 protected:
   /**
    * Returns a link suitable for communication with the specified contact.

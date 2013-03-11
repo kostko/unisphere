@@ -28,7 +28,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/bimap.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 #include <boost/tuple/tuple.hpp>
 
 #include "core/context.h"
@@ -347,15 +347,15 @@ public:
   void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
-  boost::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
+  boost::signals2::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
   /// Signal that gets called when a routing entry should be retracted to neighbours
-  boost::signal<void(RoutingEntryPtr)> signalRetractEntry;
+  boost::signals2::signal<void(RoutingEntryPtr)> signalRetractEntry;
   /// Signal that gets called when the local address changes
-  boost::signal<void(const LandmarkAddress&)> signalAddressChanged;
+  boost::signals2::signal<void(const LandmarkAddress&)> signalAddressChanged;
   /// Signal that gets called when a new landmark is learned
-  boost::signal<void(const NodeIdentifier&)> signalLandmarkLearned;
+  boost::signals2::signal<void(const NodeIdentifier&)> signalLandmarkLearned;
   /// Signal that gets called when a landmark is removed
-  boost::signal<void(const NodeIdentifier&)> signalLandmarkRemoved;
+  boost::signals2::signal<void(const NodeIdentifier&)> signalLandmarkRemoved;
 protected:
   /**
    * Returns the maximum vicinity size.

@@ -29,7 +29,7 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/unordered_map.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 
 namespace midx = boost::multi_index;
 
@@ -309,7 +309,7 @@ public:
   size_t maxSiblingsSize() const;
 public:
   // Signals
-  boost::signal<void()> signalRejoin;
+  boost::signals2::signal<void()> signalRejoin;
   // TODO signal for pinging entries while adding into full buckets
 protected:
   /**

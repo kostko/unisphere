@@ -123,9 +123,9 @@ public:
              const RoutingOptions &opts = RoutingOptions());
 public:
   /// Signal for delivery of locally-bound messages
-  boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
+  boost::signals2::signal<void(const RoutedMessage&)> signalDeliverMessage;
   /// Signal for forwarding transit messages
-  boost::signal<void(const RoutedMessage&)> signalForwardMessage;
+  boost::signals2::signal<void(const RoutedMessage&)> signalForwardMessage;
 protected:
   /**
    * Called when a message has been received on any link.
@@ -206,7 +206,7 @@ private:
   /// Timer for notifying neighbours about ourselves
   boost::asio::deadline_timer m_announceTimer;
   /// Active subscriptions to other components
-  std::list<boost::signals::connection> m_subscriptions;
+  std::list<boost::signals2::connection> m_subscriptions;
   /// Local sequence number
   std::uint16_t m_seqno;
 };

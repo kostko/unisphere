@@ -27,7 +27,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/foreach.hpp>
 
@@ -92,7 +92,7 @@ public:
   Contact contact();
 protected:
   /// Signal the recipt of a message
-  boost::signal<void (const Message&)> signalMessageReceived;
+  boost::signals2::signal<void (const Message&)> signalMessageReceived;
 protected:
   /**
    * Private constructor.

@@ -149,7 +149,7 @@ void Router::leave()
   
   // Switch to leaving state and reconnect the rejoin signal
   m_state = State::Leaving;
-  boost::signals::scoped_connection *connection = new boost::signals::scoped_connection;
+  boost::signals2::scoped_connection *connection = new boost::signals2::scoped_connection;
   m_routes.signalRejoin.disconnect(boost::bind(&Router::join, this));
   *connection = m_routes.signalRejoin.connect([connection, this]{
     UNISPHERE_LOG(m_manager, Info, "Router: Left the overlay.");

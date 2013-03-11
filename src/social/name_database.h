@@ -296,9 +296,9 @@ public:
   void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
 public:
   /// Signal that gets called when a name record should be exported to neighbours
-  boost::signal<void(NameRecordPtr, const NodeIdentifier&)> signalExportRecord;
+  boost::signals2::signal<void(NameRecordPtr, const NodeIdentifier&)> signalExportRecord;
   /// Signal that gets called when a name record should be retracted from neighbours
-  boost::signal<void(NameRecordPtr)> signalRetractRecord;
+  boost::signals2::signal<void(NameRecordPtr)> signalRetractRecord;
 protected:
   /**
    * Called when a record expires.

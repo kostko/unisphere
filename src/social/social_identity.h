@@ -21,7 +21,7 @@
 
 #include "interplex/contact.h"
 
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 #include <unordered_map>
 
 namespace UniSphere {
@@ -52,9 +52,9 @@ public:
   // TODO: There should be a way to persist the social identity
 public:
   /// Signal that gets called after a new peer is added
-  boost::signal<void(const Contact&)> signalPeerAdded;
+  boost::signals2::signal<void(const Contact&)> signalPeerAdded;
   /// Signal that gets called after a peer is removed
-  boost::signal<void(const NodeIdentifier&)> signalPeerRemoved;
+  boost::signals2::signal<void(const NodeIdentifier&)> signalPeerRemoved;
 private:
   /// Local identifier
   NodeIdentifier m_localId;

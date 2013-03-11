@@ -159,11 +159,11 @@ protected:
   void registerCoreRpcMethods();
 public:
   /// Signal for delivery of locally-bound messages
-  boost::signal<void(const RoutedMessage&)> signalDeliverMessage;
+  boost::signals2::signal<void(const RoutedMessage&)> signalDeliverMessage;
   /// Signal for forwarding transit messages
-  boost::signal<void(const RoutedMessage&)> signalForwardMessage;
+  boost::signals2::signal<void(const RoutedMessage&)> signalForwardMessage;
   /// Signal when the overlay becomes ready
-  boost::signal<void()> signalJoined;
+  boost::signals2::signal<void()> signalJoined;
   // TODO signal when local siblings have changed
 private:
   /// Reference to link manager for this router

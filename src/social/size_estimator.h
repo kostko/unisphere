@@ -20,7 +20,7 @@
 #define UNISPHERE_SOCIAL_SIZEESTIMATOR_H
 
 #include <cstdint>
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 
 namespace UniSphere {
   
@@ -35,7 +35,7 @@ public:
   virtual std::uint64_t getNetworkSize() const = 0;
 public:
   /// Signal that gets emitted when the estimated network size is changed
-  boost::signal<void(std::uint64_t)> signalSizeChanged;
+  boost::signals2::signal<void(std::uint64_t)> signalSizeChanged;
 };
 
 /**

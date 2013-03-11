@@ -25,7 +25,7 @@
 #include "interplex/link_manager.h"
 
 #include <boost/asio.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2/signal.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
 namespace UniSphere {
@@ -104,12 +104,12 @@ public:
   virtual void send(const Message &msg) = 0;
 public:
   // Signals
-  boost::signal<void (LinkletPtr)> signalConnectionFailed;
-  boost::signal<void (LinkletPtr)> signalConnectionSuccess;
-  boost::signal<bool (LinkletPtr), VerifyPeerCombiner> signalVerifyPeer;
-  boost::signal<void (LinkletPtr)> signalDisconnected;
-  boost::signal<void (LinkletPtr)> signalAcceptedConnection;
-  boost::signal<void (LinkletPtr, const Message&)> signalMessageReceived;
+  boost::signals2::signal<void (LinkletPtr)> signalConnectionFailed;
+  boost::signals2::signal<void (LinkletPtr)> signalConnectionSuccess;
+  boost::signals2::signal<bool (LinkletPtr), VerifyPeerCombiner> signalVerifyPeer;
+  boost::signals2::signal<void (LinkletPtr)> signalDisconnected;
+  boost::signals2::signal<void (LinkletPtr)> signalAcceptedConnection;
+  boost::signals2::signal<void (LinkletPtr, const Message&)> signalMessageReceived;
 protected:
   /// Link manager this linklet belongs to
   LinkManager &m_manager;
