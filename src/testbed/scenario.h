@@ -16,16 +16,35 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/test_bed.h"
-#include "scenarios.hpp"
+#ifndef UNISPHERE_TESTBED_SCENARIO_H
+#define UNISPHERE_TESTBED_SCENARIO_H
 
-using namespace UniSphere;
+#include "core/globals.h"
 
-int main(int argc, char **argv)
-{
-  TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
-  testbed.setupPhyNetwork("127.42.0.1", 8472);
-  testbed.loadScenario(new Scenarios::SimpleTestScenario(testbed));
-  testbed.run();
-  return 0;
+namespace UniSphere {
+
+namespace TestBed {
+
+class TestBed;
+
+class UNISPHERE_EXPORT Scenario {
+public:
+  Scenario(TestBed &testbed);
+
+  Scenario(const Scenario&) = delete;
+  Scenario &operator=(const Scenario&) = delete;
+
+  virtual void setup() = 0;
+protected:
+  TestBed &testbed;
+};
+
+UNISPHERE_SHARED_POINTER(Scenario)
+
 }
+
+}
+
+#define UNISPHERE_SCENARIO_CONSTRUCTOR(Class) Class(UniSphere::TestBed::TestBed &testbed) : UniSphere::TestBed::Scenario(testbed) {}
+
+#endif

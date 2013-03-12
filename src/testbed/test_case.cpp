@@ -16,16 +16,54 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "testbed/test_case.h"
 #include "testbed/test_bed.h"
-#include "scenarios.hpp"
 
-using namespace UniSphere;
+namespace UniSphere {
 
-int main(int argc, char **argv)
+namespace TestBed {
+
+TestCase::TestCase()
+  : m_output(std::cout),
+    m_testbed(nullptr),
+    m_nodes(nullptr),
+    m_names(nullptr)
 {
-  TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
-  testbed.setupPhyNetwork("127.42.0.1", 8472);
-  testbed.loadScenario(new Scenarios::SimpleTestScenario(testbed));
-  testbed.run();
-  return 0;
+}
+
+void TestCase::initialize(TestBed *testbed, VirtualNodeMap *nodes, NodeNameMap *names)
+{
+  m_testbed = testbed;
+  m_nodes = nodes;
+  m_names = names;
+}
+
+void TestCase::run()
+{
+  start();
+}
+
+void TestCase::finish()
+{
+  if (m_testbed)
+    m_testbed->finishTestCase(shared_from_this());
+}
+
+std::ostream &TestCase::report()
+{
+  // TODO: Serialize access to output stream
+  m_output << "[TestCase::" << m_name << "] ";
+  return m_output;
+}
+
+void TestCase::require(bool assertion)
+{
+  if (!assertion) {
+    report() << "ERROR: Requirement not satisfied.";
+    // TODO
+  }
+}
+
+}
+
 }

@@ -6,3 +6,5 @@ add_subdirectory(interplex)
 add_subdirectory(plexus)
 add_subdirectory(measure)
 add_subdirectory(social)
+add_subdirectory(testbed)
+

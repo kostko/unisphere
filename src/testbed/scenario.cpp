@@ -16,16 +16,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/test_bed.h"
-#include "scenarios.hpp"
+#include "testbed/scenario.h"
 
-using namespace UniSphere;
+namespace UniSphere {
 
-int main(int argc, char **argv)
+namespace TestBed {
+
+Scenario::Scenario(TestBed &testbed)
+  : testbed(testbed)
 {
-  TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
-  testbed.setupPhyNetwork("127.42.0.1", 8472);
-  testbed.loadScenario(new Scenarios::SimpleTestScenario(testbed));
-  testbed.run();
-  return 0;
+}
+
+}
+
 }

@@ -17,15 +17,32 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/test_bed.h"
-#include "scenarios.hpp"
 
 using namespace UniSphere;
 
-int main(int argc, char **argv)
+namespace Scenarios {
+
+class SimpleTestScenario : public TestBed::Scenario
 {
-  TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
-  testbed.setupPhyNetwork("127.42.0.1", 8472);
-  testbed.loadScenario(new Scenarios::SimpleTestScenario(testbed));
-  testbed.run();
-  return 0;
+public:
+  UNISPHERE_SCENARIO_CONSTRUCTOR(SimpleTestScenario)
+
+  void setup()
+  {
+    testbed.loadTopology("../data/social_topology.dat");
+
+    // Dump all state after 80 seconds
+    testbed.scheduleTest(80, "state/dump_all");
+
+    // Schedule first test after 85 seconds, further tests each 45 seconds
+    testbed.scheduleCall(85, [&]() {
+      testbed.runTest("routing/all_pairs");
+      testbed.scheduleTestEvery(45, "routing/all_pairs");
+    });
+
+    // Terminate tests after 3600 seconds
+    testbed.endScenarioAfter(3600);
+  }
+};
+
 }
