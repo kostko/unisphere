@@ -25,15 +25,15 @@ namespace TestBed {
 
 TestCase::TestCase()
   : m_output(std::cout),
-    m_testbed(nullptr),
+    m_testbed(TestBed::getGlobalTestbed()),
     m_nodes(nullptr),
     m_names(nullptr)
 {
 }
 
-void TestCase::initialize(TestBed *testbed, VirtualNodeMap *nodes, NodeNameMap *names)
+void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names)
 {
-  m_testbed = testbed;
+  m_name = name;
   m_nodes = nodes;
   m_names = names;
 }
@@ -45,8 +45,7 @@ void TestCase::run()
 
 void TestCase::finish()
 {
-  if (m_testbed)
-    m_testbed->finishTestCase(shared_from_this());
+  m_testbed.finishTestCase(shared_from_this());
 }
 
 std::ostream &TestCase::report()

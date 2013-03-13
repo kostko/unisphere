@@ -39,19 +39,37 @@ namespace TestBed {
  */
 class UNISPHERE_EXPORT VirtualNode {
 public:
+  /**
+   * Class constructor.
+   *
+   * @param context UNISPHERE context
+   * @param sizeEstimator Network size estimator
+   * @param nodeId Virtual node identifier
+   * @param ip IP address (for phy connection)
+   * @param port Port (for phy connection)
+   */
   VirtualNode(Context &context,
               NetworkSizeEstimator &sizeEstimator,
               const NodeIdentifier &nodeId,
               const std::string &ip,
               unsigned short port);
 
+  /**
+   * Class destructor.
+   */
   ~VirtualNode();
 
   VirtualNode(const VirtualNode&) = delete;
   VirtualNode &operator=(const VirtualNode&) = delete;
 
+  /**
+   * Initializes the virtual node.
+   */
   void initialize();
 
+  /**
+   * Shuts down the virtual node.
+   */
   void shutdown();
 public:
   /// Unique node identifier

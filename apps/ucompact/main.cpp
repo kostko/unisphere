@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 {
   TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
   testbed.setupPhyNetwork("127.42.0.1", 8472);
-  testbed.loadScenario(new Scenarios::SimpleTestScenario(testbed));
+  testbed.loadScenario(new Scenarios::SimpleTestScenario);
   testbed.run();
   return 0;
 }

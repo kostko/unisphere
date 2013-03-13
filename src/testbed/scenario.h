@@ -27,15 +27,26 @@ namespace TestBed {
 
 class TestBed;
 
+/**
+ * A scenario defines the temporal order and type of tests
+ * that will be executed.
+ */
 class UNISPHERE_EXPORT Scenario {
 public:
-  Scenario(TestBed &testbed);
+  /**
+   * Class constructor.
+   */
+  Scenario();
 
   Scenario(const Scenario&) = delete;
   Scenario &operator=(const Scenario&) = delete;
 
+  /**
+   * Performs scenario setup.
+   */
   virtual void setup() = 0;
 protected:
+  /// Testbed instance
   TestBed &testbed;
 };
 
@@ -44,7 +55,5 @@ UNISPHERE_SHARED_POINTER(Scenario)
 }
 
 }
-
-#define UNISPHERE_SCENARIO_CONSTRUCTOR(Class) Class(UniSphere::TestBed::TestBed &testbed) : UniSphere::TestBed::Scenario(testbed) {}
 
 #endif

@@ -17,13 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/scenario.h"
+#include "testbed/test_bed.h"
 
 namespace UniSphere {
 
 namespace TestBed {
 
-Scenario::Scenario(TestBed &testbed)
-  : testbed(testbed)
+Scenario::Scenario()
+  : testbed(TestBed::getGlobalTestbed())
 {
 }
 

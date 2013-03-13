@@ -93,7 +93,7 @@ void TestBedPrivate::runTest(const std::string &test)
     m_runningCases.insert(ptest);
   }
 
-  ptest->initialize(m_self, &m_nodes, &m_names);
+  ptest->initialize(test, &m_nodes, &m_names);
   ptest->run();
 }
 

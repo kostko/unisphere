@@ -25,8 +25,6 @@ namespace Scenarios {
 class SimpleTestScenario : public TestBed::Scenario
 {
 public:
-  UNISPHERE_SCENARIO_CONSTRUCTOR(SimpleTestScenario)
-
   void setup()
   {
     testbed.loadTopology("../data/social_topology.dat");

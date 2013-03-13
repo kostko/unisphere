@@ -33,35 +33,75 @@ namespace TestBed {
 
 class TestBed;
 
+/**
+ * A test case that can be executed.
+ */
 class UNISPHERE_EXPORT TestCase : public boost::enable_shared_from_this<TestCase> {
 public:
+  /**
+   * Class constructor.
+   */
   TestCase();
 
   TestCase(const TestCase&) = delete;
   TestCase &operator=(const TestCase&) = delete;
 
+  /**
+   * Runs the test case.
+   */
   void run();
 protected:
+  /**
+   * This method should provide the code that will execute the actual
+   * test case.
+   */
   virtual void start() = 0;
 
+  /**
+   * Requires a given assertion to be true.
+   */
   void require(bool assertion);
 
+  /**
+   * Reporting stream.
+   */
   std::ostream &report();
 
+  /**
+   * Returns the virtual node map instance.
+   */
   VirtualNodeMap &nodes() { return *m_nodes; }
 
+  /**
+   * Returns the node name map instance.
+   */
   NodeNameMap &names() { return *m_names; }
 
+  /**
+   * Notifies the testbed that this test case is finished.
+   */
   void finish();
 private:
   friend class TestBedPrivate;
 
-  void initialize(TestBed *testbed, VirtualNodeMap *nodes, NodeNameMap *names);
+  /**
+   * Initializes the test case.
+   *
+   * @param name Test case name
+   * @param nodes Virtual node map
+   * @param names Node name map
+   */
+  void initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names);
 private:
+  /// Test case name
   std::string m_name;
+  /// Report output stream
   std::ostream &m_output;
-  TestBed *m_testbed;
+  /// Test bed instance
+  TestBed &m_testbed;
+  /// Virtual node map
   VirtualNodeMap *m_nodes;
+  /// Node name map
   NodeNameMap *m_names;
 };
 
