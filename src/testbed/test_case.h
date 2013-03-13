@@ -70,12 +70,12 @@ protected:
   /**
    * Returns the virtual node map instance.
    */
-  VirtualNodeMap &nodes() { return *m_nodes; }
+  VirtualNodeMap &nodes();
 
   /**
    * Returns the node name map instance.
    */
-  NodeNameMap &names() { return *m_names; }
+  NodeNameMap &names();
 
   /**
    * Notifies the testbed that this test case is finished.
@@ -93,16 +93,7 @@ private:
    */
   void initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names);
 private:
-  /// Test case name
-  std::string m_name;
-  /// Report output stream
-  std::ostream &m_output;
-  /// Test bed instance
-  TestBed &m_testbed;
-  /// Virtual node map
-  VirtualNodeMap *m_nodes;
-  /// Node name map
-  NodeNameMap *m_names;
+  UNISPHERE_DECLARE_PRIVATE(TestCase)
 };
 
 UNISPHERE_SHARED_POINTER(TestCase)

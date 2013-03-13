@@ -23,7 +23,23 @@ namespace UniSphere {
 
 namespace TestBed {
 
-TestCase::TestCase()
+class TestCasePrivate {
+public:
+  TestCasePrivate();
+public:
+  /// Test case name
+  std::string m_name;
+  /// Report output stream
+  std::ostream &m_output;
+  /// Test bed instance
+  TestBed &m_testbed;
+  /// Virtual node map
+  VirtualNodeMap *m_nodes;
+  /// Node name map
+  NodeNameMap *m_names;
+};
+
+TestCasePrivate::TestCasePrivate()
   : m_output(std::cout),
     m_testbed(TestBed::getGlobalTestbed()),
     m_nodes(nullptr),
@@ -31,11 +47,16 @@ TestCase::TestCase()
 {
 }
 
+TestCase::TestCase()
+  : d(*new TestCasePrivate)
+{
+}
+
 void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names)
 {
-  m_name = name;
-  m_nodes = nodes;
-  m_names = names;
+  d.m_name = name;
+  d.m_nodes = nodes;
+  d.m_names = names;
 }
 
 void TestCase::run()
@@ -45,14 +66,24 @@ void TestCase::run()
 
 void TestCase::finish()
 {
-  m_testbed.finishTestCase(shared_from_this());
+  d.m_testbed.finishTestCase(shared_from_this());
+}
+
+VirtualNodeMap &TestCase::nodes()
+{
+  return *d.m_nodes;
+}
+
+NodeNameMap &TestCase::names()
+{
+  return *d.m_names;
 }
 
 std::ostream &TestCase::report()
 {
   // TODO: Serialize access to output stream
-  m_output << "[TestCase::" << m_name << "] ";
-  return m_output;
+  d.m_output << "[TestCase::" << d.m_name << "] ";
+  return d.m_output;
 }
 
 void TestCase::require(bool assertion)
