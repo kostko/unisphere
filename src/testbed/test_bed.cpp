@@ -196,6 +196,11 @@ TestBed &TestBed::getGlobalTestbed()
   return *TestBedPrivate::m_self;
 }
 
+Context &TestBed::getContext()
+{
+  return d.m_context;
+}
+
 void TestBed::setupPhyNetwork(const std::string &ip, unsigned short port)
 {
   d.m_phyIp = ip;

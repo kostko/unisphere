@@ -20,14 +20,86 @@
 
 #include <iostream>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/tss.hpp>
 
 namespace UniSphere {
 
-Logger::Logger()
+class SynchronizedStream;
+
+class LoggerPrivate {
+public:
+  void output(Logger::Level level, const std::string &text, const std::string &component, bool newline);
+public:
+  /// Logging mutex
+  mutable std::mutex m_mutex;
+  /// Per-thread synchronized buffers
+  boost::thread_specific_ptr<SynchronizedStream> m_streams;
+};
+
+class SynchronizedStream : public std::ostream {
+private:
+  class Buffer : public std::stringbuf {
+  public:
+    Buffer(LoggerPrivate &logger)
+      : m_logger(logger),
+        m_level(Logger::Level::Info)
+    {
+    }
+
+    ~Buffer()
+    {
+      pubsync();
+    }
+
+    int sync()
+    {
+      m_logger.output(m_level, str(), m_component, false);
+      str("");
+      return 0;
+    }
+  public:
+    /// Current component
+    std::string m_component;
+    /// Current log level
+    Logger::Level m_level;
+  private:
+    LoggerPrivate &m_logger;
+  };
+public:
+  SynchronizedStream(LoggerPrivate &logger)
+    : std::ostream(new Buffer(logger))
+  {
+  }
+
+  ~SynchronizedStream()
+  {
+    delete rdbuf();
+  }
+
+  void setComponent(const std::string &component)
+  {
+    static_cast<Buffer*>(rdbuf())->m_component = component;
+  }
+
+  void setLevel(Logger::Level level)
+  {
+    static_cast<Buffer*>(rdbuf())->m_level = level;
+  }
+};
+
+std::ostream &operator<<(std::ostream &os, const Logger::Component &component)
 {
+  SynchronizedStream &s = static_cast<SynchronizedStream&>(os);
+  s.setComponent(component.component);
 }
 
-void Logger::output(Level level, const std::string &text, const std::string &component)
+std::ostream &operator<<(std::ostream &os, const Logger::Level &level)
+{
+  SynchronizedStream &s = static_cast<SynchronizedStream&>(os);
+  s.setLevel(level);
+}
+
+void LoggerPrivate::output(Logger::Level level, const std::string &text, const std::string &component, bool newline)
 {
   UniqueLock lock(m_mutex);
   
@@ -35,9 +107,9 @@ void Logger::output(Level level, const std::string &text, const std::string &com
   std::cout << " ";
   
   switch (level) {
-    case Level::Info: std::cout    << "[INFO   ]"; break;
-    case Level::Warning: std::cout << "[WARNING]"; break;
-    case Level::Error: std::cout   << "[ERROR  ]"; break;
+    case Logger::Level::Info: std::cout    << "[INFO   ]"; break;
+    case Logger::Level::Warning: std::cout << "[WARNING]"; break;
+    case Logger::Level::Error: std::cout   << "[ERROR  ]"; break;
   }
   
   if (!component.empty())
@@ -45,7 +117,30 @@ void Logger::output(Level level, const std::string &text, const std::string &com
   else
     std::cout << " [global]";
   
-  std::cout << " " << text << std::endl;
+  std::cout << " " << text;
+  if (newline)
+    std::cout << std::endl;
+}
+
+Logger::Logger()
+  : d(*new LoggerPrivate)
+{
+}
+
+std::ostream &Logger::stream()
+{
+  SynchronizedStream *stream = d.m_streams.get();
+  if (!stream) {
+    stream = new SynchronizedStream(d);
+    d.m_streams.reset(stream);
+  }
+  
+  return *stream;
+}
+
+void Logger::output(Level level, const std::string &text, const std::string &component)
+{
+  d.output(level, text, component, true);
 }
 
 }

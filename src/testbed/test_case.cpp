@@ -18,6 +18,7 @@
  */
 #include "testbed/test_case.h"
 #include "testbed/test_bed.h"
+#include "core/context.h"
 
 namespace UniSphere {
 
@@ -81,16 +82,16 @@ NodeNameMap &TestCase::names()
 
 std::ostream &TestCase::report()
 {
-  // TODO: Serialize access to output stream
-  d.m_output << "[TestCase::" << d.m_name << "] ";
-  return d.m_output;
+  std::ostream &os = d.m_testbed.getContext().logger().stream();
+  os << Logger::Component{"TestCase::" + d.m_name};
+  os << Logger::Level::Info;
+  return os;
 }
 
 void TestCase::require(bool assertion)
 {
   if (!assertion) {
-    report() << "ERROR: Requirement not satisfied.";
-    // TODO
+    report() << Logger::Level::Error << "Requirement not satisfied." << std::endl;
   }
 }
 

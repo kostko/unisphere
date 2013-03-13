@@ -34,6 +34,8 @@ class TestCaseFactory;
  */
 class UNISPHERE_EXPORT TestBed {
 public:
+  friend class TestCase;
+  
   TestBed(const TestBed&) = delete;
   TestBed &operator=(const TestBed&) = delete;
 
@@ -125,6 +127,11 @@ protected:
    * Class constructor.
    */
   TestBed();
+
+  /**
+   * Returns the used UNISPHERE context.
+   */
+  Context &getContext();
 private:
   UNISPHERE_DECLARE_PRIVATE(TestBed)
 };

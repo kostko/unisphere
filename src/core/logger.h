@@ -21,7 +21,7 @@
 
 #include "globals.h"
 
-#include <boost/thread.hpp>
+#include <iostream>
 
 namespace UniSphere {
 
@@ -45,6 +45,11 @@ public:
    * Class constructor.
    */
   Logger();
+
+  /**
+   * Returns the stream interface to this logger.
+   */
+  std::ostream &stream();
   
   /**
    * Outputs logging info.
@@ -54,10 +59,38 @@ public:
    * @param component Optional component name
    */
   void output(Level level, const std::string &text, const std::string &component = "");
+
+  /**
+   * Stream manipulator to set the logger component name.
+   */
+  struct Component {
+    std::string component;
+  };
 private:
-  // Logging mutex
-  std::mutex m_mutex;
+  UNISPHERE_DECLARE_PRIVATE(Logger)
 };
+
+/**
+ * Sets the current component when writing to the logger stream.
+ */
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &os, const Logger::Component &component);
+
+/**
+ * Sets the current log level when writing to the logger stream.
+ */
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &os, const Logger::Level &level);
+
+/**
+ * Forward all stream-like operations on the logger object to the
+ * underlying logger stream.
+ */
+template<typename T>
+UNISPHERE_EXPORT std::ostream &operator<<(Logger &logger, const T &t)
+{
+  std::ostream &s = logger.stream();
+  s << t;
+  return s;
+}
 
 // Logging macros
 #ifdef UNISPHERE_DEBUG
