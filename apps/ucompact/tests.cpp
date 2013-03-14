@@ -91,7 +91,7 @@ protected:
     // Determine the number of nodes at test start
     numNodes = nodes().size();
     // Determine the number of expected responses
-    expected = nodes().size() * nodes().size();
+    expected = numNodes * numNodes;
     // Initialize the number of received responses
     received = 0;
     // Initialize the number of failures
@@ -109,8 +109,9 @@ protected:
             received++;
             checkDone();
           },
-          [this](RpcErrorCode, const std::string &msg) {
+          [this, a, b](RpcErrorCode, const std::string &msg) {
             failures++;
+            report() << Logger::Level::Error << "Pair = (" << a->name << ", " << b->name << ") RPC call failure: " << msg << std::endl;
             checkDone();
           }
         );
@@ -133,9 +134,9 @@ protected:
   void evaluate()
   {
     // Test summary
-    report() << "All nodes = " << numNodes;
-    report() << "Received responses = " << received;
-    report() << "Failures = " << failures;
+    report() << "All nodes = " << numNodes << std::endl;
+    report() << "Received responses = " << received << std::endl;
+    report() << "Failures = " << failures << std::endl;
 
     // Requirements for passing the test
     require(received == expected);
