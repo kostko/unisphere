@@ -101,8 +101,9 @@ void Link::send(const Message &msg)
   
   if (m_state != Link::State::Connected) {
     // FIXME Make this limit configurable
-    if (m_messages.size() < 512)
-      m_messages.push_back(msg);
+    m_messages.push_back(msg);
+    if (m_messages.size() > 512)
+      m_messages.pop_front();
     
     // Trigger a reconnect when one is not in progress
     if (m_state != Link::State::Connecting)
