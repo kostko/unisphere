@@ -50,6 +50,13 @@ public:
    * @param msg Message to deliver
    */
   virtual void send(const Message &msg) = 0;
+
+  /**
+   * This method gets called when a linklet is removed from the list as this
+   * might invalidate any iterators stored in the message dispatcher. Default
+   * implementation does nothing.
+   */
+  virtual void reset() {}
 protected:
   /// The linklet list
   std::list<LinkletPtr> &m_linklets;
@@ -75,6 +82,12 @@ public:
    * @param msg Message to deliver
    */
   void send(const Message &msg);
+
+  /**
+   * This method gets called when a linklet is removed from the list as this
+   * might invalidate any iterators stored in the message dispatcher.
+   */
+  void reset();
 protected:
   /// Mutex protecting the dispatcher
   std::mutex m_mutex;

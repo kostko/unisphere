@@ -61,4 +61,11 @@ void RoundRobinMessageDispatcher::send(const Message &msg)
   m_lastLinklet++;
 }
 
+void RoundRobinMessageDispatcher::reset()
+{
+  UniqueLock lock(m_mutex);
+  // Reset iterator as it might have been invalidated
+  m_lastLinklet = m_linklets.end();
+}
+
 }

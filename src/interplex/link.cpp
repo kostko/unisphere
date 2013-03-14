@@ -174,6 +174,7 @@ void Link::removeLinklet(LinkletPtr linklet)
   
   // Remove linklet from list of linklets
   m_linklets.remove(linklet);
+  m_dispatcher->reset();
   
   // Disconnect all signals
   linklet->signalConnectionSuccess.disconnect(boost::bind(&Link::linkletConnectionSuccess, this, _1));
