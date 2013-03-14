@@ -76,6 +76,8 @@ public:
    */
   void send(const Message &msg);
 protected:
+  /// Mutex protecting the dispatcher
+  std::mutex m_mutex;
   /// Current linklet
   std::list<LinkletPtr>::iterator m_lastLinklet;
 };

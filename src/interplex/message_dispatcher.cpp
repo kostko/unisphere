@@ -37,6 +37,7 @@ RoundRobinMessageDispatcher::RoundRobinMessageDispatcher(std::list<LinkletPtr> &
 
 void RoundRobinMessageDispatcher::send(const Message &msg)
 {
+  UniqueLock lock(m_mutex);
   std::list<LinkletPtr>::iterator startLinklet = m_lastLinklet;
   do {
     if (m_lastLinklet == m_linklets.end())
