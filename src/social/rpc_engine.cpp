@@ -64,6 +64,7 @@ RpcCall::RpcCall(RpcEngine &rpc, RpcId rpcId, const NodeIdentifier &destination,
   : m_rpc(rpc),
     m_rpcId(rpcId),
     m_destination(destination),
+    m_finished(false),
     m_strand(rpc.router().linkManager().context().service()),
     m_success(success),
     m_failure(failure),
@@ -80,6 +81,9 @@ void RpcCall::start()
     // We are using a weak reference, because the object might already be gone
     // when we come to this point and we need to check for this
     if (RpcCallPtr self = me.lock()) {
+      if (self->m_finished)
+        return;
+
       self->cancel();
       if (self->m_failure)
         self->m_failure(RpcErrorCode::RequestTimedOut, "Request timed out.");
@@ -94,6 +98,9 @@ void RpcCall::done(const Protocol::RpcResponse &response, const RoutedMessage &m
   // Response must be copied as a reference will go away after the method completes
   m_strand.post([me, response, msg]() {
     if (RpcCallPtr self = me.lock()) {
+      if (self->m_finished)
+        return;
+
       self->m_timer.cancel();
       self->cancel();
       if (self->m_success)
@@ -104,6 +111,7 @@ void RpcCall::done(const Protocol::RpcResponse &response, const RoutedMessage &m
 
 void RpcCall::cancel()
 {
+  m_finished = true;
   m_rpc.cancel(m_rpcId);
 }
   

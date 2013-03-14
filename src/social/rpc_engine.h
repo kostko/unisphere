@@ -164,6 +164,8 @@ private:
   RpcId m_rpcId;
   /// Destination key for this RPC call
   NodeIdentifier m_destination;
+  /// Status of this call
+  bool m_finished;
   
   /// Strand to ensure that success and failure handlers are
   /// always executed serially
