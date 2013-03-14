@@ -64,7 +64,7 @@ void IPLinklet::listen(const Address &address)
   linklet->signalConnectionSuccess.connect(signalAcceptedConnection);
   m_acceptor.async_accept(
     boost::static_pointer_cast<IPLinklet>(linklet)->socket(),
-    boost::bind(&IPLinklet::handleAccept, this, linklet, boost::asio::placeholders::error)
+    m_strand.wrap(boost::bind(&IPLinklet::handleAccept, this, linklet, boost::asio::placeholders::error))
   );
 }
 
@@ -86,8 +86,8 @@ void IPLinklet::connect(const Address &address)
   // Setup the TCP socket
   socket().async_connect(
     address.toIpEndpoint(),
-    boost::bind(&IPLinklet::handleConnect, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-      boost::asio::placeholders::error)
+    m_strand.wrap(boost::bind(&IPLinklet::handleConnect, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+      boost::asio::placeholders::error))
   );
 }
 
@@ -129,8 +129,8 @@ void IPLinklet::start(bool client)
   // Wait for the introductory message
   boost::asio::async_read(m_socket,
     boost::asio::buffer(m_inMessage.buffer(), Message::header_size),
-    boost::bind(&IPLinklet::handleReadHeader, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-      boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
+    m_strand.wrap(boost::bind(&IPLinklet::handleReadHeader, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+      boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred))
   );
 }
 
@@ -145,8 +145,8 @@ void IPLinklet::handleAccept(LinkletPtr linklet, const boost::system::error_code
     nextLinklet->signalConnectionSuccess.connect(signalAcceptedConnection);
     m_acceptor.async_accept(
       boost::static_pointer_cast<IPLinklet>(nextLinklet)->socket(),
-      boost::bind(&IPLinklet::handleAccept, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-        nextLinklet, boost::asio::placeholders::error)
+      m_strand.wrap(boost::bind(&IPLinklet::handleAccept, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+        nextLinklet, boost::asio::placeholders::error))
     );
   } else {
     // TODO Error while accepting, how to handle this?
@@ -179,8 +179,8 @@ void IPLinklet::send(const Message &msg)
     boost::asio::async_write(
       m_socket,
       boost::asio::buffer(m_outMessages.front().buffer()),
-      boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-        boost::asio::placeholders::error)
+      m_strand.wrap(boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+        boost::asio::placeholders::error))
     );
   }
 }
@@ -198,8 +198,8 @@ void IPLinklet::handleWrite(const boost::system::error_code &error)
       boost::asio::async_write(
         m_socket,
         boost::asio::buffer(m_outMessages.front().buffer()),
-        boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-          boost::asio::placeholders::error)
+        m_strand.wrap(boost::bind(&IPLinklet::handleWrite, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+          boost::asio::placeholders::error))
       );
     }
   } else {
@@ -233,8 +233,8 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
       // Read payload
       boost::asio::async_read(m_socket,
         boost::asio::buffer(&m_inMessage.buffer()[0] + Message::header_size, payloadSize),
-        boost::bind(&IPLinklet::handleReadPayload, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-          boost::asio::placeholders::error)
+        m_strand.wrap(boost::bind(&IPLinklet::handleReadPayload, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+          boost::asio::placeholders::error))
       );
     }
   } else {
@@ -286,8 +286,8 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
     // Ready for next message
     boost::asio::async_read(m_socket,
       boost::asio::buffer(m_inMessage.buffer(), Message::header_size),
-      boost::bind(&IPLinklet::handleReadHeader, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
-        boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)
+      m_strand.wrap(boost::bind(&IPLinklet::handleReadHeader, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
+        boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred))
     );
   } else {
     // Log
