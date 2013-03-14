@@ -103,7 +103,8 @@ void CompactRouter::shutdown()
 
 void CompactRouter::peerAdded(const Contact &peer)
 {
-  // TODO: Export announces to new peer
+  // Export announces to new peer when it is added
+  m_routes.fullUpdate(peer.nodeId);
 }
 
 void CompactRouter::peerRemoved(const NodeIdentifier &nodeId)
