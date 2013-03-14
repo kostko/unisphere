@@ -27,10 +27,12 @@ namespace TestBed {
 
 VirtualNode::VirtualNode(Context &context,
                          NetworkSizeEstimator &sizeEstimator,
+                         const std::string &name,
                          const NodeIdentifier &nodeId,
                          const std::string &ip,
                          unsigned short port)
-  : nodeId(nodeId),
+  : name(name),
+    nodeId(nodeId),
     identity(new SocialIdentity(nodeId)),
     linkManager(new LinkManager(context, nodeId)),
     router(new CompactRouter(*identity, *linkManager, sizeEstimator))

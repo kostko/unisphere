@@ -145,8 +145,10 @@ void TestBedPrivate::loadTopology(const std::string &filename)
       return nodeId;
     };
     
-    NodeIdentifier nodeA = getIdFromName(*i++);
-    NodeIdentifier nodeB = getIdFromName(*i++);
+    std::string nameA = *i++;
+    std::string nameB = *i++;
+    NodeIdentifier nodeA = getIdFromName(nameA);
+    NodeIdentifier nodeB = getIdFromName(nameB);
 
     if (nodeA == nodeB) {
       // TODO: Raise exceptions on failures
@@ -154,11 +156,11 @@ void TestBedPrivate::loadTopology(const std::string &filename)
       return;
     }
 
-    auto getNodeFromId = [&](const NodeIdentifier &nodeId) -> VirtualNode* {
+    auto getNodeFromId = [&](const std::string &name, const NodeIdentifier &nodeId) -> VirtualNode* {
       VirtualNode *node;
       VirtualNodeMap::iterator ni = m_nodes.find(nodeId);
       if (ni == m_nodes.end()) {
-        node = new VirtualNode(m_context, *m_sizeEstimator, nodeId, m_phyIp, port++);
+        node = new VirtualNode(m_context, *m_sizeEstimator, name, nodeId, m_phyIp, port++);
         m_nodes[nodeId] = node;
       } else {
         node = ni->second;
@@ -167,8 +169,8 @@ void TestBedPrivate::loadTopology(const std::string &filename)
       return node;
     };
 
-    VirtualNode *a = getNodeFromId(nodeA);
-    VirtualNode *b = getNodeFromId(nodeB);
+    VirtualNode *a = getNodeFromId(nameA, nodeA);
+    VirtualNode *b = getNodeFromId(nameB, nodeB);
 
     a->identity->addPeer(b->linkManager->getLocalContact());
   }

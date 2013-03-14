@@ -44,12 +44,14 @@ public:
    *
    * @param context UNISPHERE context
    * @param sizeEstimator Network size estimator
+   * @param name Virtual node name from source topology file
    * @param nodeId Virtual node identifier
    * @param ip IP address (for phy connection)
    * @param port Port (for phy connection)
    */
   VirtualNode(Context &context,
               NetworkSizeEstimator &sizeEstimator,
+              const std::string &name,
               const NodeIdentifier &nodeId,
               const std::string &ip,
               unsigned short port);
@@ -72,6 +74,8 @@ public:
    */
   void shutdown();
 public:
+  /// Unique node name (from source topology file)
+  std::string name;
   /// Unique node identifier
   NodeIdentifier nodeId;
   /// Node's social identity (peers)
