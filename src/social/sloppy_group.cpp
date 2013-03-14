@@ -30,12 +30,31 @@
 
 namespace UniSphere {
 
+/**
+ * Peer descriptor for nodes that are part of our sloppy group overlay.
+ */
 class SloppyPeer {
 public:
+  /**
+   * Constructs a null sloppy peer.
+   */
   SloppyPeer();
 
+  /**
+   * Constructs a sloppy peer with a specified node identifier and
+   * without a known landmark address.
+   *
+   * @param nodeId Peer identifier
+   */
   explicit SloppyPeer(const NodeIdentifier &nodeId);
 
+  /**
+   * Constructs a sloppy peer with a specified node identifier and
+   * with a known landmark address.
+   *
+   * @param nodeId Peer identifier
+   * @param address L-R address of this peer
+   */
   SloppyPeer(const NodeIdentifier &nodeId, const LandmarkAddress &address);
 
   /**
@@ -45,22 +64,40 @@ public:
    */
   explicit SloppyPeer(NameRecordPtr record);
 
+  /**
+   * Returns true if this peer is a null one.
+   */
   bool isNull() const { return nodeId.isNull(); }
 
+  /**
+   * Makes this sloppy peer a null one.
+   */
   void clear();
 
+  /**
+   * Returns the first landmark address for this peer.
+   */
   LandmarkAddress landmarkAddress() const;
 
+  /**
+   * Comparison operator.
+   */
   bool operator<(const SloppyPeer &other) const
   {
     return nodeId < other.nodeId;
   }
 
+  /**
+   * Comparison operator.
+   */
   bool operator>(const SloppyPeer &other) const
   {
     return nodeId > other.nodeId;
   }
 
+  /**
+   * Comparison operator.
+   */
   bool operator==(const SloppyPeer &other) const
   {
     return nodeId == other.nodeId;
@@ -72,30 +109,52 @@ public:
   std::list<LandmarkAddress> addresses;
 };
 
+/**
+ * Descriptor of a peer that has been temporarily blacklisted.
+ */
 class BlacklistedPeer {
 public:
+  /**
+   * Constructs a blacklisted peer from a node identifier.
+   *
+   * @param peerId Peer identifier
+   */
   explicit BlacklistedPeer(const NodeIdentifier &peerId)
     : peerId(peerId)
   {
   }
 
+  /**
+   * Constructs a blacklisted peer.
+   *
+   * @param context UNISPHERE context
+   * @param peerId Peer identifier
+   */
   BlacklistedPeer(Context &context, const NodeIdentifier &peerId)
     : peerId(peerId),
       timer(new boost::asio::deadline_timer(context.service()))
   {
   }
 
+  /**
+   * Comparison operator.
+   */
   bool operator<(const BlacklistedPeer &other) const
   {
     return peerId < other.peerId;
   }
 
+  /**
+   * Comparison operator.
+   */
   bool operator==(const BlacklistedPeer &other) const
   {
     return peerId == other.peerId;
   }
 public:
+  /// Blacklisted peer identifier
   NodeIdentifier peerId;
+  /// Timer that will remove the blacklisted entry upon expiration
   boost::shared_ptr<boost::asio::deadline_timer> timer;
 };
 
