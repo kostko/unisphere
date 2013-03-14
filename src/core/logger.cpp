@@ -91,12 +91,14 @@ std::ostream &operator<<(std::ostream &os, const Logger::Component &component)
 {
   SynchronizedStream &s = static_cast<SynchronizedStream&>(os);
   s.setComponent(component.component);
+  return os;
 }
 
 std::ostream &operator<<(std::ostream &os, const Logger::Level &level)
 {
   SynchronizedStream &s = static_cast<SynchronizedStream&>(os);
   s.setLevel(level);
+  return os;
 }
 
 void LoggerPrivate::output(Logger::Level level, const std::string &text, const std::string &component, bool newline)
