@@ -97,6 +97,7 @@ UNISPHERE_SHARED_POINTER(NameRecord)
 namespace NIBTags {
   class DestinationId;
   class TypeDestination;
+  class TypeAge;
 }
 
 typedef boost::multi_index_container<
@@ -112,13 +113,23 @@ typedef boost::multi_index_container<
       >
     >,
 
-    // Indey by record type and destination identifier
+    // Index by record type and destination identifier
     midx::ordered_unique<
       midx::tag<NIBTags::TypeDestination>,
       midx::composite_key<
         NameRecord,
         BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
         BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId)
+      >
+    >,
+
+    // Index by record type and last update timestamp
+    midx::ordered_unique<
+      midx::tag<NIBTags::TypeAge>,
+      midx::composite_key<
+        NameRecord,
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, boost::posix_time::ptime, lastUpdate)
       >
     >
   >
@@ -130,6 +141,8 @@ public:
   static const int cache_redundancy = 3;
   /// Maximum number of addresses stored in a record
   static const int max_stored_addresses = 3;
+  /// Maximum number of entries in local cache
+  static const int max_cache_entries = 5;
 
   /**
    * Lookup types.

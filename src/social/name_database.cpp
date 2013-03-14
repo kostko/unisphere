@@ -108,7 +108,18 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
     // Insertion of a new record
     record = NameRecordPtr(new NameRecord(m_router.context(), nodeId, type));
     record->originId = originId;
+    record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
     m_nameDb.insert(record);
+
+    // Ensure that only a limited number of cache entries is accepted
+    if (type == NameRecord::Type::Cache) {
+      auto &nibCache = m_nameDb.get<NIBTags::TypeAge>();
+      if (nibCache.count(NameRecord::Type::Cache) >= NameDatabase::max_cache_entries) {
+        nibCache.erase(nibCache.lower_bound(NameRecord::Type::Cache));
+      }
+    }
+
+    
     // TODO: Ensure that only sqrt(n*logn) Authority entries are stored at the local node
     exportNib = true;
   } else {
@@ -121,6 +132,7 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
 
     m_nameDb.modify(it, [&](NameRecordPtr r) {
       r->originId = originId;
+      r->lastUpdate = boost::posix_time::microsec_clock::universal_time();
     });
     record->addresses.clear();
   }
@@ -131,7 +143,6 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
 
     record->addresses.push_back(address);
   }
-  record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
   // Own records should never expire, so we don't install a timer
   if (record->nodeId != m_localId) {
@@ -155,7 +166,9 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
 void NameDatabase::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
 {
   RecursiveUniqueLock lock(m_mutex);
-  m_nameDb.erase(m_nameDb.find(boost::make_tuple(nodeId, type)));
+  auto it = m_nameDb.find(boost::make_tuple(nodeId, type));
+  if (it != m_nameDb.end())
+    m_nameDb.erase(it);
 }
 
 void NameDatabase::clear()
