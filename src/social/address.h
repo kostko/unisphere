@@ -65,7 +65,8 @@ public:
    * @param landmarkId Landmark identifier
    * @param path Reverse routing path (from landmark to node)
    */
-  LandmarkAddress(const NodeIdentifier &landmarkId, const google::protobuf::RepeatedField<google::protobuf::uint32> &path);
+  LandmarkAddress(const NodeIdentifier &landmarkId,
+                  const google::protobuf::RepeatedField<google::protobuf::uint32> &path);
 
   /**
    * Returns true if this landmark-relative address is null.

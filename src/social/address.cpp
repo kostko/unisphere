@@ -35,7 +35,8 @@ LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const Routing
 {
 }
 
-LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId, const google::protobuf::RepeatedField<google::protobuf::uint32> &path)
+LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId,
+                                 const google::protobuf::RepeatedField<google::protobuf::uint32> &path)
   : m_landmarkId(landmarkId)
 {
   for (auto it = path.begin(); it != path.end(); ++it) {

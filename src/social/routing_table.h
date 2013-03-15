@@ -82,8 +82,10 @@ public:
    * @param type Routing entry type
    * @param seqno Sequence number
    */
-  RoutingEntry(boost::asio::io_service &service, const NodeIdentifier &destination,
-    Type type, std::uint16_t seqno);
+  RoutingEntry(boost::asio::io_service &service,
+               const NodeIdentifier &destination,
+               Type type,
+               std::uint16_t seqno);
 
   /**
    * Class destructor.
@@ -232,8 +234,9 @@ public:
    * @param localId Local node identifier
    * @param sizeEstimator A network size estimator
    */
-  CompactRoutingTable(Context &context, const NodeIdentifier &localId,
-    NetworkSizeEstimator &sizeEstimator);
+  CompactRoutingTable(Context &context,
+                      const NodeIdentifier &localId,
+                      NetworkSizeEstimator &sizeEstimator);
   
   /**
    * Returns the currently active route to the given destination
@@ -298,7 +301,8 @@ public:
    * @param destination Optional destination identifier
    * @return True if routing table has been changed, false otherwise
    */
-  bool retract(Vport vport, const NodeIdentifier &destination = NodeIdentifier::INVALID);
+  bool retract(Vport vport,
+               const NodeIdentifier &destination = NodeIdentifier::INVALID);
 
   /**
    * Exports the full routing table to the specified peer.
@@ -344,7 +348,8 @@ public:
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
-  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
+  void dump(std::ostream &stream,
+            std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
   boost::signals2::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
@@ -382,7 +387,7 @@ protected:
    * @param entry Routing entry that expired
    */
   void entryTimerExpired(const boost::system::error_code &error,
-    RoutingEntryPtr entry);
+                         RoutingEntryPtr entry);
 
   /**
    * Notifies the router that an entry should be exported to neighbor
@@ -391,7 +396,8 @@ protected:
    * @param entry Routing entry to export
    * @param peer Optional peer to limit the export to
    */
-  void exportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer = NodeIdentifier::INVALID);
+  void exportEntry(RoutingEntryPtr entry,
+                   const NodeIdentifier &peer = NodeIdentifier::INVALID);
 
   /**
    * Performs best route selection for a specific destination and

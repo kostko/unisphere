@@ -32,6 +32,10 @@ class LinkManager;
 class NetworkSizeEstimator;
 class Message;
 
+/**
+ * Compact router is at the core of the UNISPHERE protocol. It binds all the
+ * components together and routes messages.
+ */
 class UNISPHERE_EXPORT CompactRouter {
 public:
   /// Self-announce refresh interval
@@ -53,14 +57,28 @@ public:
     SloppyGroup   = 0x02,
   };
 
-  CompactRouter(SocialIdentity &identity, LinkManager &manager,
+  /**
+   * Class constructor.
+   *
+   * @param identity Social identity
+   * @param manager Link manager
+   * @param sizeEstimator Network size estimator
+   */
+  CompactRouter(SocialIdentity &identity,
+                LinkManager &manager,
                 NetworkSizeEstimator &sizeEstimator);
 
   CompactRouter(const CompactRouter&) = delete;
   CompactRouter &operator=(const CompactRouter&) = delete;
 
+  /**
+   * Initializes the router.
+   */
   void initialize();
 
+  /**
+   * Shuts down the router and all components.
+   */
   void shutdown();
 
   /**
@@ -116,9 +134,11 @@ public:
    * @param msg Protocol Buffers message
    * @param opts Routing options
    */
-  void route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
+  void route(std::uint32_t sourceCompId,
+             const NodeIdentifier &destination,
              const LandmarkAddress &destinationAddress,
-             std::uint32_t destinationCompId, std::uint32_t type,
+             std::uint32_t destinationCompId,
+             std::uint32_t type,
              const google::protobuf::Message &msg,
              const RoutingOptions &opts = RoutingOptions());
 public:
@@ -134,6 +154,11 @@ protected:
    */
   void messageReceived(const Message &msg);
 
+  /**
+   * Called when the network size estimate is changed.
+   *
+   * @param size New network size estimate
+   */
   void networkSizeEstimateChanged(std::uint64_t size);
 
   /**
@@ -141,10 +166,19 @@ protected:
    */
   void announceOurselves(const boost::system::error_code &error);
 
+  /**
+   * Request full routes from all neighbors.
+   */
   void requestFullRoutes();
 
+  /**
+   * Called when a new peer is added to the social identity.
+   */
   void peerAdded(const Contact &peer);
 
+  /**
+   * Called when a peer is removed from the social identity.
+   */
   void peerRemoved(const NodeIdentifier &nodeId);
 
   /**
@@ -163,7 +197,7 @@ protected:
    * @param peer Optional peer identifier to export to
    */
   void ribExportEntry(RoutingEntryPtr entry,
-    const NodeIdentifier &peer = NodeIdentifier::INVALID);
+                      const NodeIdentifier &peer = NodeIdentifier::INVALID);
 
   /**
    * Called by the routing table when a retraction should be sent to
@@ -173,8 +207,18 @@ protected:
    */
   void ribRetractEntry(RoutingEntryPtr entry);
 
+  /**
+   * Called when a new landmark is learned via route exchange.
+   *
+   * @param landmarkId Landmark identifier
+   */
   void landmarkLearned(const NodeIdentifier &landmarkId);
 
+  /**
+   * Called when a landmark is unlearned.
+   *
+   * @param landmarkId Landmark identifier
+   */
   void landmarkRemoved(const NodeIdentifier &landmarkId);
 
   /**

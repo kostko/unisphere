@@ -64,7 +64,8 @@ public:
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
-  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
+  void dump(std::ostream &stream,
+            std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 
   /**
    * Outputs the locally known sloppy group topology in DOT format.
@@ -72,7 +73,8 @@ public:
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
-  void dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
+  void dumpTopology(std::ostream &stream,
+                    std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 private:
   UNISPHERE_DECLARE_PRIVATE(SloppyGroupManager)
 };
