@@ -186,7 +186,7 @@ NodeIdentifier TestBedPrivate::getRandomNodeId()
 
 
 TestBed::TestBed()
-  : d(*new TestBedPrivate)
+  : d(new TestBedPrivate)
 {
 }
 
@@ -200,71 +200,71 @@ TestBed &TestBed::getGlobalTestbed()
 
 Context &TestBed::getContext()
 {
-  return d.m_context;
+  return d->m_context;
 }
 
 void TestBed::setupPhyNetwork(const std::string &ip, unsigned short port)
 {
-  d.m_phyIp = ip;
-  d.m_phyStartPort = port;
+  d->m_phyIp = ip;
+  d->m_phyStartPort = port;
 }
 
 void TestBed::run()
 {
   // Initialize all nodes
-  for (VirtualNode *node : d.m_nodes | boost::adaptors::map_values)
+  for (VirtualNode *node : d->m_nodes | boost::adaptors::map_values)
     node->initialize();
 
-  d.m_context.run(8);
+  d->m_context.run(8);
 }
 
 void TestBed::registerTestCase(const std::string &name, TestCaseFactory *factory)
 {
-  RecursiveUniqueLock lock(d.m_mutex);
-  d.m_testCases.insert({{ name, TestCaseFactoryPtr(factory) }});
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_testCases.insert({{ name, TestCaseFactoryPtr(factory) }});
 }
 
 void TestBed::finishTestCase(TestCasePtr test)
 {
-  RecursiveUniqueLock lock(d.m_mutex);
-  d.m_runningCases.erase(test);
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_runningCases.erase(test);
 }
 
 void TestBed::loadScenario(Scenario *scenario)
 {
-  d.m_scenarios.insert(ScenarioPtr(scenario));
+  d->m_scenarios.insert(ScenarioPtr(scenario));
   scenario->setup();
 }
 
 void TestBed::loadTopology(const std::string &topologyFile)
 {
-  d.loadTopology(topologyFile);
+  d->loadTopology(topologyFile);
 }
 
 void TestBed::runTest(const std::string &test)
 {
-  d.runTest(test);
+  d->runTest(test);
 }
 
 void TestBed::scheduleTest(int time, const std::string &test)
 {
-  d.m_context.schedule(time, boost::bind(&TestBedPrivate::runTest, &d, test));
+  d->m_context.schedule(time, boost::bind(&TestBedPrivate::runTest, d, test));
 }
 
 void TestBed::scheduleTestEvery(int time, const std::string &test)
 {
-  d.m_context.schedule(time, boost::bind(&TestBedPrivate::runAndReschedule, &d, time, test));
+  d->m_context.schedule(time, boost::bind(&TestBedPrivate::runAndReschedule, d, time, test));
 }
 
 void TestBed::scheduleCall(int time, std::function<void()> handler)
 {
-  d.m_context.schedule(time, handler);
+  d->m_context.schedule(time, handler);
 }
 
 void TestBed::endScenarioAfter(int time)
 {
-  d.m_context.schedule(time, [this]() {
-    d.m_context.stop();
+  d->m_context.schedule(time, [this]() {
+    d->m_context.stop();
   });
 }
 

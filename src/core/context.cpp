@@ -78,10 +78,10 @@ void ContextPrivate::createThreadRNGs()
 }
 
 Context::Context()
-  : d(*new ContextPrivate)
+  : d(new ContextPrivate)
 {
   // Create RNGs for the main thread
-  d.createThreadRNGs();
+  d->createThreadRNGs();
 
   // Log context initialization
   UNISPHERE_CLOG(*this, Info, "UNISPHERE Context initialized.");
@@ -93,24 +93,24 @@ Context::~Context()
 
 boost::asio::io_service &Context::service()
 {
-  return d.m_io;
+  return d->m_io;
 }
 
 Logger &Context::logger()
 {
-  return d.m_logger;
+  return d->m_logger;
 }
 
 Botan::RandomNumberGenerator &Context::rng()
 {
-  RecursiveUniqueLock lock(d.m_mutex);
-  return *d.m_rng.at(std::this_thread::get_id());
+  RecursiveUniqueLock lock(d->m_mutex);
+  return *d->m_rng.at(std::this_thread::get_id());
 }
 
 std::mt19937 &Context::basicRng()
 {
-  RecursiveUniqueLock lock(d.m_mutex);
-  return *d.m_basicRng.at(std::this_thread::get_id());
+  RecursiveUniqueLock lock(d->m_mutex);
+  return *d->m_basicRng.at(std::this_thread::get_id());
 }
 
 void Context::schedule(int timeout, std::function<void()> operation)
@@ -118,7 +118,7 @@ void Context::schedule(int timeout, std::function<void()> operation)
   // The timer pointer is passed into a closure so it will be automatically removed
   // when the operation is done executing
   typedef boost::shared_ptr<boost::asio::deadline_timer> SharedTimer;
-  SharedTimer timer = SharedTimer(new boost::asio::deadline_timer(d.m_io));
+  SharedTimer timer = SharedTimer(new boost::asio::deadline_timer(d->m_io));
   timer->expires_from_now(boost::posix_time::seconds(timeout));
   timer->async_wait([timer, operation](const boost::system::error_code&) { operation(); });
 }
@@ -127,30 +127,30 @@ void Context::run(size_t threads)
 {
   // Create as many threads as specified and let them run the I/O service
   for (int i = 0; i < threads; i++) {
-    d.m_pool.create_thread([this]() {
+    d->m_pool.create_thread([this]() {
       // Initialize the random number generators
-      d.createThreadRNGs();
+      d->createThreadRNGs();
 
       // Run the ASIO service
-      d.m_io.run();
+      d->m_io.run();
     });
   }
   
-  d.m_pool.join_all();
+  d->m_pool.join_all();
+
+  // Destroy all per-thread RNGs after threads have joined
+  for (auto p : d->m_rng)
+    delete p.second;
+  for (auto p : d->m_basicRng)
+    delete p.second;
+
+  d->m_rng.clear();
+  d->m_basicRng.clear();
 }
 
 void Context::stop()
 {
-  d.m_io.stop();
-
-  // Destroy all per-thread RNGs
-  for (auto p : d.m_rng)
-    delete p.second;
-  for (auto p : d.m_basicRng)
-    delete p.second;
-
-  d.m_rng.clear();
-  d.m_basicRng.clear();
+  d->m_io.stop();
 }
 
 }

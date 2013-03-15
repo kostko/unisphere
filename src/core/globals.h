@@ -41,11 +41,6 @@ typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
 #define UNISPHERE_NO_EXPORT __attribute__ ((visibility("hidden")))
 #define UNISPHERE_EXPORT __attribute__ ((visibility("default")))
 
-// Helper macros for hiding implementation details
-#define UNISPHERE_PRIVATE_DETAILS(Class) \
-  private: \
-    boost::shared_ptr<Class##Private> d; 
-
 // Helper macro for creating a shared pointer type
 #define UNISPHERE_SHARED_POINTER(Class) \
   class Class; \
@@ -55,6 +50,6 @@ typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
 // Helper macro for the pimpl idiom by the use of a d-reference
 #define UNISPHERE_DECLARE_PRIVATE(Class) \
   friend class Class##Private; \
-  class Class##Private &d;
+  boost::shared_ptr<class Class##Private> d;
 
 #endif

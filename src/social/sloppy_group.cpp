@@ -748,28 +748,28 @@ void SloppyGroupManagerPrivate::dumpTopology(std::ostream &stream, std::function
 }
 
 SloppyGroupManager::SloppyGroupManager(CompactRouter &router, NetworkSizeEstimator &sizeEstimator)
-  : d(*new SloppyGroupManagerPrivate(router, sizeEstimator))
+  : d(new SloppyGroupManagerPrivate(router, sizeEstimator))
 {
 }
 
 void SloppyGroupManager::initialize()
 {
-  d.initialize();
+  d->initialize();
 }
 
 void SloppyGroupManager::shutdown()
 {
-  d.shutdown();
+  d->shutdown();
 }
 
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
-  d.dump(stream, resolve);
+  d->dump(stream, resolve);
 }
 
 void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
-  d.dumpTopology(stream, resolve);
+  d->dumpTopology(stream, resolve);
 }
 
 }

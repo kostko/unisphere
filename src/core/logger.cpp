@@ -125,16 +125,16 @@ void LoggerPrivate::output(Logger::Level level, const std::string &text, const s
 }
 
 Logger::Logger()
-  : d(*new LoggerPrivate)
+  : d(new LoggerPrivate)
 {
 }
 
 std::ostream &Logger::stream()
 {
-  SynchronizedStream *stream = d.m_streams.get();
+  SynchronizedStream *stream = d->m_streams.get();
   if (!stream) {
-    stream = new SynchronizedStream(d);
-    d.m_streams.reset(stream);
+    stream = new SynchronizedStream(*d);
+    d->m_streams.reset(stream);
   }
   
   return *stream;
@@ -142,7 +142,7 @@ std::ostream &Logger::stream()
 
 void Logger::output(Level level, const std::string &text, const std::string &component)
 {
-  d.output(level, text, component, true);
+  d->output(level, text, component, true);
 }
 
 }

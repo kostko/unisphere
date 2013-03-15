@@ -49,15 +49,15 @@ TestCasePrivate::TestCasePrivate()
 }
 
 TestCase::TestCase()
-  : d(*new TestCasePrivate)
+  : d(new TestCasePrivate)
 {
 }
 
 void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names)
 {
-  d.m_name = name;
-  d.m_nodes = nodes;
-  d.m_names = names;
+  d->m_name = name;
+  d->m_nodes = nodes;
+  d->m_names = names;
 }
 
 void TestCase::run()
@@ -67,23 +67,23 @@ void TestCase::run()
 
 void TestCase::finish()
 {
-  d.m_testbed.finishTestCase(shared_from_this());
+  d->m_testbed.finishTestCase(shared_from_this());
 }
 
 VirtualNodeMap &TestCase::nodes()
 {
-  return *d.m_nodes;
+  return *d->m_nodes;
 }
 
 NodeNameMap &TestCase::names()
 {
-  return *d.m_names;
+  return *d->m_names;
 }
 
 std::ostream &TestCase::report()
 {
-  std::ostream &os = d.m_testbed.getContext().logger().stream();
-  os << Logger::Component{"TestCase::" + d.m_name};
+  std::ostream &os = d->m_testbed.getContext().logger().stream();
+  os << Logger::Component{"TestCase::" + d->m_name};
   os << Logger::Level::Info;
   return os;
 }
