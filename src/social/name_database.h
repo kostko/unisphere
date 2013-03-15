@@ -33,6 +33,9 @@ namespace UniSphere {
 
 class CompactRouter;
 
+/**
+ * An entry in the name database.
+ */
 class UNISPHERE_EXPORT NameRecord {
 public:
   /**
@@ -96,6 +99,11 @@ typedef boost::any_range<
   std::ptrdiff_t
 > NameRecordRange;
 
+/**
+ * The name database is a central part of the routing process. It is
+ * responsible for storing mappings between the location-independent
+ * addresses and landmark-relative addresses.
+ */
 class UNISPHERE_EXPORT NameDatabase {
 public:
   /// Number of landmarks to replicate the name cache to
