@@ -328,11 +328,17 @@ void CompactRouter::route(const RoutedMessage &msg)
 
   // Check if we are the destination - deliver to local component
   if (msg.destinationNodeId() == m_manager.getLocalNodeId()) {
-    // Cache source address when one is available
-    if (!msg.sourceAddress().isNull())
-      m_nameDb.store(msg.sourceNodeId(), msg.sourceAddress(), NameRecord::Type::Cache);
+    // If this is a packet that has been sent to ourselves, we should dispatch the signal
+    // via the event queue and not call the signal directly
+    if (msg.originLinkId().isNull()) {
+      m_context.service().post([this, msg]() { signalDeliverMessage(msg); });
+    } else {
+      // Cache source address when one is available
+      if (!msg.sourceAddress().isNull())
+        m_nameDb.store(msg.sourceNodeId(), msg.sourceAddress(), NameRecord::Type::Cache);
 
-    signalDeliverMessage(msg);
+      signalDeliverMessage(msg);
+    }
     return;
   }
 
