@@ -22,13 +22,8 @@
 #include <set>
 #include <unordered_set>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/mem_fun.hpp>
 #include <boost/asio.hpp>
+#include <boost/range/any_range.hpp>
 
 #include "core/context.h"
 #include "social/address.h"
@@ -93,47 +88,13 @@ public:
 
 UNISPHERE_SHARED_POINTER(NameRecord)
 
-/// NIB index tags
-namespace NIBTags {
-  class DestinationId;
-  class TypeDestination;
-  class TypeAge;
-}
-
-typedef boost::multi_index_container<
+/// A traversable range of name record pointers
+typedef boost::any_range<
   NameRecordPtr,
-  midx::indexed_by<
-    // Index by node identifier, sorted by type
-    midx::ordered_unique<
-      midx::tag<NIBTags::DestinationId>,
-      midx::composite_key<
-        NameRecord,
-        BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId),
-        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type)
-      >
-    >,
-
-    // Index by record type and destination identifier
-    midx::ordered_unique<
-      midx::tag<NIBTags::TypeDestination>,
-      midx::composite_key<
-        NameRecord,
-        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
-        BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId)
-      >
-    >,
-
-    // Index by record type and last update timestamp
-    midx::ordered_unique<
-      midx::tag<NIBTags::TypeAge>,
-      midx::composite_key<
-        NameRecord,
-        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
-        BOOST_MULTI_INDEX_MEMBER(NameRecord, boost::posix_time::ptime, lastUpdate)
-      >
-    >
-  >
-> NameInformationBase;
+  boost::bidirectional_traversal_tag,
+  NameRecordPtr,
+  std::ptrdiff_t
+> NameRecordRange;
 
 class UNISPHERE_EXPORT NameDatabase {
 public:
@@ -154,6 +115,11 @@ public:
     ClosestNeighbors = 2,
   };
 
+  /**
+   * Class constructor.
+   *
+   * @param router Router instance
+   */
   explicit NameDatabase(CompactRouter &router);
 
   NameDatabase(const NameDatabase&) = delete;
@@ -176,8 +142,10 @@ public:
    * @param addresses A list of L-R addresses for this node
    * @param type Type of record
    */
-  void store(const NodeIdentifier &nodeId, const std::list<LandmarkAddress> &addresses,
-    NameRecord::Type type, const NodeIdentifier &originId = NodeIdentifier::INVALID);
+  void store(const NodeIdentifier &nodeId,
+             const std::list<LandmarkAddress> &addresses,
+             NameRecord::Type type,
+             const NodeIdentifier &originId = NodeIdentifier::INVALID);
 
   /**
    * Stores a name record into the database.
@@ -186,8 +154,10 @@ public:
    * @param address A L-R address for this node
    * @param type Type of record
    */
-  void store(const NodeIdentifier &nodeId, const LandmarkAddress &address,
-    NameRecord::Type type, const NodeIdentifier &originId = NodeIdentifier::INVALID);
+  void store(const NodeIdentifier &nodeId,
+             const LandmarkAddress &address,
+             NameRecord::Type type,
+             const NodeIdentifier &originId = NodeIdentifier::INVALID);
 
   /**
    * Removes an existing name record from the database.
@@ -220,7 +190,9 @@ public:
    * @return Resulting name records or an empty list
    */
   const std::list<NameRecordPtr> lookupSloppyGroup(const NodeIdentifier &nodeId,
-    size_t prefixLength, const NodeIdentifier &origin, LookupType type) const;
+                                                   size_t prefixLength,
+                                                   const NodeIdentifier &origin,
+                                                   LookupType type) const;
 
   /**
    * Performs sloppy-group related lookups on a remote node.
@@ -230,12 +202,10 @@ public:
    * @param type Lookup type
    * @param complete Completion handler
    */
-  void remoteLookupSloppyGroup(
-    const NodeIdentifier &nodeId,
-    size_t prefixLength,
-    LookupType type,
-    std::function<void(const std::list<NameRecordPtr>&)> complete
-  ) const;
+  void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                               size_t prefixLength,
+                               LookupType type,
+                               std::function<void(const std::list<NameRecordPtr>&)> complete) const;
 
   /**
    * Performs sloppy-group related lookups on a remote node.
@@ -246,13 +216,11 @@ public:
    * @param rpcGroup RPC call group
    * @param complete Completion handler
    */
-  void remoteLookupSloppyGroup(
-    const NodeIdentifier &nodeId,
-    size_t prefixLength,
-    LookupType type,
-    RpcCallGroupPtr rpcGroup,
-    std::function<void(const std::list<NameRecordPtr>&)> complete
-  ) const;
+  void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                               size_t prefixLength,
+                               LookupType type,
+                               RpcCallGroupPtr rpcGroup,
+                               std::function<void(const std::list<NameRecordPtr>&)> complete) const;
 
   /**
    * Registers a landmark node. This is needed for determining which landmarks
@@ -279,7 +247,7 @@ public:
    * @return A set of landmark identifiers that should have the address
    */
   std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId,
-    size_t sgPrefixLength = 0) const;
+                                                       size_t sgPrefixLength = 0) const;
 
   /**
    * Publishes local address information to designated landmarks. This method
@@ -296,9 +264,9 @@ public:
   void fullUpdate(const NodeIdentifier &peer);
 
   /**
-   * Returns a reference to the underlying name information base.
+   * Returns a range containing the contents of the name database.
    */
-  const NameInformationBase &getNIB() const { return m_nameDb; }
+  NameRecordRange names() const;
 
   /**
    * Outputs the name database to a stream.
@@ -306,49 +274,15 @@ public:
    * @param stream Output stream to dump into
    * @param resolve Optional name resolver
    */
-  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
+  void dump(std::ostream &stream,
+            std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
 public:
   /// Signal that gets called when a name record should be exported to neighbours
   boost::signals2::signal<void(NameRecordPtr, const NodeIdentifier&)> signalExportRecord;
   /// Signal that gets called when a name record should be retracted from neighbours
   boost::signals2::signal<void(NameRecordPtr)> signalRetractRecord;
-protected:
-  /**
-   * Called when a record expires.
-   */
-  void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
-
-  /**
-   * Periodically refreshes the local address.
-   */
-  void refreshLocalAddress(const boost::system::error_code &error);
-
-  /**
-   * Performs registration of core RPC methods that are required for name database
-   * management.
-   */
-  void registerCoreRpcMethods();
-
-  /**
-   * Performs unregistration of core RPC methods that are required for name database
-   * management.
-   */
-  void unregisterCoreRpcMethods();
 private:
-  /// Router
-  CompactRouter &m_router;
-  /// Mutex protecting the name database
-  mutable std::recursive_mutex m_mutex;
-  /// Local node identifier (cached from social identity)
-  NodeIdentifier m_localId;
-  /// Name database
-  NameInformationBase m_nameDb;
-  /// Bucket tree for consistent hashing
-  std::set<NodeIdentifier> m_bucketTree;
-  /// Landmarks that we have previously published into
-  std::unordered_set<NodeIdentifier> m_publishLandmarks;
-  /// Timer for periodic local address refresh
-  boost::asio::deadline_timer m_localRefreshTimer;
+  UNISPHERE_DECLARE_PRIVATE(NameDatabase)
 };
 
 }

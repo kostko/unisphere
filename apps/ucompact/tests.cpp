@@ -46,7 +46,7 @@ protected:
       node->router->nameDb().dump(report(), resolveNodeName);
       node->router->sloppyGroup().dump(report(), resolveNodeName);
 
-      for (NameRecordPtr record : node->router->nameDb().getNIB()) {
+      for (NameRecordPtr record : node->router->nameDb().names()) {
         if (record->type == NameRecord::Type::Authority)
           authRecords.insert(record->nodeId);
       }

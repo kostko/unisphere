@@ -22,7 +22,143 @@
 
 #include "src/social/core_methods.pb.h"
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/composite_key.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+
 namespace UniSphere {
+
+/// NIB index tags
+namespace NIBTags {
+  class DestinationId;
+  class TypeDestination;
+  class TypeAge;
+}
+
+/// Name information base (database of all name records)
+typedef boost::multi_index_container<
+  NameRecordPtr,
+  midx::indexed_by<
+    // Index by node identifier, sorted by type
+    midx::ordered_unique<
+      midx::tag<NIBTags::DestinationId>,
+      midx::composite_key<
+        NameRecord,
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId),
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type)
+      >
+    >,
+
+    // Index by record type and destination identifier
+    midx::ordered_unique<
+      midx::tag<NIBTags::TypeDestination>,
+      midx::composite_key<
+        NameRecord,
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NodeIdentifier, nodeId)
+      >
+    >,
+
+    // Index by record type and last update timestamp
+    midx::ordered_unique<
+      midx::tag<NIBTags::TypeAge>,
+      midx::composite_key<
+        NameRecord,
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, NameRecord::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(NameRecord, boost::posix_time::ptime, lastUpdate)
+      >
+    >
+  >
+> NameInformationBase;
+
+class NameDatabasePrivate {
+public:
+  /**
+   * Class constructor.
+   */
+  NameDatabasePrivate(CompactRouter &router, NameDatabase *ndb);
+
+  void initialize();
+
+  void shutdown();
+
+  void store(const NodeIdentifier &nodeId,
+             const std::list<LandmarkAddress> &addresses,
+             NameRecord::Type type,
+             const NodeIdentifier &originId = NodeIdentifier::INVALID);
+
+  void remove(const NodeIdentifier &nodeId, NameRecord::Type type);
+
+  void clear();
+
+  const NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
+
+  const std::list<NameRecordPtr> lookupSloppyGroup(const NodeIdentifier &nodeId,
+                                                   size_t prefixLength,
+                                                   const NodeIdentifier &origin,
+                                                   NameDatabase::LookupType type) const;
+
+  void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                               size_t prefixLength,
+                               NameDatabase::LookupType type,
+                               RpcCallGroupPtr rpcGroup,
+                               std::function<void(const std::list<NameRecordPtr>&)> complete) const;
+
+  void fullUpdate(const NodeIdentifier &peer);
+
+  void registerLandmark(const NodeIdentifier &landmarkId);
+
+  void unregisterLandmark(const NodeIdentifier &landmarkId);
+
+  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId,
+                                                       size_t sgPrefixLength = 0) const;
+
+  void publishLocalAddress();
+
+  void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const;
+public:
+  /**
+   * Called when a record expires.
+   */
+  void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
+
+  /**
+   * Periodically refreshes the local address.
+   */
+  void refreshLocalAddress(const boost::system::error_code &error);
+
+  /**
+   * Performs registration of core RPC methods that are required for name database
+   * management.
+   */
+  void registerCoreRpcMethods();
+
+  /**
+   * Performs unregistration of core RPC methods that are required for name database
+   * management.
+   */
+  void unregisterCoreRpcMethods();
+public:
+  /// Public name database interface
+  NameDatabase *q;
+  /// Router
+  CompactRouter &m_router;
+  /// Mutex protecting the name database
+  mutable std::recursive_mutex m_mutex;
+  /// Local node identifier (cached from social identity)
+  NodeIdentifier m_localId;
+  /// Name database
+  NameInformationBase m_nameDb;
+  /// Bucket tree for consistent hashing
+  std::set<NodeIdentifier> m_bucketTree;
+  /// Landmarks that we have previously published into
+  std::unordered_set<NodeIdentifier> m_publishLandmarks;
+  /// Timer for periodic local address refresh
+  boost::asio::deadline_timer m_localRefreshTimer;
+};
 
 NameRecord::NameRecord(Context &context, const NodeIdentifier &nodeId, Type type)
   : nodeId(nodeId),
@@ -56,14 +192,15 @@ boost::posix_time::time_duration NameRecord::age() const
   return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
 }
 
-NameDatabase::NameDatabase(CompactRouter &router)
-  : m_router(router),
+NameDatabasePrivate::NameDatabasePrivate(CompactRouter &router, NameDatabase *ndb)
+  : q(ndb),
+    m_router(router),
     m_localId(router.identity().localId()),
     m_localRefreshTimer(router.context().service())
 {
 }
 
-void NameDatabase::initialize()
+void NameDatabasePrivate::initialize()
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -74,10 +211,10 @@ void NameDatabase::initialize()
 
   // Schedule local address refresh
   m_localRefreshTimer.expires_from_now(boost::posix_time::seconds(15));
-  m_localRefreshTimer.async_wait(boost::bind(&NameDatabase::refreshLocalAddress, this, _1));
+  m_localRefreshTimer.async_wait(boost::bind(&NameDatabasePrivate::refreshLocalAddress, this, _1));
 }
 
-void NameDatabase::shutdown()
+void NameDatabasePrivate::shutdown()
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -90,10 +227,10 @@ void NameDatabase::shutdown()
   m_localRefreshTimer.cancel();
 }
 
-void NameDatabase::store(const NodeIdentifier &nodeId,
-                         const std::list<LandmarkAddress> &addresses,
-                         NameRecord::Type type,
-                         const NodeIdentifier &originId)
+void NameDatabasePrivate::store(const NodeIdentifier &nodeId,
+                                const std::list<LandmarkAddress> &addresses,
+                                NameRecord::Type type,
+                                const NodeIdentifier &originId)
 {
   // Prevent storage of null node identifiers or null L-R addresses
   if (nodeId.isNull() || addresses.empty() || addresses.size() > NameDatabase::max_stored_addresses)
@@ -147,23 +284,15 @@ void NameDatabase::store(const NodeIdentifier &nodeId,
   // Own records should never expire, so we don't install a timer
   if (record->nodeId != m_localId) {
     record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
-    record->expiryTimer.async_wait(boost::bind(&NameDatabase::entryTimerExpired, this, _1, record));
+    record->expiryTimer.async_wait(boost::bind(&NameDatabasePrivate::entryTimerExpired, this, _1, record));
   }
 
   // Sloppy group entries should be exported to neighbors
   if (type == NameRecord::Type::SloppyGroup && exportNib)
-    signalExportRecord(record, NodeIdentifier::INVALID);
+    q->signalExportRecord(record, NodeIdentifier::INVALID);
 }
 
-void NameDatabase::store(const NodeIdentifier &nodeId,
-                         const LandmarkAddress &address,
-                         NameRecord::Type type,
-                         const NodeIdentifier &originId)
-{
-  store(nodeId, std::list<LandmarkAddress>{ address }, type, originId);
-}
-
-void NameDatabase::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
+void NameDatabasePrivate::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
 {
   RecursiveUniqueLock lock(m_mutex);
   auto it = m_nameDb.find(boost::make_tuple(nodeId, type));
@@ -171,23 +300,23 @@ void NameDatabase::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
     m_nameDb.erase(it);
 }
 
-void NameDatabase::clear()
+void NameDatabasePrivate::clear()
 {
   RecursiveUniqueLock lock(m_mutex);
   m_nameDb.clear();
 }
 
-void NameDatabase::fullUpdate(const NodeIdentifier &peer)
+void NameDatabasePrivate::fullUpdate(const NodeIdentifier &peer)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   auto records = m_nameDb.get<NIBTags::TypeDestination>().equal_range(NameRecord::Type::SloppyGroup);
   for (auto it = records.first; it != records.second; ++it) {
-    signalExportRecord(*it, peer);
+    q->signalExportRecord(*it, peer);
   }
 }
 
-const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
+const NameRecordPtr NameDatabasePrivate::lookup(const NodeIdentifier &nodeId) const
 {
   RecursiveUniqueLock lock(m_mutex);
   auto it = m_nameDb.find(nodeId);
@@ -197,10 +326,10 @@ const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
   return *it;
 }
 
-const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentifier &nodeId,
-                                                               size_t prefixLength,
-                                                               const NodeIdentifier &origin,
-                                                               LookupType type) const
+const std::list<NameRecordPtr> NameDatabasePrivate::lookupSloppyGroup(const NodeIdentifier &nodeId,
+                                                                      size_t prefixLength,
+                                                                      const NodeIdentifier &origin,
+                                                                      NameDatabase::LookupType type) const
 {
   RecursiveUniqueLock lock(m_mutex);
   std::list<NameRecordPtr> records;
@@ -233,7 +362,7 @@ const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentif
   }
 
   switch (type) {
-    case LookupType::Closest: {
+    case NameDatabase::LookupType::Closest: {
       if (origin.isValid() && (*it)->nodeId == origin) {
         auto sit = it;
         if (++sit == upperLimit)
@@ -264,7 +393,7 @@ const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentif
       break;
     }
 
-    case LookupType::ClosestNeighbors: {
+    case NameDatabase::LookupType::ClosestNeighbors: {
       // Predecessor
       if ((*it)->nodeId < nodeId) {
         records.push_back(*it);
@@ -293,19 +422,11 @@ const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentif
   return records;
 }
 
-void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
-                                           size_t prefixLength,
-                                           LookupType type,
-                                           std::function<void(const std::list<NameRecordPtr>&)> complete) const
-{
-  remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr(), complete);
-}
-
-void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
-                                           size_t prefixLength,
-                                           LookupType type,
-                                           RpcCallGroupPtr rpcGroup,
-                                           std::function<void(const std::list<NameRecordPtr>&)> complete) const
+void NameDatabasePrivate::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                                                  size_t prefixLength,
+                                                  NameDatabase::LookupType type,
+                                                  RpcCallGroupPtr rpcGroup,
+                                                  std::function<void(const std::list<NameRecordPtr>&)> complete) const
 {
   RpcEngine &rpc = m_router.rpcEngine();
   // A shared pointer to list of records that will be accumulated during the lookup; this
@@ -347,8 +468,8 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
     request.set_nodeid(nodeId.raw());
     request.set_prefixlength(prefixLength);
     switch (type) {
-      case LookupType::Closest: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST); break;
-      case LookupType::ClosestNeighbors: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST_NEIGHBORS); break;
+      case NameDatabase::LookupType::Closest: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST); break;
+      case NameDatabase::LookupType::ClosestNeighbors: request.set_type(Protocol::LookupAddressRequest::SG_CLOSEST_NEIGHBORS); break;
     }
 
     subgroup->call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
@@ -358,7 +479,7 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
   }
 }
 
-void NameDatabase::entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record)
+void NameDatabasePrivate::entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record)
 {
   if (error)
     return;
@@ -366,7 +487,7 @@ void NameDatabase::entryTimerExpired(const boost::system::error_code &error, Nam
   remove(record->nodeId, record->type);
 }
 
-void NameDatabase::registerLandmark(const NodeIdentifier &landmarkId)
+void NameDatabasePrivate::registerLandmark(const NodeIdentifier &landmarkId)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -379,7 +500,7 @@ void NameDatabase::registerLandmark(const NodeIdentifier &landmarkId)
     publishLocalAddress();
 }
 
-void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
+void NameDatabasePrivate::unregisterLandmark(const NodeIdentifier &landmarkId)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -392,8 +513,8 @@ void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
     publishLocalAddress();
 }
 
-std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId,
-                                                                   size_t sgPrefixLength) const
+std::unordered_set<NodeIdentifier> NameDatabasePrivate::getLandmarkCaches(const NodeIdentifier &nodeId,
+                                                                          size_t sgPrefixLength) const
 {
   RecursiveUniqueLock lock(m_mutex);
   assert(nodeId.isValid());
@@ -462,7 +583,7 @@ std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIde
   return landmarks;
 }
 
-void NameDatabase::publishLocalAddress()
+void NameDatabasePrivate::publishLocalAddress()
 {
   RecursiveUniqueLock lock(m_mutex);
   RpcEngine &rpc = m_router.rpcEngine();
@@ -495,7 +616,7 @@ void NameDatabase::publishLocalAddress()
   }
 }
 
-void NameDatabase::refreshLocalAddress(const boost::system::error_code &error)
+void NameDatabasePrivate::refreshLocalAddress(const boost::system::error_code &error)
 {
   if (error)
     return;
@@ -504,10 +625,10 @@ void NameDatabase::refreshLocalAddress(const boost::system::error_code &error)
 
   // Schedule local address refresh
   m_localRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
-  m_localRefreshTimer.async_wait(boost::bind(&NameDatabase::refreshLocalAddress, this, _1));
+  m_localRefreshTimer.async_wait(boost::bind(&NameDatabasePrivate::refreshLocalAddress, this, _1));
 }
 
-void NameDatabase::registerCoreRpcMethods()
+void NameDatabasePrivate::registerCoreRpcMethods()
 {
   RpcEngine &rpc = m_router.rpcEngine();
 
@@ -555,7 +676,7 @@ void NameDatabase::registerCoreRpcMethods()
           if (!request.has_prefixlength())
             throw RpcException(RpcErrorCode::BadRequest, "Missing prefix length!");
 
-          records = lookupSloppyGroup(nodeId, request.prefixlength(), msg.sourceNodeId(), LookupType::Closest);
+          records = lookupSloppyGroup(nodeId, request.prefixlength(), msg.sourceNodeId(), NameDatabase::LookupType::Closest);
           break;
         }
 
@@ -563,7 +684,7 @@ void NameDatabase::registerCoreRpcMethods()
           if (!request.has_prefixlength())
             throw RpcException(RpcErrorCode::BadRequest, "Missing prefix length!");
 
-          records = lookupSloppyGroup(nodeId, request.prefixlength(), msg.sourceNodeId(), LookupType::ClosestNeighbors);
+          records = lookupSloppyGroup(nodeId, request.prefixlength(), msg.sourceNodeId(), NameDatabase::LookupType::ClosestNeighbors);
           break;
         }
 
@@ -592,14 +713,14 @@ void NameDatabase::registerCoreRpcMethods()
   );
 }
 
-void NameDatabase::unregisterCoreRpcMethods()
+void NameDatabasePrivate::unregisterCoreRpcMethods()
 {
   RpcEngine &rpc = m_router.rpcEngine();
   rpc.unregisterMethod("Core.NameDb.PublishAddress");
   rpc.unregisterMethod("Core.NameDb.LookupAddress");
 }
 
-void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
+void NameDatabasePrivate::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -629,6 +750,113 @@ void NameDatabase::dump(std::ostream &stream, std::function<std::string(const No
 
     stream << std::endl;
   }
+}
+
+NameDatabase::NameDatabase(CompactRouter &router)
+  : d(new NameDatabasePrivate(router, this))
+{
+}
+
+void NameDatabase::initialize()
+{
+  d->initialize();
+}
+
+void NameDatabase::shutdown()
+{
+  d->shutdown();
+}
+
+NameRecordRange NameDatabase::names() const
+{
+  return d->m_nameDb;
+}
+
+void NameDatabase::store(const NodeIdentifier &nodeId,
+                         const std::list<LandmarkAddress> &addresses,
+                         NameRecord::Type type,
+                         const NodeIdentifier &originId)
+{
+  d->store(nodeId, addresses, type, originId);
+}
+
+void NameDatabase::store(const NodeIdentifier &nodeId,
+                         const LandmarkAddress &address,
+                         NameRecord::Type type,
+                         const NodeIdentifier &originId)
+{
+  d->store(nodeId, std::list<LandmarkAddress>{ address }, type, originId);
+}
+
+void NameDatabase::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
+{
+  d->remove(nodeId, type);
+}
+
+void NameDatabase::clear()
+{
+  d->clear();
+}
+
+void NameDatabase::fullUpdate(const NodeIdentifier &peer)
+{
+  d->fullUpdate(peer);
+}
+
+const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
+{
+  return d->lookup(nodeId);
+}
+
+const std::list<NameRecordPtr> NameDatabase::lookupSloppyGroup(const NodeIdentifier &nodeId,
+                                                               size_t prefixLength,
+                                                               const NodeIdentifier &origin,
+                                                               LookupType type) const
+{
+  return d->lookupSloppyGroup(nodeId, prefixLength, origin, type);
+}
+
+void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                                           size_t prefixLength,
+                                           LookupType type,
+                                           std::function<void(const std::list<NameRecordPtr>&)> complete) const
+{
+  d->remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr(), complete);
+}
+
+void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
+                                           size_t prefixLength,
+                                           LookupType type,
+                                           RpcCallGroupPtr rpcGroup,
+                                           std::function<void(const std::list<NameRecordPtr>&)> complete) const
+{
+  d->remoteLookupSloppyGroup(nodeId, prefixLength, type, rpcGroup, complete);
+}
+
+void NameDatabase::registerLandmark(const NodeIdentifier &landmarkId)
+{
+  d->registerLandmark(landmarkId);
+}
+
+void NameDatabase::unregisterLandmark(const NodeIdentifier &landmarkId)
+{
+  d->unregisterLandmark(landmarkId);
+}
+
+std::unordered_set<NodeIdentifier> NameDatabase::getLandmarkCaches(const NodeIdentifier &nodeId,
+                                                                   size_t sgPrefixLength) const
+{
+  return d->getLandmarkCaches(nodeId, sgPrefixLength);
+}
+
+void NameDatabase::publishLocalAddress()
+{
+  d->publishLocalAddress();
+}
+
+void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
+{
+  d->dump(stream, resolve);
 }
 
 }
