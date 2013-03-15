@@ -467,6 +467,11 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
   return false;
 }
 
+size_t CompactRoutingTable::size() const
+{
+  return m_rib.size();
+}
+
 void CompactRoutingTable::clear()
 {
   RecursiveUniqueLock lock(m_mutex);

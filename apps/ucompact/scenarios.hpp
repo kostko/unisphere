@@ -32,6 +32,9 @@ public:
     // Dump all state after 80 seconds
     testbed.scheduleTest(80, "state/dump_all");
 
+    // Dump state statistics every 30 seconds
+    testbed.scheduleTestEvery(30, "state/count");
+
     // Schedule first test after 85 seconds, further tests each 45 seconds
     testbed.scheduleCall(85, [&]() {
       testbed.runTest("routing/all_pairs");

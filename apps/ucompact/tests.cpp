@@ -148,4 +148,28 @@ protected:
 
 UNISPHERE_REGISTER_TEST_CASE(AllPairs, "routing/all_pairs")
 
+class CountState : public TestBed::TestCase
+{
+protected:
+  /**
+   * Count the amount of state all nodes are using.
+   */
+  void start()
+  {
+    unsigned long stateAllNodes = 0;
+    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
+      // Routing table state
+      unsigned long stateRoutingTable = node->router->routingTable().size();
+      // Name database state
+      unsigned long stateNameDb = node->router->nameDb().size();
+
+      stateAllNodes += stateRoutingTable + stateNameDb;
+    }
+
+    report() << "Global state = " << stateAllNodes << std::endl;
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
+
 }

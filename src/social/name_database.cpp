@@ -767,6 +767,11 @@ void NameDatabase::shutdown()
   d->shutdown();
 }
 
+size_t NameDatabase::size() const
+{
+  return d->m_nameDb.size();
+}
+
 NameRecordRange NameDatabase::names() const
 {
   return d->m_nameDb;

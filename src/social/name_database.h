@@ -277,6 +277,11 @@ public:
   NameRecordRange names() const;
 
   /**
+   * Returns the number of name records stored in the name database.
+   */
+  size_t size() const;
+
+  /**
    * Outputs the name database to a stream.
    *
    * @param stream Output stream to dump into
