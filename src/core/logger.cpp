@@ -103,6 +103,9 @@ std::ostream &operator<<(std::ostream &os, const Logger::Level &level)
 
 void LoggerPrivate::output(Logger::Level level, const std::string &text, const std::string &component, bool newline)
 {
+  if (text.empty())
+    return;
+
   UniqueLock lock(m_mutex);
   
   std::cout << boost::posix_time::to_simple_string(boost::posix_time::second_clock::local_time());
