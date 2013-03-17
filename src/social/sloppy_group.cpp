@@ -519,6 +519,8 @@ void SloppyGroupManagerPrivate::announceFullRecords(const boost::system::error_c
 {
   if (error)
     return;
+
+  RecursiveUniqueLock lock(m_mutex);
   
   // Announce full updates to the neighbor set
   for (const auto &pf : m_fingersOut) {
