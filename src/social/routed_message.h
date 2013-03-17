@@ -188,8 +188,10 @@ public:
   
   /**
    * Serializes the routed message into a Protocol Buffers message.
+   *
+   * @param pmsg Protocol message to serialize into
    */
-  Protocol::RoutedMessage *serialize() const;
+  void serialize(Protocol::RoutedMessage &pmsg) const;
 private:
   /// Source node landmark-relative address
   LandmarkAddress m_sourceAddress;

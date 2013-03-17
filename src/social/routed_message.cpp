@@ -86,24 +86,23 @@ void RoutedMessage::processHop()
     m_hopCount--;
 }
 
-Protocol::RoutedMessage *RoutedMessage::serialize() const
+void RoutedMessage::serialize(Protocol::RoutedMessage &pmsg) const
 {
-  Protocol::RoutedMessage *pmsg = new Protocol::RoutedMessage;
-  pmsg->set_sourcelandmark(m_sourceAddress.landmarkId().as(NodeIdentifier::Format::Raw));
+  pmsg.Clear();
+  pmsg.set_sourcelandmark(m_sourceAddress.landmarkId().as(NodeIdentifier::Format::Raw));
   for (Vport port : m_sourceAddress.path())
-    pmsg->add_sourceaddress(port);
-  pmsg->set_sourcenode(m_sourceNodeId.as(NodeIdentifier::Format::Raw));
-  pmsg->set_sourcecomp(m_sourceCompId);
-  pmsg->set_destinationlandmark(m_destinationAddress.landmarkId().as(NodeIdentifier::Format::Raw));
+    pmsg.add_sourceaddress(port);
+  pmsg.set_sourcenode(m_sourceNodeId.as(NodeIdentifier::Format::Raw));
+  pmsg.set_sourcecomp(m_sourceCompId);
+  pmsg.set_destinationlandmark(m_destinationAddress.landmarkId().as(NodeIdentifier::Format::Raw));
   for (Vport port : m_destinationAddress.path())
-    pmsg->add_destinationaddress(port);
-  pmsg->set_destinationnode(m_destinationNodeId.as(NodeIdentifier::Format::Raw));
-  pmsg->set_destinationcomp(m_destinationCompId);
-  pmsg->set_hopcount(m_hopCount);
-  pmsg->set_delivery(m_deliveryMode);
-  pmsg->set_type(m_payloadType);
-  pmsg->set_payload(m_payload);
-  return pmsg;
+    pmsg.add_destinationaddress(port);
+  pmsg.set_destinationnode(m_destinationNodeId.as(NodeIdentifier::Format::Raw));
+  pmsg.set_destinationcomp(m_destinationCompId);
+  pmsg.set_hopcount(m_hopCount);
+  pmsg.set_delivery(m_deliveryMode);
+  pmsg.set_type(m_payloadType);
+  pmsg.set_payload(m_payload);
 }
   
 }

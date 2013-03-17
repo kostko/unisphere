@@ -404,7 +404,9 @@ void CompactRouter::route(const RoutedMessage &msg)
 
   // Route to next hop
   signalForwardMessage(msg);
-  m_manager.send(nextHop, Message(Message::Type::Social_Routed, *msg.serialize()));
+  Protocol::RoutedMessage pmsg;
+  msg.serialize(pmsg);
+  m_manager.send(nextHop, Message(Message::Type::Social_Routed, pmsg));
 }
 
 void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
