@@ -62,11 +62,6 @@ protected:
     // TODO: This should be moved to a separate test
     require(authRecords.size() == nodes().size());
 
-    report() << "---- SLOPPY GROUP TOPOLOGY ----" << std::endl;
-    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
-      node->router->sloppyGroup().dumpTopology(report(), resolveNodeName);
-    }
-
     finish();
   }
 };
