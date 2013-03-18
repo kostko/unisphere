@@ -29,6 +29,9 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/range/adaptors.hpp>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphml.hpp>
 
 namespace UniSphere {
 
@@ -117,62 +120,74 @@ void TestBedPrivate::loadTopology(const std::string &filename)
     return;
   }
 
-  // Read the number of nodes
-  std::string line;
-  std::getline(socialTopologyFile, line);
-  int nodeCount = boost::lexical_cast<int>(line);
-  m_sizeEstimator = new OracleNetworkSizeEstimator(nodeCount);
+  // Parse GraphML input file for social topology
+  typedef boost::adjacency_list<
+    boost::listS,
+    boost::listS,
+    boost::undirectedS,
+    boost::property<boost::vertex_name_t, std::string>,
+    boost::property<boost::edge_weight_t, double>
+  > Topology;
 
-  // Parse social topology
+  Topology topology(0);
+  boost::dynamic_properties properties;
+  properties.property("label", boost::get(boost::vertex_name, topology));
+  properties.property("weight", boost::get(boost::edge_weight, topology));
+
+  try {
+    boost::read_graphml(socialTopologyFile, topology, properties);
+  } catch (boost::graph_exception &e) {
+    std::cerr << "ERROR: Failed to parse GraphML topology!" << std::endl;
+    return;
+  }
+
   unsigned short port = m_phyStartPort;
-  for (;std::getline(socialTopologyFile, line);) {
-    typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
-    boost::char_separator<char> sep(",");
-    tokenizer tok(line, sep);
-    tokenizer::iterator i = tok.begin();
 
-    // Try to resolve names - if none are assigned, generate new ones
-    auto getIdFromName = [&](const std::string &name) -> NodeIdentifier {
-      NodeIdentifier nodeId;
-      auto idi = m_names.left.find(name);
-      if (idi == m_names.left.end()) {
-        nodeId = getRandomNodeId();
-        m_names.insert(NodeNameMap::value_type(name, nodeId));
-      } else {
-        nodeId = idi->second;
-      }
-
-      return nodeId;
-    };
-    
-    std::string nameA = *i++;
-    std::string nameB = *i++;
-    NodeIdentifier nodeA = getIdFromName(nameA);
-    NodeIdentifier nodeB = getIdFromName(nameB);
-
-    if (nodeA == nodeB) {
-      // TODO: Raise exceptions on failures
-      std::cerr << "ERROR: Invalid link to self (node=" << nodeA.hex() << ")" << std::endl;
-      return;
+  auto getIdFromName = [&](const std::string &name) -> NodeIdentifier {
+    NodeIdentifier nodeId;
+    auto idi = m_names.left.find(name);
+    if (idi == m_names.left.end()) {
+      nodeId = getRandomNodeId();
+      m_names.insert(NodeNameMap::value_type(name, nodeId));
+    } else {
+      nodeId = idi->second;
     }
 
-    auto getNodeFromId = [&](const std::string &name, const NodeIdentifier &nodeId) -> VirtualNode* {
-      VirtualNode *node;
-      VirtualNodeMap::iterator ni = m_nodes.find(nodeId);
-      if (ni == m_nodes.end()) {
-        node = new VirtualNode(m_context, *m_sizeEstimator, name, nodeId, m_phyIp, port++);
-        m_nodes[nodeId] = node;
-      } else {
-        node = ni->second;
-      }
+    return nodeId;
+  };
 
-      return node;
-    };
+  auto getNodeFromId = [&](const std::string &name, const NodeIdentifier &nodeId) -> VirtualNode* {
+    VirtualNode *node;
+    VirtualNodeMap::iterator ni = m_nodes.find(nodeId);
+    if (ni == m_nodes.end()) {
+      node = new VirtualNode(m_context, *m_sizeEstimator, name, nodeId, m_phyIp, port++);
+      m_nodes[nodeId] = node;
+    } else {
+      node = ni->second;
+    }
 
+    return node;
+  };
+
+  // Create the virtual node topology
+  m_sizeEstimator = new OracleNetworkSizeEstimator(boost::num_vertices(topology));
+  for (auto vp = boost::vertices(topology); vp.first != vp.second; ++vp.first) {
+    std::string nameA = boost::get(boost::vertex_name, topology, *vp.first);
+    NodeIdentifier nodeA = getIdFromName(nameA);
     VirtualNode *a = getNodeFromId(nameA, nodeA);
-    VirtualNode *b = getNodeFromId(nameB, nodeB);
 
-    a->identity->addPeer(b->linkManager->getLocalContact());
+    for (auto np = boost::adjacent_vertices(*vp.first, topology); np.first != np.second; ++np.first) {
+      std::string nameB = boost::get(boost::vertex_name, topology, *np.first);
+      NodeIdentifier nodeB = getIdFromName(nameB);
+      VirtualNode *b = getNodeFromId(nameB, nodeB);
+
+      // Avoid self-loops
+      if (a == b)
+        continue;
+
+      // Add peers based on the social graph topology
+      a->identity->addPeer(b->linkManager->getLocalContact());
+    }
   }
 }
 
