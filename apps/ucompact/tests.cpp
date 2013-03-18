@@ -24,6 +24,8 @@
 
 #include <atomic>
 #include <boost/range/adaptors.hpp>
+#include <boost/format.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 using namespace UniSphere;
 
@@ -171,5 +173,36 @@ protected:
 };
 
 UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
+
+class DumpSloppyGroupTopology : public TestBed::TestCase
+{
+protected:
+  /**
+   * Dump sloppy group topology in GraphViz format.
+   */
+  void start()
+  {
+    std::fstream file(
+      (boost::format("../output/sloppy_group_%1%.dot") % time()).str(),
+      std::ios_base::out | std::ios_base::trunc
+    );
+
+    file << "digraph X {\n";
+    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
+      node->router->sloppyGroup().dumpTopology(file,
+        [&](const NodeIdentifier &n) -> std::string { return boost::replace_all_copy(names().right.at(n), " ", "_"); });
+    }
+    file << "}\n";
+
+    finish();
+  }
+
+  /**
+   * This testcase should be run inside a snapshot.
+   */
+  bool snapshot() { return true; }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(DumpSloppyGroupTopology, "state/sloppy_group_topology")
 
 }

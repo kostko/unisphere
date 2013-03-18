@@ -58,6 +58,17 @@ protected:
   virtual void start() = 0;
 
   /**
+   * Should return true if this test case should be run inside a
+   * snapshot.
+   */
+  virtual bool snapshot();
+
+  /**
+   * Returns the current time since testbed start.
+   */
+  int time() const;
+
+  /**
    * Requires a given assertion to be true.
    */
   void require(bool assertion);

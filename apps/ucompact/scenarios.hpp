@@ -27,13 +27,16 @@ class SimpleTestScenario : public TestBed::Scenario
 public:
   void setup()
   {
-    testbed.loadTopology("../data/social_topology.dat");
+    testbed.loadTopology("../data/symmetric-topo-n50.graphml");
 
     // Dump all state after 80 seconds
-    testbed.scheduleTest(80, "state/dump_all");
+    //testbed.scheduleTest(80, "state/dump_all");
 
     // Dump state statistics every 30 seconds
     testbed.scheduleTestEvery(30, "state/count");
+
+    // Dump sloppy group topology
+    testbed.scheduleTestEvery(30, "state/sloppy_group_topology");
 
     // Schedule first test after 85 seconds, further tests each 45 seconds
     testbed.scheduleCall(85, [&]() {

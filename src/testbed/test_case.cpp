@@ -62,12 +62,26 @@ void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNa
 
 void TestCase::run()
 {
-  start();
+  if (snapshot()) {
+    d->m_testbed.snapshot(boost::bind(&TestCase::start, this));
+  } else {
+    start();
+  }
 }
 
 void TestCase::finish()
 {
   d->m_testbed.finishTestCase(shared_from_this());
+}
+
+bool TestCase::snapshot()
+{
+  return false;
+}
+
+int TestCase::time() const
+{
+  return d->m_testbed.time();
 }
 
 VirtualNodeMap &TestCase::nodes()

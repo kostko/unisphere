@@ -73,6 +73,10 @@ public:
   std::set<TestCasePtr> m_runningCases;
   /// Running scenarios
   std::set<ScenarioPtr> m_scenarios;
+  /// Snapshot handler
+  std::function<void()> m_snapshotHandler;
+  /// Simulation start time
+  boost::posix_time::ptime m_timeStart;
 };
 
 /// Global instance of the testbed
@@ -230,7 +234,21 @@ void TestBed::run()
   for (VirtualNode *node : d->m_nodes | boost::adaptors::map_values)
     node->initialize();
 
-  d->m_context.run(8);
+  d->m_timeStart = boost::posix_time::microsec_clock::universal_time();
+
+  // Run the context
+  for (;;) {
+    d->m_context.run(8);
+
+    if (d->m_snapshotHandler) {
+      // When a snapshot handler is defined, we should invoke it and restart
+      d->m_snapshotHandler();
+      d->m_snapshotHandler = nullptr;
+      continue;
+    }
+
+    break;
+  }
 }
 
 void TestBed::registerTestCase(const std::string &name, TestCaseFactory *factory)
@@ -279,8 +297,25 @@ void TestBed::scheduleCall(int time, std::function<void()> handler)
 void TestBed::endScenarioAfter(int time)
 {
   d->m_context.schedule(time, [this]() {
+    RecursiveUniqueLock lock(d->m_mutex);
+    d->m_snapshotHandler = nullptr;
     d->m_context.stop();
   });
+}
+
+void TestBed::snapshot(std::function<void()> handler)
+{
+  if (!handler)
+    return;
+
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_snapshotHandler = handler;
+  d->m_context.stop();
+}
+
+int TestBed::time() const
+{
+  return (boost::posix_time::microsec_clock::universal_time() - d->m_timeStart).total_seconds();
 }
 
 }

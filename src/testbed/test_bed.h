@@ -117,6 +117,20 @@ public:
   void endScenarioAfter(int time);
 
   /**
+   * Performs a snapshot operation. All virtual nodes are suspended before
+   * the handler is invoked and resumed after it completes. The handler
+   * must complete as fast as possible.
+   *
+   * @param handler Snapshot handler
+   */
+  void snapshot(std::function<void()> handler);
+
+  /**
+   * Returns the current discrete time since simulation start.
+   */
+  int time() const;
+
+  /**
    * Treat the specified test case instance as finished.
    *
    * @param test Test case instance

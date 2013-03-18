@@ -125,6 +125,10 @@ void Context::schedule(int timeout, std::function<void()> operation)
 
 void Context::run(size_t threads)
 {
+  // Reset the I/O service when needed
+  if (d->m_io.stopped())
+    d->m_io.reset();
+  
   // Create as many threads as specified and let them run the I/O service
   for (int i = 0; i < threads; i++) {
     d->m_pool.create_thread([this]() {

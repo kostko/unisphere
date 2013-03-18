@@ -4,3 +4,5 @@
 *.sublime-workspace
 build/
 .kdev4/
+output/*.pdf
+output/*.dot
