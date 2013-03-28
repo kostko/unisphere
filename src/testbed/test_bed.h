@@ -54,9 +54,9 @@ public:
   void setupPhyNetwork(const std::string &ip, unsigned short port);
 
   /**
-   * Starts the loaded test scenario.
+   * Performs program options processing and runs the proper scenario.
    */
-  void run();
+  int run(int argc, char **argv);
 
   /**
    * Registers a new test case class.

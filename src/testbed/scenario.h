@@ -21,6 +21,8 @@
 
 #include "core/globals.h"
 
+#include <boost/program_options.hpp>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -42,14 +44,34 @@ public:
   Scenario &operator=(const Scenario&) = delete;
 
   /**
+   * Performs post-construction initialization.
+   */
+  void init();
+
+  /**
    * Returns the scenario name.
    */
   std::string name() const;
 
   /**
-   * Performs scenario setup.
+   * Returns the scenario's program options.
    */
-  virtual void setup() = 0;
+  boost::program_options::options_description &options();
+
+  /**
+   * Performs scenario setup.
+   *
+   * @param options Program options
+   * @return True on success, false otherwise
+   */
+  virtual bool setup(boost::program_options::variables_map &options) = 0;
+protected:
+  /**
+   * This method may be overriden to setup scenario options.
+   *
+   * @param options Program options descriptor
+   */
+  virtual void setupOptions(boost::program_options::options_description &options) {};
 protected:
   /// Testbed instance
   TestBed &testbed;
@@ -65,7 +87,7 @@ UNISPHERE_SHARED_POINTER(Scenario)
 
 #define UNISPHERE_SCENARIO(Class) struct Class : public UniSphere::TestBed::Scenario { \
                                     Class() : UniSphere::TestBed::Scenario(#Class) {}; \
-                                    void setup()
+                                    bool setup(boost::program_options::variables_map &options)
 
 #define UNISPHERE_SCENARIO_END };
 

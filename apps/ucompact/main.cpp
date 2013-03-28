@@ -24,9 +24,6 @@ using namespace UniSphere;
 int main(int argc, char **argv)
 {
   TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
-  testbed.setupPhyNetwork("127.42.0.1", 8472);
   testbed.registerScenario(new Scenarios::SimpleTestScenario);
-  testbed.runScenario("SimpleTestScenario");
-  testbed.run();
-  return 0;
+  return testbed.run(argc, argv);
 }

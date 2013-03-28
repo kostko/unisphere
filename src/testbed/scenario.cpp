@@ -25,20 +25,39 @@ namespace TestBed {
 
 class ScenarioPrivate {
 public:
+  explicit ScenarioPrivate(const std::string &name);
+public:
   /// Scenario name
   std::string m_name;
+  /// Program options
+  boost::program_options::options_description m_options;
 };
 
+ScenarioPrivate::ScenarioPrivate(const std::string &name)
+  : m_name(name),
+    m_options("Scenario options for " + name)
+{
+}
+
 Scenario::Scenario(const std::string &name)
-  : d(new ScenarioPrivate),
+  : d(new ScenarioPrivate(name)),
     testbed(TestBed::getGlobalTestbed())
 {
-  d->m_name = name;
+}
+
+void Scenario::init()
+{
+  setupOptions(d->m_options);
 }
 
 std::string Scenario::name() const
 {
   return d->m_name;
+}
+
+boost::program_options::options_description &Scenario::options()
+{
+  return d->m_options;
 }
 
 }

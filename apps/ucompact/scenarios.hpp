@@ -18,13 +18,19 @@
  */
 #include "testbed/test_bed.h"
 
+namespace po = boost::program_options;
 using namespace UniSphere;
 
 namespace Scenarios {
 
 UNISPHERE_SCENARIO(SimpleTestScenario)
 {
-  testbed.loadTopology("../data/symmetric-topo-n64.graphml");
+  if (options.count("topology")) {
+    testbed.loadTopology(options["topology"].as<std::string>());
+  } else {
+    std::cout << "ERROR: Scenario requires topology specification!" << std::endl;
+    return false;
+  }
 
   // Dump all state after 80 seconds
   //testbed.scheduleTest(80, "state/dump_all");
@@ -43,6 +49,14 @@ UNISPHERE_SCENARIO(SimpleTestScenario)
 
   // Terminate tests after 3600 seconds
   testbed.endScenarioAfter(3600);
+  return true;
+}
+
+void setupOptions(boost::program_options::options_description &options)
+{
+  options.add_options()
+    ("topology", po::value<std::string>(), "topology file in GraphML format")
+  ;
 }
 UNISPHERE_SCENARIO_END
 

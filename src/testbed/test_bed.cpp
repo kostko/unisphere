@@ -32,6 +32,9 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphml.hpp>
+#include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
 
 namespace UniSphere {
 
@@ -77,6 +80,8 @@ public:
   std::function<void()> m_snapshotHandler;
   /// Simulation start time
   boost::posix_time::ptime m_timeStart;
+  /// Program options
+  po::variables_map m_options;
 };
 
 /// Global instance of the testbed
@@ -228,8 +233,65 @@ void TestBed::setupPhyNetwork(const std::string &ip, unsigned short port)
   d->m_phyStartPort = port;
 }
 
-void TestBed::run()
+int TestBed::run(int argc, char **argv)
 {
+  // Setup program options
+  po::options_description options;
+  po::options_description globalOptions("Global testbed options");
+  globalOptions.add_options()
+    ("help", "show help message")
+    ("scenario", po::value<std::string>(), "scenario to run")
+    ("phy-ip", po::value<std::string>(), "physical ip address to use for nodes")
+    ("phy-port", po::value<unsigned int>(), "physical starting port to use for nodes")
+  ;
+  options.add(globalOptions);
+
+  // Setup per-scenario options
+  for (ScenarioPtr scenario : d->m_scenarios | boost::adaptors::map_values) {
+    scenario->init();
+    options.add(scenario->options());
+  }
+
+  // Parse options
+  po::variables_map &vm = d->m_options;
+  try {
+    po::store(po::parse_command_line(argc, argv, options), vm);
+    po::notify(vm);
+  } catch (std::exception &e) {
+    std::cout << "ERROR: There is an error in your invocation arguments!" << std::endl;
+    std::cout << options << std::endl;
+    return 1;
+  }
+
+  // Handle options
+  if (vm.count("help")) {
+    // Handle help option
+    std::cout << "UNISPHERE Testbed" << std::endl;
+    std::cout << options << std::endl;
+    return 1;
+  }
+
+  if (vm.count("phy-ip") && vm.count("phy-port")) {
+    setupPhyNetwork(vm["phy-ip"].as<std::string>(), vm["phy-port"].as<unsigned int>());
+  } else {
+    std::cout << "ERROR: Options --phy-ip and --phy-port not specified!" << std::endl;
+    std::cout << options << std::endl;
+    return 1;
+  }
+
+  if (vm.count("scenario")) {
+    std::string scenario = vm["scenario"].as<std::string>();
+    if (!runScenario(scenario)) {
+      std::cout << "ERROR: Unable to run scenario '" << scenario << "'!" << std::endl;
+      std::cout << options << std::endl;
+      return 1;
+    }
+  } else {
+    std::cout << "ERROR: Scenario not specified!" << std::endl;
+    std::cout << options << std::endl;
+    return 1;
+  }
+
   // Initialize all nodes
   for (VirtualNode *node : d->m_nodes | boost::adaptors::map_values)
     node->initialize();
@@ -249,6 +311,8 @@ void TestBed::run()
 
     break;
   }
+
+  return 0;
 }
 
 void TestBed::registerTestCase(const std::string &name, TestCaseFactory *factory)
@@ -276,8 +340,7 @@ bool TestBed::runScenario(const std::string &scenario)
   if (it == d->m_scenarios.end())
     return false;
 
-  it->second->setup();
-  return true;
+  return it->second->setup(d->m_options);
 }
 
 void TestBed::loadTopology(const std::string &topologyFile)
