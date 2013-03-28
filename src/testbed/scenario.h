@@ -62,9 +62,8 @@ public:
    * Performs scenario setup.
    *
    * @param options Program options
-   * @return True on success, false otherwise
    */
-  virtual bool setup(boost::program_options::variables_map &options) = 0;
+  virtual void setup(boost::program_options::variables_map &options) = 0;
 protected:
   /**
    * This method may be overriden to setup scenario options.
@@ -87,7 +86,7 @@ UNISPHERE_SHARED_POINTER(Scenario)
 
 #define UNISPHERE_SCENARIO(Class) struct Class : public UniSphere::TestBed::Scenario { \
                                     Class() : UniSphere::TestBed::Scenario(#Class) {}; \
-                                    bool setup(boost::program_options::variables_map &options)
+                                    void setup(boost::program_options::variables_map &options)
 
 #define UNISPHERE_SCENARIO_END };
 

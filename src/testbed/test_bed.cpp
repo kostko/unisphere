@@ -19,6 +19,7 @@
 #include "testbed/test_bed.h"
 #include "testbed/test_case.h"
 #include "testbed/scenario.h"
+#include "testbed/exceptions.h"
 #include "core/context.h"
 #include "social/size_estimator.h"
 #include "social/social_identity.h"
@@ -123,11 +124,8 @@ void TestBedPrivate::loadTopology(const std::string &filename)
 
   // Open the social topology datafile
   std::ifstream socialTopologyFile(filename);
-  if (!socialTopologyFile) {
-    // TODO: Raise exceptions on failures
-    std::cerr << "ERROR: Missing " << filename << " topology file!" << std::endl;
-    return;
-  }
+  if (!socialTopologyFile)
+    throw TopologyLoadingFailed(filename);
 
   // Parse GraphML input file for social topology
   typedef boost::adjacency_list<
@@ -145,9 +143,8 @@ void TestBedPrivate::loadTopology(const std::string &filename)
 
   try {
     boost::read_graphml(socialTopologyFile, topology, properties);
-  } catch (boost::graph_exception &e) {
-    std::cerr << "ERROR: Failed to parse GraphML topology!" << std::endl;
-    return;
+  } catch (std::exception &e) {
+    throw TopologyLoadingFailed(filename);
   }
 
   unsigned short port = m_phyStartPort;
@@ -340,7 +337,13 @@ bool TestBed::runScenario(const std::string &scenario)
   if (it == d->m_scenarios.end())
     return false;
 
-  return it->second->setup(d->m_options);
+  try {
+    it->second->setup(d->m_options);
+    return true;
+  } catch (TestBedException &e) {
+    std::cout << "ERROR: " << e.message() << std::endl;
+    return false;
+  }
 }
 
 void TestBed::loadTopology(const std::string &topologyFile)
