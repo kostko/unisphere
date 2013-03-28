@@ -23,9 +23,22 @@ namespace UniSphere {
 
 namespace TestBed {
 
-Scenario::Scenario()
-  : testbed(TestBed::getGlobalTestbed())
+class ScenarioPrivate {
+public:
+  /// Scenario name
+  std::string m_name;
+};
+
+Scenario::Scenario(const std::string &name)
+  : d(new ScenarioPrivate),
+    testbed(TestBed::getGlobalTestbed())
 {
+  d->m_name = name;
+}
+
+std::string Scenario::name() const
+{
+  return d->m_name;
 }
 
 }

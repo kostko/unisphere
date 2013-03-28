@@ -22,31 +22,28 @@ using namespace UniSphere;
 
 namespace Scenarios {
 
-class SimpleTestScenario : public TestBed::Scenario
+UNISPHERE_SCENARIO(SimpleTestScenario)
 {
-public:
-  void setup()
-  {
-    testbed.loadTopology("../data/symmetric-topo-n50.graphml");
+  testbed.loadTopology("../data/symmetric-topo-n64.graphml");
 
-    // Dump all state after 80 seconds
-    //testbed.scheduleTest(80, "state/dump_all");
+  // Dump all state after 80 seconds
+  //testbed.scheduleTest(80, "state/dump_all");
 
-    // Dump state statistics every 30 seconds
-    testbed.scheduleTestEvery(30, "state/count");
+  // Dump state statistics every 30 seconds
+  testbed.scheduleTestEvery(30, "state/count");
 
-    // Dump sloppy group topology
-    testbed.scheduleTestEvery(30, "state/sloppy_group_topology");
+  // Dump sloppy group topology
+  testbed.scheduleTestEvery(30, "state/sloppy_group_topology");
 
-    // Schedule first test after 85 seconds, further tests each 45 seconds
-    testbed.scheduleCall(85, [&]() {
-      testbed.runTest("routing/all_pairs");
-      testbed.scheduleTestEvery(45, "routing/all_pairs");
-    });
+  // Schedule first test after 85 seconds, further tests each 45 seconds
+  testbed.scheduleCall(85, [&]() {
+    testbed.runTest("routing/all_pairs");
+    testbed.scheduleTestEvery(45, "routing/all_pairs");
+  });
 
-    // Terminate tests after 3600 seconds
-    testbed.endScenarioAfter(3600);
-  }
-};
+  // Terminate tests after 3600 seconds
+  testbed.endScenarioAfter(3600);
+}
+UNISPHERE_SCENARIO_END
 
 }

@@ -36,10 +36,15 @@ public:
   /**
    * Class constructor.
    */
-  Scenario();
+  Scenario(const std::string &name);
 
   Scenario(const Scenario&) = delete;
   Scenario &operator=(const Scenario&) = delete;
+
+  /**
+   * Returns the scenario name.
+   */
+  std::string name() const;
 
   /**
    * Performs scenario setup.
@@ -48,6 +53,8 @@ public:
 protected:
   /// Testbed instance
   TestBed &testbed;
+private:
+  UNISPHERE_DECLARE_PRIVATE(Scenario)
 };
 
 UNISPHERE_SHARED_POINTER(Scenario)
@@ -55,5 +62,11 @@ UNISPHERE_SHARED_POINTER(Scenario)
 }
 
 }
+
+#define UNISPHERE_SCENARIO(Class) struct Class : public UniSphere::TestBed::Scenario { \
+                                    Class() : UniSphere::TestBed::Scenario(#Class) {}; \
+                                    void setup()
+
+#define UNISPHERE_SCENARIO_END };
 
 #endif
