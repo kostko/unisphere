@@ -71,8 +71,8 @@ public:
   std::map<std::string, TestCaseFactoryPtr> m_testCases;
   /// Running test cases
   std::set<TestCasePtr> m_runningCases;
-  /// Running scenarios
-  std::set<ScenarioPtr> m_scenarios;
+  /// Registered scenarios
+  std::map<std::string, ScenarioPtr> m_scenarios;
   /// Snapshot handler
   std::function<void()> m_snapshotHandler;
   /// Simulation start time
@@ -263,10 +263,21 @@ void TestBed::finishTestCase(TestCasePtr test)
   d->m_runningCases.erase(test);
 }
 
-void TestBed::loadScenario(Scenario *scenario)
+void TestBed::registerScenario(Scenario *scenario)
 {
-  d->m_scenarios.insert(ScenarioPtr(scenario));
-  scenario->setup();
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_scenarios.insert({{ scenario->name(), ScenarioPtr(scenario) }});
+}
+
+bool TestBed::runScenario(const std::string &scenario)
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  auto it = d->m_scenarios.find(scenario);
+  if (it == d->m_scenarios.end())
+    return false;
+
+  it->second->setup();
+  return true;
 }
 
 void TestBed::loadTopology(const std::string &topologyFile)

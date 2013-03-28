@@ -67,11 +67,19 @@ public:
   void registerTestCase(const std::string &name, TestCaseFactory *factory);
 
   /**
-   * Loads the given scenario. Testbed takes ownership of the instance.
+   * Registers the given scenario. Testbed takes ownership of the instance.
    *
    * @param scenario Scenario instance
    */
-  void loadScenario(Scenario *scenario);
+  void registerScenario(Scenario *scenario);
+
+  /**
+   * Runs the given scenario instance.
+   *
+   * @param scenario Scenario name
+   * @return True when scenario was successfully run, false if it doesn't exist
+   */
+  bool runScenario(const std::string &scenario);
 
   /**
    * Loads the given trust network topology.
