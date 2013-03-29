@@ -30,8 +30,6 @@ public:
 public:
   /// Test case name
   std::string m_name;
-  /// Report output stream
-  std::ostream &m_output;
   /// Test bed instance
   TestBed &m_testbed;
   /// Virtual node map
@@ -41,8 +39,7 @@ public:
 };
 
 TestCasePrivate::TestCasePrivate()
-  : m_output(std::cout),
-    m_testbed(TestBed::getGlobalTestbed()),
+  : m_testbed(TestBed::getGlobalTestbed()),
     m_nodes(nullptr),
     m_names(nullptr)
 {
