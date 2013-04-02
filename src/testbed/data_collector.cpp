@@ -101,7 +101,7 @@ DataCollector::DataCollector(const std::string &directory,
 {
   RecursiveUniqueLock lock(d->m_mutex);
   d->m_stream.open(
-    (boost::format("%1%/%2%-%3%.csv")
+    (boost::format("%s/%s-%05i.csv")
       % directory
       % boost::algorithm::replace_all_copy(component, "/", "-")
       % TestBed::getGlobalTestbed().time()
