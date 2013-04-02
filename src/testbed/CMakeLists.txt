@@ -4,6 +4,7 @@ nodes.cpp
 scenario.cpp
 test_case.cpp
 test_bed.cpp
+data_collector.cpp
 )
 
 add_library(UnisphereTestbed SHARED ${unisphere_testbed_src})

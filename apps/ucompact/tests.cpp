@@ -154,6 +154,7 @@ protected:
   void start()
   {
     unsigned long stateAllNodes = 0;
+    auto state = data("state", {"node_id", "routing_table", "name_db", "is_landmark"});
     for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
       // Routing table state
       unsigned long stateRoutingTable = node->router->routingTable().size();
@@ -161,6 +162,11 @@ protected:
       unsigned long stateNameDb = node->router->nameDb().size();
 
       stateAllNodes += stateRoutingTable + stateNameDb;
+      state
+        << node->name
+        << stateRoutingTable
+        << stateNameDb
+        << node->router->routingTable().isLandmark();
     }
 
     report() << "Global state = " << stateAllNodes << std::endl;

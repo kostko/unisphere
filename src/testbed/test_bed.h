@@ -139,6 +139,11 @@ public:
   int time() const;
 
   /**
+   * Returns the configured output directory.
+   */
+  std::string getOutputDirectory() const;
+
+  /**
    * Treat the specified test case instance as finished.
    *
    * @param test Test case instance

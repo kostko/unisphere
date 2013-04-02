@@ -240,6 +240,7 @@ int TestBed::run(int argc, char **argv)
     ("scenario", po::value<std::string>(), "scenario to run")
     ("phy-ip", po::value<std::string>(), "physical ip address to use for nodes")
     ("phy-port", po::value<unsigned int>(), "physical starting port to use for nodes")
+    ("out-dir", po::value<std::string>(), "directory for output files")
   ;
   options.add(globalOptions);
 
@@ -272,6 +273,12 @@ int TestBed::run(int argc, char **argv)
     setupPhyNetwork(vm["phy-ip"].as<std::string>(), vm["phy-port"].as<unsigned int>());
   } else {
     std::cout << "ERROR: Options --phy-ip and --phy-port not specified!" << std::endl;
+    std::cout << options << std::endl;
+    return 1;
+  }
+
+  if (!vm.count("out-dir")) {
+    std::cout << "ERROR: Output directory not specified!" << std::endl;
     std::cout << options << std::endl;
     return 1;
   }
@@ -393,6 +400,11 @@ void TestBed::snapshot(std::function<void()> handler)
 int TestBed::time() const
 {
   return (boost::posix_time::microsec_clock::universal_time() - d->m_timeStart).total_seconds();
+}
+
+std::string TestBed::getOutputDirectory() const
+{
+  return d->m_options["out-dir"].as<std::string>();
 }
 
 }

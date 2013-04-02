@@ -26,6 +26,7 @@
 
 #include "core/globals.h"
 #include "testbed/nodes.h"
+#include "testbed/data_collector.h"
 
 namespace UniSphere {
 
@@ -77,6 +78,16 @@ protected:
    * Reporting stream.
    */
   std::ostream &report();
+
+  /**
+   * Returns the data collector for a specific category.
+   *
+   * @param category Data category name
+   * @param columns Column definitions
+   * @return The specified data collector
+   */
+  DataCollector data(const std::string &category,
+                     std::initializer_list<std::string> columns);
 
   /**
    * Returns the virtual node map instance.
