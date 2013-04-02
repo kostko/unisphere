@@ -86,7 +86,7 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
   
   if (!link) {
     if (contact.hasAddresses() && create) {
-      link = LinkPtr(new Link(*this, contact.nodeId(), 60));
+      link = LinkPtr(new Link(*this, contact.nodeId(), 600));
       link->init();
       link->signalMessageReceived.connect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
       m_links[contact.nodeId()] = link;

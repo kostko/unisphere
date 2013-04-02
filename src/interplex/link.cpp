@@ -357,6 +357,7 @@ void Link::idleTimeout(const boost::system::error_code &error)
   if (error == boost::asio::error::operation_aborted)
     return;
   
+  UNISPHERE_LOG(m_manager, Info, "Link: Timeout.");
   close();
 }
 
