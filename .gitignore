@@ -7,3 +7,4 @@ build/
 output/*.pdf
 output/*.dot
 output/*.csv
+*.swp
