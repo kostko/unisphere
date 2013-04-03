@@ -333,8 +333,11 @@ void Link::linkletDisconnected(LinkletPtr linklet)
 void Link::linkletMessageReceived(LinkletPtr linklet, const Message &message)
 {
   // Reschedule the idle timer for another interval
-  if (m_idleTimer.expires_from_now(boost::posix_time::seconds(m_maxIdleTime)) > 0) {
-    m_idleTimer.async_wait(boost::bind(&Link::idleTimeout, shared_from_this(), _1));
+  {
+    RecursiveUniqueLock lock(m_mutex);
+    if (m_idleTimer.expires_from_now(boost::posix_time::seconds(m_maxIdleTime)) > 0) {
+      m_idleTimer.async_wait(boost::bind(&Link::idleTimeout, shared_from_this(), _1));
+    }
   }
   
   Message msg = message;
