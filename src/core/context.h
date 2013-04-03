@@ -95,6 +95,14 @@ public:
    * cryptographic operations.
    */
   std::mt19937 &basicRng();
+
+  /**
+   * Sets a specific seed for the basic random number generator. This should
+   * only be used when testing.
+   *
+   * @param seed Seed for the basic random number generator
+   */
+  void setBasicRngSeed(std::uint32_t seed);
   
   /**
    * Enters the main event loop. Passing a thread pool size of greater than

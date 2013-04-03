@@ -48,6 +48,8 @@ public:
   std::unordered_map<std::thread::id, Botan::AutoSeeded_RNG*> m_rng;
   /// Basic random generator that should not be used for crypto ops (per-thread)
   std::unordered_map<std::thread::id, std::mt19937*> m_basicRng;
+  /// Seed for the basic RNG (if set to 0, a random seed is used)
+  std::uint32_t m_basicRngSeed;
 };
 
 LibraryInitializer::LibraryInitializer()
@@ -56,7 +58,8 @@ LibraryInitializer::LibraryInitializer()
 }
 
 ContextPrivate::ContextPrivate()
-  : m_work(m_io)
+  : m_work(m_io),
+    m_basicRngSeed(0)
 {
 }
 
@@ -68,9 +71,13 @@ void ContextPrivate::createThreadRNGs()
   std::mt19937 *basicRng = new std::mt19937();
 
   // Seed the basic random generator from the cryptographic random number generator
-  std::uint32_t seed;
-  rng->randomize((Botan::byte*) &seed, sizeof(seed));
-  basicRng->seed(seed);
+  if (m_basicRngSeed == 0) {
+    std::uint32_t seed;
+    rng->randomize((Botan::byte*) &seed, sizeof(seed));
+    basicRng->seed(seed);
+  } else {
+    basicRng->seed(m_basicRngSeed);
+  }
 
   // Register per-thread RNGs
   m_rng.insert({{ tid, rng }});
@@ -111,6 +118,18 @@ std::mt19937 &Context::basicRng()
 {
   RecursiveUniqueLock lock(d->m_mutex);
   return *d->m_basicRng.at(std::this_thread::get_id());
+}
+
+void Context::setBasicRngSeed(std::uint32_t seed)
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_basicRngSeed = seed;
+
+  // Re-seed the existing basic RNGs (if any)
+  if (seed > 0) {
+    for (auto &p : d->m_basicRng)
+      p.second->seed(seed);
+  }
 }
 
 void Context::schedule(int timeout, std::function<void()> operation)

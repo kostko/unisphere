@@ -41,6 +41,30 @@ namespace UniSphere {
 
 namespace TestBed {
 
+/**
+ * Ways that node identifiers can be generated when initializing the
+ * virtual nodes.
+ */
+enum class IdGenerationType {
+  /// Randomly assign identifiers to nodes
+  Random,
+  /// Generate identifiers by hashing the node names
+  Consistent
+};
+
+std::istream &operator>>(std::istream &is, IdGenerationType &type)
+{
+  std::string token;
+  is >> token;
+  if (token == "random")
+    type = IdGenerationType::Random;
+  else if (token == "consistent")
+    type = IdGenerationType::Consistent;
+  else
+    throw boost::program_options::invalid_option_value("Invalid generation type");
+  return is;
+}
+
 class TestBedPrivate {
 public:
   TestBedPrivate();
@@ -51,7 +75,7 @@ public:
 
   void loadTopology(const std::string &filename);
 
-  NodeIdentifier getRandomNodeId();
+  NodeIdentifier generateNodeId(const std::string &name);
 public:
   /// Global instance of the testbed
   static TestBed *m_self;
@@ -153,7 +177,7 @@ void TestBedPrivate::loadTopology(const std::string &filename)
     NodeIdentifier nodeId;
     auto idi = m_names.left.find(name);
     if (idi == m_names.left.end()) {
-      nodeId = getRandomNodeId();
+      nodeId = generateNodeId(name);
       m_names.insert(NodeNameMap::value_type(name, nodeId));
     } else {
       nodeId = idi->second;
@@ -197,12 +221,22 @@ void TestBedPrivate::loadTopology(const std::string &filename)
   }
 }
 
-NodeIdentifier TestBedPrivate::getRandomNodeId()
+NodeIdentifier TestBedPrivate::generateNodeId(const std::string &name)
 {
-  Botan::AutoSeeded_RNG rng;
-  char nodeId[NodeIdentifier::length];
-  rng.randomize((Botan::byte*) &nodeId, sizeof(nodeId));
-  return NodeIdentifier(std::string(nodeId, sizeof(nodeId)), NodeIdentifier::Format::Raw);
+  switch (m_options["id-gen"].as<IdGenerationType>()) {
+    case IdGenerationType::Consistent: {
+      Botan::Pipe pipe(new Botan::Hash_Filter("SHA-1"));
+      pipe.process_msg(name);
+      return NodeIdentifier(pipe.read_all_as_string(0), NodeIdentifier::Format::Raw);
+    }
+    default:
+    case IdGenerationType::Random: {
+      Botan::AutoSeeded_RNG rng;
+      char nodeId[NodeIdentifier::length];
+      rng.randomize((Botan::byte*) &nodeId, sizeof(nodeId));
+      return NodeIdentifier(std::string(nodeId, sizeof(nodeId)), NodeIdentifier::Format::Raw);
+    }
+  }
 }
 
 
@@ -241,6 +275,9 @@ int TestBed::run(int argc, char **argv)
     ("phy-ip", po::value<std::string>(), "physical ip address to use for nodes")
     ("phy-port", po::value<unsigned int>(), "physical starting port to use for nodes")
     ("out-dir", po::value<std::string>(), "directory for output files")
+    ("id-gen", po::value<IdGenerationType>(), "id generation type [random, consistent]")
+    ("num-threads", po::value<unsigned int>()->default_value(8), "number of threads")
+    ("seed", po::value<std::uint32_t>()->default_value(0), "seed for the basic RNG")
   ;
   options.add(globalOptions);
 
@@ -268,6 +305,8 @@ int TestBed::run(int argc, char **argv)
     std::cout << options << std::endl;
     return 1;
   }
+
+  d->m_context.setBasicRngSeed(vm["seed"].as<std::uint32_t>());
 
   if (vm.count("phy-ip") && vm.count("phy-port")) {
     setupPhyNetwork(vm["phy-ip"].as<std::string>(), vm["phy-port"].as<unsigned int>());
@@ -304,7 +343,7 @@ int TestBed::run(int argc, char **argv)
 
   // Run the context
   for (;;) {
-    d->m_context.run(8);
+    d->m_context.run(vm["num-threads"].as<unsigned int>());
 
     if (d->m_snapshotHandler) {
       // When a snapshot handler is defined, we should invoke it and restart
