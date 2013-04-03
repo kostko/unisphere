@@ -421,6 +421,7 @@ void TestBed::endScenarioAfter(int time)
 {
   d->m_context.schedule(time, [this]() {
     RecursiveUniqueLock lock(d->m_mutex);
+    d->m_context.logger().stream() << Logger::Component{"TestBed"} << "Ending scenario after " << this->time() << " seconds." << std::endl;
     d->m_snapshotHandler = nullptr;
     d->m_context.stop();
   });
