@@ -44,6 +44,12 @@ LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId,
   }
 }
 
+void LandmarkAddress::hop()
+{
+  if (!m_path.empty())
+    m_path.pop_front();
+}
+
 bool LandmarkAddress::operator==(const LandmarkAddress &other) const
 {
   return m_landmarkId == other.m_landmarkId && m_path == other.m_path;

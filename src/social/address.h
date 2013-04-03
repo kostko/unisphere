@@ -89,7 +89,7 @@ public:
    * Moves the address one hop forward by removing the first element in
    * the reverse routing path.
    */
-  inline void hop() { m_path.pop_front(); }
+  void hop();
 
   /**
    * Compares two landmark addresses for equality.

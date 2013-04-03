@@ -76,14 +76,17 @@ bool RoutedMessage::isValid() const
 
 void RoutedMessage::processHop()
 {
+  if (m_hopCount > 0)
+    m_hopCount--;
+}
+
+void RoutedMessage::processSourceRouteHop()
+{
   if (m_deliveryMode) {
     // After the message has reached a designated landmark it should be source-routed,
     // so we remove one hop in the address
     m_destinationAddress.hop();
   }
-
-  if (m_hopCount > 0)
-    m_hopCount--;
 }
 
 void RoutedMessage::serialize(Protocol::RoutedMessage &pmsg) const

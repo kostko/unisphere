@@ -121,7 +121,7 @@ public:
    * 
    * @param msg A valid message to be routed
    */
-  void route(const RoutedMessage &msg);
+  void route(RoutedMessage &msg);
   
   /**
    * Generates a new message and routes it via the overlay.

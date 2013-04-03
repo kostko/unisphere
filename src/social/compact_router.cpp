@@ -318,7 +318,7 @@ void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
   }
 }
 
-void CompactRouter::route(const RoutedMessage &msg)
+void CompactRouter::route(RoutedMessage &msg)
 {
   // Drop invalid messages
   if (!msg.isValid()) {
@@ -367,7 +367,13 @@ void CompactRouter::route(const RoutedMessage &msg)
 
       if (msg.deliveryMode()) {
         // We must route based on source path
+        if (msg.destinationAddress().path().empty()) {
+          UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping message with dm = true and empty path.");
+          return;
+        }
+        
         nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(msg.destinationAddress().path().front()));
+        msg.processSourceRouteHop();
       } else {
         // We must route to landmark node
         RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
