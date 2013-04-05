@@ -181,7 +181,8 @@ public:
 
   void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve);
 
-  void dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve);
+  void dumpTopology(SloppyGroupManager::TopologyDumpGraph &graph,
+                    std::function<std::string(const NodeIdentifier&)> resolve);
 
   void refreshNeighborSet(const boost::system::error_code &error);
 
@@ -728,24 +729,31 @@ void SloppyGroupManagerPrivate::dump(std::ostream &stream, std::function<std::st
   }
 }
 
-void SloppyGroupManagerPrivate::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+void SloppyGroupManagerPrivate::dumpTopology(SloppyGroupManager::TopologyDumpGraph &graph,
+                                             std::function<std::string(const NodeIdentifier&)> resolve)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   if (!resolve)
-    resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
+      resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
 
-  std::string localId = resolve(m_localId);
-  stream << localId << ";" << std::endl;
+  std::string name = resolve(m_localId);
+  auto self = graph.add_vertex(name);
+  boost::put(boost::get(SloppyGroupManager::TopologyDumpTags::NodeName(), graph.graph()), self, name);
+  auto addEdge = [&](const NodeIdentifier &id, bool longFinger = false) {
+    auto edge = boost::add_edge(self, graph.add_vertex(resolve(id)), graph).first;
+    boost::put(boost::get(SloppyGroupManager::TopologyDumpTags::FingerIsLong(), graph.graph()), edge, longFinger);
+  };
+
   if (!m_predecessor.isNull())
-    stream << localId << " -> " << resolve(m_predecessor.nodeId) << ";" << std::endl;
+    addEdge(m_predecessor.nodeId);
   if (!m_successor.isNull())
-    stream << localId << " -> " << resolve(m_successor.nodeId) << ";" << std::endl;
+    addEdge(m_successor.nodeId);
   for (const auto &pf : m_fingersOut) {
     if (pf.second == m_successor || pf.second == m_predecessor)
       continue;
 
-    stream << localId << " -> " << resolve(pf.second.nodeId) << " [style=dashed,color=red];" << std::endl;
+    addEdge(pf.second.nodeId, true);
   }
 }
 
@@ -769,9 +777,9 @@ void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(co
   d->dump(stream, resolve);
 }
 
-void SloppyGroupManager::dumpTopology(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
+void SloppyGroupManager::dumpTopology(TopologyDumpGraph &graph, std::function<std::string(const NodeIdentifier&)> resolve)
 {
-  d->dumpTopology(stream, resolve);
+  d->dumpTopology(graph, resolve);
 }
 
 }

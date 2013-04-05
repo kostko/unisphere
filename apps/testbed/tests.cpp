@@ -170,6 +170,7 @@ protected:
     }
 
     report() << "Global state = " << stateAllNodes << std::endl;
+    finish();
   }
 };
 
@@ -183,17 +184,18 @@ protected:
    */
   void start()
   {
-    std::fstream file(
-      (boost::format("../output/sloppy_group_%1%.dot") % time()).str(),
-      std::ios_base::out | std::ios_base::trunc
-    );
+    SloppyGroupManager::TopologyDumpGraph graph;
+    boost::dynamic_properties properties;
+    properties.property("name", boost::get(SloppyGroupManager::TopologyDumpTags::NodeName(), graph.graph()));
+    properties.property("is_long", boost::get(SloppyGroupManager::TopologyDumpTags::FingerIsLong(), graph.graph()));
 
-    file << "digraph X {\n";
     for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
-      node->router->sloppyGroup().dumpTopology(file,
+      node->router->sloppyGroup().dumpTopology(graph,
         [&](const NodeIdentifier &n) -> std::string { return boost::replace_all_copy(names().right.at(n), " ", "_"); });
     }
-    file << "}\n";
+
+    auto topology = data("topology", {});
+    topology << TestBed::DataCollector::Graph<SloppyGroupManager::TopologyDumpGraph::graph_type>{ graph.graph(), properties };
 
     finish();
   }

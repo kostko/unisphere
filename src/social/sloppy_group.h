@@ -22,6 +22,9 @@
 #include "core/globals.h"
 #include "identity/node_identifier.h"
 
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/labeled_graph.hpp>
+
 namespace UniSphere {
 
 class CompactRouter;
@@ -36,6 +39,27 @@ public:
   static const int finger_count = 1;
   /// Announce interval
   static const int interval_announce = 600;
+
+  /// Tags for topology dump graph properties.
+  struct TopologyDumpTags {
+    /// Specifies the node's name
+    struct NodeName { typedef boost::vertex_property_tag kind; };
+    /// Specifies whether the finger link is a long one
+    struct FingerIsLong { typedef boost::edge_property_tag kind; };
+  };
+
+  /// Graph definition for dumping the sloppy group topology into
+  typedef boost::labeled_graph<
+    boost::adjacency_list<
+      boost::vecS,
+      boost::vecS,
+      boost::bidirectionalS,
+      boost::property<TopologyDumpTags::NodeName, std::string>,
+      boost::property<TopologyDumpTags::FingerIsLong, bool>
+    >,
+    std::string,
+    boost::hash_mapS
+  > TopologyDumpGraph;
 
   /**
    * Class constructor.
@@ -68,12 +92,12 @@ public:
             std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 
   /**
-   * Outputs the locally known sloppy group topology in DOT format.
+   * Dumps the locally known sloppy group topology into a graph.
    *
-   * @param stream Output stream to dump into
+   * @param graph Output graph to dump into
    * @param resolve Optional name resolver
    */
-  void dumpTopology(std::ostream &stream,
+  void dumpTopology(TopologyDumpGraph &graph,
                     std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 private:
   UNISPHERE_DECLARE_PRIVATE(SloppyGroupManager)

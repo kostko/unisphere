@@ -84,10 +84,12 @@ protected:
    *
    * @param category Data category name
    * @param columns Column definitions
+   * @param type Optional data type
    * @return The specified data collector
    */
   DataCollector data(const std::string &category,
-                     std::initializer_list<std::string> columns);
+                     std::initializer_list<std::string> columns,
+                     const std::string &type = "csv");
 
   /**
    * Returns the virtual node map instance.

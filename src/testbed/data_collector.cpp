@@ -96,19 +96,22 @@ DataCollectorPrivate::~DataCollectorPrivate()
 
 DataCollector::DataCollector(const std::string &directory,
                              const std::string &component,
-                             std::initializer_list<std::string> columns)
+                             std::initializer_list<std::string> columns,
+                             const std::string &type)
   : d(new DataCollectorPrivate)
 {
   RecursiveUniqueLock lock(d->m_mutex);
   d->m_stream.open(
-    (boost::format("%s/%s-%05i.csv")
+    (boost::format("%s/%s-%05i.%s")
       % directory
       % boost::algorithm::replace_all_copy(component, "/", "-")
       % TestBed::getGlobalTestbed().time()
+      % type
     ).str()
   );
   d->m_columns = columns.size();
-  d->m_stream << boost::algorithm::join(columns, ",") << std::endl;
+  if (d->m_columns > 0)
+    d->m_stream << boost::algorithm::join(columns, ",") << std::endl;
 }
 
 std::ostream &DataCollector::stream()

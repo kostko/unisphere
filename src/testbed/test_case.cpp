@@ -99,7 +99,9 @@ std::ostream &TestCase::report()
   return os;
 }
 
-DataCollector TestCase::data(const std::string &category, std::initializer_list<std::string> columns)
+DataCollector TestCase::data(const std::string &category,
+                             std::initializer_list<std::string> columns,
+                             const std::string &type)
 {
   std::string component = d->m_name;
   if (!category.empty())
@@ -108,7 +110,8 @@ DataCollector TestCase::data(const std::string &category, std::initializer_list<
   return DataCollector(
     d->m_testbed.getOutputDirectory(),
     component,
-    columns
+    columns,
+    type
   );
 }
 

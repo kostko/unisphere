@@ -22,6 +22,9 @@
 #include "core/globals.h"
 
 #include <ostream>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphml.hpp>
+#include <boost/graph/graph_concepts.hpp>
 
 namespace UniSphere {
 
@@ -34,15 +37,39 @@ namespace TestBed {
 class UNISPHERE_EXPORT DataCollector {
 public:
   /**
+   * A convenience structure for writing graphs into the data collector
+   * stream.
+   */
+  template<class GraphType>
+  struct Graph {
+    BOOST_CONCEPT_ASSERT(( boost::VertexListGraphConcept<GraphType> ));
+
+    /// Graph to be stored
+    GraphType &graph;
+    /// Dynamic properties of the graph
+    boost::dynamic_properties &properties;
+  };
+
+  template<typename T>
+  friend DataCollector &operator<<(DataCollector &dc, const T &t);
+
+  friend DataCollector &operator<<(DataCollector &dc, const std::string &str);
+
+  template<class GraphType>
+  friend DataCollector &operator<<(DataCollector &dc, const DataCollector::Graph<GraphType> &g);
+
+  /**
    * Constructs a new data collector.
    *
    * @param directory Output directory
    * @param component Component name
    * @param columns A list of data column names
+   * @param type Optional data type
    */
   DataCollector(const std::string &directory,
                 const std::string &component,
-                std::initializer_list<std::string> columns);
+                std::initializer_list<std::string> columns,
+                const std::string &type = "csv");
 protected:
   /**
    * Returns the output stream.
@@ -53,11 +80,6 @@ protected:
    * Advances to the next column in set.
    */
   void nextColumn();
-
-  template<typename T>
-  friend DataCollector &operator<<(DataCollector &dc, const T &t);
-
-  friend DataCollector &operator<<(DataCollector &dc, const std::string &str);
 private:
   UNISPHERE_DECLARE_PRIVATE(DataCollector)
 };
@@ -66,6 +88,16 @@ private:
  * Serialization operator for string formatting.
  */
 UNISPHERE_EXPORT DataCollector &operator<<(DataCollector &dc, const std::string &str);
+
+/**
+ * Serialization operator for graphs.
+ */
+template<class GraphType>
+UNISPHERE_EXPORT DataCollector &operator<<(DataCollector &dc, const DataCollector::Graph<GraphType> &g)
+{
+  boost::write_graphml(dc.stream(), g.graph, g.properties);
+  return dc;
+}
 
 /**
  * Catch-all serialization operator that simply redirects everything to the
