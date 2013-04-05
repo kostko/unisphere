@@ -7,4 +7,5 @@ build/
 output/*.pdf
 output/*.dot
 output/*.csv
+output/*.graphml
 *.swp

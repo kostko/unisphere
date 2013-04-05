@@ -62,8 +62,7 @@ private:
     int sync()
     {
       RecursiveUniqueLock lock(m_data.m_mutex);
-      if (m_data.m_columns > 0)
-        m_data.m_stream << str();
+      m_data.m_stream << str();
       str("");
       return 0;
     }
@@ -90,6 +89,7 @@ public:
 DataCollectorPrivate::~DataCollectorPrivate()
 {
   RecursiveUniqueLock lock(m_mutex);
+  m_syncedStream.reset();
   m_stream.close();
   m_columns = 0;
 }

@@ -84,12 +84,23 @@ protected:
    *
    * @param category Data category name
    * @param columns Column definitions
-   * @param type Optional data type
+   * @param type Optional data type (defaults to "csv")
    * @return The specified data collector
    */
   DataCollector data(const std::string &category,
                      std::initializer_list<std::string> columns,
                      const std::string &type = "csv");
+
+  /**
+   * Returns the data collector for a specific category without any columns
+   * defined (this is useful for outputing graphs).
+   *
+   * @param category Data category name
+   * @param type Optional data type (defaults to "graphml")
+   * @return The specified data collector
+   */
+  DataCollector data(const std::string &category,
+                     const std::string &type = "graphml");
 
   /**
    * Returns the virtual node map instance.

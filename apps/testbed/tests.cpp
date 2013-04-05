@@ -180,7 +180,7 @@ class DumpSloppyGroupTopology : public TestBed::TestCase
 {
 protected:
   /**
-   * Dump sloppy group topology in GraphViz format.
+   * Dump sloppy group topology in GraphML format.
    */
   void start()
   {
@@ -194,7 +194,7 @@ protected:
         [&](const NodeIdentifier &n) -> std::string { return boost::replace_all_copy(names().right.at(n), " ", "_"); });
     }
 
-    auto topology = data("topology", {});
+    auto topology = data("topology");
     topology << TestBed::DataCollector::Graph<SloppyGroupManager::TopologyDumpGraph::graph_type>{ graph.graph(), properties };
 
     finish();

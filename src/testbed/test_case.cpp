@@ -115,6 +115,12 @@ DataCollector TestCase::data(const std::string &category,
   );
 }
 
+DataCollector TestCase::data(const std::string &category,
+                             const std::string &type)
+{
+  return data(category, {}, type);
+}
+
 void TestCase::require(bool assertion)
 {
   if (!assertion) {
