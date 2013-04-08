@@ -735,7 +735,7 @@ void SloppyGroupManagerPrivate::dumpTopology(SloppyGroupManager::TopologyDumpGra
   RecursiveUniqueLock lock(m_mutex);
 
   if (!resolve)
-      resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
+    resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
 
   std::string name = resolve(m_localId);
   auto self = graph.add_vertex(name);
