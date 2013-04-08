@@ -579,4 +579,28 @@ void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(c
   stream << std::endl;
 }
 
+void CompactRoutingTable::dumpTopology(TopologyDumpGraph &graph,
+                                       std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  if (!resolve)
+    resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
+
+  std::string name = resolve(m_localId);
+  auto self = graph.add_vertex(name);
+  boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::NodeName(), graph.graph()), self, name);
+  boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::NodeIsLandmark(), graph.graph()), self, m_landmark);
+  boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::NodeStateSize(), graph.graph()), self, m_rib.size());
+  auto addEdge = [&](const NodeIdentifier &id, Vport vportId) {
+    auto edge = boost::add_edge(self, graph.add_vertex(resolve(id)), graph).first;
+    boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()), edge, vportId);
+  };
+
+  for (VportMap::const_iterator i = m_vportMap.begin(); i != m_vportMap.end(); ++i) {
+    addEdge(i->left, i->right);
+  }
+}
+
+
 }

@@ -30,6 +30,8 @@
 #include <boost/bimap.hpp>
 #include <boost/signals2/signal.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/labeled_graph.hpp>
 
 #include "core/context.h"
 #include "identity/node_identifier.h"
@@ -227,6 +229,33 @@ typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMa
  */
 class UNISPHERE_EXPORT CompactRoutingTable {
 public:
+  /// Tags for topology dump graph properties.
+  struct TopologyDumpTags {
+    /// Specifies the node's name
+    struct NodeName { typedef boost::vertex_property_tag kind; };
+    /// Specifies the node's landmark status
+    struct NodeIsLandmark { typedef boost::vertex_property_tag kind; };
+    /// Node state size
+    struct NodeStateSize { typedef boost::vertex_property_tag kind; };
+    /// Link's vport identifier
+    struct LinkVportId { typedef boost::edge_property_tag kind; };
+  };
+
+  /// Graph definition for dumping the compact routing topology into
+  typedef boost::labeled_graph<
+    boost::adjacency_list<
+      boost::vecS,
+      boost::vecS,
+      boost::bidirectionalS,
+      boost::property<TopologyDumpTags::NodeName, std::string,
+        boost::property<TopologyDumpTags::NodeIsLandmark, int,
+          boost::property<TopologyDumpTags::NodeStateSize, int>>>,
+      boost::property<TopologyDumpTags::LinkVportId, Vport>
+    >,
+    std::string,
+    boost::hash_mapS
+  > TopologyDumpGraph;
+
   /**
    * Class constructor.
    *
@@ -356,6 +385,15 @@ public:
    */
   void dump(std::ostream &stream,
             std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
+
+  /**
+   * Dumps the locally known routing topology into a graph.
+   *
+   * @param graph Output graph to dump into
+   * @param resolve Optional name resolver
+   */
+  void dumpTopology(TopologyDumpGraph &graph,
+                    std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
   boost::signals2::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;

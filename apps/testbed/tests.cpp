@@ -208,4 +208,38 @@ protected:
 
 UNISPHERE_REGISTER_TEST_CASE(DumpSloppyGroupTopology, "state/sloppy_group_topology")
 
+class DumpRoutingTopology : public TestBed::TestCase
+{
+protected:
+  /**
+   * Dump sloppy group topology in GraphML format.
+   */
+  void start()
+  {
+    CompactRoutingTable::TopologyDumpGraph graph;
+    boost::dynamic_properties properties;
+    properties.property("name", boost::get(CompactRoutingTable::TopologyDumpTags::NodeName(), graph.graph()));
+    properties.property("is_landmark", boost::get(CompactRoutingTable::TopologyDumpTags::NodeIsLandmark(), graph.graph()));
+    properties.property("state", boost::get(CompactRoutingTable::TopologyDumpTags::NodeStateSize(), graph.graph()));
+    properties.property("vport", boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()));
+
+    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
+      node->router->routingTable().dumpTopology(graph,
+        [&](const NodeIdentifier &n) -> std::string { return boost::replace_all_copy(names().right.at(n), " ", "_"); });
+    }
+
+    auto topology = data("topology");
+    topology << TestBed::DataCollector::Graph<CompactRoutingTable::TopologyDumpGraph::graph_type>{ graph.graph(), properties };
+
+    finish();
+  }
+
+  /**
+   * This testcase should be run inside a snapshot.
+   */
+  bool snapshot() { return true; }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(DumpRoutingTopology, "state/routing_topology")
+
 }

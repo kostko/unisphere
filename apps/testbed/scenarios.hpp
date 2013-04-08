@@ -40,6 +40,9 @@ UNISPHERE_SCENARIO(SimpleTestScenario)
   // Dump sloppy group topology
   testbed.scheduleTestEvery(30, "state/sloppy_group_topology");
 
+  // Dump routing topology
+  testbed.scheduleTestEvery(30, "state/routing_topology");
+
   // Schedule first test after 85 seconds, further tests each 45 seconds
   testbed.scheduleCall(85, [&]() {
     testbed.runTest("routing/all_pairs");
