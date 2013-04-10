@@ -39,7 +39,8 @@ public:
    * Constructs default options.
    */
   RoutingOptions()
-    : directDelivery(false)
+    : directDelivery(false),
+      hopLimit(30)
   {};
 
   /**
@@ -57,21 +58,25 @@ public:
    * Forces the packet to be delivered over a specific contact.
    */
   RoutingOptions &setDeliverVia(const Contact &contact) { deliverVia = contact; return *this; }
+
+  /**
+   * Sets a specific hop limit on the outgoing packet.
+   */
+  RoutingOptions &setHopLimit(std::uint8_t limit) { hopLimit = limit; return *this; }
 public:
   /// Force delivery over a specific link
   Contact deliverVia;
   /// Force direct delivery
   bool directDelivery;
+  /// Set a specific hop limit
+  std::uint8_t hopLimit;
 };
   
 /**
  * A message that can be routed over multiple hops.
  */
 class UNISPHERE_EXPORT RoutedMessage {
-public:
-  /// Default hop count for outgoing packets
-  static const std::uint8_t default_hop_count = 30;
-  
+public:  
   /**
    * Constructs a routed message based on an existing message received
    * via an Interplex link.

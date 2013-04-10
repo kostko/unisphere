@@ -12,6 +12,7 @@ message PingRequest {
 
 message PingResponse {
   required uint64 timestamp = 1;
+  required uint64 hopCount = 2;
 }
 
 message PublishAddressRequest {

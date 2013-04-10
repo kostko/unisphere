@@ -371,7 +371,7 @@ void CompactRouter::route(RoutedMessage &msg)
           UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping message with dm = true and empty path.");
           return;
         }
-        
+
         nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(msg.destinationAddress().path().front()));
         msg.processSourceRouteHop();
       } else {
@@ -452,9 +452,17 @@ void CompactRouter::registerCoreRpcMethods()
   // Simple ping messages
   m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
     [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::PingResponse> {
+      // Fix a hop limit so these messages can be used to measure the number of hops
+      // they have traversed
+      int hopCount = 30;
+      
       Protocol::PingResponse response;
       response.set_timestamp(1);
-      return response;
+      response.set_hopcount(hopCount);
+      return RpcResponse<Protocol::PingResponse>(
+        response,
+        RoutingOptions().setHopLimit(hopCount)
+      );
     }
   );
 }

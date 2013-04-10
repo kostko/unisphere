@@ -61,7 +61,7 @@ RoutedMessage::RoutedMessage(const LandmarkAddress &sourceAddress,
     m_destinationAddress(destinationAddress),
     m_destinationNodeId(destinationNodeId),
     m_destinationCompId(destinationCompId),
-    m_hopCount(RoutedMessage::default_hop_count),
+    m_hopCount(opts.hopLimit),
     m_deliveryMode(false),
     m_payloadType(type),
     m_options(opts)
