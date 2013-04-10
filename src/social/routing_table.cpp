@@ -597,8 +597,13 @@ void CompactRoutingTable::dumpTopology(TopologyDumpGraph &graph,
     boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()), edge, vportId);
   };
 
-  for (VportMap::const_iterator i = m_vportMap.begin(); i != m_vportMap.end(); ++i) {
-    addEdge(i->left, i->right);
+  auto &entries = m_rib.get<RIBTags::DestinationId>();
+  for (auto i = entries.begin(); i != entries.end(); ++i) {
+    RoutingEntryPtr e = *i;
+    if (!e->isDirect())
+      continue;
+
+    addEdge(e->destination, e->originVport());
   }
 }
 
