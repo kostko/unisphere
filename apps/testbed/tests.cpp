@@ -26,6 +26,7 @@
 #include <boost/range/adaptors.hpp>
 #include <boost/format.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/graph/floyd_warshall_shortest.hpp>
 
 using namespace UniSphere;
 
@@ -79,6 +80,10 @@ protected:
   std::atomic<unsigned long> received;
   /// Number of failures
   std::atomic<unsigned long> failures;
+  /// Measured hop counts
+  std::unordered_map<std::tuple<NodeIdentifier, NodeIdentifier>, int> pathLengths;
+  /// Mutex
+  std::mutex mutex;
 
   /**
    * Test if routing works for all pairs of nodes.
@@ -102,7 +107,14 @@ protected:
         Protocol::PingRequest request;
         request.set_timestamp(1);
         rpc.call<Protocol::PingRequest, Protocol::PingResponse>(b->nodeId, "Core.Ping", request,
-          [this](const Protocol::PingResponse &rsp, const RoutedMessage&) {
+          [this, a, b](const Protocol::PingResponse &rsp, const RoutedMessage &msg) {
+            // Measure hop count difference to see the length of traversed path
+            int pathLength = rsp.hopcount() - msg.hopCount();
+            {
+              UniqueLock lock(mutex);
+              pathLengths[std::make_pair(a->nodeId, b->nodeId)] = pathLength;
+            }
+
             received++;
             checkDone();
           },
@@ -138,8 +150,50 @@ protected:
     // Requirements for passing the test
     require(received == expected);
 
-    // Finish this test
-    finish();
+    testbed.snapshot([this]() {
+      // Prepare the data collector
+      auto stretch = data("stretch", {"node_a", "node_b", "shortest", "measured", "stretch"});
+
+      // Prepare global topology
+      CompactRoutingTable::TopologyDumpGraph graph;
+      for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
+        node->router->routingTable().dumpTopology(graph);
+      }
+
+      // Compute all-pairs shortest paths
+      typedef typename boost::graph_traits<CompactRoutingTable::TopologyDumpGraph>::vertex_descriptor vertex_des;
+      std::unordered_map<vertex_des, std::unordered_map<vertex_des, int>> shortestLengths;
+      boost::floyd_warshall_all_pairs_shortest_paths(graph.graph(), shortestLengths,
+        boost::weight_map(boost::get(CompactRoutingTable::TopologyDumpTags::LinkWeight(), graph.graph())));
+
+      // Compute routing stretch for each pair
+      int n = 0;
+      double averageStretch = 0.0;
+      for (auto &p : pathLengths) {
+        NodeIdentifier a, b;
+        int measuredLength = p.second;
+        std::tie(a, b) = p.first;
+        if (a == b)
+          continue;
+
+        int shortestLength = shortestLengths[graph.vertex(a.hex())][graph.vertex(b.hex())];
+        double pathStretch = (double) measuredLength / (double) shortestLength;
+        averageStretch += pathStretch;
+        n++;
+
+        stretch << a.hex()
+                << b.hex()
+                << shortestLength
+                << measuredLength
+                << pathStretch;
+      }
+      averageStretch /= n;
+
+      report() << "Average stretch = " << averageStretch << std::endl;
+
+      // Finish this test
+      finish();
+    });
   }
 };
 

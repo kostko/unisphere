@@ -239,6 +239,8 @@ public:
     struct NodeStateSize { typedef boost::vertex_property_tag kind; };
     /// Link's vport identifier
     struct LinkVportId { typedef boost::edge_property_tag kind; };
+    /// Link weight
+    struct LinkWeight { typedef boost::edge_property_tag kind; };
   };
 
   /// Graph definition for dumping the compact routing topology into
@@ -250,7 +252,8 @@ public:
       boost::property<TopologyDumpTags::NodeName, std::string,
         boost::property<TopologyDumpTags::NodeIsLandmark, int,
           boost::property<TopologyDumpTags::NodeStateSize, int>>>,
-      boost::property<TopologyDumpTags::LinkVportId, Vport>
+      boost::property<TopologyDumpTags::LinkVportId, Vport,
+        boost::property<TopologyDumpTags::LinkWeight, int>>
     >,
     std::string,
     boost::hash_mapS

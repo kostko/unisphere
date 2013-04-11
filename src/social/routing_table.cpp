@@ -595,6 +595,7 @@ void CompactRoutingTable::dumpTopology(TopologyDumpGraph &graph,
   auto addEdge = [&](const NodeIdentifier &id, Vport vportId) {
     auto edge = boost::add_edge(self, graph.add_vertex(resolve(id)), graph).first;
     boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()), edge, vportId);
+    boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::LinkWeight(), graph.graph()), edge, 1);
   };
 
   auto &entries = m_rib.get<RIBTags::DestinationId>();
