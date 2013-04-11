@@ -278,6 +278,7 @@ int TestBed::run(int argc, char **argv)
     ("id-gen", po::value<IdGenerationType>(), "id generation type [random, consistent]")
     ("num-threads", po::value<unsigned int>()->default_value(8), "number of threads")
     ("seed", po::value<std::uint32_t>()->default_value(0), "seed for the basic RNG")
+    ("max-runtime", po::value<unsigned int>()->default_value(0), "maximum runtime in seconds (0 = unlimited)")
   ;
   options.add(globalOptions);
 
@@ -333,6 +334,11 @@ int TestBed::run(int argc, char **argv)
     std::cout << "ERROR: Scenario not specified!" << std::endl;
     std::cout << options << std::endl;
     return 1;
+  }
+
+  // Ensure that the scenario ends if maximum runtime is specified
+  if (vm.count("max-runtime")) {
+    endScenarioAfter(vm["max-runtime"].as<unsigned int>());
   }
 
   // Initialize all nodes
