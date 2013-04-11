@@ -30,8 +30,6 @@ public:
 public:
   /// Test case name
   std::string m_name;
-  /// Test bed instance
-  TestBed &m_testbed;
   /// Virtual node map
   VirtualNodeMap *m_nodes;
   /// Node name map
@@ -39,14 +37,14 @@ public:
 };
 
 TestCasePrivate::TestCasePrivate()
-  : m_testbed(TestBed::getGlobalTestbed()),
-    m_nodes(nullptr),
+  : m_nodes(nullptr),
     m_names(nullptr)
 {
 }
 
 TestCase::TestCase()
-  : d(new TestCasePrivate)
+  : d(new TestCasePrivate),
+    testbed(TestBed::getGlobalTestbed())
 {
 }
 
@@ -60,7 +58,7 @@ void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNa
 void TestCase::run()
 {
   if (snapshot()) {
-    d->m_testbed.snapshot(boost::bind(&TestCase::start, this));
+    testbed.snapshot(boost::bind(&TestCase::start, this));
   } else {
     start();
   }
@@ -68,7 +66,7 @@ void TestCase::run()
 
 void TestCase::finish()
 {
-  d->m_testbed.finishTestCase(shared_from_this());
+  testbed.finishTestCase(shared_from_this());
 }
 
 bool TestCase::snapshot()
@@ -78,7 +76,7 @@ bool TestCase::snapshot()
 
 int TestCase::time() const
 {
-  return d->m_testbed.time();
+  return testbed.time();
 }
 
 VirtualNodeMap &TestCase::nodes()
@@ -93,7 +91,7 @@ NodeNameMap &TestCase::names()
 
 std::ostream &TestCase::report()
 {
-  std::ostream &os = d->m_testbed.getContext().logger().stream();
+  std::ostream &os = testbed.getContext().logger().stream();
   os << Logger::Component{"TestCase::" + d->m_name};
   os << Logger::Level::Info;
   return os;
@@ -108,7 +106,7 @@ DataCollector TestCase::data(const std::string &category,
     component += "-" + category;
 
   return DataCollector(
-    d->m_testbed.getOutputDirectory(),
+    testbed.getOutputDirectory(),
     component,
     columns,
     type

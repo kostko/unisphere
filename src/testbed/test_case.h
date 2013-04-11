@@ -39,6 +39,9 @@ class TestBed;
  */
 class UNISPHERE_EXPORT TestCase : public boost::enable_shared_from_this<TestCase> {
 public:
+  friend class TestBed;
+  friend class TestBedPrivate;
+
   /**
    * Class constructor.
    */
@@ -116,9 +119,10 @@ protected:
    * Notifies the testbed that this test case is finished.
    */
   void finish();
+protected:
+  /// Reference to global testbed instance for easier access from test cases
+  TestBed &testbed;
 private:
-  friend class TestBedPrivate;
-
   /**
    * Initializes the test case.
    *

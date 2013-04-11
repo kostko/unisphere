@@ -368,6 +368,7 @@ void TestBed::finishTestCase(TestCasePtr test)
 {
   RecursiveUniqueLock lock(d->m_mutex);
   d->m_runningCases.erase(test);
+  test->report() << "Finished test case." << std::endl;
 }
 
 void TestBed::registerScenario(Scenario *scenario)
