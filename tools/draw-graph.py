@@ -65,7 +65,7 @@ class ModuleCDF(object):
 
 # A list of registered modules
 modules = [
-  ModuleCDF()
+  ModuleCDF
 ]
 
 main_parser = argparse.ArgumentParser("draw-graph")
@@ -73,7 +73,8 @@ subparsers = main_parser.add_subparsers(title = 'subcommands',
                                         description = 'valid subcommands',
                                         help = 'additional help')
 
-for module in modules:
+for module_cls in modules:
+  module = module_cls()
   module_parser = subparsers.add_parser(module.command, help = module.description)
   module.arguments(module_parser)
   module_parser.set_defaults(module = module, parser = module_parser)
