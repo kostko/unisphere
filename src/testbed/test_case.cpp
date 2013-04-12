@@ -66,6 +66,7 @@ void TestCase::run()
 
 void TestCase::finish()
 {
+  signalFinished();
   testbed.finishTestCase(shared_from_this());
 }
 

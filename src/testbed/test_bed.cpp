@@ -69,7 +69,8 @@ class TestBedPrivate {
 public:
   TestBedPrivate();
 
-  void runTest(const std::string &test);
+  void runTest(const std::string &test,
+               std::function<void()> finished = nullptr);
 
   void runAndReschedule(int time, const std::string &test);
 
@@ -119,7 +120,7 @@ TestBedPrivate::TestBedPrivate()
 {
 }
 
-void TestBedPrivate::runTest(const std::string &test)
+void TestBedPrivate::runTest(const std::string &test, std::function<void()> finished)
 {
   TestCaseFactoryPtr factory;
   TestCasePtr ptest;
@@ -130,14 +131,18 @@ void TestBedPrivate::runTest(const std::string &test)
     m_runningCases.insert(ptest);
   }
 
+  if (finished)
+    ptest->signalFinished.connect(finished);
+
   ptest->initialize(test, &m_nodes, &m_names);
   ptest->run();
 }
 
 void TestBedPrivate::runAndReschedule(int time, const std::string &test)
 {
-  runTest(test);
-  m_context.schedule(time, boost::bind(&TestBedPrivate::runAndReschedule, this, time, test));
+  runTest(test, [this, time, test]() {
+    m_context.schedule(time, boost::bind(&TestBedPrivate::runAndReschedule, this, time, test));
+  });
 }
 
 void TestBedPrivate::loadTopology(const std::string &filename)
@@ -411,7 +416,7 @@ void TestBed::runTest(const std::string &test)
 
 void TestBed::scheduleTest(int time, const std::string &test)
 {
-  d->m_context.schedule(time, boost::bind(&TestBedPrivate::runTest, d, test));
+  d->m_context.schedule(time, boost::bind(&TestBedPrivate::runTest, d, test, nullptr));
 }
 
 void TestBed::scheduleTestEvery(int time, const std::string &test)

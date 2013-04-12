@@ -23,6 +23,7 @@
 #include <string>
 
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/signals2/signal.hpp>
 
 #include "core/globals.h"
 #include "testbed/nodes.h"
@@ -54,6 +55,9 @@ public:
    * Runs the test case.
    */
   void run();
+public:
+  /// Signal that gets called before the test case completes
+  boost::signals2::signal<void()> signalFinished;
 protected:
   /**
    * This method should provide the code that will execute the actual
