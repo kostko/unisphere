@@ -122,7 +122,8 @@ protected:
             failures++;
             report() << Logger::Level::Error << "Pair = (" << a->name << ", " << b->name << ") RPC call failure: " << msg << std::endl;
             checkDone();
-          }
+          },
+          RpcCallOptions().setTimeout(45)
         );
       }
     }
