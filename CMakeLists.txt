@@ -41,7 +41,7 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
-  ${Botan_INCLUDE_DIR}
+  ${BOTAN_INCLUDE_DIR}
   ${GMP_INCLUDE_DIR}
   
   # Internal includes
@@ -54,7 +54,7 @@ set(unisphere_external_libraries
   ${PROTOBUF_LIBRARY}
   ${Boost_LIBRARIES}
   ${OPENSSL_LIBRARIES}
-  ${Botan_LIBRARIES}
+  ${BOTAN_LIBRARIES}
   ${GMP_LIBRARIES}
   ${GMPXX_LIBRARIES}
 )
