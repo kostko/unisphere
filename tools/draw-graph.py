@@ -40,6 +40,9 @@ class ModuleCDF(object):
     parser.add_argument('--output', metavar = 'FILE', type = str,
                         help = 'output filename')
 
+    parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = int, nargs = 2,
+                        help = 'X axis range')
+
   def run(self, args):
     try:
       data = pandas.read_csv(args.filename)
@@ -56,7 +59,10 @@ class ModuleCDF(object):
     y = ecdf(x)
 
     plt.step(x, y)
-    plt.axis([1.0, max(sample), 0.0, 1.01])
+    if args.range:
+      plt.axis([args.range[0], args.range[1], 0.0, 1.01])
+    else:
+      plt.axis([1.0, max(sample), 0.0, 1.01])
 
     if args.output:
       plt.savefig(args.output)
