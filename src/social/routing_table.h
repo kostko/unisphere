@@ -344,10 +344,20 @@ public:
   void fullUpdate(const NodeIdentifier &peer);
 
   /**
-   * Returns the number of records that are being stored in the routing
+   * Returns the number of all records that are being stored in the routing
    * table.
    */
   size_t size() const;
+
+  /**
+   * Returns the number of active routing entries.
+   */
+  size_t sizeActive() const;
+
+  /**
+   * Returns the number of routing entries from node's vicinity.
+   */
+  size_t sizeVicinity() const;
 
   /**
    * Clears the whole routing table (RIB and vport mappings).

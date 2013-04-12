@@ -208,17 +208,21 @@ protected:
   void start()
   {
     unsigned long stateAllNodes = 0;
-    auto state = data("state", {"node_id", "routing_table", "name_db", "is_landmark"});
+    auto state = data("state", {"node_id", "rt_all", "rt_active", "rt_vicinity", "name_db", "is_landmark"});
     for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
       // Routing table state
-      unsigned long stateRoutingTable = node->router->routingTable().size();
+      unsigned long stateRtAll = node->router->routingTable().size();
+      unsigned long stateRtActive = node->router->routingTable().sizeActive();
+      unsigned long stateRtVicinity = node->router->routingTable().sizeVicinity();
       // Name database state
       unsigned long stateNameDb = node->router->nameDb().size();
 
-      stateAllNodes += stateRoutingTable + stateNameDb;
+      stateAllNodes += stateRtAll + stateNameDb;
       state
         << node->name
-        << stateRoutingTable
+        << stateRtAll
+        << stateRtActive
+        << stateRtVicinity
         << stateNameDb
         << node->router->routingTable().isLandmark();
     }

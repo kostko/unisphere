@@ -472,6 +472,19 @@ size_t CompactRoutingTable::size() const
   return m_rib.size();
 }
 
+size_t CompactRoutingTable::sizeActive() const
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  auto &ribActive =  m_rib.get<RIBTags::ActiveRoutes>();
+  return ribActive.count(true);
+}
+
+size_t CompactRoutingTable::sizeVicinity() const
+{
+  return getCurrentVicinity().get<0>();
+}
+
 void CompactRoutingTable::clear()
 {
   RecursiveUniqueLock lock(m_mutex);
