@@ -142,6 +142,16 @@ void Context::schedule(int timeout, std::function<void()> operation)
   timer->async_wait([timer, operation](const boost::system::error_code&) { operation(); });
 }
 
+boost::posix_time::seconds Context::roughly(int value)
+{
+  std::uniform_int_distribution<int> jitter(0, value / 2);
+  
+  if (value <= 1)
+    return boost::posix_time::seconds(value);
+  else
+    return boost::posix_time::seconds(value * 3 / 4 + jitter(basicRng()));
+}
+
 void Context::run(size_t threads)
 {
   // Reset the I/O service when needed

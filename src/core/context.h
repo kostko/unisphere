@@ -73,6 +73,14 @@ public:
    * @param operation Operation to be executed
    */
   void schedule(int timeout, std::function<void()> operation);
+
+  /**
+   * Returns a value in seconds with added random jitter.
+   *
+   * @param value Number of seconds
+   * @return Rough number of seconds
+   */
+  boost::posix_time::seconds roughly(int value);
   
   /**
    * Returns the ASIO I/O service for this UNISPHERE context. This service
