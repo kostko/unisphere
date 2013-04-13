@@ -316,7 +316,7 @@ void SloppyGroupManagerPrivate::initialize()
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
 
   // Start periodic neighbor set refresh timer
-  m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(30));
+  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(30));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
 }
 
@@ -378,7 +378,7 @@ void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_co
   }
 
   // Reschedule neighbor set refresh
-  m_neighborRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
+  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(600));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
 }
 
@@ -481,7 +481,7 @@ void SloppyGroupManagerPrivate::ndbRefreshCompleted()
 
   // Preempt full records announce
   // TODO: Do this only when the neighbor set has changed
-  m_announceTimer.expires_from_now(boost::posix_time::seconds(15));
+  m_announceTimer.expires_from_now(m_router.context().roughly(15));
   m_announceTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, _1));
 }
 
@@ -533,7 +533,7 @@ void SloppyGroupManagerPrivate::announceFullRecords(const boost::system::error_c
   }
 
   // Schedule next periodic export
-  m_announceTimer.expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
+  m_announceTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_announce));
   m_announceTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, _1));
 }
 
@@ -678,7 +678,7 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
       // selected again and again which will cause a nasty loop
       NodeIdentifier peerId = msg.sourceNodeId();
       BlacklistedPeer blacklisted(m_router.context(), peerId);
-      blacklisted.timer->expires_from_now(boost::posix_time::seconds(SloppyGroupManager::interval_announce));
+      blacklisted.timer->expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_announce));
       blacklisted.timer->async_wait([this, peerId](const boost::system::error_code&) {
         RecursiveUniqueLock lock(m_mutex);
         m_blacklistedPeers.erase(BlacklistedPeer(peerId));

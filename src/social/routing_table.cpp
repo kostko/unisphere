@@ -216,7 +216,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
         e->lastUpdate = entry->lastUpdate;
 
         // Restart expiry timer
-        if (e->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+        if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
           e->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
         }
       });
@@ -236,7 +236,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
       e->lastUpdate = entry->lastUpdate;
 
       // Restart expiry timer
-      if (e->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry)) > 0) {
+      if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
         e->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
       }
     });
@@ -262,7 +262,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
     m_rib.insert(entry);
 
     // Setup expiry timer for the routing entry
-    entry->expiryTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_neighbor_expiry));
+    entry->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry));
     entry->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, entry));
   }
 

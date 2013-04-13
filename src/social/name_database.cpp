@@ -210,7 +210,7 @@ void NameDatabasePrivate::initialize()
   registerCoreRpcMethods();
 
   // Schedule local address refresh
-  m_localRefreshTimer.expires_from_now(boost::posix_time::seconds(15));
+  m_localRefreshTimer.expires_from_now(m_router.context().roughly(15));
   m_localRefreshTimer.async_wait(boost::bind(&NameDatabasePrivate::refreshLocalAddress, this, _1));
 }
 
@@ -283,7 +283,7 @@ void NameDatabasePrivate::store(const NodeIdentifier &nodeId,
 
   // Own records should never expire, so we don't install a timer
   if (record->nodeId != m_localId) {
-    record->expiryTimer.expires_from_now(boost::posix_time::seconds(record->ttl()));
+    record->expiryTimer.expires_from_now(m_router.context().roughly(record->ttl()));
     record->expiryTimer.async_wait(boost::bind(&NameDatabasePrivate::entryTimerExpired, this, _1, record));
   }
 
@@ -624,7 +624,7 @@ void NameDatabasePrivate::refreshLocalAddress(const boost::system::error_code &e
   publishLocalAddress();
 
   // Schedule local address refresh
-  m_localRefreshTimer.expires_from_now(boost::posix_time::seconds(600));
+  m_localRefreshTimer.expires_from_now(m_router.context().roughly(600));
   m_localRefreshTimer.async_wait(boost::bind(&NameDatabasePrivate::refreshLocalAddress, this, _1));
 }
 

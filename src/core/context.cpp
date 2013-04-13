@@ -152,6 +152,11 @@ boost::posix_time::seconds Context::roughly(int value)
     return boost::posix_time::seconds(value * 3 / 4 + jitter(basicRng()));
 }
 
+boost::posix_time::seconds Context::roughly(boost::posix_time::seconds value)
+{
+  return roughly(value.total_seconds());
+}
+
 void Context::run(size_t threads)
 {
   // Reset the I/O service when needed

@@ -142,7 +142,7 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
   }
 
   // Redo announce after 10 seconds
-  m_announceTimer.expires_from_now(boost::posix_time::seconds(CompactRouter::interval_announce));
+  m_announceTimer.expires_from_now(m_context.roughly(CompactRouter::interval_announce));
   m_announceTimer.async_wait(boost::bind(&CompactRouter::announceOurselves, this, _1));
 }
 

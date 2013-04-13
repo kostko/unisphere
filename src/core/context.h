@@ -81,6 +81,14 @@ public:
    * @return Rough number of seconds
    */
   boost::posix_time::seconds roughly(int value);
+
+  /**
+   * Returns a value in seconds with added random jitter.
+   *
+   * @param value Number of seconds
+   * @return Rough number of seconds
+   */
+  boost::posix_time::seconds roughly(boost::posix_time::seconds value);
   
   /**
    * Returns the ASIO I/O service for this UNISPHERE context. This service

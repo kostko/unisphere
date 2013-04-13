@@ -41,7 +41,7 @@ Link::Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTim
 
 void Link::init()
 {
-  m_idleTimer.expires_from_now(boost::posix_time::seconds(m_maxIdleTime));
+  m_idleTimer.expires_from_now(m_manager.context().roughly(m_maxIdleTime));
   m_idleTimer.async_wait(boost::bind(&Link::idleTimeout, shared_from_this(), _1));
 }
 
@@ -335,7 +335,7 @@ void Link::linkletMessageReceived(LinkletPtr linklet, const Message &message)
   // Reschedule the idle timer for another interval
   {
     RecursiveUniqueLock lock(m_mutex);
-    if (m_idleTimer.expires_from_now(boost::posix_time::seconds(m_maxIdleTime)) > 0) {
+    if (m_idleTimer.expires_from_now(m_manager.context().roughly(m_maxIdleTime)) > 0) {
       m_idleTimer.async_wait(boost::bind(&Link::idleTimeout, shared_from_this(), _1));
     }
   }
