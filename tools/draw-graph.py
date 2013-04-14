@@ -31,11 +31,9 @@ class ModuleCDF(object):
   description = 'generates empiric CDF plots'
 
   def arguments(self, parser):
-    parser.add_argument('filename', metavar = 'FILE', type = str,
-                        help = 'input filename in CSV format')
-
-    parser.add_argument('column', metavar = 'COLUMN', type = str,
-                        help = 'column whose CDF to take')
+    parser.add_argument('--input', metavar = ('FILE', 'COLUMN'), type = str, nargs = 2,
+                        action = 'append', required = True,
+                        help = 'input FILE and COLUMN whose CDF to take')
 
     parser.add_argument('--output', metavar = 'FILE', type = str,
                         help = 'output filename')
@@ -44,21 +42,23 @@ class ModuleCDF(object):
                         help = 'X axis range')
 
   def run(self, args):
-    try:
-      data = pandas.read_csv(args.filename)
-    except:
-      args.parser.error('specified input FILE cannot be parsed')
+    for filename, column in args.input:
+      try:
+        data = pandas.read_csv(filename)
+      except:
+        args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
 
-    try:
-      sample = numpy.asarray(data[args.column])
-    except KeyError:
-      args.parser.error('specified COLUMN does not exist in input file')
+      try:
+        sample = numpy.asarray(data[column])
+      except KeyError:
+        args.parser.error('specified COLUMN "%s" does not exist in input file' % column)
 
-    ecdf = sm.distributions.ECDF(sample)
-    x = numpy.linspace(min(sample), max(sample))
-    y = ecdf(x)
+      ecdf = sm.distributions.ECDF(sample)
+      x = numpy.linspace(min(sample), max(sample))
+      y = ecdf(x)
 
-    plt.step(x, y)
+      plt.step(x, y)
+
     if args.range:
       plt.axis([args.range[0], args.range[1], 0.0, 1.01])
     else:
