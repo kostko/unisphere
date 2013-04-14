@@ -31,7 +31,7 @@ class ModuleCDF(object):
   description = 'generates empiric CDF plots'
 
   def arguments(self, parser):
-    parser.add_argument('--input', metavar = ('FILE', 'COLUMN'), type = str, nargs = 2,
+    parser.add_argument('--input', metavar = ('FILE', 'COLUMN', 'LEGEND'), type = str, nargs = 3,
                         action = 'append', required = True,
                         help = 'input FILE and COLUMN whose CDF to take')
 
@@ -42,7 +42,7 @@ class ModuleCDF(object):
                         help = 'X axis range')
 
   def run(self, args):
-    for filename, column in args.input:
+    for filename, column, legend in args.input:
       try:
         data = pandas.read_csv(filename)
       except:
@@ -57,7 +57,9 @@ class ModuleCDF(object):
       x = numpy.linspace(min(sample), max(sample))
       y = ecdf(x)
 
-      plt.step(x, y)
+      plt.step(x, y, label = legend)
+
+    plt.legend(loc = 'lower right')
 
     if args.range:
       plt.axis([args.range[0], args.range[1], 0.0, 1.01])
