@@ -41,6 +41,9 @@ class ModuleCDF(object):
     parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = int, nargs = 2,
                         help = 'X axis range')
 
+    parser.add_argument('--xlabel', metavar = 'LABEL', type = str,
+                        help = 'X axis label')
+
   def run(self, args):
     for filename, column, legend in args.input:
       try:
@@ -60,6 +63,10 @@ class ModuleCDF(object):
       plt.step(x, y, label = legend)
 
     plt.legend(loc = 'lower right')
+    ax = plt.gca()
+    ax.set_ylabel('CDF')
+    if args.xlabel:
+      ax.set_xlabel(args.xlabel)
 
     if args.range:
       plt.axis([args.range[0], args.range[1], 0.0, 1.01])
