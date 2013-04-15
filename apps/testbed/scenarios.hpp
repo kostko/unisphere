@@ -61,4 +61,23 @@ void setupOptions(boost::program_options::options_description &options)
 }
 UNISPHERE_SCENARIO_END
 
+UNISPHERE_SCENARIO(IdleScenario)
+{
+  if (options.count("topology"))
+    testbed.loadTopology(options["topology"].as<std::string>());
+  else
+    throw TestBed::TestBedException("Missing required --topology option!");
+
+  // Terminate tests after 3600 seconds
+  testbed.endScenarioAfter(3600);
+}
+
+void setupOptions(boost::program_options::options_description &options)
+{
+  options.add_options()
+    ("topology", po::value<std::string>(), "topology file in GraphML format")
+  ;
+}
+UNISPHERE_SCENARIO_END
+
 }
