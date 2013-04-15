@@ -103,7 +103,7 @@ public:
   /// Registered scenarios
   std::map<std::string, ScenarioPtr> m_scenarios;
   /// Snapshot handler
-  std::function<void()> m_snapshotHandler;
+  std::list<std::function<void()>> m_snapshotHandlers;
   /// Simulation start time
   boost::posix_time::ptime m_timeStart;
   /// Program options
@@ -377,10 +377,12 @@ int TestBed::run(int argc, char **argv)
   for (;;) {
     d->m_context.run(vm["num-threads"].as<unsigned int>());
 
-    if (d->m_snapshotHandler) {
+    if (!d->m_snapshotHandlers.empty()) {
       // When a snapshot handler is defined, we should invoke it and restart
-      d->m_snapshotHandler();
-      d->m_snapshotHandler = nullptr;
+      for (auto handler : d->m_snapshotHandlers)
+        handler();
+      
+      d->m_snapshotHandlers.clear();
       continue;
     }
 
@@ -455,7 +457,7 @@ void TestBed::endScenarioAfter(int time)
   d->m_context.schedule(time, [this]() {
     RecursiveUniqueLock lock(d->m_mutex);
     d->m_context.logger().stream() << Logger::Component{"TestBed"} << "Ending scenario after " << this->time() << " seconds." << std::endl;
-    d->m_snapshotHandler = nullptr;
+    d->m_snapshotHandlers.clear();
     d->m_context.stop();
   });
 }
@@ -466,7 +468,7 @@ void TestBed::snapshot(std::function<void()> handler)
     return;
 
   RecursiveUniqueLock lock(d->m_mutex);
-  d->m_snapshotHandler = handler;
+  d->m_snapshotHandlers.push_back(handler);
   d->m_context.stop();
 }
 
