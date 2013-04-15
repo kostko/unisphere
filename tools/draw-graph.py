@@ -26,10 +26,10 @@ import statsmodels.api as sm
 def comma_separated_strings(value):
   return value.split(",")
 
-def int_with_none(value):
+def float_with_none(value):
   if value == 'N':
     return None
-  return int(value)
+  return float(value)
 
 class ModuleCDF(object):
   command = 'cdf'
@@ -43,7 +43,7 @@ class ModuleCDF(object):
     parser.add_argument('--output', metavar = 'FILE', type = str,
                         help = 'output filename')
 
-    parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = int_with_none, nargs = 2,
+    parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = float_with_none, nargs = 2,
                         help = 'X axis range')
 
     parser.add_argument('--xlabel', metavar = 'LABEL', type = str,
