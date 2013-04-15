@@ -135,6 +135,7 @@ void TestBedPrivate::runTest(const std::string &test, std::function<void()> fini
     ptest->signalFinished.connect(finished);
 
   ptest->initialize(test, &m_nodes, &m_names);
+  ptest->report() << "Starting test case." << std::endl;
   ptest->run();
 }
 
