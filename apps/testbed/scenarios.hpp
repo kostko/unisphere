@@ -96,15 +96,17 @@ UNISPHERE_SCENARIO(SingleStateDumpScenario)
   else
     throw TestBed::TestBedException("Missing required --topology option!");
 
-  testbed.scheduleTest(60, "state/count");
-  testbed.scheduleTest(60, "state/sloppy_group_topology");
-  testbed.scheduleTest(60, "state/routing_topology");
+  int tm = options["measure-after"].as<int>();
+  testbed.scheduleTest(tm, "state/count");
+  testbed.scheduleTest(tm, "state/sloppy_group_topology");
+  testbed.scheduleTest(tm, "state/routing_topology");
 }
 
 void setupOptions(boost::program_options::options_description &options)
 {
   options.add_options()
     ("topology", po::value<std::string>(), "topology file in GraphML format")
+    ("measure-after", po::value<int>()->default_value(60), "number of seconds after which to dump state")
   ;
 }
 UNISPHERE_SCENARIO_END
@@ -120,13 +122,15 @@ UNISPHERE_SCENARIO(SingleStretchScenario)
   else
     throw TestBed::TestBedException("Missing required --topology option!");
 
-  testbed.scheduleTest(85, "routing/all_pairs");
+  int tm = options["measure-after"].as<int>();
+  testbed.scheduleTest(tm, "routing/all_pairs");
 }
 
 void setupOptions(boost::program_options::options_description &options)
 {
   options.add_options()
     ("topology", po::value<std::string>(), "topology file in GraphML format")
+    ("measure-after", po::value<int>()->default_value(85), "number of seconds after which to measure stretch")
   ;
 }
 UNISPHERE_SCENARIO_END
