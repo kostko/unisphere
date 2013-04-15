@@ -85,9 +85,76 @@ class ModuleCDF(object):
     else:
       plt.show()
 
+class ModuleSimplePlot(object):
+  command = 'plot'
+  description = 'generate simple plots'
+
+  def arguments(self, parser):
+    parser.add_argument('--input', metavar = ('FILE', 'COLUMN', 'VALUE'), type = str, nargs = 3,
+                        action = 'append', required = True,
+                        help = 'input FILE and COLUMN to get the Y-axis data from')
+
+    parser.add_argument('--output', metavar = 'FILE', type = str,
+                        help = 'output filename')
+
+    parser.add_argument('--ylabel', metavar = 'LABEL', type = str,
+                        help = 'Y axis label')
+
+    parser.add_argument('--xlabel', metavar = 'LABEL', type = str,
+                        help = 'X axis label')
+
+    parser.add_argument('--fit', metavar = 'FUNC', type = str,
+                        help = 'function to fit and include (must define a lambda function)')
+
+    parser.add_argument('--fit-range', metavar = 'X', type = float, default = 5.0)
+
+  def run(self, args):
+    X = []
+    Y = []
+    Yerr = []
+    for filename, column, value in args.input:
+      try:
+        data = pandas.read_csv(filename)
+      except:
+        args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
+
+      try:
+        sample = numpy.asarray(data[column])
+      except KeyError:
+        args.parser.error('specified COLUMN "%s" does not exist in input file' % column)
+
+      X += [float(value)]
+      Y += [numpy.average(sample)]
+      Yerr += [numpy.std(sample)]
+
+    plt.errorbar(X, Y, Yerr)
+
+    if args.fit:
+      import scipy.optimize
+      func = eval(args.fit)
+
+      popt, pcov = scipy.optimize.curve_fit(func, X[:-1], Y[:-1])
+      Fx = numpy.linspace(min(X), max(X) + args.fit_range*(X[-1] - X[-2]), 100)
+      Fy = [func(x, *popt) for x in Fx]
+      plt.plot(Fx, Fy, linestyle = '--', color = 'black')
+    
+    ax = plt.gca()
+    if args.ylabel:
+      ax.set_ylabel(args.ylabel)
+    if args.xlabel:
+      ax.set_xlabel(args.xlabel)
+
+    plt.grid()
+
+    if args.output:
+      plt.savefig(args.output)
+    else:
+      plt.show()
+
 # A list of registered modules
 modules = [
-  ModuleCDF
+  ModuleCDF,
+  ModuleSimplePlot
 ]
 
 main_parser = argparse.ArgumentParser("draw-graph")
