@@ -26,6 +26,11 @@ import statsmodels.api as sm
 def comma_separated_strings(value):
   return value.split(",")
 
+def int_with_none(value):
+  if value == 'N':
+    return None
+  return int(value)
+
 class ModuleCDF(object):
   command = 'cdf'
   description = 'generates empiric CDF plots'
@@ -38,7 +43,7 @@ class ModuleCDF(object):
     parser.add_argument('--output', metavar = 'FILE', type = str,
                         help = 'output filename')
 
-    parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = int, nargs = 2,
+    parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = int_with_none, nargs = 2,
                         help = 'X axis range')
 
     parser.add_argument('--xlabel', metavar = 'LABEL', type = str,
@@ -71,7 +76,7 @@ class ModuleCDF(object):
     if args.range:
       plt.axis([args.range[0], args.range[1], 0.0, 1.01])
     else:
-      plt.axis([1.0, max(sample), 0.0, 1.01])
+      plt.axis([0.0, max(sample), 0.0, 1.01])
 
     plt.grid()
 
