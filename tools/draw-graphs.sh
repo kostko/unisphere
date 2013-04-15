@@ -117,4 +117,4 @@ function draw_vs_size_plot()
 # Call all draw functions
 draw_aggregate_cdf stretch "Path stretch" "routing-all_pairs-stretch-*.csv" 0.9 N
 draw_aggregate_cdf rt_active "Routing state" "state-count-state-*.csv" 0 N
-draw_vs_size_plot rt_active "Routing state" "state-count-state-*.csv" "lambda x, a, b: a*numpy.sqrt(x) + b" 5
+draw_vs_size_plot rt_active "Routing state" "state-count-state-*.csv" "lambda x, a, b: a*numpy.sqrt(x) + b" 2

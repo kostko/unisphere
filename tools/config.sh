@@ -25,6 +25,7 @@ TOPOLOGIES=(
   "n64,--max-runtime 120"
   "n128,--max-runtime 120"
   "n256,--max-runtime 240"
+  "n512,--max-runtime 240"
 )
 
 if [[ ! -d $BIN_DIR || ! -d $DATA_DIR || ! -d $OUTPUT_DIR ]]; then
