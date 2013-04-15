@@ -73,6 +73,8 @@ class ModuleCDF(object):
     else:
       plt.axis([1.0, max(sample), 0.0, 1.01])
 
+    plt.grid()
+
     if args.output:
       plt.savefig(args.output)
     else:
