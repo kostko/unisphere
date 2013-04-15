@@ -57,7 +57,7 @@ function draw_stretch_cdf()
     args+=('--input' "$input" "$variable" "$label")
   done
 
-  args+=('--output' cdf_stretch.pdf '--xlabel' "Path stretch")
+  args+=('--output' cdf_stretch.pdf '--xlabel' "Path stretch" '--range' '0.9' 'N')
 
   ./tools/draw-graph.py cdf "${args[@]}"
 }
