@@ -31,3 +31,22 @@ if [[ ! -d $BIN_DIR || ! -d $DATA_DIR || ! -d $OUTPUT_DIR ]]; then
   echo "ERROR: Not being run from proper location!"
   exit 1
 fi
+
+# Limit topologies to just a single one when specified
+if [[ ! -z "$1" ]]; then
+  filter="$1"
+  tmp=()
+  for params in "${TOPOLOGIES[@]}"; do
+    IFS=","
+      set -- $params
+      topology="$1"
+      args="$2"
+    IFS=" "
+
+    if [[ "$topology" == "$filter" ]]; then
+      tmp+=("$topology,$args")
+    fi
+  done
+
+  TOPOLOGIES=("${tmp[@]}")
+fi
