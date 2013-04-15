@@ -296,7 +296,27 @@ int TestBed::run(int argc, char **argv)
   // Parse options
   po::variables_map &vm = d->m_options;
   try {
-    po::store(po::parse_command_line(argc, argv, options), vm);
+    auto globalParsed = po::command_line_parser(argc, argv).options(globalOptions).allow_unregistered().run();
+    po::store(globalParsed, vm);
+
+    // Determine which scenario has been selected to parse its options
+    if (vm.count("scenario")) {
+      std::string scenario = vm["scenario"].as<std::string>();
+      auto it = d->m_scenarios.find(scenario);
+      if (it == d->m_scenarios.end()) {
+        std::cout << "ERROR: Scenario '" << scenario << "' not found!" << std::endl;
+        std::cout << options << std::endl;
+        return 1;
+      }
+
+      auto scenarioParsed = po::command_line_parser(argc, argv).options(it->second->options()).allow_unregistered().run();
+      po::store(scenarioParsed, vm);
+    } else {
+      std::cout << "ERROR: Scenario not specified!" << std::endl;
+      std::cout << options << std::endl;
+      return 1;
+    }
+
     po::notify(vm);
   } catch (std::exception &e) {
     std::cout << "ERROR: There is an error in your invocation arguments!" << std::endl;
