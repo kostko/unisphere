@@ -24,6 +24,9 @@ using namespace UniSphere;
 
 namespace Scenarios {
 
+/**
+ * A scenario that performs mixed tests at various intervals.
+ */
 UNISPHERE_SCENARIO(SimpleTestScenario)
 {
   if (options.count("topology"))
@@ -61,6 +64,9 @@ void setupOptions(boost::program_options::options_description &options)
 }
 UNISPHERE_SCENARIO_END
 
+/**
+ * A scenario that always stays idle and doesn't run any tests.
+ */
 UNISPHERE_SCENARIO(IdleScenario)
 {
   if (options.count("topology"))
@@ -70,6 +76,51 @@ UNISPHERE_SCENARIO(IdleScenario)
 
   // Terminate tests after 3600 seconds
   testbed.endScenarioAfter(3600);
+}
+
+void setupOptions(boost::program_options::options_description &options)
+{
+  options.add_options()
+    ("topology", po::value<std::string>(), "topology file in GraphML format")
+  ;
+}
+UNISPHERE_SCENARIO_END
+
+/**
+ * A scenario that dumps all state after 60 seconds and then stays idle.
+ */
+UNISPHERE_SCENARIO(SingleStateDumpScenario)
+{
+  if (options.count("topology"))
+    testbed.loadTopology(options["topology"].as<std::string>());
+  else
+    throw TestBed::TestBedException("Missing required --topology option!");
+
+  testbed.scheduleTest(60, "state/count");
+  testbed.scheduleTest(60, "state/sloppy_group_topology");
+  testbed.scheduleTest(60, "state/routing_topology");
+}
+
+void setupOptions(boost::program_options::options_description &options)
+{
+  options.add_options()
+    ("topology", po::value<std::string>(), "topology file in GraphML format")
+  ;
+}
+UNISPHERE_SCENARIO_END
+
+/**
+ * A scenario that calculates routing path stretch after 85 seconds and
+ * then stays idle.
+ */
+UNISPHERE_SCENARIO(SingleStretchScenario)
+{
+  if (options.count("topology"))
+    testbed.loadTopology(options["topology"].as<std::string>());
+  else
+    throw TestBed::TestBedException("Missing required --topology option!");
+
+  testbed.scheduleTest(85, "routing/all_pairs");
 }
 
 void setupOptions(boost::program_options::options_description &options)

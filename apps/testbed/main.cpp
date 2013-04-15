@@ -26,5 +26,7 @@ int main(int argc, char **argv)
   TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
   testbed.registerScenario(new Scenarios::SimpleTestScenario);
   testbed.registerScenario(new Scenarios::IdleScenario);
+  testbed.registerScenario(new Scenarios::SingleStateDumpScenario);
+  testbed.registerScenario(new Scenarios::SingleStretchScenario);
   return testbed.run(argc, argv);
 }
