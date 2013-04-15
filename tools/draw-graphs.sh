@@ -45,7 +45,7 @@ function draw_stretch_cdf()
 
     inputs+=(${data[${#data[@]} - 1]})
     variables+=('stretch')
-    labels=("n = ${topology:1}")
+    labels+=("n = ${topology:1}")
   done
 
   args=()
@@ -54,7 +54,7 @@ function draw_stretch_cdf()
     variable=${variables[$i]}
     label=${labels[$i]}
 
-    args+=('--input' $input $variable "$label")
+    args+=('--input' "$input" "$variable" "$label")
   done
 
   args+=('--output' cdf_stretch.pdf '--xlabel' "Path stretch")
