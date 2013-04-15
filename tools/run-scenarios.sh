@@ -17,21 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-BIN_DIR="build"
-DATA_DIR="data"
-OUTPUT_DIR="output"
-TOPOLOGIES=(
-  "n16,--max-runtime 120"
-  "n32,--max-runtime 120"
-  "n64,--max-runtime 120"
-  "n128,--max-runtime 120"
-  "n256,--max-runtime 240"
-)
 
-if [[ ! -d $BIN_DIR || ! -d $DATA_DIR || ! -d $OUTPUT_DIR ]]; then
-  echo "ERROR: Not being run from proper location!"
-  exit 1
-fi
+. tools/config.sh
 
 echo ">>> Setting up ulimits..."
 
