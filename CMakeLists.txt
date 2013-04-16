@@ -3,16 +3,6 @@ cmake_minimum_required(VERSION 2.6)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-option(USE_CLANG "Use CLang compiler" ON)
-option(USE_DEBUG "Compile everything in debug mode" ON)
-
-#if(USE_CLANG)
-#  message(STATUS "UNISPHERE: Using the CLang compiler.")
-#
-#  set(CMAKE_C_COMPILER "/usr/bin/clang")
-#  set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
-#endif(USE_CLANG)
-
 set(Boost_USE_MULTITHREAD ON)
 set(Boost_USE_STATIC_LIBS OFF)
 
@@ -23,18 +13,11 @@ find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
 find_package(GMP REQUIRED)
 
-# Uncomment these lines for optimization
-#set(CMAKE_BUILD_TYPE distribution)
-#set(CMAKE_CXX_FLAGS_DISTRIBUTION "-O3 -fvisibility=hidden -std=c++0x")
-#set(CMAKE_C_FLAGS_DISTRIBUTION "-O3 -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -std=c++0x")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -fvisibility=hidden")
 
-if(USE_DEBUG)
-  message(STATUS "UNISPHERE: Building in DEBUG mode.")
-
-  set(CMAKE_BUILD_TYPE debug)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g3 -fvisibility=hidden -DUNISPHERE_DEBUG -std=c++0x")
-  set(CMAKE_C_FLAGS_DEBUG "-g3 -fvisibility=hidden -DUNISPHERE_DEBUG")
-endif(USE_DEBUG)
+set(CMAKE_CXX_FLAGS_DEBUG "-g3 -fvisibility=hidden -DUNISPHERE_DEBUG -std=c++0x")
+set(CMAKE_C_FLAGS_DEBUG "-g3 -fvisibility=hidden -DUNISPHERE_DEBUG")
 
 include_directories(
   # External includes
