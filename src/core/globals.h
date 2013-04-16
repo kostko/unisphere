@@ -52,4 +52,15 @@ typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
   friend class Class##Private; \
   boost::shared_ptr<class Class##Private> d;
 
+#define UNISPHERE_DECLARE_PUBLIC(Class) \
+  Class &q;
+
+#define UNISPHERE_DECLARE_PREMATURE_PARENT_SETTER(Class) \
+  struct Setup##Class##Public { \
+    Setup##Class##Public(Class &parent, Class##Private *self) \
+    { \
+      parent.d = boost::shared_ptr<Class##Private>(self); \
+    } \
+  } w;
+
 #endif
