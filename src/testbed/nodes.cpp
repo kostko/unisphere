@@ -20,6 +20,7 @@
 #include "core/context.h"
 #include "interplex/link_manager.h"
 #include "social/compact_router.h"
+#include "social/social_identity.h"
 
 namespace UniSphere {
   

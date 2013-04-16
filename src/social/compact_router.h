@@ -19,18 +19,22 @@
 #ifndef UNISPHERE_SOCIAL_COMPACTROUTER_H
 #define UNISPHERE_SOCIAL_COMPACTROUTER_H
 
-#include "social/social_identity.h"
-#include "social/routing_table.h"
+#include "core/globals.h"
 #include "social/routed_message.h"
-#include "social/name_database.h"
-#include "social/rpc_engine.h"
-#include "social/sloppy_group.h"
+
+#include <boost/signals2/signal.hpp>
 
 namespace UniSphere {
 
+class Context;
+class SocialIdentity;
 class LinkManager;
 class NetworkSizeEstimator;
 class Message;
+class CompactRoutingTable;
+class NameDatabase;
+class RpcEngine;
+class SloppyGroupManager;
 
 /**
  * Compact router is at the core of the UNISPHERE protocol. It binds all the

@@ -18,7 +18,10 @@
  */
 #include "testbed/test_bed.h"
 #include "social/compact_router.h"
+#include "social/routing_table.h"
 #include "social/rpc_engine.h"
+#include "social/name_database.h"
+#include "social/sloppy_group.h"
 
 #include "src/social/core_methods.pb.h"
 

@@ -20,6 +20,8 @@
 #include "social/compact_router.h"
 #include "social/address.h"
 #include "social/name_database.h"
+#include "social/social_identity.h"
+#include "social/size_estimator.h"
 #include "interplex/link_manager.h"
 #include "core/operators.h"
 

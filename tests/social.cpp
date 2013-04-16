@@ -21,6 +21,9 @@
 
 #include "interplex/link_manager.h"
 #include "social/compact_router.h"
+#include "social/size_estimator.h"
+#include "social/name_database.h"
+#include "social/social_identity.h"
 
 #include <random>
 

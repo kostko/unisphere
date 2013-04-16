@@ -18,6 +18,8 @@
  */
 #include "social/name_database.h"
 #include "social/compact_router.h"
+#include "social/routing_table.h"
+#include "social/social_identity.h"
 #include "interplex/link_manager.h"
 
 #include "src/social/core_methods.pb.h"
