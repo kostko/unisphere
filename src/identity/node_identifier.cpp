@@ -61,9 +61,13 @@ void NodeIdentifier::setIdentifier(const std::string &identifier, Format format)
     
     // We need to convert from hexadecimal format to binary format
     case Format::Hex: {
-      Botan::Pipe pipe(new Botan::Hex_Decoder);
-      pipe.process_msg(identifier);
-      m_identifier = pipe.read_all_as_string(0);
+      try {
+        Botan::Pipe pipe(new Botan::Hex_Decoder);
+        pipe.process_msg(identifier);
+        m_identifier = pipe.read_all_as_string(0);
+      } catch (std::exception &e) {
+        m_identifier.clear();
+      }
       break;
     }
   }
