@@ -1,6 +1,0 @@
-
-package Protocol.Test;
-
-message Hello {
-  required string msg = 1;
-}
