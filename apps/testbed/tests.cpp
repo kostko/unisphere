@@ -170,6 +170,7 @@ protected:
       // Compute routing stretch for each pair
       int n = 0;
       double averageStretch = 0.0;
+      TestBed::NodeNameMap &nameMap = names();
       for (auto &p : pathLengths) {
         NodeIdentifier a, b;
         int measuredLength = p.second;
@@ -182,8 +183,8 @@ protected:
         averageStretch += pathStretch;
         n++;
 
-        stretch << a.hex()
-                << b.hex()
+        stretch << nameMap.right.at(a)
+                << nameMap.right.at(b)
                 << shortestLength
                 << measuredLength
                 << pathStretch;
