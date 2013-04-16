@@ -39,6 +39,8 @@ public:
   static const int finger_count = 1;
   /// Announce interval
   static const int interval_announce = 600;
+  /// Neighbor set refresh interval
+  static const int interval_ns_refresh = 600;
 
   /// Tags for topology dump graph properties.
   struct TopologyDumpTags {

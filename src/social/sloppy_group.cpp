@@ -251,6 +251,8 @@ public:
   NodeIdentifier m_groupPrefix;
   /// Expected sloppy group size
   double m_groupSize;
+  /// Number of short finger refresh retries
+  size_t m_shortFingerRefreshRetries;
 };
 
 SloppyPeer::SloppyPeer()
@@ -295,7 +297,8 @@ SloppyGroupManagerPrivate::SloppyGroupManagerPrivate(CompactRouter &router, Netw
     m_localId(router.identity().localId()),
     m_neighborRefreshTimer(router.context().service()),
     m_announceTimer(router.context().service()),
-    m_groupPrefixLength(0)
+    m_groupPrefixLength(0),
+    m_shortFingerRefreshRetries(0)
 {
 }
 
@@ -378,7 +381,7 @@ void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_co
   }
 
   // Reschedule neighbor set refresh
-  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(600));
+  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_ns_refresh));
   m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
 }
 
@@ -422,8 +425,15 @@ void SloppyGroupManagerPrivate::ndbRefreshCompleted()
   RecursiveUniqueLock lock(m_mutex);
 
   // Ensure that we have enough short fingers
-  if (m_newShortFingers.size() < 2)
+  if (m_newShortFingers.size() < 2) {
+    // Retry neighbor set refresh using exponential backoff
+    m_shortFingerRefreshRetries++;
+    m_neighborRefreshTimer.expires_from_now(m_router.context().backoff(m_shortFingerRefreshRetries, 5, SloppyGroupManager::interval_ns_refresh));
+    m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
     return;
+  } else {
+    m_shortFingerRefreshRetries = 0;
+  }
 
   // Determine successor and predecessor from our fingers list
   auto it = m_newShortFingers.upper_bound(SloppyPeer(m_localId));
