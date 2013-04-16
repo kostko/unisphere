@@ -185,7 +185,7 @@ void CompactRouter::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &
     }
     announce.add_reversepath(vport);
 
-    announce.set_seqno(m_seqno);
+    announce.set_seqno(entry->seqno);
 
     // Send the announcement
     m_manager.send(contact, Message(Message::Type::Social_Announce, announce));
