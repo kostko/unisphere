@@ -134,7 +134,7 @@ TEST_CASE("social", "verify that compact routing operations work")
       REQUIRE(records.back()->nodeId == d);
     }
 
-    SECTION("consistent_hash", "checks whether consistent hashing works")
+    SECTION("consistent_hash_a", "checks whether consistent hashing works")
     {
       // Register some landmarks
       NodeIdentifier a("5650f763df8923b03e9fcfce0fb91b7a2abb8b9c", NodeIdentifier::Format::Hex);
@@ -226,6 +226,24 @@ TEST_CASE("social", "verify that compact routing operations work")
       REQUIRE(caches.count(g) == 1);
       REQUIRE(caches.count(a) == 1);
       REQUIRE(caches.count(c) == 1);
+    }
+
+    SECTION("consistent_hash_b", "checks whether consistent hashing works")
+    {
+      // Register some landmarks
+      NodeIdentifier a("0000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+      NodeIdentifier b("1000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+      NodeIdentifier c("2000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+
+      ndb.registerLandmark(a);
+      ndb.registerLandmark(b);
+      ndb.registerLandmark(c);
+
+      // Corner case with empty sloppy group set
+      NodeIdentifier d("a000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+      auto caches = ndb.getLandmarkCaches(d, 1);
+      REQUIRE(caches.size() == 1);
+      REQUIRE(caches.count(a) == 1);
     }
   }
 }

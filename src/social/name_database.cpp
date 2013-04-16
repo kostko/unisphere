@@ -538,10 +538,15 @@ std::unordered_set<NodeIdentifier> NameDatabasePrivate::getLandmarkCaches(const 
   landmarks.insert(*it);
 
   if (sgPrefixLength > 0) {
-    NodeIdentifier groupStart = nodeId.prefix(sgPrefixLength);
     NodeIdentifier groupEnd = nodeId.prefix(sgPrefixLength, 0xFF);
     auto lowerLimit = m_bucketTree.lower_bound(nodeId.prefix(sgPrefixLength));
     auto upperLimit = m_bucketTree.upper_bound(groupEnd);
+
+    if (lowerLimit == upperLimit) {
+      // No other landmarks have entries for this sloppy group, so we don't need
+      // any successors or predecessors
+      return landmarks;
+    }
 
     // Include predecessor
     auto pit = it;
