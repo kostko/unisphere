@@ -157,6 +157,19 @@ boost::posix_time::seconds Context::roughly(boost::posix_time::seconds value)
   return roughly(value.total_seconds());
 }
 
+boost::posix_time::seconds Context::backoff(size_t attempts, int interval, int maximum)
+{
+  if (attempts > 31)
+    attempts = 31;
+
+  std::uniform_int_distribution<unsigned int> factor(0, (1 << attempts) - 1);
+  unsigned int v = factor(basicRng()) * interval;
+  if (v > maximum)
+    v = maximum;
+
+  return roughly(v);
+}
+
 void Context::run(size_t threads)
 {
   // Reset the I/O service when needed

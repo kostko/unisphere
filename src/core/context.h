@@ -89,6 +89,17 @@ public:
    * @return Rough number of seconds
    */
   boost::posix_time::seconds roughly(boost::posix_time::seconds value);
+
+  /**
+   * Computes the wait interval before next retry using the exponential
+   * backoff algorithm.
+   *
+   * @param attempts Number of retry attempts so far
+   * @param interval Base retry interval
+   * @param maximum Maximum length of the interval
+   * @return Number of seconds to wait before next retry
+   */
+  boost::posix_time::seconds backoff(size_t attempts, int interval, int maximum);
   
   /**
    * Returns the ASIO I/O service for this UNISPHERE context. This service
