@@ -84,37 +84,37 @@ public:
   /**
    * Returns the UNISPHERE context this router belongs to.
    */
-  inline Context &context() const { return m_context; }
+  Context &context() const;
 
   /**
    * Returns the reference to underlying social identity.
    */
-  const SocialIdentity &identity() const { return m_identity; }
+  const SocialIdentity &identity() const;
 
   /**
    * Returns the link manager instance associated with this router.
    */
-  const LinkManager &linkManager() const { return m_manager; }
+  const LinkManager &linkManager() const;
 
   /**
    * Returns the reference to underlying routing table.
    */
-  CompactRoutingTable &routingTable() { return m_routes; }
+  CompactRoutingTable &routingTable();
 
   /**
    * Returns the reference to underlying name database.
    */
-  NameDatabase &nameDb() { return m_nameDb; }
+  NameDatabase &nameDb();
 
   /**
    * Returns the reference to the sloppy group manager.
    */
-  SloppyGroupManager &sloppyGroup() { return m_sloppyGroup; }
+  SloppyGroupManager &sloppyGroup();
 
   /**
    * Returns the reference to underlying RPC engine.
    */
-  RpcEngine &rpcEngine() { return m_rpc; }
+  RpcEngine &rpcEngine();
 
   /**
    * Routes the specified message via the overlay.
@@ -146,113 +146,8 @@ public:
   boost::signals2::signal<void(const RoutedMessage&)> signalDeliverMessage;
   /// Signal for forwarding transit messages
   boost::signals2::signal<void(const RoutedMessage&)> signalForwardMessage;
-protected:
-  /**
-   * Called when a message has been received on any link.
-   * 
-   * @param msg Link-local message that has been received
-   */
-  void messageReceived(const Message &msg);
-
-  /**
-   * Called when the network size estimate is changed.
-   *
-   * @param size New network size estimate
-   */
-  void networkSizeEstimateChanged(std::uint64_t size);
-
-  /**
-   * Announces the current node to all neighbors.
-   */
-  void announceOurselves(const boost::system::error_code &error);
-
-  /**
-   * Request full routes from all neighbors.
-   */
-  void requestFullRoutes();
-
-  /**
-   * Called when a new peer is added to the social identity.
-   */
-  void peerAdded(const Contact &peer);
-
-  /**
-   * Called when a peer is removed from the social identity.
-   */
-  void peerRemoved(const NodeIdentifier &nodeId);
-
-  /**
-   * A handler for verification of peer contacts.
-   *
-   * @param peer Peer contact to verify
-   * @return True if verification is successful, false otherwise
-   */
-  bool linkVerifyPeer(const Contact &peer);
-
-  /**
-   * Called by the routing table when an entry should be exported to
-   * all neighbors.
-   *
-   * @param entry Routing entry to export
-   * @param peer Optional peer identifier to export to
-   */
-  void ribExportEntry(RoutingEntryPtr entry,
-                      const NodeIdentifier &peer = NodeIdentifier::INVALID);
-
-  /**
-   * Called by the routing table when a retraction should be sent to
-   * all neighbors.
-   *
-   * @param entry Routing entry to retract
-   */
-  void ribRetractEntry(RoutingEntryPtr entry);
-
-  /**
-   * Called when a new landmark is learned via route exchange.
-   *
-   * @param landmarkId Landmark identifier
-   */
-  void landmarkLearned(const NodeIdentifier &landmarkId);
-
-  /**
-   * Called when a landmark is unlearned.
-   *
-   * @param landmarkId Landmark identifier
-   */
-  void landmarkRemoved(const NodeIdentifier &landmarkId);
-
-  /**
-   * Performs registration of core RPC methods that are required for routing.
-   */
-  void registerCoreRpcMethods();
-
-  /**
-   * Performs unregistration of core RPC methods that are required for routing.
-   */
-  void unregisterCoreRpcMethods();
 private:
-  /// UNISPHERE context
-  Context &m_context;
-  /// Local node identity
-  SocialIdentity &m_identity;
-  /// Link manager associated with this router
-  LinkManager &m_manager;
-  /// Network size estimator
-  NetworkSizeEstimator &m_sizeEstimator;
-  /// Compact routing table
-  CompactRoutingTable m_routes;
-  /// RPC engine
-  RpcEngine m_rpc;
-  /// Name database
-  NameDatabase m_nameDb;
-  /// Sloppy group manager
-  SloppyGroupManager m_sloppyGroup;
-  /// Timer for notifying neighbours about ourselves
-  boost::asio::deadline_timer m_announceTimer;
-  /// Active subscriptions to other components
-  std::list<boost::signals2::connection> m_subscriptions;
-  /// Local sequence number
-  std::uint16_t m_seqno;
+  UNISPHERE_DECLARE_PRIVATE(CompactRouter)
 };
   
 }

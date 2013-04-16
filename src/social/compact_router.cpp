@@ -24,26 +24,167 @@
 #include "src/social/messages.pb.h"
 #include "src/social/core_methods.pb.h"
 
-
 namespace UniSphere {
 
-CompactRouter::CompactRouter(SocialIdentity &identity, LinkManager &manager,
-                             NetworkSizeEstimator &sizeEstimator)
-  : m_context(manager.context()),
+class CompactRouterPrivate {
+public:
+  /**
+   * Class constructor.
+   */
+  CompactRouterPrivate(SocialIdentity &identity,
+                       LinkManager &manager,
+                       NetworkSizeEstimator &sizeEstimator,
+                       CompactRouter &router);
+
+  /**
+   * Initializes the router.
+   */
+  void initialize();
+
+  /**
+   * Shuts down the router and all components.
+   */
+  void shutdown();
+
+  /**
+   * Routes the specified message via the overlay.
+   *
+   * @param msg A valid message to be routed
+   */
+  void route(RoutedMessage &msg);
+
+  /**
+   * Called when a message has been received on any link.
+   *
+   * @param msg Link-local message that has been received
+   */
+  void messageReceived(const Message &msg);
+
+  /**
+   * Called when the network size estimate is changed.
+   *
+   * @param size New network size estimate
+   */
+  void networkSizeEstimateChanged(std::uint64_t size);
+
+  /**
+   * Announces the current node to all neighbors.
+   */
+  void announceOurselves(const boost::system::error_code &error);
+
+  /**
+   * Request full routes from all neighbors.
+   */
+  void requestFullRoutes();
+
+  /**
+   * Called when a new peer is added to the social identity.
+   */
+  void peerAdded(const Contact &peer);
+
+  /**
+   * Called when a peer is removed from the social identity.
+   */
+  void peerRemoved(const NodeIdentifier &nodeId);
+
+  /**
+   * A handler for verification of peer contacts.
+   *
+   * @param peer Peer contact to verify
+   * @return True if verification is successful, false otherwise
+   */
+  bool linkVerifyPeer(const Contact &peer);
+
+  /**
+   * Called by the routing table when an entry should be exported to
+   * all neighbors.
+   *
+   * @param entry Routing entry to export
+   * @param peer Optional peer identifier to export to
+   */
+  void ribExportEntry(RoutingEntryPtr entry,
+                      const NodeIdentifier &peer = NodeIdentifier::INVALID);
+
+  /**
+   * Called by the routing table when a retraction should be sent to
+   * all neighbors.
+   *
+   * @param entry Routing entry to retract
+   */
+  void ribRetractEntry(RoutingEntryPtr entry);
+
+  /**
+   * Called when a new landmark is learned via route exchange.
+   *
+   * @param landmarkId Landmark identifier
+   */
+  void landmarkLearned(const NodeIdentifier &landmarkId);
+
+  /**
+   * Called when a landmark is unlearned.
+   *
+   * @param landmarkId Landmark identifier
+   */
+  void landmarkRemoved(const NodeIdentifier &landmarkId);
+
+  /**
+   * Performs registration of core RPC methods that are required for routing.
+   */
+  void registerCoreRpcMethods();
+
+  /**
+   * Performs unregistration of core RPC methods that are required for routing.
+   */
+  void unregisterCoreRpcMethods();
+public:
+  UNISPHERE_DECLARE_PUBLIC(CompactRouter)
+  UNISPHERE_DECLARE_PREMATURE_PARENT_SETTER(CompactRouter)
+
+  /// UNISPHERE context
+  Context &m_context;
+  /// Local node identity
+  SocialIdentity &m_identity;
+  /// Link manager associated with this router
+  LinkManager &m_manager;
+  /// Network size estimator
+  NetworkSizeEstimator &m_sizeEstimator;
+  /// Compact routing table
+  CompactRoutingTable m_routes;
+  /// RPC engine
+  RpcEngine m_rpc;
+  /// Name database
+  NameDatabase m_nameDb;
+  /// Sloppy group manager
+  SloppyGroupManager m_sloppyGroup;
+  /// Timer for notifying neighbours about ourselves
+  boost::asio::deadline_timer m_announceTimer;
+  /// Active subscriptions to other components
+  std::list<boost::signals2::connection> m_subscriptions;
+  /// Local sequence number
+  std::uint16_t m_seqno;
+};
+
+CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
+                                           LinkManager &manager,
+                                           NetworkSizeEstimator &sizeEstimator,
+                                           CompactRouter &router)
+  : q(router),
+    w(router, this),
+    m_context(manager.context()),
     m_identity(identity),
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
-    m_rpc(*this),
-    m_nameDb(*this),
-    m_sloppyGroup(*this, sizeEstimator),
+    m_rpc(router),
+    m_nameDb(router),
+    m_sloppyGroup(router, sizeEstimator),
     m_announceTimer(manager.context().service()),
     m_seqno(1)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
 }
 
-void CompactRouter::initialize()
+void CompactRouterPrivate::initialize()
 {
   UNISPHERE_LOG(m_manager, Info, "CompactRouter: Initializing router.");
 
@@ -52,15 +193,15 @@ void CompactRouter::initialize()
 
   // Subscribe to all events
   m_subscriptions
-    << m_manager.signalMessageReceived.connect(boost::bind(&CompactRouter::messageReceived, this, _1))
-    << m_manager.signalVerifyPeer.connect(boost::bind(&CompactRouter::linkVerifyPeer, this, _1))
-    << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouter::networkSizeEstimateChanged, this, _1))
-    << m_routes.signalExportEntry.connect(boost::bind(&CompactRouter::ribExportEntry, this, _1, _2))
-    << m_routes.signalRetractEntry.connect(boost::bind(&CompactRouter::ribRetractEntry, this, _1))
-    << m_routes.signalLandmarkLearned.connect(boost::bind(&CompactRouter::landmarkLearned, this, _1))
-    << m_routes.signalLandmarkRemoved.connect(boost::bind(&CompactRouter::landmarkRemoved, this, _1))
-    << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouter::peerAdded, this, _1))
-    << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouter::peerRemoved, this, _1))
+    << m_manager.signalMessageReceived.connect(boost::bind(&CompactRouterPrivate::messageReceived, this, _1))
+    << m_manager.signalVerifyPeer.connect(boost::bind(&CompactRouterPrivate::linkVerifyPeer, this, _1))
+    << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouterPrivate::networkSizeEstimateChanged, this, _1))
+    << m_routes.signalExportEntry.connect(boost::bind(&CompactRouterPrivate::ribExportEntry, this, _1, _2))
+    << m_routes.signalRetractEntry.connect(boost::bind(&CompactRouterPrivate::ribRetractEntry, this, _1))
+    << m_routes.signalLandmarkLearned.connect(boost::bind(&CompactRouterPrivate::landmarkLearned, this, _1))
+    << m_routes.signalLandmarkRemoved.connect(boost::bind(&CompactRouterPrivate::landmarkRemoved, this, _1))
+    << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouterPrivate::peerAdded, this, _1))
+    << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouterPrivate::peerRemoved, this, _1))
   ;
 
   // Compute whether we should become a landmark or not
@@ -76,7 +217,7 @@ void CompactRouter::initialize()
   m_sloppyGroup.initialize();
 }
 
-void CompactRouter::shutdown()
+void CompactRouterPrivate::shutdown()
 {
   UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Shutting down router.");
 
@@ -101,18 +242,18 @@ void CompactRouter::shutdown()
   m_routes.clear();
 }
 
-void CompactRouter::peerAdded(const Contact &peer)
+void CompactRouterPrivate::peerAdded(const Contact &peer)
 {
   // Export announces to new peer when it is added
   m_routes.fullUpdate(peer.nodeId());
 }
 
-void CompactRouter::peerRemoved(const NodeIdentifier &nodeId)
+void CompactRouterPrivate::peerRemoved(const NodeIdentifier &nodeId)
 {
   // TODO: Update the vport mapping?
 }
 
-void CompactRouter::announceOurselves(const boost::system::error_code &error)
+void CompactRouterPrivate::announceOurselves(const boost::system::error_code &error)
 {
   if (error)
     return;
@@ -143,10 +284,10 @@ void CompactRouter::announceOurselves(const boost::system::error_code &error)
 
   // Redo announce after 10 seconds
   m_announceTimer.expires_from_now(m_context.roughly(CompactRouter::interval_announce));
-  m_announceTimer.async_wait(boost::bind(&CompactRouter::announceOurselves, this, _1));
+  m_announceTimer.async_wait(boost::bind(&CompactRouterPrivate::announceOurselves, this, _1));
 }
 
-void CompactRouter::requestFullRoutes()
+void CompactRouterPrivate::requestFullRoutes()
 {
   // Request full routing table dump from all neighbors
   Protocol::PathRefresh request;
@@ -157,7 +298,7 @@ void CompactRouter::requestFullRoutes()
   }
 }
 
-void CompactRouter::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
+void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
 {
   Protocol::PathAnnounce announce;
   auto exportEntry = [&](const Contact &contact) {
@@ -203,7 +344,7 @@ void CompactRouter::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &
   // TODO: Think about compaction/aggregation of multiple entries
 }
 
-void CompactRouter::ribRetractEntry(RoutingEntryPtr entry)
+void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
 {
   // Send retraction message to all neighbors
   Protocol::PathRetract retract;
@@ -224,7 +365,7 @@ void CompactRouter::ribRetractEntry(RoutingEntryPtr entry)
   // TODO: Think about compaction/aggregation of multiple entries
 }
 
-bool CompactRouter::linkVerifyPeer(const Contact &peer)
+bool CompactRouterPrivate::linkVerifyPeer(const Contact &peer)
 {
   // Refuse to establish connections with unknown peers
   if (!m_identity.isPeer(peer)) {
@@ -235,7 +376,7 @@ bool CompactRouter::linkVerifyPeer(const Contact &peer)
   return true;
 }
 
-void CompactRouter::messageReceived(const Message &msg)
+void CompactRouterPrivate::messageReceived(const Message &msg)
 {
   switch (msg.type()) {
     case Message::Type::Social_Announce: {
@@ -303,7 +444,7 @@ void CompactRouter::messageReceived(const Message &msg)
   }
 }
 
-void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
+void CompactRouterPrivate::networkSizeEstimateChanged(std::uint64_t size)
 {
   // Re-evaluate network size and check if we should alter our landmark status
   double x = std::generate_canonical<double, 32>(m_manager.context().basicRng());
@@ -318,7 +459,7 @@ void CompactRouter::networkSizeEstimateChanged(std::uint64_t size)
   }
 }
 
-void CompactRouter::route(RoutedMessage &msg)
+void CompactRouterPrivate::route(RoutedMessage &msg)
 {
   // Drop invalid messages
   if (!msg.isValid()) {
@@ -331,13 +472,13 @@ void CompactRouter::route(RoutedMessage &msg)
     // If this is a packet that has been sent to ourselves, we should dispatch the signal
     // via the event queue and not call the signal directly
     if (msg.originLinkId().isNull()) {
-      m_context.service().post([this, msg]() { signalDeliverMessage(msg); });
+      m_context.service().post([this, msg]() { q.signalDeliverMessage(msg); });
     } else {
       // Cache source address when one is available
       if (!msg.sourceAddress().isNull())
         m_nameDb.store(msg.sourceNodeId(), msg.sourceAddress(), NameRecord::Type::Cache);
 
-      signalDeliverMessage(msg);
+      q.signalDeliverMessage(msg);
     }
     return;
   }
@@ -409,45 +550,23 @@ void CompactRouter::route(RoutedMessage &msg)
   }
 
   // Route to next hop
-  signalForwardMessage(msg);
+  q.signalForwardMessage(msg);
   Protocol::RoutedMessage pmsg;
   msg.serialize(pmsg);
   m_manager.send(nextHop, Message(Message::Type::Social_Routed, pmsg));
 }
 
-void CompactRouter::route(std::uint32_t sourceCompId, const NodeIdentifier &destination,
-                          const LandmarkAddress &destinationAddress,
-                          std::uint32_t destinationCompId, std::uint32_t type,
-                          const google::protobuf::Message &msg,
-                          const RoutingOptions &opts)
-{
-  // Create a new routed message without a known destination L-R address
-  RoutedMessage rmsg(
-    m_routes.getLocalAddress(),
-    m_manager.getLocalNodeId(),
-    sourceCompId,
-    destinationAddress,
-    destination,
-    destinationCompId,
-    type,
-    msg,
-    opts
-  );
-
-  route(rmsg);
-}
-
-void CompactRouter::landmarkLearned(const NodeIdentifier &landmarkId)
+void CompactRouterPrivate::landmarkLearned(const NodeIdentifier &landmarkId)
 {
   m_nameDb.registerLandmark(landmarkId);
 }
 
-void CompactRouter::landmarkRemoved(const NodeIdentifier &landmarkId)
+void CompactRouterPrivate::landmarkRemoved(const NodeIdentifier &landmarkId)
 {
   m_nameDb.unregisterLandmark(landmarkId);
 }
 
-void CompactRouter::registerCoreRpcMethods()
+void CompactRouterPrivate::registerCoreRpcMethods()
 {
   // Simple ping messages
   m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
@@ -467,9 +586,91 @@ void CompactRouter::registerCoreRpcMethods()
   );
 }
 
-void CompactRouter::unregisterCoreRpcMethods()
+void CompactRouterPrivate::unregisterCoreRpcMethods()
 {
   m_rpc.unregisterMethod("Core.Ping");
+}
+
+CompactRouter::CompactRouter(SocialIdentity &identity,
+                             LinkManager &manager,
+                             NetworkSizeEstimator &sizeEstimator)
+{
+  // Must be constructed in this way and will initialize the d-ptr
+  new CompactRouterPrivate(identity, manager, sizeEstimator, *this);
+}
+
+void CompactRouter::initialize()
+{
+  d->initialize();
+}
+
+void CompactRouter::shutdown()
+{
+  d->shutdown();
+}
+
+Context &CompactRouter::context() const
+{
+  return d->m_context;
+}
+
+const SocialIdentity &CompactRouter::identity() const
+{
+  return d->m_identity;
+}
+
+const LinkManager &CompactRouter::linkManager() const
+{
+  return d->m_manager;
+}
+
+CompactRoutingTable &CompactRouter::routingTable()
+{
+  return d->m_routes;
+}
+
+NameDatabase &CompactRouter::nameDb()
+{
+  return d->m_nameDb;
+}
+
+SloppyGroupManager &CompactRouter::sloppyGroup()
+{
+  return d->m_sloppyGroup;
+}
+
+RpcEngine &CompactRouter::rpcEngine()
+{
+  return d->m_rpc;
+}
+
+void CompactRouter::route(RoutedMessage &msg)
+{
+  d->route(msg);
+}
+
+void CompactRouter::route(std::uint32_t sourceCompId,
+                          const NodeIdentifier &destination,
+                          const LandmarkAddress &destinationAddress,
+                          std::uint32_t destinationCompId,
+                          std::uint32_t type,
+                          const google::protobuf::Message &msg,
+                          const RoutingOptions &opts)
+{
+  // Create a new routed message without a known destination L-R address
+  RoutedMessage rmsg(
+    d->m_routes.getLocalAddress(),
+    d->m_manager.getLocalNodeId(),
+    sourceCompId,
+    destinationAddress,
+    destination,
+    destinationCompId,
+    type,
+    msg,
+    opts
+  );
+
+  d->route(rmsg);
 }
 
 }
