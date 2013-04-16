@@ -117,7 +117,7 @@ Contact Link::contact()
 {
   RecursiveUniqueLock lock(m_mutex);
   Contact contact(m_nodeId);
-  BOOST_FOREACH(const Address &address, m_addressList) {
+  for (const Address &address : m_addressList) {
     contact.addAddress(address);
   }
   return contact;
@@ -128,7 +128,7 @@ void Link::addLinklet(LinkletPtr linklet)
   RecursiveUniqueLock lock(m_mutex);
   
   // If the linklet already exists, ignore this request
-  BOOST_FOREACH(LinkletPtr &l, m_linklets) {
+  for (LinkletPtr &l : m_linklets) {
     if (l == linklet)
       return;
   }
@@ -195,7 +195,7 @@ void Link::checkLinkletState()
   
   bool connected = false;
   bool connecting = false;
-  BOOST_FOREACH(LinkletPtr &l, m_linklets) {
+  for (LinkletPtr &l : m_linklets) {
     if (l->state() == Linklet::State::Connected) {
       connected = true;
     } else if (l->state() == Linklet::State::Connecting || l->state() == Linklet::State::IntroWait) {
@@ -237,8 +237,7 @@ void Link::addContact(const Contact &contact)
   RecursiveUniqueLock lock(m_mutex);
   
   // Transfer all contact addresses into the queue
-  typedef std::pair<int, Address> AddressPair;
-  BOOST_FOREACH(const AddressPair &p, contact.addresses()) {
+  for (const auto &p : contact.addresses()) {
     m_addressList.insert(p.second);
   }
 }

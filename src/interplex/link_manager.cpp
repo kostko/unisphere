@@ -73,8 +73,9 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
 {
   RecursiveUniqueLock lock(m_linksMutex);
   LinkPtr link;
-  if (m_links.find(contact.nodeId()) != m_links.end()) {
-    link = m_links[contact.nodeId()];
+  auto it = m_links.find(contact.nodeId());
+  if (it != m_links.end()) {
+    link = it->second;
     
     // It can happen that link has switched to invalid and we really should not
     // queue messages to such a link as they will be lost
@@ -89,15 +90,13 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
       link = LinkPtr(new Link(*this, contact.nodeId(), 600));
       link->init();
       link->signalMessageReceived.connect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
-      m_links[contact.nodeId()] = link;
+      m_links.insert({{ contact.nodeId(), link }});
+      link->addContact(contact);
     } else {
       // No contact address is available (or create not allowed) and link is not an existing one
       return LinkPtr();
     }
   }
-  
-  if (contact.hasAddresses())
-    link->addContact(contact);
   
   return link;
 }
@@ -204,7 +203,7 @@ Contact LinkManager::getLocalContact() const
 {
   // TODO This should probably be cached
   Contact contact(m_nodeId);
-  BOOST_FOREACH(LinkletPtr linklet, m_listeners) {
+  for (const LinkletPtr &linklet : m_listeners) {
     Address address = linklet->address();
     if (address.type() == Address::Type::IP) {
       auto endpoint = address.toIpEndpoint();
@@ -215,7 +214,7 @@ Contact LinkManager::getLocalContact() const
         // Listen on any interface, we need the introspector to discover all
         // available addresses
         Contact lcontact = HostIntrospector::localContact(endpoint.port());
-        BOOST_FOREACH(const auto &laddr, lcontact.addresses()) {
+        for (const auto &laddr : lcontact.addresses()) {
           contact.addAddress(laddr.second);
         }
       } else {

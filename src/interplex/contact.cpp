@@ -130,8 +130,7 @@ Protocol::Contact Contact::toMessage() const
   Protocol::Contact result;
   result.set_node_id(m_nodeId.as(NodeIdentifier::Format::Raw));
   
-  typedef std::pair<int, Address> AddressPair;
-  BOOST_FOREACH(const AddressPair &p, m_addresses) {
+  for (const auto &p : m_addresses) {
     // Only addresses of type 'IP' can be represented as protocol messages
     if (p.second.type() == Address::Type::IP) {
       Protocol::Address *addr = result.add_addresses();
@@ -146,7 +145,7 @@ Protocol::Contact Contact::toMessage() const
 Contact Contact::fromMessage(const Protocol::Contact &msg)
 {
   Contact result(NodeIdentifier(msg.node_id(), NodeIdentifier::Format::Raw));
-  BOOST_FOREACH(const Protocol::Address &addr, msg.addresses()) {
+  for (const Protocol::Address &addr : msg.addresses()) {
     result.addAddress(Address(addr.address(), addr.port()));
   }
   

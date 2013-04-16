@@ -28,6 +28,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 #include <boost/signals2/signal.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -219,7 +220,10 @@ typedef boost::multi_index_container<
 > RoutingInformationBase;
 
 /// Bidirectional nodeId-vport mapping
-typedef boost::bimap<NodeIdentifier, Vport> VportMap;
+typedef boost::bimap<
+  boost::bimaps::unordered_set_of<NodeIdentifier>,
+  boost::bimaps::unordered_set_of<Vport>
+> VportMap;
 
 /// Mapping of identifiers to route originator descriptors
 typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMap;
