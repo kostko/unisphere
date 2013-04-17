@@ -26,6 +26,11 @@ message PathAnnounce {
   required uint32 seqno = 5;
 }
 
+message AggregatePathAnnounce {
+  // Aggregated path announcements
+  repeated PathAnnounce announces = 1;
+}
+
 message PathRetract {
   // Destination identifier
   required bytes destinationId = 1;

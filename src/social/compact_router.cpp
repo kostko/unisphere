@@ -31,6 +31,33 @@
 
 namespace UniSphere {
 
+/**
+ * This structure is used for each peer to manage aggregation of RIB
+ * exports. Multiple announces are buffered and then transmitted in
+ * a single message to reduce the number of messages.
+ */
+struct AggregationBuffer {
+  /**
+   * Class constructor.
+   */
+  AggregationBuffer(Context &context, const Contact &contact)
+    : contact(contact),
+      timer(context.service()),
+      buffering(false)
+  {}
+
+  /// Contact we are agregating for
+  Contact contact;
+  /// Aggregated path announcement
+  Protocol::AggregatePathAnnounce aggregate;
+  /// Timer to transmit the buffered announcement
+  boost::asio::deadline_timer timer;
+  /// Buffering indicator
+  bool buffering;
+};
+
+UNISPHERE_SHARED_POINTER(AggregationBuffer);
+
 class CompactRouterPrivate {
 public:
   /**
@@ -111,6 +138,24 @@ public:
                       const NodeIdentifier &peer = NodeIdentifier::INVALID);
 
   /**
+   * Queues an announce for transmission.
+   *
+   * @param contact Peer to transmit the announce to
+   * @param announce Announce message
+   */
+  void ribExportQueueAnnounce(const Contact &contact,
+                              const Protocol::PathAnnounce &announce);
+
+  /**
+   * Transmits buffered RIB export messages.
+   *
+   * @param error Error code
+   * @param buffer Aggregation buffer that should be transmitted
+   */
+  void ribExportTransmitBuffer(const boost::system::error_code &error,
+                               AggregationBufferPtr buffer);
+
+  /**
    * Called by the routing table when a retraction should be sent to
    * all neighbors.
    *
@@ -147,6 +192,8 @@ public:
 
   /// UNISPHERE context
   Context &m_context;
+  /// Mutex protecting the compact router
+  mutable std::recursive_mutex m_mutex;
   /// Local node identity
   SocialIdentity &m_identity;
   /// Link manager associated with this router
@@ -167,6 +214,8 @@ public:
   std::list<boost::signals2::connection> m_subscriptions;
   /// Local sequence number
   std::uint16_t m_seqno;
+  /// Aggregated path announcement
+  std::unordered_map<NodeIdentifier, AggregationBufferPtr> m_ribExportAggregate;
 };
 
 CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
@@ -279,9 +328,7 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
     }
 
     announce.set_seqno(m_seqno);
-
-    // Send the announcement
-    m_manager.send(peer.second, Message(Message::Type::Social_Announce, announce));
+    ribExportQueueAnnounce(peer.second, announce);
 
     // Send full routing table to neighbor
     m_routes.fullUpdate(peer.first);
@@ -305,7 +352,6 @@ void CompactRouterPrivate::requestFullRoutes()
 
 void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
 {
-  Protocol::PathAnnounce announce;
   auto exportEntry = [&](const Contact &contact) {
     if (contact.isNull()) {
       UNISPHERE_LOG(m_manager, Error, "CompactRouter: Attempted export for null contact!");
@@ -318,9 +364,10 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
       return;
 
     // Prepare the announce message
-    announce.Clear();
+    Protocol::PathAnnounce announce;
     announce.set_destinationid(entry->destination.as(NodeIdentifier::Format::Raw));
     announce.set_type(static_cast<Protocol::PathAnnounce_Type>(entry->type));
+    announce.set_seqno(entry->seqno);
 
     for (Vport v : entry->forwardPath) {
       announce.add_forwardpath(v);
@@ -330,11 +377,7 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
       announce.add_reversepath(v);
     }
     announce.add_reversepath(vport);
-
-    announce.set_seqno(entry->seqno);
-
-    // Send the announcement
-    m_manager.send(contact, Message(Message::Type::Social_Announce, announce));
+    ribExportQueueAnnounce(contact, announce);
   };
 
   if (peer.isNull()) {
@@ -345,8 +388,50 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
   } else {
     exportEntry(m_identity.getPeerContact(peer));
   }
+}
 
-  // TODO: Think about compaction/aggregation of multiple entries
+void CompactRouterPrivate::ribExportQueueAnnounce(const Contact &contact,
+                                                  const Protocol::PathAnnounce &announce)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Perform entry aggregation into a single announce message containing multiple
+  // path announces
+  AggregationBufferPtr buffer;
+  auto it = m_ribExportAggregate.find(contact.nodeId());
+  if (it == m_ribExportAggregate.end()) {
+    buffer = AggregationBufferPtr(new AggregationBuffer(m_context, contact));
+    m_ribExportAggregate.insert({{ contact.nodeId(), buffer }});
+  } else {
+    buffer = it->second;
+  }
+
+  Protocol::PathAnnounce *a = buffer->aggregate.add_announces();
+  *a = announce;
+
+  // Buffer further messages for another 5 seconds, then transmit all of them
+  if (!buffer->buffering) {
+    buffer->buffering = true;
+    buffer->timer.expires_from_now(m_context.roughly(5));
+    buffer->timer.async_wait(boost::bind(&CompactRouterPrivate::ribExportTransmitBuffer, this, _1, buffer));
+  }
+}
+
+void CompactRouterPrivate::ribExportTransmitBuffer(const boost::system::error_code &error,
+                                                   AggregationBufferPtr buffer)
+{
+  if (error)
+    return;
+
+  RecursiveUniqueLock lock(m_mutex);
+  m_manager.send(
+    buffer->contact,
+    Message(Message::Type::Social_Announce, buffer->aggregate)
+  );
+
+  // Clear the buffer after transmission
+  buffer->buffering = false;
+  buffer->aggregate.Clear();
 }
 
 void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
@@ -367,7 +452,8 @@ void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
     m_manager.send(peer.second, Message(Message::Type::Social_Retract, retract));
   }
 
-  // TODO: Think about compaction/aggregation of multiple entries
+  // TODO: Think about compaction/aggregation of multiple entries (perhaps retractions should be
+  //       unified with announcements)
 }
 
 bool CompactRouterPrivate::linkVerifyPeer(const Contact &peer)
@@ -385,37 +471,42 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
 {
   switch (msg.type()) {
     case Message::Type::Social_Announce: {
-      Protocol::PathAnnounce pan = message_cast<Protocol::PathAnnounce>(msg);
-      RoutingEntryPtr entry(new RoutingEntry(
-        m_context.service(),
-        NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
-        static_cast<RoutingEntry::Type>(pan.type()),
-        pan.seqno()
-      ));
-
-      // Get the incoming vport for this announcement; if none is available a
+      Protocol::AggregatePathAnnounce agg = message_cast<Protocol::AggregatePathAnnounce>(msg);
+      // Get the incoming vport for these announcements; if none is available a
       // new vport is automatically assigned
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
-      entry->forwardPath.push_back(vport);
 
-      // Populate the forwarding path
-      for (int i = 0; i < pan.forwardpath_size(); i++) {
-        entry->forwardPath.push_back(pan.forwardpath(i));
-      }
+      for (int j = 0; j < agg.announces_size(); j++) {
+        const Protocol::PathAnnounce &pan = agg.announces(j);
+        RoutingEntryPtr entry(new RoutingEntry(
+          m_context.service(),
+          NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
+          static_cast<RoutingEntry::Type>(pan.type()),
+          pan.seqno()
+        ));
 
-      // Populate the reverse path (for landmarks)
-      if (entry->type == RoutingEntry::Type::Landmark) {
-        for (int i = 0; i < pan.reversepath_size(); i++) {
-          entry->reversePath.push_back(pan.reversepath(i));
+        entry->forwardPath.push_back(vport);
+
+        // Populate the forwarding path
+        for (int i = 0; i < pan.forwardpath_size(); i++) {
+          entry->forwardPath.push_back(pan.forwardpath(i));
         }
+
+        // Populate the reverse path (for landmarks)
+        if (entry->type == RoutingEntry::Type::Landmark) {
+          for (int i = 0; i < pan.reversepath_size(); i++) {
+            entry->reversePath.push_back(pan.reversepath(i));
+          }
+        }
+
+        // Compute cost based on hop count and set entry timestamp
+        // TODO: These calculations should be moved to the routing table
+        entry->cost = entry->forwardPath.size();
+        entry->lastUpdate = boost::posix_time::microsec_clock::universal_time();
+
+        // Attempt to import the entry into the routing table
+        m_routes.import(entry);
       }
-
-      // Compute cost based on hop count and set entry timestamp
-      entry->cost = entry->forwardPath.size();
-      entry->lastUpdate = boost::posix_time::microsec_clock::universal_time();
-
-      // Attempt to import the entry into the routing table
-      m_routes.import(entry);
       break;
     }
 
