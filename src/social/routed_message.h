@@ -242,7 +242,8 @@ template<typename T>
 T message_cast(const RoutedMessage &msg)
 {
   T payload;
-  payload.ParseFromString(msg.payload());
+  if (!payload.ParseFromString(msg.payload()))
+    throw MessageCastFailed();
   return payload;
 }
 

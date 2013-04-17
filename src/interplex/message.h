@@ -20,6 +20,7 @@
 #define UNISPHERE_INTERPLEX_MESSAGE_H
 
 #include "core/globals.h"
+#include "core/exception.h"
 #include "identity/node_identifier.h"
 
 #include <google/protobuf/message.h>
@@ -141,6 +142,12 @@ private:
 };
 
 /**
+ * An exception that gets raised when a message cast fails.
+ */
+class UNISPHERE_EXPORT MessageCastFailed : public Exception {
+};
+
+/**
  * Casts an UNISPHERE message to a Protocol Buffers message type. The
  * template argument must be a valid protobuf message class.
  *
@@ -151,8 +158,10 @@ template<typename T>
 T message_cast(const Message &msg)
 {
   T payload;
-  payload.ParseFromArray(&msg.buffer()[Message::header_size],
-    msg.buffer().size() - Message::header_size);
+  if (!payload.ParseFromArray(&msg.buffer()[Message::header_size],
+    msg.buffer().size() - Message::header_size))
+    throw MessageCastFailed();
+
   return payload;
 }
 
@@ -167,7 +176,8 @@ template<typename T>
 T message_cast(const std::string &data)
 {
   T payload;
-  payload.ParseFromString(data);
+  if (!payload.ParseFromString(data))
+    throw MessageCastFailed();
   return payload;
 }
 

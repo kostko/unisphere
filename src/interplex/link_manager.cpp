@@ -171,7 +171,11 @@ std::list<NodeIdentifier> LinkManager::getLinkIds()
 
 void LinkManager::linkMessageReceived(const Message &msg)
 {
-  signalMessageReceived(msg);
+  try {
+    signalMessageReceived(msg);
+  } catch (MessageCastFailed &e) {
+    UNISPHERE_LOG(*this, Warning, "LinkManager: Message parsing has failed on incoming message!");
+  }
 }
 
 bool LinkManager::verifyPeer(const Contact &contact)
