@@ -82,7 +82,13 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
 
 CompactRoutingTable::CompactRoutingTable(Context &context, const NodeIdentifier &localId,
   NetworkSizeEstimator &sizeEstimator)
-  : m_context(context),
+  : signalExportEntry(context),
+    signalRetractEntry(context),
+    signalAddressChanged(context),
+    signalLandmarkLearned(context),
+    signalLandmarkRemoved(context),
+
+    m_context(context),
     m_localId(localId),
     m_sizeEstimator(sizeEstimator),
     m_nextVport(0),
@@ -273,9 +279,9 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
   if (newBest == oldBest && entry == newBest && landmarkChangedType) {
     // Landmark type of the currently active route has changed
     if (entry->isLandmark())
-      signalLandmarkLearned(entry->destination);
+      signalLandmarkLearned.defer(entry->destination);
     else
-      signalLandmarkRemoved(entry->destination);
+      signalLandmarkRemoved.defer(entry->destination);
   }
 
   return true;
@@ -295,7 +301,7 @@ void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifie
   orig->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
   // Export the entry
-  signalExportEntry(entry, peer);
+  signalExportEntry.defer(entry, peer);
 }
 
 boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
@@ -349,12 +355,12 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::select
     if (oldBestEntry) {
       // Check if landmark type for the active entry has changed
       if (oldBestEntry->isLandmark() && !newBestEntry->isLandmark())
-        signalLandmarkRemoved(destination);
+        signalLandmarkRemoved.defer(destination);
       else if (!oldBestEntry->isLandmark() && newBestEntry->isLandmark())
-        signalLandmarkLearned(destination);
+        signalLandmarkLearned.defer(destination);
     } else if (newBestEntry->isLandmark()) {
       // A landmark has become the active route
-      signalLandmarkLearned(destination);
+      signalLandmarkLearned.defer(destination);
     }
 
     // Export new active route to neighbors
@@ -423,12 +429,12 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
 
     // Send retractions for active entries
     if (entry->active)
-      signalRetractEntry(entry);
+      signalRetractEntry.defer(entry);
   }
 
   // If this was a landmark, we have just unlearned it
   if (wasLandmark)
-    signalLandmarkRemoved(destination);
+    signalLandmarkRemoved.defer(destination);
 
   return true;
 }
@@ -460,7 +466,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
     // If entry was part of an active route, we must determine a new active route for this destination
     if (entry->active) {
       if (!selectBestRoute(entry->destination).get<0>())
-        signalRetractEntry(entry);
+        signalRetractEntry.defer(entry);
     }
   }
 

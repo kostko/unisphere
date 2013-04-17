@@ -766,7 +766,8 @@ void CompactRouter::route(std::uint32_t sourceCompId,
     opts
   );
 
-  d->route(rmsg);
+  // Processing of locally originating messages should be deferred to avoid deadlocks
+  d->m_context.service().post(boost::bind(&CompactRouterPrivate::route, d, rmsg));
 }
 
 }

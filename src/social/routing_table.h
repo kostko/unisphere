@@ -29,12 +29,12 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
-#include <boost/signals2/signal.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/labeled_graph.hpp>
 
 #include "core/context.h"
+#include "core/signal.h"
 #include "identity/node_identifier.h"
 #include "social/size_estimator.h"
 #include "social/address.h"
@@ -413,15 +413,15 @@ public:
                     std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 public:
   /// Signal that gets called when a routing entry should be exported to neighbours
-  boost::signals2::signal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
+  DeferrableSignal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
   /// Signal that gets called when a routing entry should be retracted to neighbours
-  boost::signals2::signal<void(RoutingEntryPtr)> signalRetractEntry;
+  DeferrableSignal<void(RoutingEntryPtr)> signalRetractEntry;
   /// Signal that gets called when the local address changes
-  boost::signals2::signal<void(const LandmarkAddress&)> signalAddressChanged;
+  DeferrableSignal<void(const LandmarkAddress&)> signalAddressChanged;
   /// Signal that gets called when a new landmark is learned
-  boost::signals2::signal<void(const NodeIdentifier&)> signalLandmarkLearned;
+  DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkLearned;
   /// Signal that gets called when a landmark is removed
-  boost::signals2::signal<void(const NodeIdentifier&)> signalLandmarkRemoved;
+  DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkRemoved;
 protected:
   /**
    * Returns the maximum vicinity size.
