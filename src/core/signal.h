@@ -23,6 +23,10 @@
 
 namespace UniSphere {
 
+/**
+ * Wrapper around boost::signals2::signal to support signals that
+ * can be dispatched later by the Boost.ASIO dispatcher.
+ */
 template<typename... T>
 class DeferrableSignal : public boost::signals2::signal<T...> {
 public:
