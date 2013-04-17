@@ -209,6 +209,10 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
     }
   }
 
+  // Compute cost based on hop count and set entry timestamp
+  entry->cost = entry->forwardPath.size();
+  entry->lastUpdate = boost::posix_time::microsec_clock::universal_time();
+
   // Check if an entry to the same destination from the same vport already exists; in
   // this case, the announcement counts as an implicit retract
   bool landmarkChangedType = false;

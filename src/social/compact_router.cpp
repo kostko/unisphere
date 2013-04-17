@@ -499,11 +499,6 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
           }
         }
 
-        // Compute cost based on hop count and set entry timestamp
-        // TODO: These calculations should be moved to the routing table
-        entry->cost = entry->forwardPath.size();
-        entry->lastUpdate = boost::posix_time::microsec_clock::universal_time();
-
         // Attempt to import the entry into the routing table
         m_routes.import(entry);
       }
