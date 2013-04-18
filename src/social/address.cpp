@@ -57,16 +57,20 @@ bool LandmarkAddress::operator==(const LandmarkAddress &other) const
 
 std::ostream &operator<<(std::ostream &stream, const LandmarkAddress &address)
 {
-  stream << "[" << address.landmarkId().hex() << ", ";
+  stream << "[" << address.landmarkId().hex() << ", " << address.path() << "]";
+  return stream;
+}
 
-  if (address.path().empty()) {
-    stream << "<>]";
+std::ostream &operator<<(std::ostream &stream, const RoutingPath &path)
+{
+  if (path.empty()) {
+    stream << "<>";
   } else {
-    auto it = address.path().begin();
+    auto it = path.begin();
     stream << "<" << *it;
-    while (++it != address.path().end())
+    while (++it != path.end())
       stream << "-" << *it;
-    stream << ">]";
+    stream << ">";
   }
 
   return stream;

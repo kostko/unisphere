@@ -110,6 +110,9 @@ private:
 /// Operator for easier display of L-R addresses
 UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const LandmarkAddress &address);
 
+/// Operator for easier display of paths
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const RoutingPath &path);
+
 }
 
 #endif
