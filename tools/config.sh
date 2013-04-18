@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-BIN_DIR="build"
+BIN_DIR="build/release"
 DATA_DIR="data"
 OUTPUT_DIR="output"
 TOPOLOGIES=(
