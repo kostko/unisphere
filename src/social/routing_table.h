@@ -30,10 +30,27 @@
 
 namespace UniSphere {
 
+/**
+ * A descriptor for a remote node that originates routes. It is used
+ * to keep track of its sequence numbers when routing entries get
+ * removed.
+ */
 class UNISPHERE_EXPORT RouteOriginator {
 public:
+  /**
+   * Class constructor.
+   *
+   * @param nodeId Originator node identifier
+   */
   RouteOriginator(const NodeIdentifier &nodeId);
 
+  /**
+   * Returns true if given sequence number is newer than the currently
+   * stored for this route originator.
+   *
+   * @param seq Sequence number to check against
+   * @return True if given sequence number is newer, false otherwise
+   */
   bool isNewer(std::uint16_t seq) const;
 
   /**
@@ -53,6 +70,9 @@ public:
 
 UNISPHERE_SHARED_POINTER(RouteOriginator)
 
+/**
+ * An entry in the compact routing table.
+ */
 class UNISPHERE_EXPORT RoutingEntry {
 public:
   /**
