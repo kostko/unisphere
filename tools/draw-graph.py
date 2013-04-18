@@ -133,7 +133,7 @@ class ModuleSimplePlot(object):
       import scipy.optimize
       func = eval(args.fit)
 
-      popt, pcov = scipy.optimize.curve_fit(func, X[:-1], Y[:-1])
+      popt, pcov = scipy.optimize.curve_fit(func, X, Y)
       Fx = numpy.linspace(min(X), max(X) + args.fit_range*(X[-1] - X[-2]), 100)
       Fy = [func(x, *popt) for x in Fx]
       plt.plot(Fx, Fy, linestyle = '--', color = 'black')
