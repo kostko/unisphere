@@ -123,7 +123,10 @@ UNISPHERE_SCENARIO(SingleStretchScenario)
     throw TestBed::TestBedException("Missing required --topology option!");
 
   int tm = options["measure-after"].as<int>();
-  testbed.scheduleTest(tm, "routing/all_pairs");
+  testbed.scheduleTest(tm, "state/count");
+  testbed.scheduleTest(tm, "state/sloppy_group_topology");
+  testbed.scheduleTest(tm, "state/routing_topology");
+  testbed.scheduleTest(tm + 5, "routing/all_pairs");
 }
 
 void setupOptions(boost::program_options::options_description &options)
