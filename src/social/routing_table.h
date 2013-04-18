@@ -263,6 +263,14 @@ public:
     boost::hash_mapS
   > TopologyDumpGraph;
 
+  /// A helper structure for returning longest prefix matches
+  struct LongestPrefixMatch {
+    /// Node identifier of the longest prefix match node in vicinity
+    NodeIdentifier nodeId;
+    /// Next hop in route towards the longest prefix match node
+    NodeIdentifier nextHop;
+  };
+
   /**
    * Class constructor.
    *
@@ -280,18 +288,18 @@ public:
    * route an invalid entry is returned.
    *
    * @param destination Destination address
-   * @return A routing entry that can be used to forward to destination
+   * @return Node identifier of the next hop
    */
-  RoutingEntryPtr getActiveRoute(const NodeIdentifier &destination);
+  NodeIdentifier getActiveRoute(const NodeIdentifier &destination);
 
   /**
    * Returns the routing entry with the longest prefix match in
    * its node identifier.
    *
    * @param destination Destiantion address
-   * @return A routing entry that has the longest prefix match
+   * @return Descriptor for the longest prefix match
    */
-  RoutingEntryPtr getLongestPrefixMatch(const NodeIdentifier &destination);
+  LongestPrefixMatch getLongestPrefixMatch(const NodeIdentifier &destination);
 
   /**
    * Returns a vport identifier corresponding to the given neighbor
@@ -412,15 +420,19 @@ public:
   void dumpTopology(TopologyDumpGraph &graph,
                     std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
 public:
-  /// Signal that gets called when a routing entry should be exported to neighbours
+  /// Signal that gets called when a routing entry should be exported to neighbours. This
+  /// signal is called with the internal mutex held, so handlers MUST avoid any operations
+  /// that acquire additional mutexes, otherwise deadlocks might ocurr!
   DeferrableSignal<void(RoutingEntryPtr, const NodeIdentifier&)> signalExportEntry;
-  /// Signal that gets called when a routing entry should be retracted to neighbours
+  /// Signal that gets called when a routing entry should be retracted to neighbours. This
+  /// signal is called with the internal mutex held, so handlers MUST avoid any operations
+  /// that acquire additional mutexes, otherwise deadlocks might ocurr!
   DeferrableSignal<void(RoutingEntryPtr)> signalRetractEntry;
-  /// Signal that gets called when the local address changes
+  /// Signal that gets called when the local address changes (deferred)
   DeferrableSignal<void(const LandmarkAddress&)> signalAddressChanged;
-  /// Signal that gets called when a new landmark is learned
+  /// Signal that gets called when a new landmark is learned (deferred)
   DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkLearned;
-  /// Signal that gets called when a landmark is removed
+  /// Signal that gets called when a landmark is removed (deferred)
   DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkRemoved;
 protected:
   /**

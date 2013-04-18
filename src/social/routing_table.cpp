@@ -300,7 +300,7 @@ void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifie
   orig->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
   // Export the entry
-  signalExportEntry.defer(entry, peer);
+  signalExportEntry(entry, peer);
 }
 
 boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
@@ -376,41 +376,41 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::select
   return boost::make_tuple(true, *newBest, oldBestEntry);
 }
 
-RoutingEntryPtr CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
+NodeIdentifier CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   auto &ribActive =  m_rib.get<RIBTags::ActiveRoutes>();
   auto entry = ribActive.find(boost::make_tuple(true, destination));
   if (entry == ribActive.end())
-    return RoutingEntryPtr();
+    return NodeIdentifier::INVALID;
 
-  return *entry;
+  return getNeighborForVport((*entry)->originVport());
 }
 
-RoutingEntryPtr CompactRoutingTable::getLongestPrefixMatch(const NodeIdentifier &destination)
+CompactRoutingTable::LongestPrefixMatch CompactRoutingTable::getLongestPrefixMatch(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   // If the RIB is empty, return a null entry
   if (m_rib.empty())
-    return RoutingEntryPtr();
+    return LongestPrefixMatch();
 
   // Find the entry with longest common prefix
   auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
   auto it = ribDestination.upper_bound(boost::make_tuple(destination));
   if (it == ribDestination.end())
-    return *(--it);
+    return LongestPrefixMatch{ (*(--it))->destination, getNeighborForVport((*(--it))->originVport()) };
 
   // Check if previous entry has longer common prefix
   if (it != ribDestination.begin()) {
     auto pit = it;
     if ((*(--pit))->destination.longestCommonPrefix(destination) >
         (*it)->destination.longestCommonPrefix(destination))
-      return *pit;
+      return LongestPrefixMatch{ (*pit)->destination, getNeighborForVport((*pit)->originVport()) };
   }
 
-  return *it;
+  return LongestPrefixMatch{ (*it)->destination, getNeighborForVport((*it)->originVport()) };
 }
 
 bool CompactRoutingTable::retract(const NodeIdentifier &destination)
@@ -435,7 +435,7 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
 
     // Send retractions for active entries
     if (entry->active)
-      signalRetractEntry.defer(entry);
+      signalRetractEntry(entry);
   }
 
   // If this was a landmark, we have just unlearned it
@@ -472,7 +472,7 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
     // If entry was part of an active route, we must determine a new active route for this destination
     if (entry->active) {
       if (!selectBestRoute(entry->destination).get<0>())
-        signalRetractEntry.defer(entry);
+        signalRetractEntry(entry);
     }
   }
 

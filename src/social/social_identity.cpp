@@ -53,6 +53,9 @@ void SocialIdentity::removePeer(const NodeIdentifier &nodeId)
 
 Contact SocialIdentity::getPeerContact(const NodeIdentifier &nodeId) const
 {
+  if (!nodeId.isValid())
+    return Contact();
+  
   auto it = m_peers.find(nodeId);
   if (it == m_peers.end())
     return Contact();

@@ -577,9 +577,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
   Contact nextHop;
 
   // Always attempt to first route directly without L-R addressing
-  RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationNodeId());
-  if (entry)
-    nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+  nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationNodeId()));
 
   if (!msg.options().directDelivery) {
     if (nextHop.isNull() && !msg.destinationAddress().isNull()) {
@@ -608,9 +606,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
         msg.processSourceRouteHop();
       } else {
         // We must route to landmark node
-        RoutingEntryPtr entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
-        if (entry)
-          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+        nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationAddress().landmarkId()));
       }
     }
 
@@ -619,17 +615,14 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
       NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
       if (record) {
         msg.setDestinationAddress(record->landmarkAddress());
-        entry = m_routes.getActiveRoute(msg.destinationAddress().landmarkId());
-        if (entry)
-          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+        nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationAddress().landmarkId()));
       }
 
       if (nextHop.isNull()) {
         // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
-        entry = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
-        msg.setDestinationAddress(LandmarkAddress(entry->destination));
-        if (entry)
-          nextHop = m_identity.getPeerContact(m_routes.getNeighborForVport(entry->originVport()));
+        auto match = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
+        msg.setDestinationAddress(LandmarkAddress(match.nodeId));
+        nextHop = m_identity.getPeerContact(match.nextHop);
       }
     }
   }
