@@ -135,7 +135,7 @@ public:
    * @param peer Optional peer identifier to export to
    */
   void ribExportEntry(RoutingEntryPtr entry,
-                      const NodeIdentifier &peer = NodeIdentifier::INVALID);
+                      const NodeIdentifier &peer);
 
   /**
    * Queues an announce for transmission.
