@@ -213,22 +213,32 @@ protected:
   void start()
   {
     unsigned long stateAllNodes = 0;
-    auto state = data("state", {"node_id", "rt_all", "rt_active", "rt_vicinity", "name_db", "is_landmark"});
+    auto state = data("state", {
+      "node_id",
+      "rt_all", "rt_active", "rt_vicinity",
+      "ndb_all", "ndb_active", "ndb_cache",
+      "is_landmark"
+    });
+
     for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
       // Routing table state
-      unsigned long stateRtAll = node->router->routingTable().size();
-      unsigned long stateRtActive = node->router->routingTable().sizeActive();
-      unsigned long stateRtVicinity = node->router->routingTable().sizeVicinity();
+      size_t stateRtAll = node->router->routingTable().size();
+      size_t stateRtActive = node->router->routingTable().sizeActive();
+      size_t stateRtVicinity = node->router->routingTable().sizeVicinity();
       // Name database state
-      unsigned long stateNameDb = node->router->nameDb().size();
+      size_t stateNdbAll = node->router->nameDb().size();
+      size_t stateNdbActive = node->router->nameDb().sizeActive();
+      size_t stateNdbCache = node->router->nameDb().sizeCache();
 
-      stateAllNodes += stateRtAll + stateNameDb;
+      stateAllNodes += stateRtAll + stateNdbAll;
       state
         << node->name
         << stateRtAll
         << stateRtActive
         << stateRtVicinity
-        << stateNameDb
+        << stateNdbAll
+        << stateNdbActive
+        << stateNdbCache
         << node->router->routingTable().isLandmark();
     }
 

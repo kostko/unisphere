@@ -282,6 +282,17 @@ public:
   size_t size() const;
 
   /**
+   * Returns the number of active (authoritative and sloppy group) name records
+   * in the name database.
+   */
+  size_t sizeActive() const;
+
+  /**
+   * Returns the number of cache name records in the name database.
+   */
+  size_t sizeCache() const;
+
+  /**
    * Outputs the name database to a stream.
    *
    * @param stream Output stream to dump into

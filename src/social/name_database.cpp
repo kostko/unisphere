@@ -779,6 +779,23 @@ size_t NameDatabase::size() const
   return d->m_nameDb.size();
 }
 
+size_t NameDatabase::sizeActive() const
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+
+  auto &nibType = d->m_nameDb.get<NIBTags::TypeDestination>();
+  return nibType.count(NameRecord::Type::Authority) +
+         nibType.count(NameRecord::Type::SloppyGroup);
+}
+
+size_t NameDatabase::sizeCache() const
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+
+  auto &nibType = d->m_nameDb.get<NIBTags::TypeDestination>();
+  return nibType.count(NameRecord::Type::Cache);
+}
+
 NameRecordRange NameDatabase::names() const
 {
   return d->m_nameDb;
