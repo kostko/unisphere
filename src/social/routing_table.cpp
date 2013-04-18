@@ -340,13 +340,15 @@ boost::posix_time::time_duration RouteOriginator::age() const
   return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
 }
 
-RoutingEntry::RoutingEntry(boost::asio::io_service &service, const NodeIdentifier &destination,
-  Type type, std::uint16_t seqno)
+RoutingEntry::RoutingEntry(Context &context,
+                           const NodeIdentifier &destination,
+                           Type type,
+                           std::uint16_t seqno)
   : destination(destination),
     type(type),
     seqno(seqno),
     active(false),
-    expiryTimer(service)
+    expiryTimer(context.service())
 {
 }
 

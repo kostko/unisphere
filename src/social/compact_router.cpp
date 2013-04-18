@@ -479,7 +479,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
       for (int j = 0; j < agg.announces_size(); j++) {
         const Protocol::PathAnnounce &pan = agg.announces(j);
         RoutingEntryPtr entry(new RoutingEntry(
-          m_context.service(),
+          m_context,
           NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
           static_cast<RoutingEntry::Type>(pan.type()),
           pan.seqno()

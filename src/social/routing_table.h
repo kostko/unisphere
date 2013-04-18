@@ -67,12 +67,12 @@ public:
   /**
    * Constructs a routing entry.
    *
-   * @param service IO service for timer handling
+   * @param context UNISPHERE context
    * @param destination Destination node identifier
    * @param type Routing entry type
    * @param seqno Sequence number
    */
-  RoutingEntry(boost::asio::io_service &service,
+  RoutingEntry(Context &context,
                const NodeIdentifier &destination,
                Type type,
                std::uint16_t seqno);
