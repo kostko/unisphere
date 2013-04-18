@@ -177,16 +177,11 @@ void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &err
 void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
 {
   RecursiveUniqueLock lock(m_mutex);
-  NodeIdentifier lastDestination;
 
   // Export all active routes to the selected peer
   auto entries = m_rib.get<RIBTags::ActiveRoutes>().equal_range(true);
   for (auto it = entries.first; it != entries.second; ++it) {
-    if ((*it)->destination == lastDestination)
-      continue;
-
     exportEntry(*it, peer);
-    lastDestination = (*it)->destination;
   }
 }
 
@@ -194,7 +189,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  if (!entry || entry->isNull())
+  if (!entry || entry->isNull() || entry->destination == m_localId)
     return false;
 
   if (!entry->originator) {
@@ -300,7 +295,7 @@ void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifie
       orig->isNewer(entry->seqno) ||
       (entry->seqno == orig->seqno && entry->cost < orig->smallestCost)) {
     orig->seqno = entry->seqno;
-    orig->smallestCost = entry->cost;
+    orig->smallestCost = entry->cost + 1;
   }
   orig->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
@@ -325,11 +320,18 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::select
     if (e->active)
       oldBest = it;
 
+    // Scan forward to find the old best route in order to deactivate it
+    if (newBest != ribDestination.end()) {
+      if (oldBest == ribDestination.end())
+        continue;
+      else
+        break;
+    }
+
     if (!e->isFeasible())
       continue;
 
     newBest = it;
-    break;
   }
 
   // If there are no feasible routes, return early
