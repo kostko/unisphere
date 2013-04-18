@@ -19,17 +19,6 @@
 #ifndef UNISPHERE_SOCIAL_ROUTINGTABLE_H
 #define UNISPHERE_SOCIAL_ROUTINGTABLE_H
 
-#include <unordered_map>
-
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/labeled_graph.hpp>
 
@@ -38,8 +27,6 @@
 #include "identity/node_identifier.h"
 #include "social/size_estimator.h"
 #include "social/address.h"
-
-namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
@@ -154,80 +141,6 @@ public:
 
 UNISPHERE_SHARED_POINTER(RoutingEntry)
 
-/// RIB index tags
-namespace RIBTags {
-  class DestinationId;
-  class ActiveRoutes;
-  class TypeCost;
-  class TypeDestinationCost;
-  class VportDestination;
-}
-
-typedef boost::multi_index_container<
-  RoutingEntryPtr,
-  midx::indexed_by<
-    // Index by destination identifier and order by cost within
-    midx::ordered_non_unique<
-      midx::tag<RIBTags::DestinationId>,
-      midx::composite_key<
-        RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
-      >
-    >,
-
-    // Indey by activeness and destination identifier
-    midx::ordered_non_unique<
-      midx::tag<RIBTags::ActiveRoutes>,
-      midx::composite_key<
-        RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, active),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
-      >
-    >,
-
-    // Index by type and cost
-    midx::ordered_non_unique<
-      midx::tag<RIBTags::TypeCost>,
-      midx::composite_key<
-        RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
-      >
-    >,
-    
-    // Index by type, destination and cost
-    midx::ordered_non_unique<
-      midx::tag<RIBTags::TypeDestinationCost>,
-      midx::composite_key<
-        RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
-      >
-    >,
-
-    // Index by origin vport
-    midx::ordered_unique<
-      midx::tag<RIBTags::VportDestination>,
-      midx::composite_key<
-        RoutingEntry,
-        midx::const_mem_fun<RoutingEntry, Vport, &RoutingEntry::originVport>,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
-      >
-    >
-  >
-> RoutingInformationBase;
-
-/// Bidirectional nodeId-vport mapping
-typedef boost::bimap<
-  boost::bimaps::unordered_set_of<NodeIdentifier>,
-  boost::bimaps::unordered_set_of<Vport>
-> VportMap;
-
-/// Mapping of identifiers to route originator descriptors
-typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMap;
-
 /**
  * The routing table data structure.
  */
@@ -323,7 +236,7 @@ public:
 
   /**
    * Attempts to import a routing entry into the routing table.
-   * 
+   *
    * @param entry Routing entry to import
    * @return True if routing table has been changed, false otherwise
    */
@@ -387,7 +300,7 @@ public:
    * Returns true if the local node is currently a landmark for other
    * nodes.
    */
-  bool isLandmark() const { return m_landmark; }
+  bool isLandmark() const;
 
   /**
    * Returns a list of landmark-relative local addresses.
@@ -434,76 +347,8 @@ public:
   DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkLearned;
   /// Signal that gets called when a landmark is removed (deferred)
   DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkRemoved;
-protected:
-  /**
-   * Returns the maximum vicinity size.
-   */
-  size_t getMaximumVicinitySize() const;
-
-  /**
-   * Returns the size of the current vicinity together with the routing entry
-   * of a destination with the largest minimum cost.
-   *
-   * @return A tuple (size, entry)
-   */
-  boost::tuple<size_t, RoutingEntryPtr> getCurrentVicinity() const;
-
-  /**
-   * Returns the number of landmarks in the routing table.
-   */
-  size_t getLandmarkCount() const;
-
-  /**
-   * Called when the freshness timer expires on a direct routing entry.
-   *
-   * @param error Boost error code (in case timer was interrupted)
-   * @param entry Routing entry that expired
-   */
-  void entryTimerExpired(const boost::system::error_code &error,
-                         RoutingEntryPtr entry);
-
-  /**
-   * Notifies the router that an entry should be exported to neighbor
-   * nodes.
-   *
-   * @param entry Routing entry to export
-   * @param peer Optional peer to limit the export to
-   */
-  void exportEntry(RoutingEntryPtr entry,
-                   const NodeIdentifier &peer = NodeIdentifier::INVALID);
-
-  /**
-   * Performs best route selection for a specific destination and
-   * activates the best route (if found).
-   *
-   * @param destination Destination identifier
-   * @return Tuple (activated, new_best, old_best), where activated is true if a
-   *   route was activated, false otherwise; in case activated is true, new_best
-   *   contains the routing entry that was activated while old_best contains the
-   *   previously active entry or null if there was no such entry before
-   */
-  boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> selectBestRoute(const NodeIdentifier &destination);
 private:
-  /// UNISPHERE context
-  Context &m_context;
-  /// Local node identifier
-  NodeIdentifier m_localId;
-  /// Network size estimator
-  NetworkSizeEstimator &m_sizeEstimator;
-  /// Mutex protecting the routing table
-  mutable std::recursive_mutex m_mutex;
-  /// Information needed for routing to any node
-  RoutingInformationBase m_rib;
-  /// Route originator mapping
-  RouteOriginatorMap m_originatorMap;
-  /// Vport mapping for direct routes
-  VportMap m_vportMap;
-  /// Vport index counter
-  Vport m_nextVport;
-  /// Local address based on nearest landmark; multiple for redundancy?
-  std::list<LandmarkAddress> m_localAddress;
-  /// Landmark status of the current node
-  bool m_landmark;
+  UNISPHERE_DECLARE_PRIVATE(CompactRoutingTable)
 };
   
 }

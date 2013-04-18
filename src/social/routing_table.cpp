@@ -19,7 +19,309 @@
 #include "social/routing_table.h"
 #include "social/compact_router.h"
 
+#include <unordered_map>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/composite_key.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+#include <boost/tuple/tuple.hpp>
+
+namespace midx = boost::multi_index;
+
 namespace UniSphere {
+
+/// RIB index tags
+namespace RIBTags {
+  class DestinationId;
+  class ActiveRoutes;
+  class TypeCost;
+  class TypeDestinationCost;
+  class VportDestination;
+}
+
+typedef boost::multi_index_container<
+  RoutingEntryPtr,
+  midx::indexed_by<
+    // Index by destination identifier and order by cost within
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::DestinationId>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
+      >
+    >,
+
+    // Indey by activeness and destination identifier
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::ActiveRoutes>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, active),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
+      >
+    >,
+
+    // Index by type and cost
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::TypeCost>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
+      >
+    >,
+    
+    // Index by type, destination and cost
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::TypeDestinationCost>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
+      >
+    >,
+
+    // Index by origin vport
+    midx::ordered_unique<
+      midx::tag<RIBTags::VportDestination>,
+      midx::composite_key<
+        RoutingEntry,
+        midx::const_mem_fun<RoutingEntry, Vport, &RoutingEntry::originVport>,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
+      >
+    >
+  >
+> RoutingInformationBase;
+
+/// Bidirectional nodeId-vport mapping
+typedef boost::bimap<
+  boost::bimaps::unordered_set_of<NodeIdentifier>,
+  boost::bimaps::unordered_set_of<Vport>
+> VportMap;
+
+/// Mapping of identifiers to route originator descriptors
+typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMap;
+
+class CompactRoutingTablePrivate {
+public:
+  /**
+   * Class constructor.
+   *
+   * @param context UNISPHERE context
+   * @param localId Local node identifier
+   * @param sizeEstimator A network size estimator
+   * @param rt Public instance
+   */
+  CompactRoutingTablePrivate(Context &context,
+                             const NodeIdentifier &localId,
+                             NetworkSizeEstimator &sizeEstimator,
+                             CompactRoutingTable &rt);
+  
+  /**
+   * Returns the currently active route to the given destination
+   * based only on local information. If there is no known direct
+   * route an invalid entry is returned.
+   *
+   * @param destination Destination address
+   * @return Node identifier of the next hop
+   */
+  NodeIdentifier getActiveRoute(const NodeIdentifier &destination);
+
+  /**
+   * Returns the routing entry with the longest prefix match in
+   * its node identifier.
+   *
+   * @param destination Destiantion address
+   * @return Descriptor for the longest prefix match
+   */
+  CompactRoutingTable::LongestPrefixMatch getLongestPrefixMatch(const NodeIdentifier &destination);
+
+  /**
+   * Returns a vport identifier corresponding to the given neighbor
+   * identifier. If a vport has not yet been assigned, a new one is
+   * assigned on the fly.
+   *
+   * @param neighbor Neighbor node identifier
+   * @return Vport identifier
+   */
+  Vport getVportForNeighbor(const NodeIdentifier &neighbor);
+
+  /**
+   * Returns the neighbor identifier corresponding to the given
+   * vport identifier. If this vport has not been assigned, a
+   * null node identifier is returned.
+   *
+   * @param vport Vport identifier
+   * @return Neighbor node identifier
+   */
+  NodeIdentifier getNeighborForVport(Vport vport) const;
+
+  /**
+   * Attempts to import a routing entry into the routing table.
+   *
+   * @param entry Routing entry to import
+   * @return True if routing table has been changed, false otherwise
+   */
+  bool import(RoutingEntryPtr entry);
+
+  /**
+   * Retracts all routing entries for the specified destination.
+   *
+   * @param destination Destination identifier
+   * @return True if routing table has changed, false otherwise
+   */
+  bool retract(const NodeIdentifier &destination);
+
+  /**
+   * Retract all routes originating from the specified vport (optionally
+   * only for a specific destination).
+   *
+   * @param vport Virtual port identifier
+   * @param destination Optional destination identifier
+   * @return True if routing table has been changed, false otherwise
+   */
+  bool retract(Vport vport,
+               const NodeIdentifier &destination = NodeIdentifier::INVALID);
+
+  /**
+   * Exports the full routing table to the specified peer.
+   *
+   * @param peer Peer to export the routing table to
+   */
+  void fullUpdate(const NodeIdentifier &peer);
+
+  /**
+   * Returns the number of all records that are being stored in the routing
+   * table.
+   */
+  size_t size() const;
+
+  /**
+   * Returns the number of active routing entries.
+   */
+  size_t sizeActive() const;
+
+  /**
+   * Returns the number of routing entries from node's vicinity.
+   */
+  size_t sizeVicinity() const;
+
+  /**
+   * Clears the whole routing table (RIB and vport mappings).
+   */
+  void clear();
+
+  /**
+   * Sets the landmark status of the local node.
+   *
+   * @param landmark True for the local node to become a landmark
+   */
+  void setLandmark(bool landmark);
+
+  /**
+   * Returns a list of landmark-relative local addresses.
+   *
+   * @param count Number of addresses to return
+   * @return A list of landmark addresses
+   */
+  std::list<LandmarkAddress> getLocalAddresses(size_t count) const;
+
+  /**
+   * Outputs the routing table to a stream.
+   *
+   * @param stream Output stream to dump into
+   * @param resolve Optional name resolver
+   */
+  void dump(std::ostream &stream,
+            std::function<std::string(const NodeIdentifier&)> resolve = nullptr) const;
+
+  /**
+   * Dumps the locally known routing topology into a graph.
+   *
+   * @param graph Output graph to dump into
+   * @param resolve Optional name resolver
+   */
+  void dumpTopology(CompactRoutingTable::TopologyDumpGraph &graph,
+                    std::function<std::string(const NodeIdentifier&)> resolve = nullptr);
+
+  /**
+   * Returns the maximum vicinity size.
+   */
+  size_t getMaximumVicinitySize() const;
+
+  /**
+   * Returns the size of the current vicinity together with the routing entry
+   * of a destination with the largest minimum cost.
+   *
+   * @return A tuple (size, entry)
+   */
+  boost::tuple<size_t, RoutingEntryPtr> getCurrentVicinity() const;
+
+  /**
+   * Returns the number of landmarks in the routing table.
+   */
+  size_t getLandmarkCount() const;
+
+  /**
+   * Called when the freshness timer expires on a direct routing entry.
+   *
+   * @param error Boost error code (in case timer was interrupted)
+   * @param entry Routing entry that expired
+   */
+  void entryTimerExpired(const boost::system::error_code &error,
+                         RoutingEntryPtr entry);
+
+  /**
+   * Notifies the router that an entry should be exported to neighbor
+   * nodes.
+   *
+   * @param entry Routing entry to export
+   * @param peer Optional peer to limit the export to
+   */
+  void exportEntry(RoutingEntryPtr entry,
+                   const NodeIdentifier &peer = NodeIdentifier::INVALID);
+
+  /**
+   * Performs best route selection for a specific destination and
+   * activates the best route (if found).
+   *
+   * @param destination Destination identifier
+   * @return Tuple (activated, new_best, old_best), where activated is true if a
+   *   route was activated, false otherwise; in case activated is true, new_best
+   *   contains the routing entry that was activated while old_best contains the
+   *   previously active entry or null if there was no such entry before
+   */
+  boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> selectBestRoute(const NodeIdentifier &destination);
+public:
+  UNISPHERE_DECLARE_PUBLIC(CompactRoutingTable)
+
+  /// UNISPHERE context
+  Context &m_context;
+  /// Local node identifier
+  NodeIdentifier m_localId;
+  /// Network size estimator
+  NetworkSizeEstimator &m_sizeEstimator;
+  /// Mutex protecting the routing table
+  mutable std::recursive_mutex m_mutex;
+  /// Information needed for routing to any node
+  RoutingInformationBase m_rib;
+  /// Route originator mapping
+  RouteOriginatorMap m_originatorMap;
+  /// Vport mapping for direct routes
+  VportMap m_vportMap;
+  /// Vport index counter
+  Vport m_nextVport;
+  /// Local address based on nearest landmark; multiple for redundancy?
+  std::list<LandmarkAddress> m_localAddress;
+  /// Landmark status of the current node
+  bool m_landmark;
+};
 
 RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
   : identifier(nodeId),
@@ -80,14 +382,11 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
 }
 
-CompactRoutingTable::CompactRoutingTable(Context &context, const NodeIdentifier &localId,
-  NetworkSizeEstimator &sizeEstimator)
-  : signalExportEntry(context),
-    signalRetractEntry(context),
-    signalAddressChanged(context),
-    signalLandmarkLearned(context),
-    signalLandmarkRemoved(context),
-
+CompactRoutingTablePrivate::CompactRoutingTablePrivate(Context &context,
+                                                       const NodeIdentifier &localId,
+                                                       NetworkSizeEstimator &sizeEstimator,
+                                                       CompactRoutingTable &rt)
+  : q(rt),
     m_context(context),
     m_localId(localId),
     m_sizeEstimator(sizeEstimator),
@@ -96,7 +395,7 @@ CompactRoutingTable::CompactRoutingTable(Context &context, const NodeIdentifier 
 {
 }
 
-Vport CompactRoutingTable::getVportForNeighbor(const NodeIdentifier &neighbor)
+Vport CompactRoutingTablePrivate::getVportForNeighbor(const NodeIdentifier &neighbor)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -110,7 +409,7 @@ Vport CompactRoutingTable::getVportForNeighbor(const NodeIdentifier &neighbor)
   return (*i).second;
 }
 
-NodeIdentifier CompactRoutingTable::getNeighborForVport(Vport vport) const
+NodeIdentifier CompactRoutingTablePrivate::getNeighborForVport(Vport vport) const
 {
   VportMap::right_const_iterator i = m_vportMap.right.find(vport);
   if (i == m_vportMap.right.end())
@@ -119,14 +418,14 @@ NodeIdentifier CompactRoutingTable::getNeighborForVport(Vport vport) const
   return (*i).second;
 }
 
-size_t CompactRoutingTable::getMaximumVicinitySize() const
+size_t CompactRoutingTablePrivate::getMaximumVicinitySize() const
 {
   // TODO: This is probably not the best way (int -> double -> sqrt -> int)
   double n = static_cast<double>(m_sizeEstimator.getNetworkSize());
   return static_cast<size_t>(std::sqrt(n * std::log(n)));
 }
 
-boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTable::getCurrentVicinity() const
+boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVicinity() const
 {
   auto entries = m_rib.get<RIBTags::TypeDestinationCost>().equal_range(RoutingEntry::Type::Vicinity);
   RoutingEntryPtr maxCostEntry;
@@ -147,7 +446,7 @@ boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTable::getCurrentVicinity() 
   return boost::make_tuple(vicinitySize, maxCostEntry);
 }
 
-size_t CompactRoutingTable::getLandmarkCount() const
+size_t CompactRoutingTablePrivate::getLandmarkCount() const
 {
   auto entries = m_rib.get<RIBTags::TypeDestinationCost>().equal_range(RoutingEntry::Type::Landmark);
   NodeIdentifier lastDestination;
@@ -164,8 +463,8 @@ size_t CompactRoutingTable::getLandmarkCount() const
   return landmarkCount;
 }
 
-void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &error,
-  RoutingEntryPtr entry)
+void CompactRoutingTablePrivate::entryTimerExpired(const boost::system::error_code &error,
+                                                   RoutingEntryPtr entry)
 {
   if (error)
     return;
@@ -174,7 +473,7 @@ void CompactRoutingTable::entryTimerExpired(const boost::system::error_code &err
   retract(entry->originVport(), entry->destination);
 }
 
-void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
+void CompactRoutingTablePrivate::fullUpdate(const NodeIdentifier &peer)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -185,7 +484,7 @@ void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
   }
 }
 
-bool CompactRoutingTable::import(RoutingEntryPtr entry)
+bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -222,7 +521,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
 
         // Restart expiry timer
         if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
-          e->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
+          e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, e));
         }
       });
       return false;
@@ -242,7 +541,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
 
       // Restart expiry timer
       if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
-        e->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, e));
+        e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, e));
       }
     });
   } else {
@@ -268,7 +567,7 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
 
     // Setup expiry timer for the routing entry
     entry->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry));
-    entry->expiryTimer.async_wait(boost::bind(&CompactRoutingTable::entryTimerExpired, this, _1, entry));
+    entry->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, entry));
   }
 
   // Determine what the new best route for this destination is
@@ -278,15 +577,15 @@ bool CompactRoutingTable::import(RoutingEntryPtr entry)
   if (newBest == oldBest && entry == newBest && landmarkChangedType) {
     // Landmark type of the currently active route has changed
     if (entry->isLandmark())
-      signalLandmarkLearned.defer(entry->destination);
+      q.signalLandmarkLearned.defer(entry->destination);
     else
-      signalLandmarkRemoved.defer(entry->destination);
+      q.signalLandmarkRemoved.defer(entry->destination);
   }
 
   return true;
 }
 
-void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
+void CompactRoutingTablePrivate::exportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
 {
   RouteOriginatorPtr orig = entry->originator;
 
@@ -300,10 +599,10 @@ void CompactRoutingTable::exportEntry(RoutingEntryPtr entry, const NodeIdentifie
   orig->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
   // Export the entry
-  signalExportEntry(entry, peer);
+  q.signalExportEntry(entry, peer);
 }
 
-boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::selectBestRoute(const NodeIdentifier &destination)
+boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate::selectBestRoute(const NodeIdentifier &destination)
 {
   auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
   auto entries = ribDestination.equal_range(boost::make_tuple(destination));
@@ -361,12 +660,12 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::select
     if (oldBestEntry) {
       // Check if landmark type for the active entry has changed
       if (oldBestEntry->isLandmark() && !newBestEntry->isLandmark())
-        signalLandmarkRemoved.defer(destination);
+        q.signalLandmarkRemoved.defer(destination);
       else if (!oldBestEntry->isLandmark() && newBestEntry->isLandmark())
-        signalLandmarkLearned.defer(destination);
+        q.signalLandmarkLearned.defer(destination);
     } else if (newBestEntry->isLandmark()) {
       // A landmark has become the active route
-      signalLandmarkLearned.defer(destination);
+      q.signalLandmarkLearned.defer(destination);
     }
 
     // Export new active route to neighbors
@@ -376,7 +675,7 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTable::select
   return boost::make_tuple(true, *newBest, oldBestEntry);
 }
 
-NodeIdentifier CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
+NodeIdentifier CompactRoutingTablePrivate::getActiveRoute(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -388,32 +687,34 @@ NodeIdentifier CompactRoutingTable::getActiveRoute(const NodeIdentifier &destina
   return getNeighborForVport((*entry)->originVport());
 }
 
-CompactRoutingTable::LongestPrefixMatch CompactRoutingTable::getLongestPrefixMatch(const NodeIdentifier &destination)
+CompactRoutingTable::LongestPrefixMatch CompactRoutingTablePrivate::getLongestPrefixMatch(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   // If the RIB is empty, return a null entry
   if (m_rib.empty())
-    return LongestPrefixMatch();
+    return CompactRoutingTable::LongestPrefixMatch();
 
   // Find the entry with longest common prefix
   auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
   auto it = ribDestination.upper_bound(boost::make_tuple(destination));
-  if (it == ribDestination.end())
-    return LongestPrefixMatch{ (*(--it))->destination, getNeighborForVport((*(--it))->originVport()) };
-
-  // Check if previous entry has longer common prefix
-  if (it != ribDestination.begin()) {
+  if (it == ribDestination.end()) {
+    --it;
+  } else if (it != ribDestination.begin()) {
+    // Check if previous entry has longer common prefix
     auto pit = it;
     if ((*(--pit))->destination.longestCommonPrefix(destination) >
         (*it)->destination.longestCommonPrefix(destination))
-      return LongestPrefixMatch{ (*pit)->destination, getNeighborForVport((*pit)->originVport()) };
+      it = pit;
   }
 
-  return LongestPrefixMatch{ (*it)->destination, getNeighborForVport((*it)->originVport()) };
+  return CompactRoutingTable::LongestPrefixMatch{
+    (*it)->destination,
+    getNeighborForVport((*it)->originVport())
+  };
 }
 
-bool CompactRoutingTable::retract(const NodeIdentifier &destination)
+bool CompactRoutingTablePrivate::retract(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -435,17 +736,17 @@ bool CompactRoutingTable::retract(const NodeIdentifier &destination)
 
     // Send retractions for active entries
     if (entry->active)
-      signalRetractEntry(entry);
+      q.signalRetractEntry(entry);
   }
 
   // If this was a landmark, we have just unlearned it
   if (wasLandmark)
-    signalLandmarkRemoved.defer(destination);
+    q.signalLandmarkRemoved.defer(destination);
 
   return true;
 }
 
-bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination)
+bool CompactRoutingTablePrivate::retract(Vport vport, const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -472,19 +773,19 @@ bool CompactRoutingTable::retract(Vport vport, const NodeIdentifier &destination
     // If entry was part of an active route, we must determine a new active route for this destination
     if (entry->active) {
       if (!selectBestRoute(entry->destination).get<0>())
-        signalRetractEntry(entry);
+        q.signalRetractEntry(entry);
     }
   }
 
   return false;
 }
 
-size_t CompactRoutingTable::size() const
+size_t CompactRoutingTablePrivate::size() const
 {
   return m_rib.size();
 }
 
-size_t CompactRoutingTable::sizeActive() const
+size_t CompactRoutingTablePrivate::sizeActive() const
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -492,12 +793,12 @@ size_t CompactRoutingTable::sizeActive() const
   return ribActive.count(true);
 }
 
-size_t CompactRoutingTable::sizeVicinity() const
+size_t CompactRoutingTablePrivate::sizeVicinity() const
 {
   return getCurrentVicinity().get<0>();
 }
 
-void CompactRoutingTable::clear()
+void CompactRoutingTablePrivate::clear()
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -505,17 +806,17 @@ void CompactRoutingTable::clear()
   m_vportMap.clear();
 }
 
-void CompactRoutingTable::setLandmark(bool landmark)
+void CompactRoutingTablePrivate::setLandmark(bool landmark)
 {
   // TODO: Handle landmark setup/tear down
   m_landmark = landmark;
 }
 
-std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count) const
+std::list<LandmarkAddress> CompactRoutingTablePrivate::getLocalAddresses(size_t count) const
 {
   std::list<LandmarkAddress> addresses;
 
-  if (isLandmark()) {
+  if (m_landmark) {
     // Landmark nodes don't need an explicit address as all the other nodes have them in RIB
     addresses.push_back(LandmarkAddress(m_localId));
   } else {
@@ -535,16 +836,7 @@ std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count) 
   return addresses;
 }
 
-LandmarkAddress CompactRoutingTable::getLocalAddress() const
-{
-  std::list<LandmarkAddress> addresses = getLocalAddresses(1);
-  if (addresses.empty())
-    return LandmarkAddress();
-
-  return addresses.front();
-}
-
-void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
+void CompactRoutingTablePrivate::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -599,13 +891,13 @@ void CompactRoutingTable::dump(std::ostream &stream, std::function<std::string(c
   // Dump number of landmarks
   stream << "*** Landmarks:" << std::endl;
   stream << "Count: " << getLandmarkCount();
-  if (isLandmark())
+  if (m_landmark)
     stream << " (+1 current node)";
   stream << std::endl;
 }
 
-void CompactRoutingTable::dumpTopology(TopologyDumpGraph &graph,
-                                       std::function<std::string(const NodeIdentifier&)> resolve)
+void CompactRoutingTablePrivate::dumpTopology(CompactRoutingTable::TopologyDumpGraph &graph,
+                                              std::function<std::string(const NodeIdentifier&)> resolve)
 {
   RecursiveUniqueLock lock(m_mutex);
 
@@ -633,5 +925,114 @@ void CompactRoutingTable::dumpTopology(TopologyDumpGraph &graph,
   }
 }
 
+CompactRoutingTable::CompactRoutingTable(Context &context,
+                                         const NodeIdentifier &localId,
+                                         NetworkSizeEstimator &sizeEstimator)
+  : signalExportEntry(context),
+    signalRetractEntry(context),
+    signalAddressChanged(context),
+    signalLandmarkLearned(context),
+    signalLandmarkRemoved(context),
+
+    d(new CompactRoutingTablePrivate(context, localId, sizeEstimator, *this))
+{
+}
+
+NodeIdentifier CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
+{
+  return d->getActiveRoute(destination);
+}
+
+CompactRoutingTable::LongestPrefixMatch CompactRoutingTable::getLongestPrefixMatch(const NodeIdentifier &destination)
+{
+  return d->getLongestPrefixMatch(destination);
+}
+
+Vport CompactRoutingTable::getVportForNeighbor(const NodeIdentifier &neighbor)
+{
+  return d->getVportForNeighbor(neighbor);
+}
+
+NodeIdentifier CompactRoutingTable::getNeighborForVport(Vport vport) const
+{
+  return d->getNeighborForVport(vport);
+}
+
+bool CompactRoutingTable::import(RoutingEntryPtr entry)
+{
+  return d->import(entry);
+}
+
+bool CompactRoutingTable::retract(const NodeIdentifier &destination)
+{
+  return d->retract(destination);
+}
+
+bool CompactRoutingTable::retract(Vport vport,
+                                  const NodeIdentifier &destination)
+{
+  return d->retract(vport, destination);
+}
+
+void CompactRoutingTable::fullUpdate(const NodeIdentifier &peer)
+{
+  return d->fullUpdate(peer);
+}
+
+size_t CompactRoutingTable::size() const
+{
+  return d->size();
+}
+
+size_t CompactRoutingTable::sizeActive() const
+{
+  return d->sizeActive();
+}
+
+size_t CompactRoutingTable::sizeVicinity() const
+{
+  return d->sizeVicinity();
+}
+
+void CompactRoutingTable::clear()
+{
+  return d->clear();
+}
+
+void CompactRoutingTable::setLandmark(bool landmark)
+{
+  return d->setLandmark(landmark);
+}
+
+bool CompactRoutingTable::isLandmark() const
+{
+  return d->m_landmark;
+}
+
+std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count) const
+{
+  return d->getLocalAddresses(count);
+}
+
+LandmarkAddress CompactRoutingTable::getLocalAddress() const
+{
+  std::list<LandmarkAddress> addresses = d->getLocalAddresses(1);
+  if (addresses.empty())
+    return LandmarkAddress();
+
+  return addresses.front();
+}
+
+void CompactRoutingTable::dump(std::ostream &stream,
+                               std::function<std::string(const NodeIdentifier&)> resolve) const
+{
+  return d->dump(stream, resolve);
+}
+
+void CompactRoutingTable::dumpTopology(TopologyDumpGraph &graph,
+                                       std::function<std::string(const NodeIdentifier&)> resolve)
+{
+  d->dumpTopology(graph, resolve);
+}
 
 }
