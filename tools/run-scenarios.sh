@@ -47,7 +47,8 @@ for params in "${TOPOLOGIES[@]}"; do
     --out-dir $OUTPUT_DIR/$topology/ \
     --topology $DATA_DIR/symmetric-topo-${topology}.graphml \
     --id-gen consistent \
-    --seed 1 $args
+    --seed 1 \
+    --num-threads 16 $args
 
   ./$BIN_DIR/apps/testbed/testbed "$@" > $OUTPUT_DIR/scenario-$topology.log || {
     tail -n 50 $OUTPUT_DIR/scenario-$topology.log
