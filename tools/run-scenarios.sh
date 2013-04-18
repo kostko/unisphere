@@ -41,7 +41,7 @@ for params in "${TOPOLOGIES[@]}"; do
   echo "    Arguments: $args"
 
   set -- \
-    --scenario SimpleTestScenario \
+    --scenario SingleStretchScenario \
     --phy-ip 127.0.0.1 \
     --phy-port 8472 \
     --out-dir $OUTPUT_DIR/$topology/ \
