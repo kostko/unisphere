@@ -27,8 +27,10 @@ function draw_aggregate_cdf()
   variable="$1"
   xlabel="$2"
   input_file="$3"
-  range_min="$4"
-  range_max="$5"
+  xrange_min="$4"
+  xrange_max="$5"
+  yrange_min="$6"
+  yrange_max="$7"
 
   inputs=()
   variables=()
@@ -63,7 +65,8 @@ function draw_aggregate_cdf()
     args+=('--input' "$input" "$variable" "$label")
   done
 
-  args+=('--output' "$OUTPUT_DIR/cdf_$variable.pdf" '--xlabel' "$xlabel" '--range' "$range_min" "$range_max")
+  args+=('--output' "$OUTPUT_DIR/cdf_$variable.pdf" '--xlabel' "$xlabel" '--xrange' "$xrange_min" "$xrange_max")
+  args+=('--yrange' "$yrange_min" "$yrange_max")
 
   ./tools/draw-graph.py cdf "${args[@]}"
 }
@@ -75,6 +78,7 @@ function draw_vs_size_plot()
   input_file="$3"
   fit_function="$4"
   fit_range="$5"
+  fit_label="$6"
 
   inputs=()
   variables=()
@@ -110,11 +114,12 @@ function draw_vs_size_plot()
   done
 
   args+=('--output' "$OUTPUT_DIR/plot_${variable}_vs_size.pdf" '--xlabel' "Topology size" '--ylabel' "$ylabel" '--fit' "$fit_function" '--fit-range' "$fit_range")
+  args+=('--fit-label' "$fit_label")
 
   ./tools/draw-graph.py plot "${args[@]}"
 }
 
 # Call all draw functions
-draw_aggregate_cdf stretch "Path stretch" "routing-all_pairs-stretch-*.csv" 0.9 N
-draw_aggregate_cdf rt_active "Routing state" "state-count-state-*.csv" 0 N
-draw_vs_size_plot rt_active "Routing state" "state-count-state-*.csv" "lambda x, a, b: a*numpy.sqrt(x) + b" 2
+draw_aggregate_cdf stretch "Path stretch" "routing-all_pairs-stretch-*.csv" 0.9 N 0.4 1.01
+draw_aggregate_cdf rt_active "Routing state" "state-count-state-*.csv" 0 N 0 1.01
+draw_vs_size_plot rt_active "Routing state" "state-count-state-*.csv" "lambda x, a, b: a*numpy.sqrt(x) + b" 2 'Fit of $a \sqrt{x} + c$'

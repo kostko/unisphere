@@ -43,14 +43,27 @@ class ModuleCDF(object):
     parser.add_argument('--output', metavar = 'FILE', type = str,
                         help = 'output filename')
 
-    parser.add_argument('--range', metavar = ('MIN', 'MAX'), type = float_with_none, nargs = 2,
+    parser.add_argument('--xrange', metavar = ('MIN', 'MAX'), type = float_with_none, nargs = 2,
                         help = 'X axis range')
+
+    parser.add_argument('--yrange', metavar = ('MIN', 'MAX'), type = float_with_none, nargs = 2,
+                        default = (0.0, 1.01),
+                        help = 'Y axis range')
 
     parser.add_argument('--xlabel', metavar = 'LABEL', type = str,
                         help = 'X axis label')
 
   def run(self, args):
-    for filename, column, legend in args.input:
+    styles = [
+      ('-', None),
+      ('--', None),
+      ('-.', None),
+      ('-', 'o'),
+      ('--', '^'),
+      ('--', 's')
+    ]
+
+    for idx, (filename, column, legend) in enumerate(args.input):
       try:
         data = pandas.read_csv(filename)
       except:
@@ -65,20 +78,21 @@ class ModuleCDF(object):
       x = numpy.linspace(min(sample), max(sample))
       y = ecdf(x)
 
-      plt.step(x, y, label = legend)
+      ls, marker = styles[idx % len(styles)]
+      plt.plot(x, y, drawstyle = 'steps', linestyle = ls, linewidth = 2, marker = marker, markevery = 2, label = legend)
 
     plt.legend(loc = 'lower right')
+    plt.grid()
     ax = plt.gca()
+    ax.set_axisbelow(True)
     ax.set_ylabel('CDF')
     if args.xlabel:
       ax.set_xlabel(args.xlabel)
 
-    if args.range:
-      plt.axis([args.range[0], args.range[1], 0.0, 1.01])
+    if args.xrange:
+      plt.axis([args.xrange[0], args.xrange[1], args.yrange[0], args.yrange[1]])
     else:
-      plt.axis([0.0, max(sample), 0.0, 1.01])
-
-    plt.grid()
+      plt.axis([0.0, max(sample), args.yrange[0], args.yrange[1]])
 
     if args.output:
       plt.savefig(args.output)
@@ -108,6 +122,9 @@ class ModuleSimplePlot(object):
 
     parser.add_argument('--fit-range', metavar = 'X', type = float, default = 5.0)
 
+    parser.add_argument('--fit-label', metavar = 'LABEL', type = str,
+                        help = 'label to use for fitted function in the legend')
+
   def run(self, args):
     X = []
     Y = []
@@ -127,7 +144,7 @@ class ModuleSimplePlot(object):
       Y += [numpy.average(sample)]
       Yerr += [numpy.std(sample)]
 
-    plt.errorbar(X, Y, Yerr)
+    plt.errorbar(X, Y, Yerr, label = 'Measurements')
 
     if args.fit:
       import scipy.optimize
@@ -136,7 +153,7 @@ class ModuleSimplePlot(object):
       popt, pcov = scipy.optimize.curve_fit(func, X, Y)
       Fx = numpy.linspace(min(X), max(X) + args.fit_range*(X[-1] - X[-2]), 100)
       Fy = [func(x, *popt) for x in Fx]
-      plt.plot(Fx, Fy, linestyle = '--', color = 'black')
+      plt.plot(Fx, Fy, linestyle = '--', color = 'black', label = args.fit_label)
     
     ax = plt.gca()
     if args.ylabel:
@@ -145,6 +162,7 @@ class ModuleSimplePlot(object):
       ax.set_xlabel(args.xlabel)
 
     plt.grid()
+    plt.legend(loc = 'lower right')
 
     if args.output:
       plt.savefig(args.output)
