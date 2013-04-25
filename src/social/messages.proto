@@ -8,20 +8,14 @@ package UniSphere.Protocol;
 import "src/social/address.proto";
 
 message PathAnnounce {
-  // Valid announce types
-  enum Type {
-    VICINITY = 1;
-    LANDMARK = 2;
-  }
-
   // Destination identifier
   required bytes destinationId = 1;
   // Forward path
   repeated uint32 forwardPath = 2;
   // Reverse path (included only for landmark announces)
   repeated uint32 reversePath = 3;
-  // Announce type
-  required Type type = 4;
+  // Landmark status of the origin
+  required bool landmark = 4;
   // Sequence number
   required uint32 seqno = 5;
 }

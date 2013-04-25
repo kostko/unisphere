@@ -38,8 +38,8 @@ namespace UniSphere {
 namespace RIBTags {
   class DestinationId;
   class ActiveRoutes;
-  class TypeCost;
-  class TypeDestinationCost;
+  class LandmarkCost;
+  class LandmarkDestinationCost;
   class VportDestination;
 }
 
@@ -66,22 +66,22 @@ typedef boost::multi_index_container<
       >
     >,
 
-    // Index by type and cost
+    // Index by landmark status and cost
     midx::ordered_non_unique<
-      midx::tag<RIBTags::TypeCost>,
+      midx::tag<RIBTags::LandmarkCost>,
       midx::composite_key<
         RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, landmark),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
       >
     >,
     
-    // Index by type, destination and cost
+    // Index by landmark status, destination and cost
     midx::ordered_non_unique<
-      midx::tag<RIBTags::TypeDestinationCost>,
+      midx::tag<RIBTags::LandmarkDestinationCost>,
       midx::composite_key<
         RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, RoutingEntry::Type, type),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, landmark),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
       >
@@ -342,10 +342,10 @@ boost::posix_time::time_duration RouteOriginator::age() const
 
 RoutingEntry::RoutingEntry(Context &context,
                            const NodeIdentifier &destination,
-                           Type type,
+                           bool landmark,
                            std::uint16_t seqno)
   : destination(destination),
-    type(type),
+    landmark(landmark),
     seqno(seqno),
     active(false),
     expiryTimer(context.service())
@@ -380,7 +380,7 @@ boost::posix_time::time_duration RoutingEntry::age() const
 
 bool RoutingEntry::operator==(const RoutingEntry &other) const
 {
-  return destination == other.destination && type == other.type && seqno == other.seqno &&
+  return destination == other.destination && landmark == other.landmark && seqno == other.seqno &&
     cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
 }
 
@@ -429,7 +429,7 @@ size_t CompactRoutingTablePrivate::getMaximumVicinitySize() const
 
 boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVicinity() const
 {
-  auto entries = m_rib.get<RIBTags::TypeDestinationCost>().equal_range(RoutingEntry::Type::Vicinity);
+  auto entries = m_rib.get<RIBTags::LandmarkDestinationCost>().equal_range(false);
   RoutingEntryPtr maxCostEntry;
   NodeIdentifier lastDestination;
   size_t vicinitySize = 0;
@@ -450,7 +450,7 @@ boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVici
 
 size_t CompactRoutingTablePrivate::getLandmarkCount() const
 {
-  auto entries = m_rib.get<RIBTags::TypeDestinationCost>().equal_range(RoutingEntry::Type::Landmark);
+  auto entries = m_rib.get<RIBTags::LandmarkDestinationCost>().equal_range(true);
   NodeIdentifier lastDestination;
   size_t landmarkCount = 0;
 
@@ -490,7 +490,8 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  if (!entry || entry->isNull() || entry->destination == m_localId)
+  assert(entry);
+  if (entry->destination == m_localId)
     return false;
 
   if (!entry->originator) {
@@ -531,12 +532,12 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 
     // Update certain attributes of the routing entry
     ribVport.modify(existing, [&](RoutingEntryPtr e) {
-      if (e->type != entry->type)
+      if (e->landmark != entry->landmark)
         landmarkChangedType = true;
 
       e->forwardPath = entry->forwardPath;
       e->reversePath = entry->reversePath;
-      e->type = entry->type;
+      e->landmark = entry->landmark;
       e->seqno = entry->seqno;
       e->cost = entry->cost;
       e->lastUpdate = entry->lastUpdate;
@@ -549,7 +550,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
   } else {
     // An entry should be inserted if it represents a landmark or if it falls
     // into the vicinity of the current node
-    if (entry->type == RoutingEntry::Type::Vicinity) {
+    if (!entry->landmark) {
       // Verify that it falls into the vicinity
       size_t vicinitySize;
       RoutingEntryPtr maxCostEntry;
@@ -578,7 +579,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 
   if (newBest == oldBest && entry == newBest && landmarkChangedType) {
     // Landmark type of the currently active route has changed
-    if (entry->isLandmark())
+    if (entry->landmark)
       q.signalLandmarkLearned.defer(entry->destination);
     else
       q.signalLandmarkRemoved.defer(entry->destination);
@@ -661,11 +662,11 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
     // Check if any landmarks have changed status because of this update
     if (oldBestEntry) {
       // Check if landmark type for the active entry has changed
-      if (oldBestEntry->isLandmark() && !newBestEntry->isLandmark())
+      if (oldBestEntry->landmark && !newBestEntry->landmark)
         q.signalLandmarkRemoved.defer(destination);
-      else if (!oldBestEntry->isLandmark() && newBestEntry->isLandmark())
+      else if (!oldBestEntry->landmark && newBestEntry->landmark)
         q.signalLandmarkLearned.defer(destination);
-    } else if (newBestEntry->isLandmark()) {
+    } else if (newBestEntry->landmark) {
       // A landmark has become the active route
       q.signalLandmarkLearned.defer(destination);
     }
@@ -729,7 +730,7 @@ bool CompactRoutingTablePrivate::retract(const NodeIdentifier &destination)
 
   for (auto it = entries.first; it != entries.second;) {
     RoutingEntryPtr entry = *it;
-    if (entry->isLandmark())
+    if (entry->landmark)
       wasLandmark = true;
 
     // Call the erasure method to ensure that the routing table is updated before any
@@ -823,7 +824,7 @@ std::list<LandmarkAddress> CompactRoutingTablePrivate::getLocalAddresses(size_t 
     addresses.push_back(LandmarkAddress(m_localId));
   } else {
     // Extract nearest count landmarks from RIB and return reverse paths as addresses
-    auto entries = m_rib.get<RIBTags::TypeCost>().equal_range(RoutingEntry::Type::Landmark);
+    auto entries = m_rib.get<RIBTags::LandmarkCost>().equal_range(true);
     for (auto it = entries.first; it != entries.second; ++it) {
       if (!addresses.empty() && (*it)->destination == addresses.back().landmarkId())
         continue;
@@ -865,11 +866,7 @@ void CompactRoutingTablePrivate::dump(std::ostream &stream, std::function<std::s
 
     // Output type, cost and forward path
     stream << "  " << "t=";
-    switch (e->type) {
-      case RoutingEntry::Type::Landmark: stream << "LND"; break;
-      case RoutingEntry::Type::Vicinity: stream << "VIC"; break;
-      default: stream << "???"; break;
-    }
+    stream << e->landmark ? "LND" : "VIC";
     stream << " c=" << e->cost << " f-path=";
     for (auto p = e->forwardPath.begin(); p != e->forwardPath.end(); ++p) {
       stream << *p << " ";

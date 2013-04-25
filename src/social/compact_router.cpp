@@ -317,14 +317,11 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
   for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
     announce.Clear();
     announce.set_destinationid(m_identity.localId().as(NodeIdentifier::Format::Raw));
+    announce.set_landmark(m_routes.isLandmark());
     if (m_routes.isLandmark()) {
-      announce.set_type(Protocol::PathAnnounce::LANDMARK);
-
       // Get/assign the outgoing vport for this announcement
       Vport vport = m_routes.getVportForNeighbor(peer.first);
       announce.add_reversepath(vport);
-    } else {
-      announce.set_type(Protocol::PathAnnounce::VICINITY);
     }
 
     announce.set_seqno(m_seqno);
@@ -366,7 +363,7 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
     // Prepare the announce message
     Protocol::PathAnnounce announce;
     announce.set_destinationid(entry->destination.as(NodeIdentifier::Format::Raw));
-    announce.set_type(static_cast<Protocol::PathAnnounce_Type>(entry->type));
+    announce.set_landmark(entry->landmark);
     announce.set_seqno(entry->seqno);
 
     for (Vport v : entry->forwardPath) {
@@ -481,7 +478,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
         RoutingEntryPtr entry(new RoutingEntry(
           m_context,
           NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
-          static_cast<RoutingEntry::Type>(pan.type()),
+          pan.landmark(),
           pan.seqno()
         ));
 
@@ -493,7 +490,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
         }
 
         // Populate the reverse path (for landmarks)
-        if (entry->type == RoutingEntry::Type::Landmark) {
+        if (entry->landmark) {
           for (int i = 0; i < pan.reversepath_size(); i++) {
             entry->reversePath.push_back(pan.reversepath(i));
           }
