@@ -76,41 +76,22 @@ UNISPHERE_SHARED_POINTER(RouteOriginator)
 class UNISPHERE_EXPORT RoutingEntry {
 public:
   /**
-   * Valid routing entry types.
-   */
-  enum class Type : std::uint8_t {
-    Null        = 0x00,
-    Vicinity    = 0x01,
-    Landmark    = 0x02,
-  };
-
-  /**
    * Constructs a routing entry.
    *
    * @param context UNISPHERE context
    * @param destination Destination node identifier
-   * @param type Routing entry type
+   * @param landmark Landmark status of the entry
    * @param seqno Sequence number
    */
   RoutingEntry(Context &context,
                const NodeIdentifier &destination,
-               Type type,
+               bool landmark,
                std::uint16_t seqno);
 
   /**
    * Class destructor.
    */
   ~RoutingEntry();
-
-  /**
-   * Returns true if the entry is invalid.
-   */
-  bool isNull() const { return destination.isNull() || type == Type::Null; }
-
-  /**
-   * Returns true if the entry is a landmark.
-   */
-  bool isLandmark() const { return type == Type::Landmark; }
 
   /**
    * Returns true if this entry represents a direct route.
@@ -146,7 +127,7 @@ public:
   /// Path of vports from destination (only for landmarks)
   RoutingPath reversePath;
   /// Entry type
-  Type type;
+  bool landmark;
   /// Sequence number
   std::uint16_t seqno;
   /// Cost to route to that entry
