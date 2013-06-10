@@ -85,7 +85,7 @@ class ModuleCDF(object):
     plt.grid()
     ax = plt.gca()
     ax.set_axisbelow(True)
-    ax.set_ylabel('CDF')
+    ax.set_ylabel('Cummulative Probability')
     if args.xlabel:
       ax.set_xlabel(args.xlabel)
 
