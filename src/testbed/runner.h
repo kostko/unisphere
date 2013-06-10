@@ -16,11 +16,37 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/runner.h"
+#ifndef UNISPHERE_TESTBED_RUNNER_H
+#define UNISPHERE_TESTBED_RUNNER_H
 
-using namespace UniSphere;
+#include "core/globals.h"
 
-int main(int argc, char **argv)
-{
-  return TestBed::Runner().run(argc, argv);
+namespace UniSphere {
+
+namespace TestBed {
+
+/**
+ * The runner class is responsible for constructing proper testbed
+ * components, depending on user-supplied program arguments, and
+ * executing them.
+ */
+class UNISPHERE_EXPORT Runner {
+public:
+  /**
+   * Class constructor.
+   */
+  Runner();
+
+  /**
+   * Performs program options processing and runs the testbed.
+   */
+  int run(int argc, char **argv);
+private:
+  UNISPHERE_DECLARE_PRIVATE(Runner)
+};
+
 }
+
+}
+
+#endif

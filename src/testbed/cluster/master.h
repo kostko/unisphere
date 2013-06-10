@@ -16,11 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/runner.h"
+#ifndef UNISPHERE_TESTBED_MASTER_H
+#define UNISPHERE_TESTBED_MASTER_H
 
-using namespace UniSphere;
+#include "testbed/cluster/node.h"
 
-int main(int argc, char **argv)
-{
-  return TestBed::Runner().run(argc, argv);
+namespace UniSphere {
+
+namespace TestBed {
+
+class UNISPHERE_EXPORT Master : public ClusterNode {
+public:
+  Master(const NodeIdentifier &nodeId,
+         const std::string &ip,
+         unsigned short port);
+
+  Master(const Master&) = delete;
+  Master &operator=(const Master&) = delete;
+protected:
+  void initialize();
+private:
+  UNISPHERE_DECLARE_PRIVATE(Master)
+};
+
 }
+
+}
+
+#endif

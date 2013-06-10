@@ -16,11 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/runner.h"
+#include "testbed/cluster/slave.h"
 
-using namespace UniSphere;
+namespace UniSphere {
 
-int main(int argc, char **argv)
+namespace TestBed {
+
+Slave::Slave(const NodeIdentifier &nodeId,
+             const std::string &ip,
+             unsigned short port,
+             const std::string &masterIp,
+             unsigned short masterPort)
+  : ClusterNode(nodeId, ip, port)
 {
-  return TestBed::Runner().run(argc, argv);
+}
+
+void Slave::initialize()
+{
+  // Start announcing ourselves to master node
+}
+
+}
+
 }

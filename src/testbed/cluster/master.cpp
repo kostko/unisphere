@@ -16,11 +16,40 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/runner.h"
+#include "testbed/cluster/master.h"
+#include "identity/node_identifier.h"
 
-using namespace UniSphere;
+#include <unordered_map>
 
-int main(int argc, char **argv)
+namespace UniSphere {
+
+namespace TestBed {
+
+class SlaveDescriptor {
+public:
+  NodeIdentifier nodeId;
+  // TODO: Assigned virtual nodes
+};
+
+class MasterPrivate {
+public:
+  // TODO
+public:
+  /// Registered slaves
+  std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
+};
+
+Master::Master(const NodeIdentifier &nodeId,
+               const std::string &ip,
+               unsigned short port)
+  : ClusterNode(nodeId, ip, port)
 {
-  return TestBed::Runner().run(argc, argv);
+}
+
+void Master::initialize()
+{
+}
+
+}
+
 }

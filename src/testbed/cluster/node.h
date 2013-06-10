@@ -16,11 +16,41 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/runner.h"
+#ifndef UNISPHERE_TESTBED_CLUSTERNODE_H
+#define UNISPHERE_TESTBED_CLUSTERNODE_H
 
-using namespace UniSphere;
+#include "core/globals.h"
 
-int main(int argc, char **argv)
-{
-  return TestBed::Runner().run(argc, argv);
+namespace UniSphere {
+
+class NodeIdentifier;
+class Context;
+class LinkManager;
+
+namespace TestBed {
+
+class UNISPHERE_EXPORT ClusterNode {
+public:
+  ClusterNode(const NodeIdentifier &nodeId,
+              const std::string &ip,
+              unsigned short port);
+
+  ClusterNode(const ClusterNode&) = delete;
+  ClusterNode &operator=(const ClusterNode&) = delete;
+
+  void start();
+protected:
+  virtual void initialize() = 0;
+protected:
+  Context &context();
+
+  LinkManager &linkManager();
+private:
+  UNISPHERE_DECLARE_PRIVATE(ClusterNode)
+};
+
 }
+
+}
+
+#endif

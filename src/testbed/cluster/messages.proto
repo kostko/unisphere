@@ -1,0 +1,23 @@
+//
+// Protocol messages for testbed cluster operation
+//
+
+package UniSphere.TestBed.Protocol;
+
+import "src/interplex/contact.proto";
+
+message ClusterJoinRequest {
+  // Peer identifier
+  required bytes nodeId = 1;
+  // IP address available for simulation
+  required string simulationIp = 2;
+  // Start of port range available for simulation
+  required uint32 simulationPortStart = 3;
+  // End of port range available for simulation
+  required uint32 simulationPortEnd = 4;
+};
+
+message ClusterJoinComplete {
+  // Must be true for successful registration
+  required bool registered = 1;
+};

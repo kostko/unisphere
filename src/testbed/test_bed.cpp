@@ -270,13 +270,9 @@ void TestBed::setupPhyNetwork(const std::string &ip, unsigned short port)
   d->m_phyStartPort = port;
 }
 
-int TestBed::run(int argc, char **argv)
+void addGlobalProgramOptions(po::options_description &options)
 {
-  // Setup program options
-  po::options_description options;
-  po::options_description globalOptions("Global testbed options");
-  globalOptions.add_options()
-    ("help", "show help message")
+  options.add_options()
     ("scenario", po::value<std::string>(), "scenario to run")
     ("phy-ip", po::value<std::string>(), "physical ip address to use for nodes")
     ("phy-port", po::value<unsigned int>(), "physical starting port to use for nodes")
@@ -286,6 +282,12 @@ int TestBed::run(int argc, char **argv)
     ("seed", po::value<std::uint32_t>()->default_value(0), "seed for the basic RNG")
     ("max-runtime", po::value<unsigned int>()->default_value(0), "maximum runtime in seconds (0 = unlimited)")
   ;
+}
+
+void TestBed::addProgramOptions(po::options_description &options)
+{
+  po::options_description globalOptions("Testbed options");
+  addGlobalProgramOptions(globalOptions);
   options.add(globalOptions);
 
   // Setup per-scenario options
@@ -293,6 +295,12 @@ int TestBed::run(int argc, char **argv)
     scenario->init();
     options.add(scenario->options());
   }
+}
+
+int TestBed::parseProgramOptions(int argc, char **argv)
+{
+  po::options_description globalOptions;
+  addGlobalProgramOptions(globalOptions);
 
   // Parse options
   po::variables_map &vm = d->m_options;
@@ -300,21 +308,12 @@ int TestBed::run(int argc, char **argv)
     auto globalParsed = po::command_line_parser(argc, argv).options(globalOptions).allow_unregistered().run();
     po::store(globalParsed, vm);
 
-    // Handle options
-    if (vm.count("help")) {
-      // Handle help option
-      std::cout << "UNISPHERE Testbed" << std::endl;
-      std::cout << options << std::endl;
-      return 1;
-    }
-
     // Determine which scenario has been selected to parse its options
     if (vm.count("scenario")) {
       std::string scenario = vm["scenario"].as<std::string>();
       auto it = d->m_scenarios.find(scenario);
       if (it == d->m_scenarios.end()) {
         std::cout << "ERROR: Scenario '" << scenario << "' not found!" << std::endl;
-        std::cout << options << std::endl;
         return 1;
       }
 
@@ -322,16 +321,24 @@ int TestBed::run(int argc, char **argv)
       po::store(scenarioParsed, vm);
     } else {
       std::cout << "ERROR: Scenario not specified!" << std::endl;
-      std::cout << options << std::endl;
       return 1;
     }
 
     po::notify(vm);
   } catch (std::exception &e) {
     std::cout << "ERROR: There is an error in your invocation arguments!" << std::endl;
-    std::cout << options << std::endl;
     return 1;
   }
+
+  return 0;
+}
+
+int TestBed::run(int argc, char **argv)
+{
+  // Setup program options
+  /*po::options_description options;
+
+  
 
   d->m_context.setBasicRngSeed(vm["seed"].as<std::uint32_t>());
 
@@ -387,7 +394,7 @@ int TestBed::run(int argc, char **argv)
     }
 
     break;
-  }
+  }*/
 
   return 0;
 }

@@ -53,6 +53,10 @@ public:
    */
   void setupPhyNetwork(const std::string &ip, unsigned short port);
 
+  void addProgramOptions(boost::program_options::options_description &options);
+
+  int parseProgramOptions(int argc, char **argv);
+
   /**
    * Performs program options processing and runs the proper scenario.
    */
