@@ -17,16 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/test_bed.h"
-#include "scenarios.hpp"
 
 using namespace UniSphere;
 
 int main(int argc, char **argv)
 {
   TestBed::TestBed &testbed = TestBed::TestBed::getGlobalTestbed();
-  testbed.registerScenario(new Scenarios::SimpleTestScenario);
-  testbed.registerScenario(new Scenarios::IdleScenario);
-  testbed.registerScenario(new Scenarios::SingleStateDumpScenario);
-  testbed.registerScenario(new Scenarios::SingleStretchScenario);
   return testbed.run(argc, argv);
 }

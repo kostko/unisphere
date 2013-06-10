@@ -206,11 +206,28 @@ public:
   }
 };
 
+/**
+ * Automatic scenario registration class.
+ */
+template <typename T>
+class UNISPHERE_EXPORT RegisterScenario {
+public:
+  /**
+   * Registers the given scenario.
+   */
+  RegisterScenario()
+  {
+    TestBed::getGlobalTestbed().registerScenario(new T);
+  }
+};
+
 }
 
 }
 
 /// A macro for easier test case registration
-#define UNISPHERE_REGISTER_TEST_CASE(Class, name) namespace { UniSphere::TestBed::RegisterTestCase<Class> testcase##Class(name); }
+#define UNISPHERE_REGISTER_TEST_CASE(Class, name) namespace { UniSphere::TestBed::RegisterTestCase<Class> unisphere_testcase##Class(name); }
+/// A macro for easier scenario registration
+#define UNISPHERE_REGISTER_SCENARIO(Class) namespace { UniSphere::TestBed::RegisterScenario<Class> unisphere_scenario##Class; }
 
 #endif

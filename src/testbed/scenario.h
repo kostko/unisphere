@@ -90,4 +90,7 @@ UNISPHERE_SHARED_POINTER(Scenario)
 
 #define UNISPHERE_SCENARIO_END };
 
+#define UNISPHERE_SCENARIO_END_REGISTER(Class) }; \
+                                               UNISPHERE_REGISTER_SCENARIO(Class)
+
 #endif

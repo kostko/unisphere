@@ -62,7 +62,7 @@ void setupOptions(boost::program_options::options_description &options)
     ("topology", po::value<std::string>(), "topology file in GraphML format")
   ;
 }
-UNISPHERE_SCENARIO_END
+UNISPHERE_SCENARIO_END_REGISTER(SimpleTestScenario)
 
 /**
  * A scenario that always stays idle and doesn't run any tests.
@@ -84,7 +84,7 @@ void setupOptions(boost::program_options::options_description &options)
     ("topology", po::value<std::string>(), "topology file in GraphML format")
   ;
 }
-UNISPHERE_SCENARIO_END
+UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
 /**
  * A scenario that dumps all state after 60 seconds and then stays idle.
@@ -109,7 +109,7 @@ void setupOptions(boost::program_options::options_description &options)
     ("measure-after", po::value<int>()->default_value(60), "number of seconds after which to dump state")
   ;
 }
-UNISPHERE_SCENARIO_END
+UNISPHERE_SCENARIO_END_REGISTER(SingleStateDumpScenario)
 
 /**
  * A scenario that calculates routing path stretch after 85 seconds and
@@ -136,6 +136,6 @@ void setupOptions(boost::program_options::options_description &options)
     ("measure-after", po::value<int>()->default_value(85), "number of seconds after which to measure stretch")
   ;
 }
-UNISPHERE_SCENARIO_END
+UNISPHERE_SCENARIO_END_REGISTER(SingleStretchScenario)
 
 }
