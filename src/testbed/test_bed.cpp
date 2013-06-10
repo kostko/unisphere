@@ -300,6 +300,14 @@ int TestBed::run(int argc, char **argv)
     auto globalParsed = po::command_line_parser(argc, argv).options(globalOptions).allow_unregistered().run();
     po::store(globalParsed, vm);
 
+    // Handle options
+    if (vm.count("help")) {
+      // Handle help option
+      std::cout << "UNISPHERE Testbed" << std::endl;
+      std::cout << options << std::endl;
+      return 1;
+    }
+
     // Determine which scenario has been selected to parse its options
     if (vm.count("scenario")) {
       std::string scenario = vm["scenario"].as<std::string>();
@@ -321,14 +329,6 @@ int TestBed::run(int argc, char **argv)
     po::notify(vm);
   } catch (std::exception &e) {
     std::cout << "ERROR: There is an error in your invocation arguments!" << std::endl;
-    std::cout << options << std::endl;
-    return 1;
-  }
-
-  // Handle options
-  if (vm.count("help")) {
-    // Handle help option
-    std::cout << "UNISPHERE Testbed" << std::endl;
     std::cout << options << std::endl;
     return 1;
   }
