@@ -27,16 +27,12 @@ namespace TestBed {
 
 class UNISPHERE_EXPORT Slave : public ClusterNode {
 public:
-  Slave(const NodeIdentifier &nodeId,
-        const std::string &ip,
-        unsigned short port,
-        const std::string &masterIp,
-        unsigned short masterPort);
+  Slave();
 
   Slave(const Slave&) = delete;
   Slave &operator=(const Slave&) = delete;
 protected:
-  void initialize();
+  void run();
 private:
   UNISPHERE_DECLARE_PRIVATE(Slave)
 };

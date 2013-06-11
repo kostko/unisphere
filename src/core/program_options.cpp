@@ -16,36 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/test_bed.h"
-#include "testbed/exceptions.h"
+#include "core/program_options.h"
 
 namespace po = boost::program_options;
-using namespace UniSphere;
 
-namespace Scenarios {
+namespace UniSphere {
 
-/**
- * A scenario that performs mixed tests at various intervals.
- */
-UNISPHERE_SCENARIO(IdleScenario)
+void OptionModule::initialize(int argc, char **argv)
 {
-  // TODO
+  po::options_description options;
+  initialize(argc, argv, options);
 }
 
-void setupOptions(po::options_description &options,
-                  po::variables_map &variables)
+void OptionModule::initialize(int argc,
+                              char **argv,
+                              po::options_description &options)
 {
-  if (variables.empty()) {
-    options.add_options()
-      ("topology", po::value<std::string>(), "topology file in GraphML format")
-    ;
-    return;
-  }
+  po::variables_map vm;
 
-  // Validate the options
-  if (!variables.count("topology"))
-    throw TestBed::ArgumentError("Missing required --topology option!");
+  setupOptions(argc, argv, options, vm);
+
+  auto parsed = po::command_line_parser(argc, argv).options(options).allow_unregistered().run();
+  po::store(parsed, vm);
+  po::notify(vm);
+
+  setupOptions(argc, argv, options, vm);
 }
-UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
 }

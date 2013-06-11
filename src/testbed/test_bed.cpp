@@ -106,6 +106,8 @@ public:
   std::list<std::function<void()>> m_snapshotHandlers;
   /// Simulation start time
   boost::posix_time::ptime m_timeStart;
+  /// Program options descriptor
+  po::options_description m_optionsDescriptor;
   /// Program options
   po::variables_map m_options;
 };
@@ -237,10 +239,7 @@ NodeIdentifier TestBedPrivate::generateNodeId(const std::string &name)
     }
     default:
     case IdGenerationType::Random: {
-      Botan::AutoSeeded_RNG rng;
-      char nodeId[NodeIdentifier::length];
-      rng.randomize((Botan::byte*) &nodeId, sizeof(nodeId));
-      return NodeIdentifier(std::string(nodeId, sizeof(nodeId)), NodeIdentifier::Format::Raw);
+      return NodeIdentifier::random();
     }
   }
 }
@@ -264,139 +263,18 @@ Context &TestBed::getContext()
   return d->m_context;
 }
 
-void TestBed::setupPhyNetwork(const std::string &ip, unsigned short port)
+const std::map<std::string, ScenarioPtr> &TestBed::scenarios() const
 {
-  d->m_phyIp = ip;
-  d->m_phyStartPort = port;
+  return d->m_scenarios;
 }
 
-void addGlobalProgramOptions(po::options_description &options)
+ScenarioPtr TestBed::getScenario(const std::string &id) const
 {
-  options.add_options()
-    ("scenario", po::value<std::string>(), "scenario to run")
-    ("phy-ip", po::value<std::string>(), "physical ip address to use for nodes")
-    ("phy-port", po::value<unsigned int>(), "physical starting port to use for nodes")
-    ("out-dir", po::value<std::string>(), "directory for output files")
-    ("id-gen", po::value<IdGenerationType>(), "id generation type [random, consistent]")
-    ("num-threads", po::value<unsigned int>()->default_value(8), "number of threads")
-    ("seed", po::value<std::uint32_t>()->default_value(0), "seed for the basic RNG")
-    ("max-runtime", po::value<unsigned int>()->default_value(0), "maximum runtime in seconds (0 = unlimited)")
-  ;
-}
+  auto it = d->m_scenarios.find(id);
+  if (it == d->m_scenarios.end())
+    return ScenarioPtr();
 
-void TestBed::addProgramOptions(po::options_description &options)
-{
-  po::options_description globalOptions("Testbed options");
-  addGlobalProgramOptions(globalOptions);
-  options.add(globalOptions);
-
-  // Setup per-scenario options
-  for (ScenarioPtr scenario : d->m_scenarios | boost::adaptors::map_values) {
-    scenario->init();
-    options.add(scenario->options());
-  }
-}
-
-int TestBed::parseProgramOptions(int argc, char **argv)
-{
-  po::options_description globalOptions;
-  addGlobalProgramOptions(globalOptions);
-
-  // Parse options
-  po::variables_map &vm = d->m_options;
-  try {
-    auto globalParsed = po::command_line_parser(argc, argv).options(globalOptions).allow_unregistered().run();
-    po::store(globalParsed, vm);
-
-    // Determine which scenario has been selected to parse its options
-    if (vm.count("scenario")) {
-      std::string scenario = vm["scenario"].as<std::string>();
-      auto it = d->m_scenarios.find(scenario);
-      if (it == d->m_scenarios.end()) {
-        std::cout << "ERROR: Scenario '" << scenario << "' not found!" << std::endl;
-        return 1;
-      }
-
-      auto scenarioParsed = po::command_line_parser(argc, argv).options(it->second->options()).allow_unregistered().run();
-      po::store(scenarioParsed, vm);
-    } else {
-      std::cout << "ERROR: Scenario not specified!" << std::endl;
-      return 1;
-    }
-
-    po::notify(vm);
-  } catch (std::exception &e) {
-    std::cout << "ERROR: There is an error in your invocation arguments!" << std::endl;
-    return 1;
-  }
-
-  return 0;
-}
-
-int TestBed::run(int argc, char **argv)
-{
-  // Setup program options
-  /*po::options_description options;
-
-  
-
-  d->m_context.setBasicRngSeed(vm["seed"].as<std::uint32_t>());
-
-  if (vm.count("phy-ip") && vm.count("phy-port")) {
-    setupPhyNetwork(vm["phy-ip"].as<std::string>(), vm["phy-port"].as<unsigned int>());
-  } else {
-    std::cout << "ERROR: Options --phy-ip and --phy-port not specified!" << std::endl;
-    std::cout << options << std::endl;
-    return 1;
-  }
-
-  if (!vm.count("out-dir")) {
-    std::cout << "ERROR: Output directory not specified!" << std::endl;
-    std::cout << options << std::endl;
-    return 1;
-  }
-
-  if (vm.count("scenario")) {
-    std::string scenario = vm["scenario"].as<std::string>();
-    if (!runScenario(scenario)) {
-      std::cout << "ERROR: Unable to run scenario '" << scenario << "'!" << std::endl;
-      std::cout << options << std::endl;
-      return 1;
-    }
-  } else {
-    std::cout << "ERROR: Scenario not specified!" << std::endl;
-    std::cout << options << std::endl;
-    return 1;
-  }
-
-  // Ensure that the scenario ends if maximum runtime is specified
-  if (vm.count("max-runtime")) {
-    endScenarioAfter(vm["max-runtime"].as<unsigned int>());
-  }
-
-  // Initialize all nodes
-  for (VirtualNode *node : d->m_nodes | boost::adaptors::map_values)
-    node->initialize();
-
-  d->m_timeStart = boost::posix_time::microsec_clock::universal_time();
-
-  // Run the context
-  for (;;) {
-    d->m_context.run(vm["num-threads"].as<unsigned int>());
-
-    if (!d->m_snapshotHandlers.empty()) {
-      // When a snapshot handler is defined, we should invoke it and restart
-      for (auto handler : d->m_snapshotHandlers)
-        handler();
-      
-      d->m_snapshotHandlers.clear();
-      continue;
-    }
-
-    break;
-  }*/
-
-  return 0;
+  return it->second;
 }
 
 void TestBed::registerTestCase(const std::string &name, TestCaseFactory *factory)
@@ -416,27 +294,6 @@ void TestBed::registerScenario(Scenario *scenario)
 {
   RecursiveUniqueLock lock(d->m_mutex);
   d->m_scenarios.insert({{ scenario->name(), ScenarioPtr(scenario) }});
-}
-
-bool TestBed::runScenario(const std::string &scenario)
-{
-  RecursiveUniqueLock lock(d->m_mutex);
-  auto it = d->m_scenarios.find(scenario);
-  if (it == d->m_scenarios.end())
-    return false;
-
-  try {
-    it->second->setup(d->m_options);
-    return true;
-  } catch (TestBedException &e) {
-    std::cout << "ERROR: " << e.message() << std::endl;
-    return false;
-  }
-}
-
-void TestBed::loadTopology(const std::string &topologyFile)
-{
-  d->loadTopology(topologyFile);
 }
 
 void TestBed::runTest(const std::string &test)

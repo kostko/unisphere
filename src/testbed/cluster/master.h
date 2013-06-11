@@ -27,14 +27,17 @@ namespace TestBed {
 
 class UNISPHERE_EXPORT Master : public ClusterNode {
 public:
-  Master(const NodeIdentifier &nodeId,
-         const std::string &ip,
-         unsigned short port);
+  Master();
 
   Master(const Master&) = delete;
   Master &operator=(const Master&) = delete;
 protected:
-  void initialize();
+  void setupOptions(int argc,
+                    char **argv,
+                    boost::program_options::options_description &options,
+                    boost::program_options::variables_map &variables);
+
+  void run();
 private:
   UNISPHERE_DECLARE_PRIVATE(Master)
 };

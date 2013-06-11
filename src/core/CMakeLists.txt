@@ -2,6 +2,7 @@
 set(unisphere_core_src
 context.cpp
 logger.cpp
+program_options.cpp
 )
 
 add_library(UnisphereCore SHARED ${unisphere_core_src})

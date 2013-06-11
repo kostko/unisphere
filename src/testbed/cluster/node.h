@@ -20,6 +20,9 @@
 #define UNISPHERE_TESTBED_CLUSTERNODE_H
 
 #include "core/globals.h"
+#include "core/program_options.h"
+
+#include <boost/program_options.hpp>
 
 namespace UniSphere {
 
@@ -29,18 +32,21 @@ class LinkManager;
 
 namespace TestBed {
 
-class UNISPHERE_EXPORT ClusterNode {
+class UNISPHERE_EXPORT ClusterNode : public OptionModule {
 public:
-  ClusterNode(const NodeIdentifier &nodeId,
-              const std::string &ip,
-              unsigned short port);
+  ClusterNode();
 
   ClusterNode(const ClusterNode&) = delete;
   ClusterNode &operator=(const ClusterNode&) = delete;
 
   void start();
 protected:
-  virtual void initialize() = 0;
+  void setupOptions(int argc,
+                    char **argv,
+                    boost::program_options::options_description &options,
+                    boost::program_options::variables_map &variables);
+
+  virtual void run() {};
 protected:
   Context &context();
 
@@ -48,6 +54,8 @@ protected:
 private:
   UNISPHERE_DECLARE_PRIVATE(ClusterNode)
 };
+
+UNISPHERE_SHARED_POINTER(ClusterNode)
 
 }
 

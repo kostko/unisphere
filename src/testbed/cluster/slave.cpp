@@ -17,22 +17,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/cluster/slave.h"
+#include "core/context.h"
+#include "interplex/link_manager.h"
 
 namespace UniSphere {
 
 namespace TestBed {
 
-Slave::Slave(const NodeIdentifier &nodeId,
-             const std::string &ip,
-             unsigned short port,
-             const std::string &masterIp,
-             unsigned short masterPort)
-  : ClusterNode(nodeId, ip, port)
+class SlavePrivate {
+public:
+};
+
+Slave::Slave()
+  : ClusterNode(),
+    d(new SlavePrivate)
 {
 }
 
-void Slave::initialize()
+void Slave::run()
 {
+  context().logger()
+    << Logger::Component{"Slave"}
+    << Logger::Level::Info
+    << "Cluster slave initialized." << std::endl;
+
   // Start announcing ourselves to master node
 }
 

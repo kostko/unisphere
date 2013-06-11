@@ -49,6 +49,13 @@ private:
   std::string m_message;
 };
 
+class UNISPHERE_EXPORT ArgumentError : public TestBedException {
+public:
+  ArgumentError(const std::string &message)
+    : TestBedException(message)
+  {}
+};
+
 class UNISPHERE_EXPORT ScenarioNotFound : public TestBedException {
 public:
   ScenarioNotFound(const std::string &name)

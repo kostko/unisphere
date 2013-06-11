@@ -20,8 +20,7 @@
 #define UNISPHERE_TESTBED_SCENARIO_H
 
 #include "core/globals.h"
-
-#include <boost/program_options.hpp>
+#include "core/program_options.h"
 
 namespace UniSphere {
 
@@ -33,7 +32,7 @@ class TestBed;
  * A scenario defines the temporal order and type of tests
  * that will be executed.
  */
-class UNISPHERE_EXPORT Scenario {
+class UNISPHERE_EXPORT Scenario : public OptionModule {
 public:
   /**
    * Class constructor.
@@ -54,11 +53,6 @@ public:
   std::string name() const;
 
   /**
-   * Returns the scenario's program options.
-   */
-  boost::program_options::options_description &options();
-
-  /**
    * Performs scenario setup.
    *
    * @param options Program options
@@ -66,11 +60,18 @@ public:
   virtual void setup(boost::program_options::variables_map &options) = 0;
 protected:
   /**
-   * This method may be overriden to setup scenario options.
-   *
-   * @param options Program options descriptor
+   * Called by OptionModule to configure the scenario.
    */
-  virtual void setupOptions(boost::program_options::options_description &options) {};
+  void setupOptions(int argc,
+                    char **argv,
+                    boost::program_options::options_description &options,
+                    boost::program_options::variables_map &variables);
+
+  /**
+   * A simplified version of setupOptions to be used when declaring scenarios.
+   */
+  virtual void setupOptions(boost::program_options::options_description &options,
+                            boost::program_options::variables_map &variables) {};
 protected:
   /// Testbed instance
   TestBed &testbed;

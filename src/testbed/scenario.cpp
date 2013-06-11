@@ -29,13 +29,12 @@ public:
 public:
   /// Scenario name
   std::string m_name;
-  /// Program options
-  boost::program_options::options_description m_options;
+  /// Scenario configuration
+  boost::program_options::variables_map m_options;
 };
 
 ScenarioPrivate::ScenarioPrivate(const std::string &name)
-  : m_name(name),
-    m_options("Scenario options for " + name)
+  : m_name(name)
 {
 }
 
@@ -45,19 +44,23 @@ Scenario::Scenario(const std::string &name)
 {
 }
 
-void Scenario::init()
-{
-  setupOptions(d->m_options);
-}
-
 std::string Scenario::name() const
 {
   return d->m_name;
 }
 
-boost::program_options::options_description &Scenario::options()
+void Scenario::setupOptions(int argc,
+                            char **argv,
+                            boost::program_options::options_description &options,
+                            boost::program_options::variables_map &variables)
 {
-  return d->m_options;
+  boost::program_options::options_description local("Scenario " + d->m_name);
+  setupOptions(local, variables);
+  
+  if (variables.empty())
+    options.add(local);
+  else
+    d->m_options = variables;
 }
 
 }

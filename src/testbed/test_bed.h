@@ -44,23 +44,9 @@ public:
    */
   static TestBed &getGlobalTestbed();
 
-  /**
-   * Sets up the "physical" network that will be used by the nodes for
-   * their direct communication.
-   *
-   * @param ip IP address nodes will bind to
-   * @param port Port number of the first node
-   */
-  void setupPhyNetwork(const std::string &ip, unsigned short port);
+  const std::map<std::string, ScenarioPtr> &scenarios() const;
 
-  void addProgramOptions(boost::program_options::options_description &options);
-
-  int parseProgramOptions(int argc, char **argv);
-
-  /**
-   * Performs program options processing and runs the proper scenario.
-   */
-  int run(int argc, char **argv);
+  ScenarioPtr getScenario(const std::string &id) const;
 
   /**
    * Registers a new test case class.
@@ -76,19 +62,6 @@ public:
    * @param scenario Scenario instance
    */
   void registerScenario(Scenario *scenario);
-
-  /**
-   * Runs the given scenario instance.
-   *
-   * @param scenario Scenario name
-   * @return True when scenario was successfully run, false if it doesn't exist
-   */
-  bool runScenario(const std::string &scenario);
-
-  /**
-   * Loads the given trust network topology.
-   */
-  void loadTopology(const std::string &topologyFile);
 
   /**
    * Runs a new instance of the test case identified by its name.

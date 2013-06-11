@@ -17,8 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/cluster/node.h"
+#include "testbed/exceptions.h"
 #include "core/context.h"
 #include "interplex/link_manager.h"
+
+namespace po = boost::program_options;
 
 namespace UniSphere {
 
@@ -26,29 +29,27 @@ namespace TestBed {
 
 class ClusterNodePrivate {
 public:
-  ClusterNodePrivate(const NodeIdentifier &nodeId,
-                     const std::string &ip,
-                     unsigned short port);
+  void initialize(const NodeIdentifier &nodeId,
+                  const std::string &ip,
+                  unsigned short port);
 public:
   /// Cluster node communication context
   Context m_context;
   /// Link manager
-  LinkManager m_linkManager;
+  boost::shared_ptr<LinkManager> m_linkManager;
 };
 
-ClusterNodePrivate::ClusterNodePrivate(const NodeIdentifier &nodeId,
-                                       const std::string &ip,
-                                       unsigned short port)
-  : m_linkManager(m_context, nodeId)
+void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
+                                    const std::string &ip,
+                                    unsigned short port)
 {
-  m_linkManager.setLocalAddress(Address(ip, 0));
-  m_linkManager.listen(Address(ip, port));
+  m_linkManager = boost::shared_ptr<LinkManager>(new LinkManager(m_context, nodeId));
+  m_linkManager->setLocalAddress(Address(ip, 0));
+  m_linkManager->listen(Address(ip, port));
 }
 
-ClusterNode::ClusterNode(const NodeIdentifier &nodeId,
-                         const std::string &ip,
-                         unsigned short port)
-  : d(new ClusterNodePrivate(nodeId, ip, port))
+ClusterNode::ClusterNode()
+  : d(new ClusterNodePrivate)
 {
 }
 
@@ -59,15 +60,51 @@ Context &ClusterNode::context()
   
 LinkManager &ClusterNode::linkManager()
 {
-  return d->m_linkManager;
+  return *d->m_linkManager;
+}
+
+void ClusterNode::setupOptions(int argc,
+                               char **argv,
+                               po::options_description &options,
+                               po::variables_map &variables)
+{
+  if (variables.empty()) {
+    // Local options
+    po::options_description local("General Cluster Options");
+    local.add_options()
+      ("cluster-ip", po::value<std::string>(), "local IP address used for cluster control")
+      ("cluster-port", po::value<unsigned short>()->default_value(8471), "local port used for cluster control")
+      ("cluster-node-id", po::value<std::string>(), "node identifier for the local cluster node (optional)")
+    ;
+    options.add(local);
+    return;
+  }
+
+  // Process local options
+  NodeIdentifier nodeId = NodeIdentifier::random();
+
+  // Validate options
+  if (!variables.count("cluster-ip")) {
+    throw ArgumentError("Missing required --cluster-ip option!");
+  } else if (!variables.count("cluster-port")) {
+    throw ArgumentError("Missing required --cluster-port option!");
+  } else if (variables.count("cluster-node-id")) {
+    nodeId = NodeIdentifier(variables["cluster-node-id"].as<std::string>(), NodeIdentifier::Format::Hex);
+    if (!nodeId.isValid())
+      throw ArgumentError("Invalid node identifier specified!");
+  }
+
+  // Initialize the cluster node
+  d->initialize(
+    nodeId,
+    variables["cluster-ip"].as<std::string>(),
+    variables["cluster-port"].as<unsigned short>()
+  );
 }
 
 void ClusterNode::start()
 {
-  // Invoke per-node-type initialization function
-  initialize();
-
-  // Start the cluster node context and block until we are done
+  run();
   d->m_context.run(1);
 }
 
