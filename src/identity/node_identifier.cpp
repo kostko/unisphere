@@ -42,6 +42,14 @@ NodeIdentifier::NodeIdentifier(const NodeIdentifier &other)
   m_identifier = other.m_identifier;
 }
 
+NodeIdentifier NodeIdentifier::random()
+{
+  Botan::AutoSeeded_RNG rng;
+  char nodeId[NodeIdentifier::length];
+  rng.randomize((Botan::byte*) &nodeId, sizeof(nodeId));
+  return NodeIdentifier(std::string(nodeId, sizeof(nodeId)), NodeIdentifier::Format::Raw);
+}
+
 NodeIdentifier &NodeIdentifier::operator=(const NodeIdentifier &other)
 {
   m_identifier = other.m_identifier;

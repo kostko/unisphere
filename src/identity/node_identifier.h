@@ -63,6 +63,11 @@ public:
    * Copy constructor.
    */
   NodeIdentifier(const NodeIdentifier &other);
+
+  /**
+   * Generates a random node identifier.
+   */
+  static NodeIdentifier random();
   
   /**
    * Returns true when the identifier is an empty one.
