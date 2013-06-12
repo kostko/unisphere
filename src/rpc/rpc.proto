@@ -1,0 +1,31 @@
+//
+// Protocol messages for Plexus overlay RPCs
+//
+
+package UniSphere.Protocol;
+
+//
+// RPC request message
+//
+message RpcRequest {
+  required uint64 rpc_id = 1;
+  required string method = 2;
+  required bytes data = 3;
+}
+
+//
+// RPC response message
+//
+message RpcResponse {
+  required uint64 rpc_id = 1;
+  required bool error = 2;
+  required bytes data = 3;
+}
+
+//
+// RPC error response payload
+//
+message RpcError {
+  required uint32 code = 1;
+  required string message = 2;
+}
