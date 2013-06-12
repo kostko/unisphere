@@ -108,6 +108,15 @@ Logger &Context::logger()
   return d->m_logger;
 }
 
+Logger &Context::logger(const std::string &component, Logger::Level level)
+{
+  d->m_logger
+    << Logger::Component{component}
+    << level;
+  
+  return d->m_logger;
+}
+
 Botan::RandomNumberGenerator &Context::rng()
 {
   RecursiveUniqueLock lock(d->m_mutex);

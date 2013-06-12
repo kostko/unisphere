@@ -113,6 +113,14 @@ public:
   Logger &logger();
 
   /**
+   * Returns the debug logger.
+   *
+   * @param component Component name
+   * @param level Log level
+   */
+  Logger &logger(const std::string &component, Logger::Level level);
+
+  /**
    * Returns the cryptographically secure random number generator.
    */
   Botan::RandomNumberGenerator &rng();
