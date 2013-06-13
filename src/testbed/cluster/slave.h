@@ -32,7 +32,14 @@ public:
   Slave(const Slave&) = delete;
   Slave &operator=(const Slave&) = delete;
 protected:
+  void setupOptions(int argc,
+                    char **argv,
+                    boost::program_options::options_description &options,
+                    boost::program_options::variables_map &variables);
+  
   void run();
+
+  void heartbeat();
 private:
   UNISPHERE_DECLARE_PRIVATE(Slave)
 };

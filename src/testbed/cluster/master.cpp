@@ -24,6 +24,7 @@
 #include "interplex/link_manager.h"
 #include "interplex/rpc_channel.h"
 #include "rpc/engine.hpp"
+#include "src/testbed/cluster/messages.pb.h"
 
 #include <unordered_map>
 #include <sstream>
@@ -35,6 +36,9 @@ namespace UniSphere {
 
 namespace TestBed {
 
+template <typename ResponseType>
+using Response = RpcResponse<InterplexRpcChannel, ResponseType>;
+
 class SlaveDescriptor {
 public:
   NodeIdentifier nodeId;
@@ -43,7 +47,13 @@ public:
 
 class MasterPrivate {
 public:
-  // TODO
+  Response<Protocol::ClusterJoinResponse> rpcClusterJoin(const Protocol::ClusterJoinRequest &request,
+                                                         const Message &msg,
+                                                         RpcId rpcId);
+
+  Response<Protocol::ClusterHeartbeat> rpcClusterHeartbeat(const Protocol::ClusterHeartbeat &request,
+                                                           const Message &msg,
+                                                           RpcId rpcId);
 public:
   /// Registered slaves
   std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
@@ -53,6 +63,22 @@ Master::Master()
   : ClusterNode(),
     d(new MasterPrivate)
 {
+}
+
+Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Protocol::ClusterJoinRequest &request,
+                                                                      const Message &msg,
+                                                                      RpcId rpcId)
+{
+  Protocol::ClusterJoinResponse response;
+  // TODO
+  return response;
+}
+
+Response<Protocol::ClusterHeartbeat> MasterPrivate::rpcClusterHeartbeat(const Protocol::ClusterHeartbeat &request,
+                                                                        const Message &msg,
+                                                                        RpcId rpcId)
+{
+  return Protocol::ClusterHeartbeat();
 }
 
 void Master::setupOptions(int argc,
@@ -106,6 +132,13 @@ void Master::setupOptions(int argc,
 
 void Master::run()
 {
+  // Register RPC methods
+  rpc().registerMethod<Protocol::ClusterJoinRequest, Protocol::ClusterJoinResponse>("Testbed.Cluster.Join",
+    boost::bind(&MasterPrivate::rpcClusterJoin, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>("Testbed.Cluster.Heartbeat",
+    boost::bind(&MasterPrivate::rpcClusterHeartbeat, d, _1, _2, _3));
+
   context().logger()
     << Logger::Component{"Master"}
     << Logger::Level::Info

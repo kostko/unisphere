@@ -17,7 +17,11 @@ message ClusterJoinRequest {
   required uint32 simulationPortEnd = 4;
 };
 
-message ClusterJoinComplete {
+message ClusterJoinResponse {
   // Must be true for successful registration
   required bool registered = 1;
+};
+
+message ClusterHeartbeat {
+  // An empty heartbeat message
 };
