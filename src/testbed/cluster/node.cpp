@@ -20,6 +20,8 @@
 #include "testbed/exceptions.h"
 #include "core/context.h"
 #include "interplex/link_manager.h"
+#include "interplex/rpc_channel.h"
+#include "rpc/engine.hpp"
 
 namespace po = boost::program_options;
 
@@ -37,15 +39,24 @@ public:
   Context m_context;
   /// Link manager
   boost::shared_ptr<LinkManager> m_linkManager;
+  /// RPC communication channel
+  boost::shared_ptr<InterplexRpcChannel> m_channel;
+  /// RPC engine
+  boost::shared_ptr<RpcEngine<InterplexRpcChannel>> m_rpc;
 };
 
 void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
                                     const std::string &ip,
                                     unsigned short port)
 {
+  // Initialize the link manager
   m_linkManager = boost::shared_ptr<LinkManager>(new LinkManager(m_context, nodeId));
   m_linkManager->setLocalAddress(Address(ip, 0));
   m_linkManager->listen(Address(ip, port));
+
+  // Initialize the RPC engine
+  m_channel = boost::shared_ptr<InterplexRpcChannel>(new InterplexRpcChannel(*m_linkManager));
+  m_rpc = boost::shared_ptr<RpcEngine<InterplexRpcChannel>>(new RpcEngine<InterplexRpcChannel>(*m_channel));
 }
 
 ClusterNode::ClusterNode()
@@ -61,6 +72,11 @@ Context &ClusterNode::context()
 LinkManager &ClusterNode::linkManager()
 {
   return *d->m_linkManager;
+}
+
+RpcEngine<InterplexRpcChannel> &ClusterNode::rpc()
+{
+  return *d->m_rpc;
 }
 
 void ClusterNode::setupOptions(int argc,

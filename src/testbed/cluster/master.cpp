@@ -22,6 +22,8 @@
 #include "identity/node_identifier.h"
 #include "core/context.h"
 #include "interplex/link_manager.h"
+#include "interplex/rpc_channel.h"
+#include "rpc/engine.hpp"
 
 #include <unordered_map>
 #include <sstream>

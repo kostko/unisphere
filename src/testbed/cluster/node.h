@@ -29,6 +29,10 @@ namespace UniSphere {
 class NodeIdentifier;
 class Context;
 class LinkManager;
+class InterplexRpcChannel;
+
+template <typename Channel>
+class RpcEngine;
 
 namespace TestBed {
 
@@ -51,6 +55,8 @@ protected:
   Context &context();
 
   LinkManager &linkManager();
+
+  RpcEngine<InterplexRpcChannel> &rpc();
 private:
   UNISPHERE_DECLARE_PRIVATE(ClusterNode)
 };
