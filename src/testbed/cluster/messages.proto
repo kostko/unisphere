@@ -7,14 +7,12 @@ package UniSphere.TestBed.Protocol;
 import "src/interplex/contact.proto";
 
 message ClusterJoinRequest {
-  // Peer identifier
-  required bytes nodeId = 1;
   // IP address available for simulation
-  required string simulationIp = 2;
+  required string simulationIp = 1;
   // Start of port range available for simulation
-  required uint32 simulationPortStart = 3;
+  required uint32 simulationPortStart = 2;
   // End of port range available for simulation
-  required uint32 simulationPortEnd = 4;
+  required uint32 simulationPortEnd = 3;
 };
 
 message ClusterJoinResponse {

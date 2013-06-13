@@ -70,7 +70,7 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
                                                                       RpcId rpcId)
 {
   Protocol::ClusterJoinResponse response;
-  // TODO
+  response.set_registered(true);
   return response;
 }
 

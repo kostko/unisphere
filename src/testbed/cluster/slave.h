@@ -36,9 +36,11 @@ protected:
                     char **argv,
                     boost::program_options::options_description &options,
                     boost::program_options::variables_map &variables);
-  
-  void run();
 
+  void run();
+private:
+  void joinCluster();
+  
   void heartbeat();
 private:
   UNISPHERE_DECLARE_PRIVATE(Slave)
