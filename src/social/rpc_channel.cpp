@@ -40,7 +40,6 @@ public:
 
   /// Compact router instance
   CompactRouter &m_router;
-
 };
 
 SocialRpcChannelPrivate::SocialRpcChannelPrivate(SocialRpcChannel &channel,

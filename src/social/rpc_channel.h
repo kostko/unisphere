@@ -24,7 +24,6 @@
 
 namespace UniSphere {
 
-class Context;
 class CompactRouter;
 
 /**
