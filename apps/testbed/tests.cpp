@@ -19,9 +19,10 @@
 #include "testbed/test_bed.h"
 #include "social/compact_router.h"
 #include "social/routing_table.h"
-#include "social/rpc_engine.h"
 #include "social/name_database.h"
 #include "social/sloppy_group.h"
+#include "social/rpc_channel.h"
+#include "rpc/engine.hpp"
 
 #include "src/social/core_methods.pb.h"
 
@@ -104,7 +105,7 @@ protected:
 
     for (TestBed::VirtualNode *a : nodes() | boost::adaptors::map_values) {
       for (TestBed::VirtualNode *b : nodes() | boost::adaptors::map_values) {
-        RpcEngine &rpc = a->router->rpcEngine();
+        RpcEngine<SocialRpcChannel> &rpc = a->router->rpcEngine();
 
         // Transmit a ping request to each node and wait for a response
         Protocol::PingRequest request;
@@ -126,7 +127,7 @@ protected:
             report() << Logger::Level::Error << "Pair = (" << a->name << ", " << b->name << ") RPC call failure: " << msg << std::endl;
             checkDone();
           },
-          RpcCallOptions().setTimeout(45)
+          rpc.options().setTimeout(45)
         );
       }
     }

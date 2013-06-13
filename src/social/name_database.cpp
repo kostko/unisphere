@@ -20,8 +20,9 @@
 #include "social/compact_router.h"
 #include "social/routing_table.h"
 #include "social/social_identity.h"
+#include "social/rpc_channel.h"
 #include "interplex/link_manager.h"
-
+#include "rpc/engine.hpp"
 #include "src/social/core_methods.pb.h"
 
 #include <boost/multi_index_container.hpp>
@@ -30,6 +31,8 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+
+namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
@@ -106,7 +109,7 @@ public:
   void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                size_t prefixLength,
                                NameDatabase::LookupType type,
-                               RpcCallGroupPtr rpcGroup,
+                               RpcCallGroupPtr<SocialRpcChannel> rpcGroup,
                                std::function<void(const std::list<NameRecordPtr>&)> complete) const;
 
   void fullUpdate(const NodeIdentifier &peer);
@@ -427,10 +430,10 @@ const std::list<NameRecordPtr> NameDatabasePrivate::lookupSloppyGroup(const Node
 void NameDatabasePrivate::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                                   size_t prefixLength,
                                                   NameDatabase::LookupType type,
-                                                  RpcCallGroupPtr rpcGroup,
+                                                  RpcCallGroupPtr<SocialRpcChannel> rpcGroup,
                                                   std::function<void(const std::list<NameRecordPtr>&)> complete) const
 {
-  RpcEngine &rpc = m_router.rpcEngine();
+  RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
   // A shared pointer to list of records that will be accumulated during the lookup; this
   // is needed because multiple RPC calls might be needed to fulfill this request. This
   // pointer is stored in closures so after the completion handler is invoked, the pointer
@@ -463,7 +466,7 @@ void NameDatabasePrivate::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
     // After this point the records list will be destroyed
   };
 
-  RpcCallGroupPtr subgroup = rpcGroup ? rpcGroup->group(completeHandler) : rpc.group(completeHandler);
+  RpcCallGroupPtr<SocialRpcChannel> subgroup = rpcGroup ? rpcGroup->group(completeHandler) : rpc.group(completeHandler);
 
   for (const NodeIdentifier &landmarkId : getLandmarkCaches(nodeId, prefixLength)) {
     Protocol::LookupAddressRequest request;
@@ -476,7 +479,7 @@ void NameDatabasePrivate::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
 
     subgroup->call<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>(
       landmarkId, "Core.NameDb.LookupAddress", request, successHandler, nullptr,
-      RpcCallOptions().setDirectDelivery(true)
+      rpc.options().setChannelOptions(RoutingOptions().setDirectDelivery(true))
     );
   }
 }
@@ -593,7 +596,7 @@ std::unordered_set<NodeIdentifier> NameDatabasePrivate::getLandmarkCaches(const 
 void NameDatabasePrivate::publishLocalAddress()
 {
   RecursiveUniqueLock lock(m_mutex);
-  RpcEngine &rpc = m_router.rpcEngine();
+  RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
 
   // Also update the address in local name database for announcement to the local sloppy group
   std::list<LandmarkAddress> addresses = m_router.routingTable().getLocalAddresses(NameDatabase::max_stored_addresses);
@@ -618,7 +621,7 @@ void NameDatabasePrivate::publishLocalAddress()
       landmarkId,
       "Core.NameDb.PublishAddress",
       request,
-      RpcCallOptions().setDirectDelivery(true)
+      rpc.options().setChannelOptions(RoutingOptions().setDirectDelivery(true))
     );
   }
 }
@@ -637,7 +640,7 @@ void NameDatabasePrivate::refreshLocalAddress(const boost::system::error_code &e
 
 void NameDatabasePrivate::registerCoreRpcMethods()
 {
-  RpcEngine &rpc = m_router.rpcEngine();
+  RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
 
   // Address publishing mechanism
   rpc.registerMethod<Protocol::PublishAddressRequest>("Core.NameDb.PublishAddress",
@@ -662,7 +665,7 @@ void NameDatabasePrivate::registerCoreRpcMethods()
 
   // Exact address lookup mechanism
   rpc.registerMethod<Protocol::LookupAddressRequest, Protocol::LookupAddressResponse>("Core.NameDb.LookupAddress",
-    [this](const Protocol::LookupAddressRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::LookupAddressResponse> {
+    [this](const Protocol::LookupAddressRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<SocialRpcChannel, Protocol::LookupAddressResponse> {
       Protocol::LookupAddressResponse response;
 
       // If this node is not a landmark, ignore lookup request
@@ -722,7 +725,7 @@ void NameDatabasePrivate::registerCoreRpcMethods()
 
 void NameDatabasePrivate::unregisterCoreRpcMethods()
 {
-  RpcEngine &rpc = m_router.rpcEngine();
+  RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
   rpc.unregisterMethod("Core.NameDb.PublishAddress");
   rpc.unregisterMethod("Core.NameDb.LookupAddress");
 }
@@ -850,13 +853,13 @@ void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                            LookupType type,
                                            std::function<void(const std::list<NameRecordPtr>&)> complete) const
 {
-  d->remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr(), complete);
+  d->remoteLookupSloppyGroup(nodeId, prefixLength, type, RpcCallGroupPtr<SocialRpcChannel>(), complete);
 }
 
 void NameDatabase::remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                            size_t prefixLength,
                                            LookupType type,
-                                           RpcCallGroupPtr rpcGroup,
+                                           RpcCallGroupPtr<SocialRpcChannel> rpcGroup,
                                            std::function<void(const std::list<NameRecordPtr>&)> complete) const
 {
   d->remoteLookupSloppyGroup(nodeId, prefixLength, type, rpcGroup, complete);

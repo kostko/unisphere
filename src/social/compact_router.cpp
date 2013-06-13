@@ -21,8 +21,9 @@
 #include "social/social_identity.h"
 #include "social/routing_table.h"
 #include "social/name_database.h"
-#include "social/rpc_engine.h"
 #include "social/sloppy_group.h"
+#include "social/rpc_channel.h"
+#include "rpc/engine.hpp"
 #include "interplex/link_manager.h"
 #include "core/operators.h"
 
@@ -202,8 +203,10 @@ public:
   NetworkSizeEstimator &m_sizeEstimator;
   /// Compact routing table
   CompactRoutingTable m_routes;
+  /// RPC channel that forwards over the router
+  SocialRpcChannel m_channel;
   /// RPC engine
-  RpcEngine m_rpc;
+  RpcEngine<SocialRpcChannel> m_rpc;
   /// Name database
   NameDatabase m_nameDb;
   /// Sloppy group manager
@@ -229,7 +232,8 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator),
-    m_rpc(router),
+    m_channel(router),
+    m_rpc(m_channel),
     m_nameDb(router),
     m_sloppyGroup(router, sizeEstimator),
     m_announceTimer(manager.context().service()),
@@ -651,7 +655,7 @@ void CompactRouterPrivate::registerCoreRpcMethods()
 {
   // Simple ping messages
   m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
-    [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<Protocol::PingResponse> {
+    [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<SocialRpcChannel, Protocol::PingResponse> {
       // Fix a hop limit so these messages can be used to measure the number of hops
       // they have traversed
       int hopCount = 30;
@@ -659,7 +663,7 @@ void CompactRouterPrivate::registerCoreRpcMethods()
       Protocol::PingResponse response;
       response.set_timestamp(1);
       response.set_hopcount(hopCount);
-      return RpcResponse<Protocol::PingResponse>(
+      return RpcResponse<SocialRpcChannel, Protocol::PingResponse>(
         response,
         RoutingOptions().setHopLimit(hopCount)
       );
@@ -720,7 +724,7 @@ SloppyGroupManager &CompactRouter::sloppyGroup()
   return d->m_sloppyGroup;
 }
 
-RpcEngine &CompactRouter::rpcEngine()
+RpcEngine<SocialRpcChannel> &CompactRouter::rpcEngine()
 {
   return d->m_rpc;
 }

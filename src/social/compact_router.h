@@ -33,8 +33,11 @@ class NetworkSizeEstimator;
 class Message;
 class CompactRoutingTable;
 class NameDatabase;
-class RpcEngine;
 class SloppyGroupManager;
+class SocialRpcChannel;
+
+template <typename Channel>
+class RpcEngine;
 
 /**
  * Compact router is at the core of the UNISPHERE protocol. It binds all the
@@ -118,7 +121,7 @@ public:
   /**
    * Returns the reference to underlying RPC engine.
    */
-  RpcEngine &rpcEngine();
+  RpcEngine<SocialRpcChannel> &rpcEngine();
 
   /**
    * Routes the specified message via the overlay.

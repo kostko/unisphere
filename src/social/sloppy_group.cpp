@@ -22,6 +22,8 @@
 #include "social/name_database.h"
 #include "social/social_identity.h"
 #include "social/size_estimator.h"
+#include "social/rpc_channel.h"
+#include "rpc/engine.hpp"
 #include "interplex/link_manager.h"
 #include "core/operators.h"
 
@@ -189,10 +191,10 @@ public:
   void refreshNeighborSet(const boost::system::error_code &error);
 
   void refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
-    RpcCallGroupPtr rpcGroup = RpcCallGroupPtr());
+                            RpcCallGroupPtr<SocialRpcChannel> rpcGroup = RpcCallGroupPtr<SocialRpcChannel>());
 
   NameRecordPtr filterLongFingers(const std::list<NameRecordPtr> &records,
-    const NodeIdentifier &referenceId);
+                                  const NodeIdentifier &referenceId);
 
   void ndbHandleResponseShort(const std::list<NameRecordPtr> &records);
 
@@ -366,7 +368,7 @@ void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_co
     return;
 
   RecursiveUniqueLock lock(m_mutex);
-  RpcEngine &rpc = m_router.rpcEngine();
+  RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
 
   m_newShortFingers.clear();
   m_newLongFingers.clear();
@@ -388,7 +390,7 @@ void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_co
 }
 
 void SloppyGroupManagerPrivate::refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
-                                                     RpcCallGroupPtr rpcGroup)
+                                                     RpcCallGroupPtr<SocialRpcChannel> rpcGroup)
 {
   // Compute long distance finger identifier based on a harmonic probability distribution
   NodeIdentifier fingerId = m_groupPrefix;

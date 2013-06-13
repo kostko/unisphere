@@ -34,23 +34,29 @@ typedef std::uint64_t RpcId;
 /// RPC call mapping key
 typedef std::tuple<NodeIdentifier, RpcId> RpcCallKey;
 
+/// Callback type for successful RPC method responses
+template <typename Channel>
+using RpcResponseSuccess = std::function<void(const Protocol::RpcResponse&, const typename Channel::options_type&)>;
 /// Callback type for successful RPC calls
 template <typename Channel>
-using RpcCallSuccess = std::function<void(const Protocol::RpcResponse&, const typename Channel::message_type&>;
+using RpcCallSuccess = std::function<void(const Protocol::RpcResponse&, const typename Channel::message_type&)>;
 /// Callback type for failed RPC calls
 typedef std::function<void(RpcErrorCode, const std::string&)> RpcResponseFailure;
 /// Callback type for RPC method handlers
 template <typename Channel>
-using RpcHandler = std::function<void(const typename Channel::message_type&, const Protocol::RpcRequest&, RpcResponseSuccess, RpcResponseFailure)>;
+using RpcHandler = std::function<void(const typename Channel::message_type&, const Protocol::RpcRequest&, RpcResponseSuccess<Channel>, RpcResponseFailure)>;
 
-template<typename Channel>
-class RpcCall<Channel>;
+template <typename Channel>
+class RpcCall;
 
 template <typename Channel>
 using RpcCallPtr = boost::shared_ptr<RpcCall<Channel>>;
 
 template <typename Channel>
 using RpcCallWeakPtr = boost::weak_ptr<RpcCall<Channel>>;
+
+template <typename Channel>
+class RpcEngine;
 
 /**
  * Descriptor for tracking pending RPC calls.
@@ -104,7 +110,7 @@ public:
    */
   void start()
   {
-    RpcCallWeakPtr<Channel> me(shared_from_this());
+    RpcCallWeakPtr<Channel> me(this->shared_from_this());
     m_timer.expires_from_now(m_timeout);
     m_timer.async_wait(m_strand.wrap([me](const boost::system::error_code&) {
       // We are using a weak reference, because the object might already be gone
@@ -128,10 +134,10 @@ public:
    */
   void done(const Protocol::RpcResponse &response, const typename Channel::message_type &msg)
   {
-    RpcCallWeakPtr<Channel> me(shared_from_this());
+    RpcCallWeakPtr<Channel> me(this->shared_from_this());
     
     // Response must be copied as a reference will go away after the method completes
-    m_strand.post([me, response, meta]() {
+    m_strand.post([me, response, msg]() {
       if (RpcCallPtr<Channel> self = me.lock()) {
         if (self->m_finished)
           return;
@@ -139,7 +145,7 @@ public:
         self->m_timer.cancel();
         self->cancel();
         if (self->m_success)
-          self->m_success(response, meta);
+          self->m_success(response, msg);
       }
     });
   }
@@ -201,13 +207,13 @@ public:
    */
   RpcResponse(ResponseType rsp, const typename Channel::options_type &opts)
     : response(rsp),
-      routingOptions(opts)
+      channelOptions(opts)
   {}
 public:
   /// The actual response message
   ResponseType response;
-  /// Routing options
-  typename Channel::options_type routingOptions;
+  /// Channel-specific options
+  typename Channel::options_type channelOptions;
 };
 
 }

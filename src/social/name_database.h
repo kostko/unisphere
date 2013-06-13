@@ -27,11 +27,12 @@
 
 #include "core/context.h"
 #include "social/address.h"
-#include "social/rpc_engine.h"
+#include "rpc/call_group.hpp"
 
 namespace UniSphere {
 
 class CompactRouter;
+class SocialRpcChannel;
 
 /**
  * An entry in the name database.
@@ -227,7 +228,7 @@ public:
   void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
                                size_t prefixLength,
                                LookupType type,
-                               RpcCallGroupPtr rpcGroup,
+                               RpcCallGroupPtr<SocialRpcChannel> rpcGroup,
                                std::function<void(const std::list<NameRecordPtr>&)> complete) const;
 
   /**

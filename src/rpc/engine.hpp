@@ -24,12 +24,21 @@
 #include "rpc/options.hpp"
 #include "src/rpc/rpc.pb.h"
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <unordered_map>
+
 namespace UniSphere {
 
 /**
  * This class handles RPC calls between nodes. Each RPC call is composed of
  * two parts - request and response, both formatted as Protocol Buffers
  * messages.
+ *
+ * The engine implementation is generic, a channel implementation has to
+ * provide transport functions.
  */
 template <typename Channel>
 class UNISPHERE_EXPORT RpcEngine {
@@ -50,7 +59,7 @@ public:
     m_channel.signalDeliverRequest.connect(boost::bind(&RpcEngine<Channel>::handleRequest, this, _1, _2));
     m_channel.signalDeliverResponse.connect(boost::bind(&RpcEngine<Channel>::handleResponse, this, _1, _2));
   }
-  
+
   RpcEngine(const RpcEngine&) = delete;
   RpcEngine &operator=(const RpcEngine&) = delete;
 
@@ -74,6 +83,11 @@ public:
   {
     return RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(*this, complete));
   }
+
+  /**
+   * Returns a new RPC call options instance.
+   */
+  RpcCallOptions<Channel> options() { return RpcCallOptions<Channel>(); }
   
   /**
    * Calls a remote procedure.
@@ -125,7 +139,7 @@ public:
     request.SerializeToArray(&buffer[0], buffer.size());
     
     // Create the call and immediately cancel it as we don't need a confirmation
-    RpcCallPtr call = createCall(destination, method, buffer, nullptr, nullptr, opts);
+    RpcCallPtr<Channel> call = createCall(destination, method, buffer, nullptr, nullptr, opts);
     call->cancel();
   }
   
@@ -217,7 +231,7 @@ protected:
                                  const RpcCallOptions<Channel> &opts)
   {
     // Register the pending RPC call
-    RpcCallPtr<Channel> call(new RpcCall(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(opts.timeout)));
+    RpcCallPtr<Channel> call(new RpcCall<Channel>(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(opts.timeout)));
     {
       RecursiveUniqueLock lock(m_mutex);
       m_pendingCalls[call->rpcId()] = call;
@@ -234,7 +248,7 @@ protected:
     msg.set_data(&payload[0], payload.size());
     
     // Send the RPC message
-    m_channel.send(destination, msg, opts.channelOptions);
+    m_channel.request(destination, msg, opts.channelOptions);
     return call;
   }
   
@@ -246,9 +260,10 @@ protected:
    */
   template<typename RequestType, typename ResponseType>
   RpcHandler<Channel> createBasicMethodHandler(const std::string &method,
-                                               std::function<RpcResponse<ResponseType>(
+                                               std::function<RpcResponse<Channel, ResponseType>(
                                                  const RequestType&,
-                                                 const typename Channel::message_type&, RpcId
+                                                 const typename Channel::message_type&,
+                                                 RpcId
                                                )> impl)
   {
     // Wrap the implementation with proper serializers/deserializers depending on
@@ -268,7 +283,7 @@ protected:
         std::vector<char> buffer(rsp.response.ByteSize());
         rsp.response.SerializeToArray(&buffer[0], buffer.size());
         response.set_data(&buffer[0], buffer.size());
-        success(response, rsp.routingOptions);
+        success(response, rsp.channelOptions);
       } catch (RpcException &error) {
         // Handle failures by invoking the failure handler
         failure(error.code(), error.message());
@@ -334,15 +349,16 @@ protected:
   }
 protected:
   /**
-   * Called by the router when a message is to be delivered to the local
-   * node.
+   * Called by the channel when a request has been received.
+   *
+   * @param request RPC request message
+   * @param msg Channel-specific source message
    */
   void handleRequest(const Protocol::RpcRequest &request,
                      const typename Channel::message_type &msg)
   {
-    RpcId rpcId = request.rpc_id();
-    
     RecursiveUniqueLock lock(m_mutex);
+    RpcId rpcId = request.rpc_id();
     if (m_methods.find(request.method()) == m_methods.end())
       return m_channel.respond(msg, getErrorResponse(rpcId, RpcErrorCode::MethodNotFound, "Method not found."));
     
@@ -363,9 +379,16 @@ protected:
     );
   }
 
+  /**
+   * Called by the channel when a response has been received.
+   *
+   * @param request RPC response message
+   * @param msg Channel-specific source message
+   */
   void handleResponse(const Protocol::RpcResponse &response,
-                      typename Channel::message_type &msg)
+                      const typename Channel::message_type &msg)
   {
+    RecursiveUniqueLock lock(m_mutex);
     RpcId rpcId = response.rpc_id();
     if (m_pendingCalls.find(rpcId) == m_pendingCalls.end()) {
       m_context.logger("RpcEngine", Logger::Level::Warning)
@@ -375,7 +398,7 @@ protected:
     
     m_pendingCalls[rpcId]->done(response, msg);
   }
-private:
+private:  
   /// UNISPHERE context
   Context &m_context;
   /// Channel over which the RPCs are routed
@@ -389,9 +412,9 @@ private:
   /// Recent RPC calls
   boost::multi_index_container<
     RpcId,
-    midx::indexed_by<
-      midx::sequenced<>,
-      midx::hashed_unique<midx::identity<RpcId>>
+    boost::multi_index::indexed_by<
+      boost::multi_index::sequenced<>,
+      boost::multi_index::hashed_unique<boost::multi_index::identity<RpcId>>
     >
   > m_recentCalls;
 };

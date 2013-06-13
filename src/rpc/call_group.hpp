@@ -32,7 +32,7 @@ namespace UniSphere {
 typedef std::function<void()> RpcGroupCompletionHandler;
 
 template<typename Channel>
-class RpcCallGroup<Channel>;
+class RpcCallGroup;
 
 template <typename Channel>
 using RpcCallGroupPtr = boost::shared_ptr<RpcCallGroup<Channel>>;
@@ -40,10 +40,13 @@ using RpcCallGroupPtr = boost::shared_ptr<RpcCallGroup<Channel>>;
 template <typename Channel>
 using RpcCallGroupWeakPtr = boost::weak_ptr<RpcCallGroup<Channel>>;
 
+/**
+ * Call groups enable handling of multiple RPC requests.
+ */
 template <typename Channel>
 class UNISPHERE_EXPORT RpcCallGroup : public boost::enable_shared_from_this<RpcCallGroup<Channel>> {
 public:
-  friend class RpcEngine;
+  friend class RpcEngine<Channel>;
   
   /**
    * Calls a remote procedure.
@@ -65,7 +68,7 @@ public:
   {
     // Call group is stored in call handler closures and will be destroyed after all
     // handlers are completed
-    auto self = shared_from_this();
+    auto self = this->shared_from_this();
 
     m_calls++;
     m_engine.call<RequestType, ResponseType>(
@@ -74,7 +77,7 @@ public:
       request,
       m_strand.wrap([self, success](const ResponseType &rsp, const typename Channel::message_type &msg) {
         if (success)
-          success(rsp, meta);
+          success(rsp, msg);
         self->checkCompletion();
       }),
       m_strand.wrap([self, failure](RpcErrorCode code, const std::string &msg) {
@@ -94,10 +97,10 @@ public:
    */
   RpcCallGroupPtr<Channel> group(RpcGroupCompletionHandler complete)
   {
-    RpcCallGroupPtr<Channel> self = shared_from_this();
+    RpcCallGroupPtr<Channel> self = this->shared_from_this();
 
     m_calls++;
-    return RpcCallGroupPtr(new RpcCallGroup(
+    return RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(
       m_engine,
       m_strand.wrap([self, complete]() {
         if (complete)
