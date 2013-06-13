@@ -21,17 +21,34 @@
 
 #include "rpc/channel.hpp"
 #include "interplex/message.h"
+#include "interplex/contact.h"
 
 namespace UniSphere {
 
 class LinkManager;
-class InterplexOptions {};
+
+class MessageOptions {
+public:
+  /**
+   * Class constructor.
+   */
+  MessageOptions()
+  {}
+
+  /**
+   * Forces the message to be delivered to a specific contact.
+   */
+  MessageOptions &setContact(const Contact &contact) { this->contact = contact; return *this; }
+public:
+  /// Contact to deliver the message to
+  Contact contact;
+};
 
 /**
  * The interplex RPC channel can be used to perform RPC requests over
  * the direct link between two peers.
  */
-class UNISPHERE_EXPORT InterplexRpcChannel : public RpcChannel<Message, InterplexOptions> {
+class UNISPHERE_EXPORT InterplexRpcChannel : public RpcChannel<Message, MessageOptions> {
 public:
   /**
    * Class constructor.
@@ -49,7 +66,7 @@ public:
    */
   void respond(const Message &msg,
                const Protocol::RpcResponse &response,
-               const InterplexOptions &opts = InterplexOptions());
+               const MessageOptions &opts = MessageOptions());
 
   /**
    * Sends a request to a remote node.
@@ -60,7 +77,7 @@ public:
    */
   void request(const NodeIdentifier &destination,
                const Protocol::RpcRequest &request,
-               const InterplexOptions &opts = InterplexOptions());
+               const MessageOptions &opts = MessageOptions());
 private:
   UNISPHERE_DECLARE_PRIVATE(InterplexRpcChannel)
 };

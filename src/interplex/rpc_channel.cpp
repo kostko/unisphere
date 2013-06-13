@@ -74,7 +74,7 @@ InterplexRpcChannel::InterplexRpcChannel(LinkManager &manager)
 
 void InterplexRpcChannel::respond(const Message &msg,
                                   const Protocol::RpcResponse &response,
-                                  const InterplexOptions &opts)
+                                  const MessageOptions &opts)
 {
   // Send the RPC message back to the source node
   d->m_manager.send(msg.originator(), Message(Message::Type::Interplex_RPC_Response, response));
@@ -82,10 +82,13 @@ void InterplexRpcChannel::respond(const Message &msg,
 
 void InterplexRpcChannel::request(const NodeIdentifier &destination,
                                   const Protocol::RpcRequest &request,
-                                  const InterplexOptions &opts)
+                                  const MessageOptions &opts)
 {
   // Send the RPC message
-  d->m_manager.send(destination, Message(Message::Type::Interplex_RPC_Request, request));
+  if (opts.contact.isNull())
+    d->m_manager.send(destination, Message(Message::Type::Interplex_RPC_Request, request));
+  else
+    d->m_manager.send(opts.contact, Message(Message::Type::Interplex_RPC_Request, request));
 }
 
 }
