@@ -13,7 +13,6 @@ rpc_channel.cpp
 PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr
 address.proto
 messages.proto
-rpc.proto
 core_methods.proto
 )
 
