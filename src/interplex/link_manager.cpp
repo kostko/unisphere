@@ -29,6 +29,7 @@ namespace UniSphere {
 
 LinkManager::LinkManager(Context &context, const NodeIdentifier &nodeId)
   : m_context(context),
+    m_logger(logging::keywords::channel = "link_manager"),
     m_nodeId(nodeId),
     m_linkletFactory(*this)
 #ifdef UNISPHERE_DEBUG
@@ -57,7 +58,7 @@ void LinkManager::send(const Contact &contact, const Message &msg)
   if (!link) {
     // No contact address is available and link is not an existing one; we
     // can only drop the packet
-    UNISPHERE_LOG(*this, Warning, "LinkManager: No link to destination, dropping message!");
+    BOOST_LOG_SEV(m_logger, warning) << "No link to destination, dropping message!";
     return;
   }
   
@@ -174,7 +175,7 @@ void LinkManager::linkMessageReceived(const Message &msg)
   try {
     signalMessageReceived(msg);
   } catch (MessageCastFailed &e) {
-    UNISPHERE_LOG(*this, Warning, "LinkManager: Message parsing has failed on incoming message!");
+    BOOST_LOG_SEV(m_logger, warning) << "Message parsing has failed on incoming message!";
   }
 }
 
@@ -182,7 +183,7 @@ bool LinkManager::verifyPeer(const Contact &contact)
 {
   // If peer has the same identifier as the local node, we should drop the link
   if (contact.nodeId() == getLocalNodeId()) {
-    UNISPHERE_LOG(*this, Warning, "LinkManager: Attempted nodeId collision, refusing link.");
+    BOOST_LOG_SEV(m_logger, warning) << "Attempted nodeId collision, refusing link.";
     return false;
   }
 

@@ -29,6 +29,7 @@ namespace UniSphere {
 Link::Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTime)
   : enable_shared_from_this<Link>(),
     m_manager(manager),
+    m_logger(logging::keywords::channel = "linklet"),
     m_nodeId(nodeId),
     m_state(Link::State::Closed),
     m_maxIdleTime(maxIdleTime),
@@ -37,6 +38,7 @@ Link::Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTim
     m_retryTimer(manager.context().service()),
     m_idleTimer(manager.context().service())
 {
+  m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(manager.getLocalNodeId()));
 }
 
 void Link::init()
@@ -48,7 +50,7 @@ void Link::init()
 Link::~Link()
 {
   // Log link destruction
-  UNISPHERE_LOG(m_manager, Info, "Link: Destroying link.");
+  BOOST_LOG_SEV(m_logger, normal) << "Destroying link.";
 }
 
 void Link::close()
@@ -61,7 +63,7 @@ void Link::close()
     return;
   m_state = Link::State::Invalid;
   
-  UNISPHERE_LOG(m_manager, Info, "Link: Closing link with " + m_nodeId.as(NodeIdentifier::Format::Hex) + ".");
+  BOOST_LOG_SEV(m_logger, normal) << "Closing link with " << nodeId.hex() << ".";
   
   // Cancel timers
   m_retryTimer.cancel();
@@ -264,7 +266,7 @@ void Link::tryNextAddress()
   }
   
   // Log our attempt
-  UNISPHERE_LOG(m_manager, Info, "Link: Trying next address for outgoing connection with " + m_nodeId.as(NodeIdentifier::Format::Hex) +  ".");
+  BOOST_LOG_SEV(m_logger, normal) << "Trying next address for outgoing connection with " << m_nodeId.hex() << ".";
   
   // Change state to connecting
   setState(Link::State::Connecting);
@@ -280,7 +282,7 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
   RecursiveUniqueLock lock(m_mutex);
   
   // Log connection failure
-  UNISPHERE_LOG(m_manager, Info, "Link: Outgoing connection failed. Queuing next try.");
+  BOOST_LOG_SEV(m_logger, normal) << "Outgoing connection failed. Queuing next try.";
   
   // Remove linklet from list of linklets and try next address
   removeLinklet(linklet);
@@ -298,7 +300,7 @@ bool Link::linkletVerifyPeer(LinkletPtr linklet)
   
   // Check that the peer actually fits this link and close it if not
   if (linklet->peerContact().nodeId() != m_nodeId) {
-    UNISPHERE_LOG(m_manager, Error, "Link: Link identifier does not match destination node!");
+    BOOST_LOG_SEV(m_logger, error) << "Link identifier does not match destination node!";
     // TODO used contact address should be removed as it is clearly not valid
     // TODO also we should use some signal that would be used by Router to update routing
     //      table entries
@@ -359,7 +361,7 @@ void Link::idleTimeout(const boost::system::error_code &error)
   if (error == boost::asio::error::operation_aborted)
     return;
   
-  UNISPHERE_LOG(m_manager, Info, "Link: Timeout.");
+  BOOST_LOG_SEV(m_logger, normal) << "Timeout.";
   close();
 }
 

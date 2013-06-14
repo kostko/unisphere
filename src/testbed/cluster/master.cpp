@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <boost/range/adaptors.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace po = boost::program_options;
 
@@ -47,6 +48,8 @@ public:
 
 class MasterPrivate {
 public:
+  MasterPrivate();
+
   Response<Protocol::ClusterJoinResponse> rpcClusterJoin(const Protocol::ClusterJoinRequest &request,
                                                          const Message &msg,
                                                          RpcId rpcId);
@@ -55,9 +58,16 @@ public:
                                                            const Message &msg,
                                                            RpcId rpcId);
 public:
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Registered slaves
   std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
 };
+
+MasterPrivate::MasterPrivate()
+  : m_logger(logging::keywords::channel = "cluster_master")
+{
+}
 
 Master::Master()
   : ClusterNode(),
@@ -139,10 +149,7 @@ void Master::run()
   rpc().registerMethod<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>("Testbed.Cluster.Heartbeat",
     boost::bind(&MasterPrivate::rpcClusterHeartbeat, d, _1, _2, _3));
 
-  context().logger()
-    << Logger::Component{"Master"}
-    << Logger::Level::Info
-    << "Cluster master initialized (id=" << linkManager().getLocalContact().nodeId().hex() << ")." << std::endl;
+  BOOST_LOG_SEV(d->m_logger, info) << "Cluster master initialized (id=" << linkManager().getLocalContact().nodeId().hex() << ").";
 }
 
 }

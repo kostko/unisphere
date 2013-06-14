@@ -24,6 +24,8 @@
 #include "rpc/engine.hpp"
 #include "src/testbed/cluster/messages.pb.h"
 
+#include <boost/log/sources/severity_channel_logger.hpp>
+
 namespace po = boost::program_options;
 
 namespace UniSphere {
@@ -34,6 +36,8 @@ class SlavePrivate {
 public:
   SlavePrivate(Context &context);
 public:
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Master contact
   Contact m_masterContact;
   /// Simulation IP address
@@ -45,7 +49,8 @@ public:
 };
 
 SlavePrivate::SlavePrivate(Context &context)
-  : m_heartbeatTimer(context.service())
+  : m_logger(logging::keywords::channel = "cluster_slave"),
+    m_heartbeatTimer(context.service())
 {
 }
 
@@ -131,10 +136,7 @@ void Slave::setupOptions(int argc,
 
 void Slave::run()
 {
-  context().logger()
-    << Logger::Component{"Slave"}
-    << Logger::Level::Info
-    << "Cluster slave initialized." << std::endl;
+  BOOST_LOG_SEV(d->m_logger, normal) << "Cluster slave initialized.";
 
   joinCluster();
 }
@@ -153,12 +155,10 @@ void Slave::joinCluster()
     [this](const Protocol::ClusterJoinResponse &response, const Message&) {
       // Check if registration succeeded
       if (!response.registered()) {
-        context().logger("Slave", Logger::Level::Error)
-          << "Master rejected our registration, aborting." << std::endl;
+        BOOST_LOG_SEV(d->m_logger, error) << "Master rejected our registration, aborting.";
         context().stop();
       } else {
-        context().logger("Slave", Logger::Level::Info)
-          << "Successfully registered on the master node." << std::endl;
+        BOOST_LOG_SEV(d->m_logger, normal) << "Successfully registered on the master node.";
 
         // Start sending heartbeats as master will now expect them
         heartbeat();
@@ -167,15 +167,13 @@ void Slave::joinCluster()
     [this](RpcErrorCode code, const std::string &msg) {
       if (code == RpcErrorCode::RequestTimedOut) {
         // Retry cluster join
-        context().logger("Slave", Logger::Level::Warning)
-          << "Join request timed out, retrying." << std::endl;
+        BOOST_LOG_SEV(d->m_logger, warning) << "Join request timed out, retrying.";
 
         // Attempt to rejoin immediately as at least 5 seconds will have passed
         joinCluster();
       } else {
         // Some issue with the master is preventing us from joining
-        context().logger("Slave", Logger::Level::Error)
-          << "Failure communicating with the master, aborting." << std::endl;
+        BOOST_LOG_SEV(d->m_logger, error) << "Failure communicating with the master, aborting.";
         context().stop();
       }
     },

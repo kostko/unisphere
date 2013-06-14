@@ -22,6 +22,9 @@
 #include <boost/format.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
+
 #include <mutex>
 
 #include "hash_tuple.h"
@@ -34,6 +37,8 @@ namespace UniSphere {
 typedef std::unique_lock<std::mutex> UniqueLock;
 /// Recursive unique lock typedef
 typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
+
+namespace logging = boost::log;
 
 }
 

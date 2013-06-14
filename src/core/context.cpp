@@ -40,10 +40,8 @@ public:
   boost::thread_group m_pool;
   /// Mutex protecting the context
   std::recursive_mutex m_mutex;
-  
-  /// Logger instance
-  Logger m_logger;
-
+  /// Logger
+  logging::sources::logger m_logger;
   /// Cryptographically secure random number generator (per-thread)
   std::unordered_map<std::thread::id, Botan::AutoSeeded_RNG*> m_rng;
   /// Basic random generator that should not be used for crypto ops (per-thread)
@@ -55,6 +53,7 @@ public:
 LibraryInitializer::LibraryInitializer()
   : m_botan("thread_safe=true")
 {
+  logging::add_common_attributes();
 }
 
 ContextPrivate::ContextPrivate()
@@ -91,7 +90,7 @@ Context::Context()
   d->createThreadRNGs();
 
   // Log context initialization
-  UNISPHERE_CLOG(*this, Info, "UNISPHERE Context initialized.");
+  BOOST_LOG(d->m_logger) << "UNISPHERE context initialized.";
 }
 
 Context::~Context()
@@ -101,20 +100,6 @@ Context::~Context()
 boost::asio::io_service &Context::service()
 {
   return d->m_io;
-}
-
-Logger &Context::logger()
-{
-  return d->m_logger;
-}
-
-Logger &Context::logger(const std::string &component, Logger::Level level)
-{
-  d->m_logger
-    << Logger::Component{component}
-    << level;
-  
-  return d->m_logger;
 }
 
 Botan::RandomNumberGenerator &Context::rng()

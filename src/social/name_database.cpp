@@ -31,6 +31,7 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace midx = boost::multi_index;
 
@@ -151,6 +152,8 @@ public:
   NameDatabase *q;
   /// Router
   CompactRouter &m_router;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Mutex protecting the name database
   mutable std::recursive_mutex m_mutex;
   /// Local node identifier (cached from social identity)
@@ -200,16 +203,18 @@ boost::posix_time::time_duration NameRecord::age() const
 NameDatabasePrivate::NameDatabasePrivate(CompactRouter &router, NameDatabase *ndb)
   : q(ndb),
     m_router(router),
+    m_logger(logging::keywords::channel = "name_db"),
     m_localId(router.identity().localId()),
     m_localRefreshTimer(router.context().service())
 {
+  m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(m_localId));
 }
 
 void NameDatabasePrivate::initialize()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  UNISPHERE_LOG(m_router.linkManager(), Info, "NameDatabase: Initializing name database.");
+  BOOST_LOG_SEV(m_logger, normal) << "Initializing name database.";
 
   // Register core name database RPC methods
   registerCoreRpcMethods();
@@ -223,7 +228,7 @@ void NameDatabasePrivate::shutdown()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  UNISPHERE_LOG(m_router.linkManager(), Warning, "NameDatabase: Shutting down name database.");
+  BOOST_LOG_SEV(m_logger, normal) << "Shutting down name database.";
 
   // Unregister core name database RPC methods
   unregisterCoreRpcMethods();

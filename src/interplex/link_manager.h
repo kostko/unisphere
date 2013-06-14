@@ -31,6 +31,8 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
 #include <boost/signals2/signal.hpp>
+#include <boost/log/sources/channel_feature.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace UniSphere {
 
@@ -210,6 +212,8 @@ protected:
 private:
   /// UNISPHERE context this manager belongs to
   Context& m_context;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   
   /// Local node identifier
   NodeIdentifier m_nodeId;
@@ -240,12 +244,10 @@ private:
 
 // Logging and measurement macros
 #ifdef UNISPHERE_DEBUG
-#define UNISPHERE_LOG(manager, level, text) (manager).context().logger().output(Logger::Level::level, (text), (manager).getLocalNodeId().as(NodeIdentifier::Format::Hex))
 #define UNISPHERE_MEASURE_ADD(manager, metric, value) (manager).getMeasure().add(metric, value)
 #define UNISPHERE_MEASURE_INC(manager, metric) (manager).getMeasure().increment(metric)
 #define UNISPHERE_MEASURE_SET(manager, metric, value) (manager).getMeasure().set(metric, value)
 #else
-#define UNISPHERE_LOG(manager, level, text)
 #define UNISPHERE_MEASURE_ADD(manager, metric, value)
 #define UNISPHERE_MEASURE_INC(manager, metric)
 #define UNISPHERE_MEASURE_SET(manager, metric, value)

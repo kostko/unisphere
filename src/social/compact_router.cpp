@@ -30,6 +30,8 @@
 #include "src/social/messages.pb.h"
 #include "src/social/core_methods.pb.h"
 
+#include <boost/log/sources/severity_channel_logger.hpp>
+
 namespace UniSphere {
 
 /**
@@ -193,6 +195,8 @@ public:
 
   /// UNISPHERE context
   Context &m_context;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Mutex protecting the compact router
   mutable std::recursive_mutex m_mutex;
   /// Local node identity
@@ -228,6 +232,7 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
   : q(router),
     w(router, this),
     m_context(manager.context()),
+    m_logger(logging::keywords::channel = "compact_router"),
     m_identity(identity),
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
@@ -240,11 +245,12 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
     m_seqno(1)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
+  m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(manager.getLocalNodeId()));
 }
 
 void CompactRouterPrivate::initialize()
 {
-  UNISPHERE_LOG(m_manager, Info, "CompactRouter: Initializing router.");
+  BOOST_LOG_SEV(m_logger, normal) << "Initializing router.";
 
   // Register core routing RPC methods
   registerCoreRpcMethods();
@@ -277,7 +283,7 @@ void CompactRouterPrivate::initialize()
 
 void CompactRouterPrivate::shutdown()
 {
-  UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Shutting down router.");
+  BOOST_LOG_SEV(m_logger, normal) << "Shutting down router.";
 
   // Unregister core routing RPC methods
   unregisterCoreRpcMethods();
@@ -355,7 +361,7 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
 {
   auto exportEntry = [&](const Contact &contact) {
     if (contact.isNull()) {
-      UNISPHERE_LOG(m_manager, Error, "CompactRouter: Attempted export for null contact!");
+      BOOST_LOG_SEV(m_logger, error) << "Attempted export for null contact!";
       return;
     }
 
@@ -461,7 +467,7 @@ bool CompactRouterPrivate::linkVerifyPeer(const Contact &peer)
 {
   // Refuse to establish connections with unknown peers
   if (!m_identity.isPeer(peer)) {
-    UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Refusing connection with unknown peer.");
+    BOOST_LOG_SEV(m_logger, warning) << "Refusing connection with unknown peer.";
     return false;
   }
 
@@ -544,7 +550,7 @@ void CompactRouterPrivate::networkSizeEstimateChanged(std::uint64_t size)
 
   // TODO: Only flip landmark status if size has changed by at least a factor 2
   if (x < std::sqrt(std::log(n) / n)) {
-    UNISPHERE_LOG(m_manager, Info, "CompactRouter: Becoming a LANDMARK.");
+    BOOST_LOG_SEV(m_logger, normal) << "Becoming a LANDMARK.";
     m_routes.setLandmark(true);
     m_nameDb.registerLandmark(m_manager.getLocalNodeId());
     // TODO: Unregister landmark when local node ceases to be one
@@ -555,7 +561,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 {
   // Drop invalid messages
   if (!msg.isValid()) {
-    UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping invalid message.");
+    BOOST_LOG_SEV(m_logger, warning) << "Dropping invalid message.";
     return;
   }
 
@@ -599,7 +605,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
       if (msg.deliveryMode()) {
         // We must route based on source path
         if (msg.destinationAddress().path().empty()) {
-          UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping message with dm = true and empty path.");
+          BOOST_LOG_SEV(m_logger, warning) << "Dropping message with dm = true and empty path.";
           return;
         }
 
@@ -630,7 +636,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 
   // Drop messages where no next hop can be determined
   if (nextHop.isNull()) {
-    UNISPHERE_LOG(m_manager, Warning, "CompactRouter: Dropping message - no route to destination.");
+    BOOST_LOG_SEV(m_logger, warning) << "Dropping message - no route to destination.";
     return;
   }
 

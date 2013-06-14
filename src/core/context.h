@@ -25,7 +25,6 @@
 #include <random>
 
 #include "core/globals.h"
-#include "core/logger.h"
 
 namespace UniSphere {
 
@@ -106,19 +105,6 @@ public:
    * may be used for all I/O operations by context-dependent APIs.
    */
   boost::asio::io_service &service();
-  
-  /**
-   * Returns the debug logger.
-   */
-  Logger &logger();
-
-  /**
-   * Returns the debug logger.
-   *
-   * @param component Component name
-   * @param level Log level
-   */
-  Logger &logger(const std::string &component, Logger::Level level);
 
   /**
    * Returns the cryptographically secure random number generator.

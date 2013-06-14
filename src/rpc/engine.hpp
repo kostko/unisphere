@@ -28,6 +28,7 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/identity.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
 #include <unordered_map>
 
 namespace UniSphere {
@@ -53,6 +54,7 @@ public:
    */
   explicit RpcEngine(Channel &channel)
     : m_context(channel.context()),
+      m_logger(logging::keywords::channel = "rpc_engine"),
       m_channel(channel)
   {
     // Subscribe to message delivery events
@@ -391,8 +393,7 @@ protected:
     RecursiveUniqueLock lock(m_mutex);
     RpcId rpcId = response.rpc_id();
     if (m_pendingCalls.find(rpcId) == m_pendingCalls.end()) {
-      m_context.logger("RpcEngine", Logger::Level::Warning)
-        << "Got RPC response for an unknown call!" << std::endl;
+      BOOST_LOG_SEV(m_logger, warning) << "Got RPC response for an unknown call!";
       return;
     }
     
@@ -401,6 +402,8 @@ protected:
 private:  
   /// UNISPHERE context
   Context &m_context;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Channel over which the RPCs are routed
   Channel &m_channel;
   /// Mutex protecting the RPC engine

@@ -31,6 +31,7 @@
 
 #include <set>
 #include <boost/asio.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace UniSphere {
 
@@ -221,6 +222,8 @@ public:
 public:
   /// Router instance
   CompactRouter &m_router;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
   /// Name database reference
@@ -296,6 +299,7 @@ void SloppyPeer::clear()
 
 SloppyGroupManagerPrivate::SloppyGroupManagerPrivate(CompactRouter &router, NetworkSizeEstimator &sizeEstimator)
   : m_router(router),
+    m_logger(logging::keywords::channel = "sloppy_group_manager"),
     m_sizeEstimator(sizeEstimator),
     m_nameDb(router.nameDb()),
     m_localId(router.identity().localId()),
@@ -304,13 +308,14 @@ SloppyGroupManagerPrivate::SloppyGroupManagerPrivate(CompactRouter &router, Netw
     m_groupPrefixLength(0),
     m_shortFingerRefreshRetries(0)
 {
+  m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(m_localId));
 }
 
 void SloppyGroupManagerPrivate::initialize()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  UNISPHERE_LOG(m_router.linkManager(), Info, "SloppyGroupManager: Initializing sloppy group manager.");
+  BOOST_LOG_SEV(m_logger, normal) << "Initializing sloppy group manager.";
 
   // Subscribe to all events
   m_subscriptions
@@ -331,7 +336,7 @@ void SloppyGroupManagerPrivate::shutdown()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  UNISPHERE_LOG(m_router.linkManager(), Warning, "SloppyGroupManager: Shutting down sloppy group manager.");
+  BOOST_LOG_SEV(m_logger, normal) << "Shutting down sloppy group manager.";
 
   // Unsubscribe from all events
   for (boost::signals2::connection c : m_subscriptions)

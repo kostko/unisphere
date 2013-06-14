@@ -1,7 +1,6 @@
 
 set(unisphere_core_src
 context.cpp
-logger.cpp
 program_options.cpp
 )
 
