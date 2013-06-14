@@ -392,7 +392,7 @@ protected:
     RpcId rpcId = response.rpc_id();
     if (m_pendingCalls.find(rpcId) == m_pendingCalls.end()) {
       m_context.logger("RpcEngine", Logger::Level::Warning)
-        << "Got RPC response for an unknown call!";
+        << "Got RPC response for an unknown call!" << std::endl;
       return;
     }
     
