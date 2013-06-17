@@ -29,7 +29,6 @@
 #include <unordered_map>
 #include <sstream>
 #include <boost/range/adaptors.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace po = boost::program_options;
 
@@ -59,7 +58,7 @@ public:
                                                            RpcId rpcId);
 public:
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Registered slaves
   std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
 };

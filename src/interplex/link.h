@@ -30,7 +30,6 @@
 #include <boost/signals2/signal.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/foreach.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 
 #include <deque>
 #include <set>
@@ -231,7 +230,7 @@ private:
   /// Manager responsible for this link
   LinkManager &m_manager;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Other end of this link
   NodeIdentifier m_nodeId;
   /// Current link state

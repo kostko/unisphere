@@ -37,7 +37,7 @@ public:
   /// Node name map
   NodeNameMap *m_names;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
 };
 
 TestCasePrivate::TestCasePrivate()
@@ -97,7 +97,7 @@ NodeNameMap &TestCase::names()
   return *d->m_names;
 }
 
-logging::sources::severity_channel_logger<> &TestCase::logger()
+Logger &TestCase::logger()
 {
   return d->m_logger;
 }

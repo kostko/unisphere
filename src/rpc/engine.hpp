@@ -28,7 +28,6 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/identity.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 #include <unordered_map>
 
 namespace UniSphere {
@@ -403,7 +402,7 @@ private:
   /// UNISPHERE context
   Context &m_context;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Channel over which the RPCs are routed
   Channel &m_channel;
   /// Mutex protecting the RPC engine

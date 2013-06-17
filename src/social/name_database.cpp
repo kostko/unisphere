@@ -31,7 +31,6 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/attributes/constant.hpp>
 
 namespace midx = boost::multi_index;
@@ -154,7 +153,7 @@ public:
   /// Router
   CompactRouter &m_router;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Mutex protecting the name database
   mutable std::recursive_mutex m_mutex;
   /// Local node identifier (cached from social identity)

@@ -24,8 +24,6 @@
 #include "rpc/engine.hpp"
 #include "src/testbed/cluster/messages.pb.h"
 
-#include <boost/log/sources/severity_channel_logger.hpp>
-
 namespace po = boost::program_options;
 
 namespace UniSphere {
@@ -37,7 +35,7 @@ public:
   SlavePrivate(Context &context);
 public:
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Master contact
   Contact m_masterContact;
   /// Simulation IP address

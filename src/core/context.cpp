@@ -18,8 +18,13 @@
  */
 #include "core/context.h"
 
-#include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <boost/log/utility/empty_deleter.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/expressions/formatters/date_time.hpp>
+#include <boost/log/support/date_time.hpp>
 #include <unordered_map>
 #include <thread>
 
@@ -43,7 +48,7 @@ public:
   /// Mutex protecting the context
   std::recursive_mutex m_mutex;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Cryptographically secure random number generator (per-thread)
   std::unordered_map<std::thread::id, Botan::AutoSeeded_RNG*> m_rng;
   /// Basic random generator that should not be used for crypto ops (per-thread)
@@ -56,6 +61,25 @@ LibraryInitializer::LibraryInitializer()
   : m_botan("thread_safe=true")
 {
   logging::add_common_attributes();
+
+  // Setup the logging sink
+  boost::shared_ptr<logging::core> core = logging::core::get();
+  boost::shared_ptr<logging::sinks::text_ostream_backend> backend =
+    boost::make_shared<logging::sinks::text_ostream_backend>();
+
+  backend->add_stream(boost::shared_ptr<std::ostream>(&std::clog, logging::empty_deleter()));
+
+  typedef logging::sinks::synchronous_sink<logging::sinks::text_ostream_backend> sink_t;
+  boost::shared_ptr<sink_t> sink(new sink_t(backend));
+  core->add_sink(sink);
+
+  sink->set_formatter
+  (
+    logging::expressions::stream
+      << "[" << logging::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S") << "] "
+      << "<" << logging::expressions::attr<log::LogSeverityLevel, LogTags::Severity>("Severity") << "> "
+      << logging::expressions::smessage
+  );
 }
 
 ContextPrivate::ContextPrivate()

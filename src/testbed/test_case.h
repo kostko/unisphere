@@ -24,7 +24,6 @@
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/signals2/signal.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 
 #include "core/globals.h"
 #include "testbed/nodes.h"
@@ -85,7 +84,7 @@ protected:
   /**
    * Reporting logger.
    */
-  logging::sources::severity_channel_logger<> &logger();
+  Logger &logger();
 
   /**
    * Returns the data collector for a specific category.

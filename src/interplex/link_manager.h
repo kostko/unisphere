@@ -31,8 +31,6 @@
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
 #include <boost/signals2/signal.hpp>
-#include <boost/log/sources/channel_feature.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace UniSphere {
 
@@ -213,7 +211,7 @@ private:
   /// UNISPHERE context this manager belongs to
   Context& m_context;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   
   /// Local node identifier
   NodeIdentifier m_nodeId;

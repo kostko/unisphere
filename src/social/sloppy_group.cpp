@@ -31,7 +31,6 @@
 
 #include <set>
 #include <boost/asio.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
@@ -224,7 +223,7 @@ public:
   /// Router instance
   CompactRouter &m_router;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
   /// Name database reference

@@ -34,7 +34,6 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphml.hpp>
 #include <boost/program_options.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace po = boost::program_options;
 
@@ -86,7 +85,7 @@ public:
   /// Library initializer
   LibraryInitializer m_init;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Chosen IP address for physical network
   std::string m_phyIp;
   /// Chosen starting port for physical network

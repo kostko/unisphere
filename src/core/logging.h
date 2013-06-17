@@ -21,6 +21,9 @@
 
 #include <boost/log/core.hpp>
 #include <boost/log/sources/record_ostream.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/utility/formatting_ostream.hpp>
+#include <boost/log/utility/manipulators/to_log.hpp>
 
 namespace UniSphere {
 
@@ -36,6 +39,35 @@ enum LogSeverityLevel {
 };
 
 }
+
+namespace LogTags {
+  class Severity;
+}
+
+/**
+ * Puts a human-readable log severity level to the logging stream.
+ */
+inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stream,
+                                               logging::to_log_manip<log::LogSeverityLevel, LogTags::Severity> const &manip)
+{
+  static const char *strings[] =
+  {
+    "normal ",
+    "warning",
+    "error  "
+  };
+
+  log::LogSeverityLevel level = manip.get();
+  if (static_cast<std::size_t>(level) < sizeof(strings) / sizeof(*strings))
+    stream << strings[level];
+  else
+    stream << static_cast<int>(level);
+
+  return stream;
+}
+
+/// Defined logger type
+typedef boost::log::sources::severity_channel_logger<log::LogSeverityLevel, std::string> Logger;
 
 }
 

@@ -30,7 +30,6 @@
 #include "src/social/messages.pb.h"
 #include "src/social/core_methods.pb.h"
 
-#include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
@@ -197,7 +196,7 @@ public:
   /// UNISPHERE context
   Context &m_context;
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   /// Mutex protecting the compact router
   mutable std::recursive_mutex m_mutex;
   /// Local node identity

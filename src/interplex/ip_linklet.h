@@ -24,7 +24,6 @@
 
 #include <deque>
 #include <boost/asio.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace UniSphere {
 
@@ -118,7 +117,7 @@ protected:
   void handleWrite(const boost::system::error_code &error);
 protected:
   /// Logger instance
-  logging::sources::severity_channel_logger<> m_logger;
+  Logger m_logger;
   // ASIO TCP acceptor (when handling incoming connections)
   boost::asio::ip::tcp::acceptor m_acceptor;
   
