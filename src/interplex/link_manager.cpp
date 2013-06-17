@@ -58,7 +58,7 @@ void LinkManager::send(const Contact &contact, const Message &msg)
   if (!link) {
     // No contact address is available and link is not an existing one; we
     // can only drop the packet
-    BOOST_LOG_SEV(m_logger, warning) << "No link to destination, dropping message!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "No link to destination, dropping message!";
     return;
   }
   
@@ -175,7 +175,7 @@ void LinkManager::linkMessageReceived(const Message &msg)
   try {
     signalMessageReceived(msg);
   } catch (MessageCastFailed &e) {
-    BOOST_LOG_SEV(m_logger, warning) << "Message parsing has failed on incoming message!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Message parsing has failed on incoming message!";
   }
 }
 
@@ -183,7 +183,7 @@ bool LinkManager::verifyPeer(const Contact &contact)
 {
   // If peer has the same identifier as the local node, we should drop the link
   if (contact.nodeId() == getLocalNodeId()) {
-    BOOST_LOG_SEV(m_logger, warning) << "Attempted nodeId collision, refusing link.";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Attempted nodeId collision, refusing link.";
     return false;
   }
 

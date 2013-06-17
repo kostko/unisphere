@@ -18,6 +18,8 @@
  */
 #include "core/context.h"
 
+#include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
 #include <unordered_map>
 #include <thread>
 
@@ -40,8 +42,8 @@ public:
   boost::thread_group m_pool;
   /// Mutex protecting the context
   std::recursive_mutex m_mutex;
-  /// Logger
-  logging::sources::logger m_logger;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Cryptographically secure random number generator (per-thread)
   std::unordered_map<std::thread::id, Botan::AutoSeeded_RNG*> m_rng;
   /// Basic random generator that should not be used for crypto ops (per-thread)
@@ -58,6 +60,7 @@ LibraryInitializer::LibraryInitializer()
 
 ContextPrivate::ContextPrivate()
   : m_work(m_io),
+    m_logger(logging::keywords::channel = "context"),
     m_basicRngSeed(0)
 {
 }

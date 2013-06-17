@@ -32,6 +32,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/attributes/constant.hpp>
 
 namespace midx = boost::multi_index;
 
@@ -214,7 +215,7 @@ void NameDatabasePrivate::initialize()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  BOOST_LOG_SEV(m_logger, normal) << "Initializing name database.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Initializing name database.";
 
   // Register core name database RPC methods
   registerCoreRpcMethods();
@@ -228,7 +229,7 @@ void NameDatabasePrivate::shutdown()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  BOOST_LOG_SEV(m_logger, normal) << "Shutting down name database.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down name database.";
 
   // Unregister core name database RPC methods
   unregisterCoreRpcMethods();

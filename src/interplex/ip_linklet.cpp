@@ -22,6 +22,7 @@
 #include "src/interplex/interplex.pb.h"
 
 #include <boost/bind.hpp>
+#include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
 
@@ -59,7 +60,7 @@ void IPLinklet::listen(const Address &address)
   }
   
   // Log our listen attempt
-  BOOST_LOG_SEV(m_logger, normal) << "Listening for incoming connections.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Listening for incoming connections.";
   
   // Setup the TCP acceptor
   LinkletPtr linklet(new IPLinklet(m_manager));
@@ -76,7 +77,7 @@ void IPLinklet::connect(const Address &address)
   m_state = State::Connecting;
   
   // Log our connection attempt
-  BOOST_LOG_SEV(m_logger, normal) << "Connecting to a remote address...";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Connecting to a remote address...";
   
   // When a local address is specified, we should bind to it for outgoing connections
   Address localAddress = m_manager.getLocalAddress();
@@ -104,7 +105,7 @@ void IPLinklet::close()
     if (m_state == State::Closed)
       return;
     
-    BOOST_LOG_SEV(m_logger, normal) << "Closing connection with " << m_peerContact.nodeId().hex() << ".";
+    BOOST_LOG_SEV(m_logger, log::normal) << "Closing connection with " << m_peerContact.nodeId().hex() << ".";
     State state = m_state;
     m_state = State::Closed;
     socket().close();
@@ -159,11 +160,11 @@ void IPLinklet::handleConnect(const boost::system::error_code &error)
 {
   if (!error) {
     // Connection successful
-    BOOST_LOG_SEV(m_logger, normal) << "Outgoing connection successful.";
+    BOOST_LOG_SEV(m_logger, log::normal) << "Outgoing connection successful.";
     start();
   } else {
     // Signal connection failure to upper layers
-    BOOST_LOG_SEV(m_logger, warning) << "Outgoing connection failed!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Outgoing connection failed!";
     signalConnectionFailed(shared_from_this());
   }
 }
@@ -206,7 +207,7 @@ void IPLinklet::handleWrite(const boost::system::error_code &error)
     }
   } else {
     // Log
-    BOOST_LOG_SEV(m_logger, warning) << "Message write failed!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Message write failed!";
     close();
   }
 }
@@ -226,7 +227,7 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
       if (m_state == State::IntroWait) {
         // Only hello messages are allowed in IntroWait state
         if (m_inMessage.type() != Message::Type::Interplex_Hello) {
-          BOOST_LOG_SEV(m_logger, error) << "Received non-hello message in IntroWait phase!";
+          BOOST_LOG_SEV(m_logger, log::error) << "Received non-hello message in IntroWait phase!";
           close();
           return;
         }
@@ -241,7 +242,7 @@ void IPLinklet::handleReadHeader(const boost::system::error_code &error, size_t 
     }
   } else {
     // Log
-    BOOST_LOG_SEV(m_logger, warning) << "Message header read failed!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Message header read failed!";
     close();
   }
 }
@@ -258,7 +259,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
       Protocol::Interplex::Hello hello = message_cast<Protocol::Interplex::Hello>(m_inMessage);
       Contact peerContact = Contact::fromMessage(hello.local_contact());
       if (peerContact.isNull()) {
-        BOOST_LOG_SEV(m_logger, error) << "Invalid peer contact in hello message!";
+        BOOST_LOG_SEV(m_logger, log::error) << "Invalid peer contact in hello message!";
         return close();
       }
       
@@ -270,7 +271,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
         return close();
       }
       
-      BOOST_LOG_SEV(m_logger, normal) << "Introductory phase with " << peerContact.nodeId().hex() << " completed.";
+      BOOST_LOG_SEV(m_logger, log::normal) << "Introductory phase with " << peerContact.nodeId().hex() << " completed.";
       m_state = State::Connected;
       signalConnectionSuccess(shared_from_this());
       
@@ -293,7 +294,7 @@ void IPLinklet::handleReadPayload(const boost::system::error_code &error)
     );
   } else {
     // Log
-    BOOST_LOG_SEV(m_logger, warning) << "Message body read failed!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Message body read failed!";
     close();
   }
 }

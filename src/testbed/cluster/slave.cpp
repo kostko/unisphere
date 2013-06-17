@@ -136,7 +136,7 @@ void Slave::setupOptions(int argc,
 
 void Slave::run()
 {
-  BOOST_LOG_SEV(d->m_logger, normal) << "Cluster slave initialized.";
+  BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
 
   joinCluster();
 }
@@ -155,10 +155,10 @@ void Slave::joinCluster()
     [this](const Protocol::ClusterJoinResponse &response, const Message&) {
       // Check if registration succeeded
       if (!response.registered()) {
-        BOOST_LOG_SEV(d->m_logger, error) << "Master rejected our registration, aborting.";
+        BOOST_LOG_SEV(d->m_logger, log::error) << "Master rejected our registration, aborting.";
         context().stop();
       } else {
-        BOOST_LOG_SEV(d->m_logger, normal) << "Successfully registered on the master node.";
+        BOOST_LOG_SEV(d->m_logger, log::normal) << "Successfully registered on the master node.";
 
         // Start sending heartbeats as master will now expect them
         heartbeat();
@@ -167,13 +167,13 @@ void Slave::joinCluster()
     [this](RpcErrorCode code, const std::string &msg) {
       if (code == RpcErrorCode::RequestTimedOut) {
         // Retry cluster join
-        BOOST_LOG_SEV(d->m_logger, warning) << "Join request timed out, retrying.";
+        BOOST_LOG_SEV(d->m_logger, log::warning) << "Join request timed out, retrying.";
 
         // Attempt to rejoin immediately as at least 5 seconds will have passed
         joinCluster();
       } else {
         // Some issue with the master is preventing us from joining
-        BOOST_LOG_SEV(d->m_logger, error) << "Failure communicating with the master, aborting.";
+        BOOST_LOG_SEV(d->m_logger, log::error) << "Failure communicating with the master, aborting.";
         context().stop();
       }
     },

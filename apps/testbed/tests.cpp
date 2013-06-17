@@ -36,43 +36,6 @@ using namespace UniSphere;
 
 namespace Tests {
 
-class DumpNodeState : public TestBed::TestCase
-{
-protected:
-  /**
-   * Simply dump the routing state for all nodes.
-   */
-  void start()
-  {
-    auto resolveNodeName = [&](const NodeIdentifier &n) -> std::string { return names().right.at(n); };
-    std::unordered_set<NodeIdentifier> authRecords;
-
-    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
-      report() << "---- ROUTING STATE FOR: " << node->nodeId.hex() << " (" << names().right.at(node->nodeId) << ") ----" << std::endl;
-      node->router->routingTable().dump(report(), resolveNodeName);
-      node->router->nameDb().dump(report(), resolveNodeName);
-      node->router->sloppyGroup().dump(report(), resolveNodeName);
-
-      for (NameRecordPtr record : node->router->nameDb().names()) {
-        if (record->type == NameRecord::Type::Authority)
-          authRecords.insert(record->nodeId);
-      }
-    }
-
-    report() << "---- GLOBAL AUTHORITATIVE NAME RECORDS (" << authRecords.size() << ") ----" << std::endl;
-    for (NodeIdentifier nodeId : authRecords)
-      report() << "  " << nodeId.hex() << " (" << names().right.at(nodeId) << ")" << std::endl;
-
-    // Require that all node records are distributed around
-    // TODO: This should be moved to a separate test
-    require(authRecords.size() == nodes().size());
-
-    finish();
-  }
-};
-
-UNISPHERE_REGISTER_TEST_CASE(DumpNodeState, "state/dump_all")
-
 class AllPairs : public TestBed::TestCase
 {
 protected:
@@ -124,7 +87,7 @@ protected:
           },
           [this, a, b](RpcErrorCode, const std::string &msg) {
             failures++;
-            report() << Logger::Level::Error << "Pair = (" << a->name << ", " << b->name << ") RPC call failure: " << msg << std::endl;
+            BOOST_LOG_SEV(logger(), log::error) << "Pair = (" << a->name << ", " << b->name << ") RPC call failure: " << msg;
             checkDone();
           },
           rpc.options().setTimeout(45)
@@ -148,9 +111,9 @@ protected:
   void evaluate()
   {
     // Test summary
-    report() << "All nodes = " << numNodes << std::endl;
-    report() << "Received responses = " << received << std::endl;
-    report() << "Failures = " << failures << std::endl;
+    BOOST_LOG(logger()) << "All nodes = " << numNodes;
+    BOOST_LOG(logger()) << "Received responses = " << received;
+    BOOST_LOG(logger()) << "Failures = " << failures;
 
     // Requirements for passing the test
     require(received == expected);
@@ -195,7 +158,7 @@ protected:
       }
       averageStretch /= n;
 
-      report() << "Average stretch = " << averageStretch << std::endl;
+      BOOST_LOG(logger()) << "Average stretch = " << averageStretch;
 
       // Finish this test
       finish();
@@ -243,7 +206,7 @@ protected:
         << node->router->routingTable().isLandmark();
     }
 
-    report() << "Global state = " << stateAllNodes << std::endl;
+    BOOST_LOG(logger()) << "Global state = " << stateAllNodes;
     finish();
   }
 };

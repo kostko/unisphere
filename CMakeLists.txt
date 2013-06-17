@@ -13,11 +13,11 @@ find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
 find_package(GMP REQUIRED)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -std=c++0x")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -std=c++0x")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK")
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g3 -fvisibility=hidden -DUNISPHERE_DEBUG -std=c++0x")
-set(CMAKE_C_FLAGS_DEBUG "-g3 -fvisibility=hidden -DUNISPHERE_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -DUNISPHERE_DEBUG -std=c++0x")
+set(CMAKE_C_FLAGS_DEBUG "-g3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -DUNISPHERE_DEBUG")
 
 include_directories(
   # External includes

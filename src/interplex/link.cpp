@@ -23,6 +23,7 @@
 #include "interplex/exceptions.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
 
@@ -50,7 +51,7 @@ void Link::init()
 Link::~Link()
 {
   // Log link destruction
-  BOOST_LOG_SEV(m_logger, normal) << "Destroying link.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Destroying link.";
 }
 
 void Link::close()
@@ -63,7 +64,7 @@ void Link::close()
     return;
   m_state = Link::State::Invalid;
   
-  BOOST_LOG_SEV(m_logger, normal) << "Closing link with " << nodeId.hex() << ".";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Closing link with " << m_nodeId.hex() << ".";
   
   // Cancel timers
   m_retryTimer.cancel();
@@ -266,7 +267,7 @@ void Link::tryNextAddress()
   }
   
   // Log our attempt
-  BOOST_LOG_SEV(m_logger, normal) << "Trying next address for outgoing connection with " << m_nodeId.hex() << ".";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Trying next address for outgoing connection with " << m_nodeId.hex() << ".";
   
   // Change state to connecting
   setState(Link::State::Connecting);
@@ -282,7 +283,7 @@ void Link::linkletConnectionFailed(LinkletPtr linklet)
   RecursiveUniqueLock lock(m_mutex);
   
   // Log connection failure
-  BOOST_LOG_SEV(m_logger, normal) << "Outgoing connection failed. Queuing next try.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Outgoing connection failed. Queuing next try.";
   
   // Remove linklet from list of linklets and try next address
   removeLinklet(linklet);
@@ -300,7 +301,7 @@ bool Link::linkletVerifyPeer(LinkletPtr linklet)
   
   // Check that the peer actually fits this link and close it if not
   if (linklet->peerContact().nodeId() != m_nodeId) {
-    BOOST_LOG_SEV(m_logger, error) << "Link identifier does not match destination node!";
+    BOOST_LOG_SEV(m_logger, log::error) << "Link identifier does not match destination node!";
     // TODO used contact address should be removed as it is clearly not valid
     // TODO also we should use some signal that would be used by Router to update routing
     //      table entries
@@ -361,7 +362,7 @@ void Link::idleTimeout(const boost::system::error_code &error)
   if (error == boost::asio::error::operation_aborted)
     return;
   
-  BOOST_LOG_SEV(m_logger, normal) << "Timeout.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Timeout.";
   close();
 }
 

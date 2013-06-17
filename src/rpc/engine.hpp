@@ -393,7 +393,7 @@ protected:
     RecursiveUniqueLock lock(m_mutex);
     RpcId rpcId = response.rpc_id();
     if (m_pendingCalls.find(rpcId) == m_pendingCalls.end()) {
-      BOOST_LOG_SEV(m_logger, warning) << "Got RPC response for an unknown call!";
+      BOOST_LOG_SEV(m_logger, log::warning) << "Got RPC response for an unknown call!";
       return;
     }
     

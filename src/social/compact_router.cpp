@@ -31,6 +31,7 @@
 #include "src/social/core_methods.pb.h"
 
 #include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
 
@@ -250,7 +251,7 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
 
 void CompactRouterPrivate::initialize()
 {
-  BOOST_LOG_SEV(m_logger, normal) << "Initializing router.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Initializing router.";
 
   // Register core routing RPC methods
   registerCoreRpcMethods();
@@ -283,7 +284,7 @@ void CompactRouterPrivate::initialize()
 
 void CompactRouterPrivate::shutdown()
 {
-  BOOST_LOG_SEV(m_logger, normal) << "Shutting down router.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down router.";
 
   // Unregister core routing RPC methods
   unregisterCoreRpcMethods();
@@ -361,7 +362,7 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
 {
   auto exportEntry = [&](const Contact &contact) {
     if (contact.isNull()) {
-      BOOST_LOG_SEV(m_logger, error) << "Attempted export for null contact!";
+      BOOST_LOG_SEV(m_logger, log::error) << "Attempted export for null contact!";
       return;
     }
 
@@ -467,7 +468,7 @@ bool CompactRouterPrivate::linkVerifyPeer(const Contact &peer)
 {
   // Refuse to establish connections with unknown peers
   if (!m_identity.isPeer(peer)) {
-    BOOST_LOG_SEV(m_logger, warning) << "Refusing connection with unknown peer.";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Refusing connection with unknown peer.";
     return false;
   }
 
@@ -550,7 +551,7 @@ void CompactRouterPrivate::networkSizeEstimateChanged(std::uint64_t size)
 
   // TODO: Only flip landmark status if size has changed by at least a factor 2
   if (x < std::sqrt(std::log(n) / n)) {
-    BOOST_LOG_SEV(m_logger, normal) << "Becoming a LANDMARK.";
+    BOOST_LOG_SEV(m_logger, log::normal) << "Becoming a LANDMARK.";
     m_routes.setLandmark(true);
     m_nameDb.registerLandmark(m_manager.getLocalNodeId());
     // TODO: Unregister landmark when local node ceases to be one
@@ -561,7 +562,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 {
   // Drop invalid messages
   if (!msg.isValid()) {
-    BOOST_LOG_SEV(m_logger, warning) << "Dropping invalid message.";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping invalid message.";
     return;
   }
 
@@ -605,7 +606,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
       if (msg.deliveryMode()) {
         // We must route based on source path
         if (msg.destinationAddress().path().empty()) {
-          BOOST_LOG_SEV(m_logger, warning) << "Dropping message with dm = true and empty path.";
+          BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message with dm = true and empty path.";
           return;
         }
 
@@ -636,7 +637,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 
   // Drop messages where no next hop can be determined
   if (nextHop.isNull()) {
-    BOOST_LOG_SEV(m_logger, warning) << "Dropping message - no route to destination.";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message - no route to destination.";
     return;
   }
 

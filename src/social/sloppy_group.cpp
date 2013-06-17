@@ -32,6 +32,7 @@
 #include <set>
 #include <boost/asio.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
 
@@ -315,7 +316,7 @@ void SloppyGroupManagerPrivate::initialize()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  BOOST_LOG_SEV(m_logger, normal) << "Initializing sloppy group manager.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Initializing sloppy group manager.";
 
   // Subscribe to all events
   m_subscriptions
@@ -336,7 +337,7 @@ void SloppyGroupManagerPrivate::shutdown()
 {
   RecursiveUniqueLock lock(m_mutex);
 
-  BOOST_LOG_SEV(m_logger, normal) << "Shutting down sloppy group manager.";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down sloppy group manager.";
 
   // Unsubscribe from all events
   for (boost::signals2::connection c : m_subscriptions)

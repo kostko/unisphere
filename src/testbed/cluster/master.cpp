@@ -149,7 +149,7 @@ void Master::run()
   rpc().registerMethod<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>("Testbed.Cluster.Heartbeat",
     boost::bind(&MasterPrivate::rpcClusterHeartbeat, d, _1, _2, _3));
 
-  BOOST_LOG_SEV(d->m_logger, info) << "Cluster master initialized (id=" << linkManager().getLocalContact().nodeId().hex() << ").";
+  BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster master initialized (id=" << linkManager().getLocalContact().nodeId().hex() << ").";
 }
 
 }

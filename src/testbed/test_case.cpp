@@ -20,6 +20,8 @@
 #include "testbed/test_bed.h"
 #include "core/context.h"
 
+#include <boost/log/attributes/constant.hpp>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -34,11 +36,14 @@ public:
   VirtualNodeMap *m_nodes;
   /// Node name map
   NodeNameMap *m_names;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
 };
 
 TestCasePrivate::TestCasePrivate()
   : m_nodes(nullptr),
-    m_names(nullptr)
+    m_names(nullptr),
+    m_logger(logging::keywords::channel = "test_case")
 {
 }
 
@@ -53,6 +58,8 @@ void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNa
   d->m_name = name;
   d->m_nodes = nodes;
   d->m_names = names;
+
+  d->m_logger.add_attribute("TestCase", logging::attributes::constant<std::string>(name));
 }
 
 void TestCase::run()
@@ -90,12 +97,9 @@ NodeNameMap &TestCase::names()
   return *d->m_names;
 }
 
-std::ostream &TestCase::report()
+logging::sources::severity_channel_logger<> &TestCase::logger()
 {
-  std::ostream &os = testbed.getContext().logger().stream();
-  os << Logger::Component{"TestCase::" + d->m_name};
-  os << Logger::Level::Info;
-  return os;
+  return d->m_logger;
 }
 
 DataCollector TestCase::data(const std::string &category,
@@ -123,7 +127,7 @@ DataCollector TestCase::data(const std::string &category,
 void TestCase::require(bool assertion)
 {
   if (!assertion) {
-    report() << Logger::Level::Error << "Requirement not satisfied." << std::endl;
+    BOOST_LOG_SEV(d->m_logger, log::error) << "Requirement not satisfied.";
   }
 }
 

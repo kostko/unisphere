@@ -34,6 +34,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphml.hpp>
 #include <boost/program_options.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
 
 namespace po = boost::program_options;
 
@@ -84,6 +85,8 @@ public:
   std::recursive_mutex m_mutex;
   /// Library initializer
   LibraryInitializer m_init;
+  /// Logger instance
+  logging::sources::severity_channel_logger<> m_logger;
   /// Chosen IP address for physical network
   std::string m_phyIp;
   /// Chosen starting port for physical network
@@ -116,7 +119,8 @@ public:
 TestBed *TestBedPrivate::m_self = nullptr;
 
 TestBedPrivate::TestBedPrivate()
-  : m_phyIp(""),
+  : m_logger(logging::keywords::channel = "testbed"),
+    m_phyIp(""),
     m_phyStartPort(0),
     m_sizeEstimator(nullptr)
 {
@@ -137,7 +141,7 @@ void TestBedPrivate::runTest(const std::string &test, std::function<void()> fini
     ptest->signalFinished.connect(finished);
 
   ptest->initialize(test, &m_nodes, &m_names);
-  ptest->report() << "Starting test case." << std::endl;
+  BOOST_LOG(ptest->logger()) << "Starting test case.";
   ptest->run();
 }
 
@@ -287,7 +291,7 @@ void TestBed::finishTestCase(TestCasePtr test)
 {
   RecursiveUniqueLock lock(d->m_mutex);
   d->m_runningCases.erase(test);
-  test->report() << "Finished test case." << std::endl;
+  BOOST_LOG(test->logger()) << "Finished test case.";
 }
 
 void TestBed::registerScenario(Scenario *scenario)
@@ -320,7 +324,7 @@ void TestBed::endScenarioAfter(int time)
 {
   d->m_context.schedule(time, [this]() {
     RecursiveUniqueLock lock(d->m_mutex);
-    d->m_context.logger().stream() << Logger::Component{"TestBed"} << "Ending scenario after " << this->time() << " seconds." << std::endl;
+    BOOST_LOG(d->m_logger) << "Ending scenario after " << this->time() << " seconds.";
     d->m_snapshotHandlers.clear();
     d->m_context.stop();
   });
