@@ -114,7 +114,8 @@ public:
     
     createCall(destination, method, buffer,
       [success](const Protocol::RpcResponse &rsp, const typename Channel::message_type &msg) {
-        success(message_cast<ResponseType>(rsp.data()), msg);
+        if (success)
+          success(message_cast<ResponseType>(rsp.data()), msg);
       },
       failure,
       opts
