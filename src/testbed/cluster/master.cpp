@@ -67,7 +67,7 @@ public:
 
 MasterPrivate::MasterPrivate()
   : m_logger(logging::keywords::channel = "cluster_master"),
-    m_state(Master::Idle)
+    m_state(Master::State::Idle)
 {
 }
 
@@ -83,7 +83,7 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
 {
   Protocol::ClusterJoinResponse response;
 
-  if (m_state == Master::Idle) {
+  if (m_state == Master::State::Idle) {
     response.set_registered(true);
 
     // TODO: Perform registration
