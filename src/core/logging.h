@@ -30,6 +30,10 @@ namespace UniSphere {
 // Logging
 namespace logging = boost::log;
 
+namespace LogTags {
+  class Severity;
+}
+
 namespace log {
 
 enum LogSeverityLevel {
@@ -38,26 +42,20 @@ enum LogSeverityLevel {
   error
 };
 
-}
-
-namespace LogTags {
-  class Severity;
-}
-
 /**
  * Puts a human-readable log severity level to the logging stream.
  */
 inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stream,
-                                               logging::to_log_manip<log::LogSeverityLevel, LogTags::Severity> const &manip)
+                                               logging::to_log_manip<LogSeverityLevel, LogTags::Severity> const &manip)
 {
   static const char *strings[] =
   {
-    "normal ",
-    "warning",
-    "error  "
+    "NORM",
+    "WARN",
+    "ERRR"
   };
 
-  log::LogSeverityLevel level = manip.get();
+  LogSeverityLevel level = manip.get();
   if (static_cast<std::size_t>(level) < sizeof(strings) / sizeof(*strings))
     stream << strings[level];
   else
@@ -66,8 +64,10 @@ inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stre
   return stream;
 }
 
+}
+
 /// Defined logger type
-typedef boost::log::sources::severity_channel_logger<log::LogSeverityLevel, std::string> Logger;
+typedef logging::sources::severity_channel_logger<log::LogSeverityLevel, std::string> Logger;
 
 }
 

@@ -23,6 +23,14 @@
 #include "interplex/rpc_channel.h"
 #include "rpc/engine.hpp"
 
+#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/utility/empty_deleter.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/expressions/formatters/date_time.hpp>
+#include <boost/log/support/date_time.hpp>
+
 namespace po = boost::program_options;
 
 namespace UniSphere {
@@ -34,6 +42,8 @@ public:
   void initialize(const NodeIdentifier &nodeId,
                   const std::string &ip,
                   unsigned short port);
+
+  void formatLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream);
 public:
   /// Cluster node communication context
   Context m_context;
@@ -45,10 +55,30 @@ public:
   boost::shared_ptr<RpcEngine<InterplexRpcChannel>> m_rpc;
 };
 
+void ClusterNodePrivate::formatLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream)
+{
+  stream << "[" << logging::extract<boost::posix_time::ptime>("TimeStamp", rec) << "] ";
+  stream << "<" << logging::extract<log::LogSeverityLevel, LogTags::Severity>("Severity", rec) << "> ";
+
+  auto nodeId = logging::extract<NodeIdentifier>("LocalNodeID", rec);
+  if (!nodeId.empty())
+    stream << "[" << nodeId.get().hex() << "] ";
+  else
+    stream << "[global] ";
+
+  stream << "[" << logging::extract<std::string>("Channel", rec) << "] ";
+  stream << rec[logging::expressions::smessage];
+}
+
 void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
                                     const std::string &ip,
                                     unsigned short port)
 {
+  // Setup a logging sink
+  auto sink = logging::add_console_log(std::clog);
+  sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
+  logging::core::get()->set_logging_enabled(true);
+
   // Initialize the link manager
   m_linkManager = boost::shared_ptr<LinkManager>(new LinkManager(m_context, nodeId));
   m_linkManager->setLocalAddress(Address(ip, 0));
