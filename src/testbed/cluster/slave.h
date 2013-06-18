@@ -21,6 +21,8 @@
 
 #include "testbed/cluster/node.h"
 
+#include <boost/system/error_code.hpp>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -40,8 +42,10 @@ protected:
   void run();
 private:
   void joinCluster();
+
+  void rejoinCluster();
   
-  void heartbeat();
+  void heartbeat(const boost::system::error_code &error = boost::system::error_code());
 private:
   UNISPHERE_DECLARE_PRIVATE(Slave)
 };

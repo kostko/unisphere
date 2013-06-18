@@ -35,6 +35,13 @@ namespace po = boost::program_options;
 
 namespace UniSphere {
 
+namespace log {
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
+BOOST_LOG_ATTRIBUTE_KEYWORD(local_node_id, "LocalNodeID", NodeIdentifier)
+
+}
+
 namespace TestBed {
 
 class ClusterNodePrivate {
@@ -77,6 +84,13 @@ void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
   // Setup a logging sink
   auto sink = logging::add_console_log(std::clog);
   sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
+  sink->set_filter(
+    !(
+      (log::channel == "link" || log::channel == "linklet" || log::channel == "ip_linklet" || log::channel == "rpc_engine")
+      &&
+      log::local_node_id == nodeId
+    )
+  );
   logging::core::get()->set_logging_enabled(true);
 
   // Initialize the link manager

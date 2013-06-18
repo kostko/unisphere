@@ -27,6 +27,16 @@ namespace TestBed {
 
 class UNISPHERE_EXPORT Master : public ClusterNode {
 public:
+  /**
+   * State of the master.
+   */
+  enum class State {
+    /// In idle state, the master is accepting new slaves
+    Idle,
+    /// After the simulation has started nodes are no longer accepted
+    Running
+  };
+
   Master();
 
   Master(const Master&) = delete;

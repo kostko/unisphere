@@ -44,6 +44,8 @@ public:
   std::tuple<unsigned short, unsigned short> m_simulationPortRange;
   /// Heartbeat timer
   boost::asio::deadline_timer m_heartbeatTimer;
+  /// Master heartbeat timeout counter
+  size_t m_masterMissedHeartbeats;
 };
 
 SlavePrivate::SlavePrivate(Context &context)
@@ -158,6 +160,9 @@ void Slave::joinCluster()
       } else {
         BOOST_LOG_SEV(d->m_logger, log::normal) << "Successfully registered on the master node.";
 
+        // Reset the master missed heartbeats counter
+        d->m_masterMissedHeartbeats = 0;
+
         // Start sending heartbeats as master will now expect them
         heartbeat();
       }
@@ -183,19 +188,41 @@ void Slave::joinCluster()
   );
 }
 
-void Slave::heartbeat()
+void Slave::rejoinCluster()
 {
-  rpc().call<Protocol::ClusterHeartbeat>(
+  // TODO: Leave cluster?
+  d->m_heartbeatTimer.cancel();
+  
+  joinCluster();
+}
+
+void Slave::heartbeat(const boost::system::error_code &error)
+{
+  if (error)
+    return;
+
+  rpc().call<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>(
     d->m_masterContact.nodeId(),
     "Testbed.Cluster.Heartbeat",
     Protocol::ClusterHeartbeat(),
-    rpc().options().setChannelOptions(
-      MessageOptions().setContact(d->m_masterContact)
-    )
+    nullptr,
+    [this](RpcErrorCode, const std::string&) {
+      // Failed to receive heartbeat from master
+      if (++d->m_masterMissedHeartbeats > 2) {
+        
+        BOOST_LOG_SEV(d->m_logger, log::error) << "Connection to master has timed out!";
+        rejoinCluster();
+      }
+    },
+    rpc().options()
+         .setTimeout(5)
+         .setChannelOptions(
+           MessageOptions().setContact(d->m_masterContact)
+         )
   );
 
-  d->m_heartbeatTimer.expires_from_now(boost::posix_time::seconds(15));
-  d->m_heartbeatTimer.async_wait(boost::bind(&Slave::heartbeat, this));
+  d->m_heartbeatTimer.expires_from_now(boost::posix_time::seconds(5));
+  d->m_heartbeatTimer.async_wait(boost::bind(&Slave::heartbeat, this, _1));
 }
 
 }

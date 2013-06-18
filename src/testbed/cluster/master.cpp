@@ -59,12 +59,15 @@ public:
 public:
   /// Logger instance
   Logger m_logger;
+  /// Current cluster state
+  Master::State m_state;
   /// Registered slaves
   std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
 };
 
 MasterPrivate::MasterPrivate()
-  : m_logger(logging::keywords::channel = "cluster_master")
+  : m_logger(logging::keywords::channel = "cluster_master"),
+    m_state(Master::Idle)
 {
 }
 
@@ -79,7 +82,18 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
                                                                       RpcId rpcId)
 {
   Protocol::ClusterJoinResponse response;
-  response.set_registered(true);
+
+  if (m_state == Master::Idle) {
+    response.set_registered(true);
+
+    // TODO: Perform registration
+    BOOST_LOG_SEV(m_logger, log::normal) << "Registered new slave (id=" << msg.originator().hex() << ").";
+  } else {
+    // After the simulation has started new slaves can't be registered
+    response.set_registered(false);
+    BOOST_LOG_SEV(m_logger, log::warning) << "Refusing registration of new slave (id=" << msg.originator().hex() << ") while simulation is running!";
+  }
+
   return response;
 }
 
@@ -148,7 +162,7 @@ void Master::run()
   rpc().registerMethod<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>("Testbed.Cluster.Heartbeat",
     boost::bind(&MasterPrivate::rpcClusterHeartbeat, d, _1, _2, _3));
 
-  BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster master initialized (id=" << linkManager().getLocalContact().nodeId().hex() << ").";
+  BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster master initialized (id=" << linkManager().getLocalNodeId().hex() << ").";
 }
 
 }
