@@ -175,8 +175,9 @@ void Slave::joinCluster()
         // Attempt to rejoin immediately as at least 5 seconds will have passed
         joinCluster();
       } else {
-        // Some issue with the master is preventing us from joining
-        BOOST_LOG_SEV(d->m_logger, log::error) << "Failure communicating with the master, aborting.";
+        // Some issue is preventing us from joining
+        BOOST_LOG_SEV(d->m_logger, log::error) << "Master rejected our registration: " << msg;
+        BOOST_LOG_SEV(d->m_logger, log::error) << "Aborting.";
         context().stop();
       }
     },
@@ -192,7 +193,7 @@ void Slave::rejoinCluster()
 {
   // TODO: Leave cluster?
   d->m_heartbeatTimer.cancel();
-  
+
   joinCluster();
 }
 

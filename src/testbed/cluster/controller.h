@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_TESTBED_MASTER_H
-#define UNISPHERE_TESTBED_MASTER_H
+#ifndef UNISPHERE_TESTBED_CONTROLLER_H
+#define UNISPHERE_TESTBED_CONTROLLER_H
 
 #include "testbed/cluster/node.h"
 
@@ -25,26 +25,21 @@ namespace UniSphere {
 
 namespace TestBed {
 
-class UNISPHERE_EXPORT Master : public ClusterNode {
+class UNISPHERE_EXPORT Controller : public ClusterNode {
 public:
-  /**
-   * State of the master.
-   */
-  enum class State {
-    /// In idle state, the master is accepting new slaves
-    Idle,
-    /// After the simulation has started nodes are no longer accepted
-    Running
-  };
+  Controller();
 
-  Master();
-
-  Master(const Master&) = delete;
-  Master &operator=(const Master&) = delete;
+  Controller(const Controller&) = delete;
+  Controller &operator=(const Controller&) = delete;
 protected:
+  void setupOptions(int argc,
+                    char **argv,
+                    boost::program_options::options_description &options,
+                    boost::program_options::variables_map &variables);
+
   void run();
 private:
-  UNISPHERE_DECLARE_PRIVATE(Master)
+  UNISPHERE_DECLARE_PRIVATE(Controller)
 };
 
 }

@@ -41,13 +41,17 @@ using Response = RpcResponse<InterplexRpcChannel, ResponseType>;
 
 class SlaveDescriptor {
 public:
-  NodeIdentifier nodeId;
-  // TODO: Assigned virtual nodes
+  /// Slave contact information
+  Contact contact;
+  /// IP address available for simulation
+  std::string simulationIp;
+  /// Port range available for simulation
+  std::tuple<unsigned short, unsigned short> simulationPortRange;
 };
 
 class MasterPrivate {
 public:
-  MasterPrivate();
+  MasterPrivate(Master &master);
 
   Response<Protocol::ClusterJoinResponse> rpcClusterJoin(const Protocol::ClusterJoinRequest &request,
                                                          const Message &msg,
@@ -57,6 +61,8 @@ public:
                                                            const Message &msg,
                                                            RpcId rpcId);
 public:
+  UNISPHERE_DECLARE_PUBLIC(Master)
+
   /// Logger instance
   Logger m_logger;
   /// Current cluster state
@@ -65,15 +71,16 @@ public:
   std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
 };
 
-MasterPrivate::MasterPrivate()
-  : m_logger(logging::keywords::channel = "cluster_master"),
+MasterPrivate::MasterPrivate(Master &master)
+  : q(master),
+    m_logger(logging::keywords::channel = "cluster_master"),
     m_state(Master::State::Idle)
 {
 }
 
 Master::Master()
   : ClusterNode(),
-    d(new MasterPrivate)
+    d(new MasterPrivate(*this))
 {
 }
 
@@ -86,12 +93,26 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
   if (m_state == Master::State::Idle) {
     response.set_registered(true);
 
-    // TODO: Perform registration
+    // Perform registration
+    SlaveDescriptor descriptor;
+    descriptor.contact = q.linkManager().getLinkContact(msg.originator());
+    descriptor.simulationIp = request.simulationip();
+    descriptor.simulationPortRange = std::make_tuple(
+      request.simulationportstart(),
+      request.simulationportend()
+    );
+
+    // Perform simple validation of the port range
+    if (std::get<0>(descriptor.simulationPortRange) > std::get<1>(descriptor.simulationPortRange))
+      throw RpcException(RpcErrorCode::BadRequest, "Invalid simulation port range specified!");
+
+    m_slaves.insert({{ msg.originator(), descriptor }});
+
     BOOST_LOG_SEV(m_logger, log::normal) << "Registered new slave (id=" << msg.originator().hex() << ").";
   } else {
     // After the simulation has started new slaves can't be registered
-    response.set_registered(false);
     BOOST_LOG_SEV(m_logger, log::warning) << "Refusing registration of new slave (id=" << msg.originator().hex() << ") while simulation is running!";
+    throw RpcException(RpcErrorCode::BadRequest, "Registrations are already closed!");
   }
 
   return response;
@@ -101,56 +122,14 @@ Response<Protocol::ClusterHeartbeat> MasterPrivate::rpcClusterHeartbeat(const Pr
                                                                         const Message &msg,
                                                                         RpcId rpcId)
 {
+  auto it = m_slaves.find(msg.originator());
+  if (it == m_slaves.end())
+    throw RpcException(RpcErrorCode::BadRequest, "Slave is not registered.");
+
+  SlaveDescriptor &descriptor = it->second;
+  // TODO
+
   return Protocol::ClusterHeartbeat();
-}
-
-void Master::setupOptions(int argc,
-                          char **argv,
-                          po::options_description &options,
-                          po::variables_map &variables)
-{
-  TestBed &testbed = TestBed::getGlobalTestbed();
-  
-  if (variables.empty()) {
-    ClusterNode::setupOptions(argc, argv, options, variables);
-
-    // Generate a list of all available scenarios
-    std::stringstream scenarios;
-    scenarios << "scenario to run\n"
-              << "\n"
-              << "Available scenarios:\n";
-
-    for (ScenarioPtr scenario : testbed.scenarios() | boost::adaptors::map_values) {
-      scenarios << "  " << scenario->name() << "\n";
-    }
-
-    // Testbed options on master node
-    po::options_description local("Testbed Options");
-    local.add_options()
-      ("scenario", po::value<std::string>(), scenarios.str().data())
-      ("out-dir", po::value<std::string>(), "directory for output files")
-//      ("id-gen", po::value<IdGenerationType>(), "id generation type [random, consistent]")
-      ("seed", po::value<std::uint32_t>()->default_value(0), "seed for the basic RNG")
-      ("max-runtime", po::value<unsigned int>()->default_value(0), "maximum runtime in seconds (0 = unlimited)")
-    ;
-    options.add(local);
-    return;
-  }
-
-  // Process local options
-  ClusterNode::setupOptions(argc, argv, options, variables);
-
-  // TODO: Process testbed options
-  ScenarioPtr scenario;
-  if (variables.count("scenario")) {
-    scenario = testbed.getScenario(variables["scenario"].as<std::string>());
-    if (!scenario)
-      throw ArgumentError("The specified scenario is not registered!");
-  } else {
-    throw ArgumentError("Missing required --scenario option!");
-  }
-
-  scenario->initialize(argc, argv, options);
 }
 
 void Master::run()

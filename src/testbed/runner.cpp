@@ -20,6 +20,7 @@
 #include "testbed/cluster/node.h"
 #include "testbed/cluster/master.h"
 #include "testbed/cluster/slave.h"
+#include "testbed/cluster/controller.h"
 #include "testbed/exceptions.h"
 
 #include <boost/program_options.hpp>
@@ -37,7 +38,9 @@ enum class ClusterRole {
   /// Node is a master and coordinates the cluster
   Master,
   /// Node is a slave and performs the simulations
-  Slave
+  Slave,
+  /// Node is a controller and submits commands to master
+  Controller
 };
 
 std::istream &operator>>(std::istream &is, ClusterRole &role)
@@ -48,6 +51,8 @@ std::istream &operator>>(std::istream &is, ClusterRole &role)
     role = ClusterRole::Master;
   else if (token == "slave")
     role = ClusterRole::Slave;
+  else if (token == "controller")
+    role = ClusterRole::Controller;
   else
     throw boost::program_options::invalid_option_value(token);
   return is;
@@ -75,7 +80,7 @@ int RunnerPrivate::run(int argc, char **argv)
   po::options_description baseOptions("Base options");
   baseOptions.add_options()
     ("help", "displays help information")
-    ("cluster-role", po::value<ClusterRole>(), "cluster role (master, slave)")
+    ("cluster-role", po::value<ClusterRole>(), "cluster role (master, slave, controller)")
   ;
   options.add(baseOptions);
 
@@ -91,6 +96,7 @@ int RunnerPrivate::run(int argc, char **argv)
       switch (vm["cluster-role"].as<ClusterRole>()) {
         case ClusterRole::Master: m_clusterNode = ClusterNodePtr(new Master); break;
         case ClusterRole::Slave: m_clusterNode = ClusterNodePtr(new Slave); break;
+        case ClusterRole::Controller: m_clusterNode = ClusterNodePtr(new Controller); break;
       }
     } else {
       std::cout << "ERROR: No --cluster-role specified!" << std::endl;
