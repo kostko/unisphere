@@ -21,6 +21,7 @@
 
 #include "core/globals.h"
 #include "core/exception.h"
+#include "core/message_cast.h"
 #include "identity/node_identifier.h"
 
 #include <google/protobuf/message.h>
@@ -141,12 +142,6 @@ private:
   
   /// Identifier of the message originator
   NodeIdentifier m_originator;
-};
-
-/**
- * An exception that gets raised when a message cast fails.
- */
-class UNISPHERE_EXPORT MessageCastFailed : public Exception {
 };
 
 /**
