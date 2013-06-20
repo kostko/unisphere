@@ -16,21 +16,32 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "testbed/test_bed.h"
-#include "testbed/exceptions.h"
+#ifndef UNISPHERE_TESTBED_SLAVEDESCRIPTOR_H
+#define UNISPHERE_TESTBED_SLAVEDESCRIPTOR_H
 
-namespace po = boost::program_options;
-using namespace UniSphere;
+#include "interplex/contact.h"
 
-namespace Scenarios {
+#include <unordered_map>
 
-/**
- * A scenario that performs mixed tests at various intervals.
- */
-UNISPHERE_SCENARIO(IdleScenario)
-{
-  // TODO
+namespace UniSphere {
+
+namespace TestBed {
+
+class SlaveDescriptor {
+public:
+  /// Slave contact information
+  Contact contact;
+  /// IP address available for simulation
+  std::string simulationIp;
+  /// Port range available for simulation
+  std::tuple<unsigned short, unsigned short> simulationPortRange;
+};
+
+/// A mapping of slave descriptors
+typedef std::unordered_map<NodeIdentifier, SlaveDescriptor> SlaveDescriptorMap;
+
 }
-UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
 }
+
+#endif

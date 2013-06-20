@@ -8,11 +8,11 @@ import "src/interplex/contact.proto";
 
 message ClusterJoinRequest {
   // IP address available for simulation
-  required string simulationIp = 1;
+  required string simulation_ip = 1;
   // Start of port range available for simulation
-  required uint32 simulationPortStart = 2;
+  required uint32 simulation_port_start = 2;
   // End of port range available for simulation
-  required uint32 simulationPortEnd = 3;
+  required uint32 simulation_port_end = 3;
 };
 
 message ClusterJoinResponse {
@@ -22,4 +22,24 @@ message ClusterJoinResponse {
 
 message ClusterHeartbeat {
   // An empty heartbeat message
+};
+
+message StartRequest {
+  // Request the master to enter simulation phase
+};
+
+message StartResponse {
+  message Slave {
+    // Cluster contact information
+    required UniSphere.Protocol.Contact contact = 1;
+    // IP address available for simulation
+    required string ip = 2;
+    // Start of port range available for simulation
+    required uint32 port_start = 3;
+    // End of port range available for simulation
+    required uint32 port_end = 4;
+  };
+
+  // A list of registered slaves
+  repeated Slave slaves = 1;
 };

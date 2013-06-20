@@ -146,9 +146,21 @@ private:
 class UNISPHERE_EXPORT TestCaseFactory {
 public:
   /**
+   * Factory constructor.
+   *
+   * @param name Test case name
+   */
+  TestCaseFactory(const std::string &name)
+    : m_name(name)
+  {}
+
+  /**
    * Creates a new test case instance and returns it.
    */
   virtual TestCasePtr create() = 0;
+protected:
+  /// Test case name
+  std::string m_name;
 };
 
 UNISPHERE_SHARED_POINTER(TestCaseFactory)
@@ -160,10 +172,12 @@ UNISPHERE_SHARED_POINTER(TestCaseFactory)
 template <typename T>
 class UNISPHERE_EXPORT GenericTestCaseFactory : public TestCaseFactory {
 public:
+  using TestCaseFactory::TestCaseFactory;
+
   /**
    * Creates a new test case instance and returns it.
    */
-  TestCasePtr create() { return TestCasePtr(new T); }
+  TestCasePtr create() { return TestCasePtr(new T(m_name)); }
 };
 
 /**
@@ -179,7 +193,7 @@ public:
    */
   RegisterTestCase(const std::string &name)
   {
-    TestBed::getGlobalTestbed().registerTestCase(name, new GenericTestCaseFactory<T>);
+    TestBed::getGlobalTestbed().registerTestCase(name, new GenericTestCaseFactory<T>(name));
   }
 };
 

@@ -28,7 +28,7 @@ namespace TestBed {
 
 class TestCasePrivate {
 public:
-  TestCasePrivate();
+  TestCasePrivate(const std::string &name);
 public:
   /// Test case name
   std::string m_name;
@@ -40,26 +40,19 @@ public:
   Logger m_logger;
 };
 
-TestCasePrivate::TestCasePrivate()
-  : m_nodes(nullptr),
+TestCasePrivate::TestCasePrivate(const std::string &name)
+  : m_name(name),
+    m_nodes(nullptr),
     m_names(nullptr),
     m_logger(logging::keywords::channel = "test_case")
 {
+  m_logger.add_attribute("TestCase", logging::attributes::constant<std::string>(name));
 }
 
-TestCase::TestCase()
-  : d(new TestCasePrivate),
+TestCase::TestCase(const std::string &name)
+  : d(new TestCasePrivate(name)),
     testbed(TestBed::getGlobalTestbed())
 {
-}
-
-void TestCase::initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names)
-{
-  d->m_name = name;
-  d->m_nodes = nodes;
-  d->m_names = names;
-
-  d->m_logger.add_attribute("TestCase", logging::attributes::constant<std::string>(name));
 }
 
 void TestCase::run()

@@ -22,6 +22,7 @@
 #include "interplex/link_manager.h"
 #include "interplex/rpc_channel.h"
 #include "rpc/engine.hpp"
+#include "rpc/service.hpp"
 #include "src/testbed/cluster/messages.pb.h"
 
 namespace po = boost::program_options;
@@ -38,6 +39,8 @@ public:
   Logger m_logger;
   /// Master contact
   Contact m_masterContact;
+  /// Master service
+  RpcService<InterplexRpcChannel> m_master;
   /// Simulation IP address
   std::string m_simulationIp;
   /// Simulation port range
@@ -114,6 +117,13 @@ void Slave::setupOptions(int argc,
       variables["cluster-master-port"].as<unsigned short>()
     )
   );
+  d->m_master = rpc().service(masterId,
+    rpc().options()
+         .setTimeout(5)
+         .setChannelOptions(
+           MessageOptions().setContact(d->m_masterContact)
+         )
+  );
 
   if (!variables.count("sim-ip")) {
     throw ArgumentError("Missing required --sim-ip option!");
@@ -144,12 +154,11 @@ void Slave::run()
 void Slave::joinCluster()
 {
   Protocol::ClusterJoinRequest request;
-  request.set_simulationip(d->m_simulationIp);
-  request.set_simulationportstart(std::get<0>(d->m_simulationPortRange));
-  request.set_simulationportend(std::get<1>(d->m_simulationPortRange));
+  request.set_simulation_ip(d->m_simulationIp);
+  request.set_simulation_port_start(std::get<0>(d->m_simulationPortRange));
+  request.set_simulation_port_end(std::get<1>(d->m_simulationPortRange));
 
-  rpc().call<Protocol::ClusterJoinRequest, Protocol::ClusterJoinResponse>(
-    d->m_masterContact.nodeId(),
+  d->m_master.call<Protocol::ClusterJoinRequest, Protocol::ClusterJoinResponse>(
     "Testbed.Cluster.Join",
     request,
     [this](const Protocol::ClusterJoinResponse &response, const Message&) {
@@ -180,12 +189,7 @@ void Slave::joinCluster()
         BOOST_LOG_SEV(d->m_logger, log::error) << "Aborting.";
         context().stop();
       }
-    },
-    rpc().options()
-         .setTimeout(5)
-         .setChannelOptions(
-            MessageOptions().setContact(d->m_masterContact)
-          )
+    }
   );
 }
 
@@ -202,8 +206,7 @@ void Slave::heartbeat(const boost::system::error_code &error)
   if (error)
     return;
 
-  rpc().call<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>(
-    d->m_masterContact.nodeId(),
+  d->m_master.call<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>(
     "Testbed.Cluster.Heartbeat",
     Protocol::ClusterHeartbeat(),
     nullptr,
@@ -214,12 +217,7 @@ void Slave::heartbeat(const boost::system::error_code &error)
         BOOST_LOG_SEV(d->m_logger, log::error) << "Connection to master has timed out!";
         rejoinCluster();
       }
-    },
-    rpc().options()
-         .setTimeout(5)
-         .setChannelOptions(
-           MessageOptions().setContact(d->m_masterContact)
-         )
+    }
   );
 
   d->m_heartbeatTimer.expires_from_now(boost::posix_time::seconds(5));

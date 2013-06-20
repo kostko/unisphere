@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/cluster/master.h"
+#include "testbed/cluster/slave_descriptor.h"
 #include "testbed/test_bed.h"
 #include "testbed/exceptions.h"
 #include "identity/node_identifier.h"
@@ -26,7 +27,6 @@
 #include "rpc/engine.hpp"
 #include "src/testbed/cluster/messages.pb.h"
 
-#include <unordered_map>
 #include <sstream>
 #include <boost/range/adaptors.hpp>
 
@@ -39,16 +39,6 @@ namespace TestBed {
 template <typename ResponseType>
 using Response = RpcResponse<InterplexRpcChannel, ResponseType>;
 
-class SlaveDescriptor {
-public:
-  /// Slave contact information
-  Contact contact;
-  /// IP address available for simulation
-  std::string simulationIp;
-  /// Port range available for simulation
-  std::tuple<unsigned short, unsigned short> simulationPortRange;
-};
-
 class MasterPrivate {
 public:
   MasterPrivate(Master &master);
@@ -60,15 +50,21 @@ public:
   Response<Protocol::ClusterHeartbeat> rpcClusterHeartbeat(const Protocol::ClusterHeartbeat &request,
                                                            const Message &msg,
                                                            RpcId rpcId);
+
+  Response<Protocol::StartResponse> rpcStart(const Protocol::StartRequest &request,
+                                             const Message &msg,
+                                             RpcId rpcId);
 public:
   UNISPHERE_DECLARE_PUBLIC(Master)
 
+  /// Mutex to protect the data structure
+  std::recursive_mutex m_mutex;
   /// Logger instance
   Logger m_logger;
   /// Current cluster state
   Master::State m_state;
   /// Registered slaves
-  std::unordered_map<NodeIdentifier, SlaveDescriptor> m_slaves;
+  SlaveDescriptorMap m_slaves;
 };
 
 MasterPrivate::MasterPrivate(Master &master)
@@ -88,6 +84,7 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
                                                                       const Message &msg,
                                                                       RpcId rpcId)
 {
+  RecursiveUniqueLock lock(m_mutex);
   Protocol::ClusterJoinResponse response;
 
   if (m_state == Master::State::Idle) {
@@ -96,10 +93,10 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
     // Perform registration
     SlaveDescriptor descriptor;
     descriptor.contact = q.linkManager().getLinkContact(msg.originator());
-    descriptor.simulationIp = request.simulationip();
+    descriptor.simulationIp = request.simulation_ip();
     descriptor.simulationPortRange = std::make_tuple(
-      request.simulationportstart(),
-      request.simulationportend()
+      request.simulation_port_start(),
+      request.simulation_port_end()
     );
 
     // Perform simple validation of the port range
@@ -132,6 +129,36 @@ Response<Protocol::ClusterHeartbeat> MasterPrivate::rpcClusterHeartbeat(const Pr
   return Protocol::ClusterHeartbeat();
 }
 
+Response<Protocol::StartResponse> MasterPrivate::rpcStart(const Protocol::StartRequest &request,
+                                                          const Message &msg,
+                                                          RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  Protocol::StartResponse response;
+  if (m_state == Master::State::Idle) {
+    if (m_slaves.size() == 0)
+      throw RpcException(RpcErrorCode::BadRequest, "No slaves registered.");
+
+    // Prepare response list
+    for (SlaveDescriptor &slave : m_slaves | boost::adaptors::map_values) {
+      Protocol::StartResponse::Slave *s = response.add_slaves();
+      *s->mutable_contact() = slave.contact.toMessage();
+      s->set_ip(slave.simulationIp);
+      s->set_port_start(std::get<0>(slave.simulationPortRange));
+      s->set_port_end(std::get<0>(slave.simulationPortRange));
+    }
+
+    // Switch to running state to block new registrations
+    m_state = Master::State::Running;
+    BOOST_LOG_SEV(m_logger, log::normal) << "Entered 'Running' state as requested by controller.";
+  } else {
+    BOOST_LOG_SEV(m_logger, log::warning) << "Refusing to start after simulation has already started!";
+    throw RpcException(RpcErrorCode::BadRequest, "Simulation has already started!");
+  }
+
+  return response;
+}
+
 void Master::run()
 {
   // Register RPC methods
@@ -140,6 +167,9 @@ void Master::run()
 
   rpc().registerMethod<Protocol::ClusterHeartbeat, Protocol::ClusterHeartbeat>("Testbed.Cluster.Heartbeat",
     boost::bind(&MasterPrivate::rpcClusterHeartbeat, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::StartRequest, Protocol::StartResponse>("Testbed.Cluster.Start",
+    boost::bind(&MasterPrivate::rpcStart, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster master initialized (id=" << linkManager().getLocalNodeId().hex() << ").";
 }

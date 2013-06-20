@@ -46,7 +46,7 @@ public:
   /**
    * Class constructor.
    */
-  TestCase();
+  TestCase(const std::string &name);
 
   TestCase(const TestCase&) = delete;
   TestCase &operator=(const TestCase&) = delete;
@@ -126,15 +126,6 @@ protected:
 protected:
   /// Reference to global testbed instance for easier access from test cases
   TestBed &testbed;
-private:
-  /**
-   * Initializes the test case.
-   *
-   * @param name Test case name
-   * @param nodes Virtual node map
-   * @param names Node name map
-   */
-  void initialize(const std::string &name, VirtualNodeMap *nodes, NodeNameMap *names);
 private:
   UNISPHERE_DECLARE_PRIVATE(TestCase)
 };

@@ -38,6 +38,8 @@ namespace Tests {
 
 class AllPairs : public TestBed::TestCase
 {
+public:
+  using TestBed::TestCase::TestCase;
 protected:
   /// Number of nodes at test start
   unsigned long numNodes;
@@ -170,6 +172,8 @@ UNISPHERE_REGISTER_TEST_CASE(AllPairs, "routing/all_pairs")
 
 class CountState : public TestBed::TestCase
 {
+public:
+  using TestBed::TestCase::TestCase;
 protected:
   /**
    * Count the amount of state all nodes are using.
@@ -215,6 +219,8 @@ UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
 
 class DumpSloppyGroupTopology : public TestBed::TestCase
 {
+public:
+  using TestBed::TestCase::TestCase;
 protected:
   /**
    * Dump sloppy group topology in GraphML format.
@@ -247,6 +253,8 @@ UNISPHERE_REGISTER_TEST_CASE(DumpSloppyGroupTopology, "state/sloppy_group_topolo
 
 class DumpRoutingTopology : public TestBed::TestCase
 {
+public:
+  using TestBed::TestCase::TestCase;
 protected:
   /**
    * Dump sloppy group topology in GraphML format.
