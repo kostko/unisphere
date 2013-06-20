@@ -41,7 +41,7 @@ LinkManager::LinkManager(Context &context, const NodeIdentifier &nodeId)
 
 void LinkManager::setLocalAddress(const Address &address)
 {
-  m_localAddress = address;
+  m_localAddress = Address(address.toIpEndpoint().address(), 0);
 }
 
 void LinkManager::send(const Contact &contact, const Message &msg)

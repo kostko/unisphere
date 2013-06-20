@@ -112,6 +112,11 @@ AddressMap &Contact::addresses()
 {
   return m_addresses;
 }
+
+const Address &Contact::address() const
+{
+  return m_addresses.begin()->second;
+}
   
 void Contact::addAddress(const Address &address, int priority)
 {

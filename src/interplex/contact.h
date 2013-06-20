@@ -143,6 +143,11 @@ public:
    * Returns the address list.
    */
   AddressMap &addresses();
+
+  /**
+   * Returns the first address.
+   */
+  const Address &address() const;
   
   /**
    * Adds a new address to this contact record.
