@@ -19,6 +19,7 @@
 #ifndef UNISPHERE_RPC_CALL_H
 #define UNISPHERE_RPC_CALL_H
 
+#include "core/message_cast.h"
 #include "rpc/exceptions.h"
 #include "rpc/channel.hpp"
 #include "src/rpc/rpc.pb.h"
@@ -144,8 +145,14 @@ public:
 
         self->m_timer.cancel();
         self->cancel();
-        if (self->m_success)
+        if (response.error()) {
+          if (self->m_failure) {
+            Protocol::RpcError error = message_cast<Protocol::RpcError>(response.data());
+            self->m_failure(static_cast<RpcErrorCode>(error.code()), error.message());
+          }
+        } else if (self->m_success) {
           self->m_success(response, msg);
+        }
       }
     });
   }
