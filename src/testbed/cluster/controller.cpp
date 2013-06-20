@@ -224,7 +224,44 @@ void Controller::run()
         BOOST_LOG_SEV(d->m_logger, log::normal) << "  [] Partition " << ++i << ": " << part.nodes.size() << " nodes";
       }
 
-      // TODO: Instruct each slave to create its own partition
+      // Instruct each slave to create its own partition
+      auto group = rpc().group([this]() {
+        // Called after all RPC calls to slaves complete
+        // TODO: Check if all partitions have been assigned
+      });
+
+      for (const TopologyLoader::Partition &part : partitions) {
+        Protocol::AssignPartitionRequest request;
+        request.set_num_global_nodes(loader.getTopologySize());
+
+        for (const auto &node : part.nodes) {
+          Protocol::AssignPartitionRequest::Node *n = request.add_nodes();
+          n->set_name(node.name);
+          *n->mutable_contact() = node.contact.toMessage();
+
+          for (const Contact &contact : node.peers) {
+            *n->add_peers() = contact.toMessage();
+          }
+        }
+        
+        NodeIdentifier slaveId = part.slave.nodeId();
+        group->call<Protocol::AssignPartitionRequest, Protocol::AssignPartitionResponse>(
+          part.slave.nodeId(),
+          "Testbed.Cluster.AssignPartition",
+          request,
+          [this, slaveId](const Protocol::AssignPartitionResponse &response, const Message&) {
+            BOOST_LOG_SEV(d->m_logger, log::normal) << "Assigned partition to " << slaveId.hex() << ".";
+          },
+          [this, slaveId](RpcErrorCode code, const std::string &msg) {
+            BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to assign partition to " << slaveId.hex() << ": " << msg;
+          },
+          rpc().options()
+               .setTimeout(5)
+               .setChannelOptions(
+                 MessageOptions().setContact(part.slave)
+               )
+        );
+      }
     },
     [this](RpcErrorCode code, const std::string &msg) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to start simulation: " << msg;

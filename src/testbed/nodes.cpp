@@ -29,17 +29,15 @@ namespace TestBed {
 VirtualNode::VirtualNode(Context &context,
                          NetworkSizeEstimator &sizeEstimator,
                          const std::string &name,
-                         const NodeIdentifier &nodeId,
-                         const std::string &ip,
-                         unsigned short port)
+                         const Contact &contact)
   : name(name),
-    nodeId(nodeId),
+    nodeId(contact.nodeId()),
     identity(new SocialIdentity(nodeId)),
     linkManager(new LinkManager(context, nodeId)),
     router(new CompactRouter(*identity, *linkManager, sizeEstimator))
 {
-  linkManager->setLocalAddress(Address(ip, 0));
-  linkManager->listen(Address(ip, port));
+  linkManager->setLocalAddress(contact.address());
+  linkManager->listen(contact.address());
 }
 
 VirtualNode::~VirtualNode()

@@ -105,7 +105,7 @@ DataCollector::DataCollector(const std::string &directory,
     (boost::format("%s/%s-%05i.%s")
       % directory
       % boost::algorithm::replace_all_copy(component, "/", "-")
-      % TestBed::getGlobalTestbed().time()
+      % 0 //TestBed::getGlobalTestbed().time()
       % type
     ).str()
   );

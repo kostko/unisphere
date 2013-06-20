@@ -18,6 +18,7 @@
  */
 #include "testbed/cluster/slave.h"
 #include "testbed/exceptions.h"
+#include "testbed/test_bed.h"
 #include "core/context.h"
 #include "interplex/link_manager.h"
 #include "interplex/rpc_channel.h"
@@ -31,9 +32,16 @@ namespace UniSphere {
 
 namespace TestBed {
 
+template <typename ResponseType>
+using Response = RpcResponse<InterplexRpcChannel, ResponseType>;
+
 class SlavePrivate {
 public:
   SlavePrivate(Context &context);
+
+  Response<Protocol::AssignPartitionResponse> rpcAssignPartition(const Protocol::AssignPartitionRequest &request,
+                                                                 const Message &msg,
+                                                                 RpcId rpcId);
 public:
   /// Logger instance
   Logger m_logger;
@@ -49,12 +57,42 @@ public:
   boost::asio::deadline_timer m_heartbeatTimer;
   /// Master heartbeat timeout counter
   size_t m_masterMissedHeartbeats;
+  /// Currently active simulation
+  SimulationPtr m_simulation;
 };
 
 SlavePrivate::SlavePrivate(Context &context)
   : m_logger(logging::keywords::channel = "cluster_slave"),
     m_heartbeatTimer(context.service())
 {
+}
+
+Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(const Protocol::AssignPartitionRequest &request,
+                                                                             const Message &msg,
+                                                                             RpcId rpcId)
+{
+  if (m_simulation)
+    throw RpcException(RpcErrorCode::BadRequest, "Simulation is already running!");
+
+  TestBed &testbed = TestBed::getGlobalTestbed();
+  SimulationPtr simulation = testbed.createSimulation(request.num_global_nodes());
+
+  // Create virtual node instances for each node in the partition
+  for (int i = 0; i < request.nodes_size(); i++) {
+    auto &node = request.nodes(i);
+    Contact contact = Contact::fromMessage(node.contact());
+    std::list<Contact> peers;
+    for (int j = 0; j < node.peers_size(); j++) {
+      peers.push_back(Contact::fromMessage(node.peers(j)));
+    }
+
+    simulation->createNode(node.name(), contact, peers);
+  }
+
+  // Setup currently running simulation
+  m_simulation = simulation;
+
+  return Protocol::AssignPartitionResponse();
 }
 
 Slave::Slave()
@@ -146,6 +184,10 @@ void Slave::setupOptions(int argc,
 
 void Slave::run()
 {
+  // Register RPC methods
+  rpc().registerMethod<Protocol::AssignPartitionRequest, Protocol::AssignPartitionResponse>("Testbed.Cluster.AssignPartition",
+    boost::bind(&SlavePrivate::rpcAssignPartition, d, _1, _2, _3));
+
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
 
   joinCluster();

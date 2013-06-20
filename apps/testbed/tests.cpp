@@ -68,8 +68,8 @@ protected:
     // Initialize the number of failures
     failures = 0;
 
-    for (TestBed::VirtualNode *a : nodes() | boost::adaptors::map_values) {
-      for (TestBed::VirtualNode *b : nodes() | boost::adaptors::map_values) {
+    for (TestBed::VirtualNodePtr a : nodes() | boost::adaptors::map_values) {
+      for (TestBed::VirtualNodePtr b : nodes() | boost::adaptors::map_values) {
         RpcEngine<SocialRpcChannel> &rpc = a->router->rpcEngine();
 
         // Transmit a ping request to each node and wait for a response
@@ -126,7 +126,7 @@ protected:
 
       // Prepare global topology
       CompactRoutingTable::TopologyDumpGraph graph;
-      for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
+      for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
         node->router->routingTable().dumpTopology(graph);
       }
 
@@ -139,7 +139,6 @@ protected:
       // Compute routing stretch for each pair
       int n = 0;
       double averageStretch = 0.0;
-      TestBed::NodeNameMap &nameMap = names();
       for (auto &p : pathLengths) {
         NodeIdentifier a, b;
         int measuredLength = p.second;
@@ -152,8 +151,8 @@ protected:
         averageStretch += pathStretch;
         n++;
 
-        stretch << nameMap.right.at(a)
-                << nameMap.right.at(b)
+        stretch << a.hex()
+                << b.hex()
                 << shortestLength
                 << measuredLength
                 << pathStretch;
@@ -188,7 +187,7 @@ protected:
       "is_landmark"
     });
 
-    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
+    for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
       // Routing table state
       size_t stateRtAll = node->router->routingTable().size();
       size_t stateRtActive = node->router->routingTable().sizeActive();
@@ -232,9 +231,8 @@ protected:
     properties.property("name", boost::get(SloppyGroupManager::TopologyDumpTags::NodeName(), graph.graph()));
     properties.property("is_long", boost::get(SloppyGroupManager::TopologyDumpTags::FingerIsLong(), graph.graph()));
 
-    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
-      node->router->sloppyGroup().dumpTopology(graph,
-        [&](const NodeIdentifier &n) -> std::string { return boost::replace_all_copy(names().right.at(n), " ", "_"); });
+    for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
+      node->router->sloppyGroup().dumpTopology(graph);
     }
 
     auto topology = data("topology");
@@ -268,9 +266,8 @@ protected:
     properties.property("state", boost::get(CompactRoutingTable::TopologyDumpTags::NodeStateSize(), graph.graph()));
     properties.property("vport", boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()));
 
-    for (TestBed::VirtualNode *node : nodes() | boost::adaptors::map_values) {
-      node->router->routingTable().dumpTopology(graph,
-        [&](const NodeIdentifier &n) -> std::string { return boost::replace_all_copy(names().right.at(n), " ", "_"); });
+    for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
+      node->router->routingTable().dumpTopology(graph);
     }
 
     auto topology = data("topology");

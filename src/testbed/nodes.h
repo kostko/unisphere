@@ -23,6 +23,7 @@
 #include <boost/bimap.hpp>
 
 #include "identity/node_identifier.h"
+#include "interplex/contact.h"
 
 namespace UniSphere {
 
@@ -45,16 +46,12 @@ public:
    * @param context UNISPHERE context
    * @param sizeEstimator Network size estimator
    * @param name Virtual node name from source topology file
-   * @param nodeId Virtual node identifier
-   * @param ip IP address (for phy connection)
-   * @param port Port (for phy connection)
+   * @param contact Virtual contact
    */
   VirtualNode(Context &context,
               NetworkSizeEstimator &sizeEstimator,
               const std::string &name,
-              const NodeIdentifier &nodeId,
-              const std::string &ip,
-              unsigned short port);
+              const Contact &contact);
 
   /**
    * Class destructor.
@@ -86,10 +83,10 @@ public:
   CompactRouter *router;
 };
 
-/// Mapping between original node names and generated identifiers
-typedef boost::bimap<std::string, NodeIdentifier> NodeNameMap;
+UNISPHERE_SHARED_POINTER(VirtualNode)
+
 /// Virtual nodes running in our testbed
-typedef std::unordered_map<NodeIdentifier, VirtualNode*> VirtualNodeMap;
+typedef std::unordered_map<NodeIdentifier, VirtualNodePtr> VirtualNodeMap;
 
 }
 

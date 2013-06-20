@@ -19,7 +19,7 @@
 #ifndef UNISPHERE_TESTBED_RUNNER_H
 #define UNISPHERE_TESTBED_RUNNER_H
 
-#include "core/globals.h"
+#include "core/context.h"
 
 namespace UniSphere {
 

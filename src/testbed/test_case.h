@@ -115,11 +115,6 @@ protected:
   VirtualNodeMap &nodes();
 
   /**
-   * Returns the node name map instance.
-   */
-  NodeNameMap &names();
-
-  /**
    * Notifies the testbed that this test case is finished.
    */
   void finish();

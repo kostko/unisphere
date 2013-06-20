@@ -34,8 +34,6 @@ public:
   std::string m_name;
   /// Virtual node map
   VirtualNodeMap *m_nodes;
-  /// Node name map
-  NodeNameMap *m_names;
   /// Logger instance
   Logger m_logger;
 };
@@ -43,7 +41,6 @@ public:
 TestCasePrivate::TestCasePrivate(const std::string &name)
   : m_name(name),
     m_nodes(nullptr),
-    m_names(nullptr),
     m_logger(logging::keywords::channel = "test_case")
 {
   m_logger.add_attribute("TestCase", logging::attributes::constant<std::string>(name));
@@ -57,17 +54,17 @@ TestCase::TestCase(const std::string &name)
 
 void TestCase::run()
 {
-  if (snapshot()) {
+  /*if (snapshot()) {
     testbed.snapshot(boost::bind(&TestCase::start, this));
   } else {
     start();
-  }
+  }*/
 }
 
 void TestCase::finish()
 {
   signalFinished();
-  testbed.finishTestCase(shared_from_this());
+  //testbed.finishTestCase(shared_from_this());
 }
 
 bool TestCase::snapshot()
@@ -77,17 +74,13 @@ bool TestCase::snapshot()
 
 int TestCase::time() const
 {
-  return testbed.time();
+  //return testbed.time();
+  return 0;
 }
 
 VirtualNodeMap &TestCase::nodes()
 {
   return *d->m_nodes;
-}
-
-NodeNameMap &TestCase::names()
-{
-  return *d->m_names;
 }
 
 Logger &TestCase::logger()
@@ -104,7 +97,7 @@ DataCollector TestCase::data(const std::string &category,
     component += "-" + category;
 
   return DataCollector(
-    testbed.getOutputDirectory(),
+    ".", // XXX
     component,
     columns,
     type

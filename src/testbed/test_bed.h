@@ -22,6 +22,7 @@
 #include "core/globals.h"
 #include "testbed/test_case.h"
 #include "testbed/scenario.h"
+#include "testbed/simulation.h"
 
 namespace UniSphere {
 
@@ -48,6 +49,8 @@ public:
 
   ScenarioPtr getScenario(const std::string &id) const;
 
+  SimulationPtr createSimulation(size_t globalNodeCount);
+
   /**
    * Registers a new test case class.
    *
@@ -62,70 +65,6 @@ public:
    * @param scenario Scenario instance
    */
   void registerScenario(Scenario *scenario);
-
-  /**
-   * Runs a new instance of the test case identified by its name.
-   *
-   * @param test Test case name
-   */
-  void runTest(const std::string &test);
-
-  /**
-   * Schedule a new instance of the test case to be run at a specific point
-   * in time.
-   *
-   * @param time Number of seconds from now after which the test should run
-   * @param test Test case name
-   */
-  void scheduleTest(int time, const std::string &test);
-
-  /**
-   * Schedules a new instance of the test case to be run at specific
-   * intervals.
-   *
-   * @param time Time interval (in seconds)
-   * @param test Test case name
-   */
-  void scheduleTestEvery(int time, const std::string &test);
-
-  /**
-   * Schedules a call to a custom handler.
-   *
-   * @param time Number of seconds from now after which the test should run
-   * @param handler The handler that should b executed
-   */
-  void scheduleCall(int time, std::function<void()> handler);
-
-  /**
-   * Ends the scenario after this amount of time.
-   */
-  void endScenarioAfter(int time);
-
-  /**
-   * Performs a snapshot operation. All virtual nodes are suspended before
-   * the handler is invoked and resumed after it completes. The handler
-   * must complete as fast as possible.
-   *
-   * @param handler Snapshot handler
-   */
-  void snapshot(std::function<void()> handler);
-
-  /**
-   * Returns the current discrete time since simulation start.
-   */
-  int time() const;
-
-  /**
-   * Returns the configured output directory.
-   */
-  std::string getOutputDirectory() const;
-
-  /**
-   * Treat the specified test case instance as finished.
-   *
-   * @param test Test case instance
-   */
-  void finishTestCase(TestCasePtr test);
 protected:
   /**
    * Class constructor.

@@ -4,6 +4,7 @@ nodes.cpp
 scenario.cpp
 test_case.cpp
 test_bed.cpp
+simulation.cpp
 data_collector.cpp
 runner.cpp
 cluster/node.cpp

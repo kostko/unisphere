@@ -43,3 +43,22 @@ message StartResponse {
   // A list of registered slaves
   repeated Slave slaves = 1;
 };
+
+message AssignPartitionRequest {
+  message Node {
+    // Node name
+    required string name = 1;
+    // Node contact
+    required UniSphere.Protocol.Contact contact = 2;
+    // Node peers
+    repeated UniSphere.Protocol.Contact peers = 3;
+  };
+
+  // A list of nodes in this partition
+  repeated Node nodes = 1;
+  // Number of global nodes
+  required uint32 num_global_nodes = 2;
+};
+
+message AssignPartitionResponse {
+};
