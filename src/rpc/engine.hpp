@@ -22,6 +22,7 @@
 #include "rpc/call.hpp"
 #include "rpc/call_group.hpp"
 #include "rpc/options.hpp"
+#include "rpc/service_fwd.hpp"
 #include "src/rpc/rpc.pb.h"
 
 #include <boost/multi_index_container.hpp>
@@ -83,6 +84,18 @@ public:
   RpcCallGroupPtr<Channel> group(RpcGroupCompletionHandler complete)
   {
     return RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(*this, complete));
+  }
+
+  /**
+   * Creates a new service instance.
+   *
+   * @param destination Destination identifier
+   * @param opts Channel-specific options
+   */
+  RpcService<Channel> service(const NodeIdentifier &destination,
+                              const RpcCallOptions<Channel> &opts = RpcCallOptions<Channel>())
+  {
+    return RpcService<Channel>(*this, destination, opts);
   }
 
   /**
