@@ -27,6 +27,10 @@ namespace UniSphere {
 
 namespace TestBed {
 
+/**
+ * Topology loader performs loading of GraphML-formatted topologies and
+ * slices them into partitions that are assigned to individual slaves.
+ */
 class UNISPHERE_EXPORT TopologyLoader {
 public:
   /**
@@ -65,14 +69,35 @@ public:
     std::list<Node> nodes;
   };
 
+  /**
+   * Class constructor.
+   *
+   * @param idGenType Type of identifier generation
+   */
   TopologyLoader(IdGenerationType idGenType);
 
+  /**
+   * Loads topology from a GraphML file.
+   *
+   * @param filename Topology filename
+   */
   void load(const std::string &filename);
 
+  /**
+   * Partitions the topology into multiple parts, one for each slave.
+   *
+   * @param slaves A map of slaves
+   */
   void partition(const SlaveDescriptorMap &slaves);
 
+  /**
+   * Returns the number of vertices in the loaded topology.
+   */
   size_t getTopologySize() const;
 
+  /**
+   * Returns the generated partitions.
+   */
   const std::vector<Partition> &getPartitions() const;
 private:
   UNISPHERE_DECLARE_PRIVATE(TopologyLoader)
