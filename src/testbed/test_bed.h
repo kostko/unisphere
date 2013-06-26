@@ -49,7 +49,9 @@ public:
 
   ScenarioPtr getScenario(const std::string &id) const;
 
-  SimulationPtr createSimulation(size_t globalNodeCount);
+  SimulationPtr createSimulation(std::uint32_t seed,
+                                 size_t threads,
+                                 size_t globalNodeCount);
 
   /**
    * Registers a new test case class.

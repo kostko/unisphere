@@ -54,6 +54,10 @@ public:
   Response<Protocol::StartResponse> rpcStart(const Protocol::StartRequest &request,
                                              const Message &msg,
                                              RpcId rpcId);
+
+  Response<Protocol::AbortResponse> rpcAbort(const Protocol::AbortRequest &request,
+                                             const Message &msg,
+                                             RpcId rpcId);
 public:
   UNISPHERE_DECLARE_PUBLIC(Master)
 
@@ -65,6 +69,8 @@ public:
   Master::State m_state;
   /// Registered slaves
   SlaveDescriptorMap m_slaves;
+  /// Slaves pending abortion
+  size_t m_slavesPendingAbortion;
 };
 
 MasterPrivate::MasterPrivate(Master &master)
@@ -97,6 +103,14 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
     descriptor.simulationPortRange = std::make_tuple(
       request.simulation_port_start(),
       request.simulation_port_end()
+    );
+    descriptor.service = q.rpc().service(
+      descriptor.contact.nodeId(),
+      q.rpc().options()
+             .setTimeout(5)
+             .setChannelOptions(
+               MessageOptions().setContact(descriptor.contact)
+             )
     );
 
     // Perform simple validation of the port range
@@ -136,7 +150,7 @@ Response<Protocol::StartResponse> MasterPrivate::rpcStart(const Protocol::StartR
   RecursiveUniqueLock lock(m_mutex);
   Protocol::StartResponse response;
   if (m_state == Master::State::Idle) {
-    if (m_slaves.size() == 0)
+    if (m_slaves.empty())
       throw RpcException(RpcErrorCode::BadRequest, "No slaves registered.");
 
     // Prepare response list
@@ -159,6 +173,55 @@ Response<Protocol::StartResponse> MasterPrivate::rpcStart(const Protocol::StartR
   return response;
 }
 
+Response<Protocol::AbortResponse> MasterPrivate::rpcAbort(const Protocol::AbortRequest &request,
+                                                          const Message &msg,
+                                                          RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  if (m_state != Master::State::Running)
+    throw RpcException(RpcErrorCode::BadRequest, "Simulation is not running.");
+
+  // Request all slaves to abort the simulation
+  m_state = Master::State::Aborting;
+  m_slavesPendingAbortion = m_slaves.size();
+  BOOST_LOG_SEV(m_logger, log::warning) << "Entering 'Aborting' state as requested by controller.";
+
+  auto group = q.rpc().group([this]() {
+    if (m_slavesPendingAbortion != 0) {
+      // When abort on some slaves has failed, we shut down
+      BOOST_LOG_SEV(m_logger, log::error) << "Failed to abort on all slaves, shutting down.";
+      q.context().stop();
+      return;
+    }
+
+    // After successful aborts, we change into Idle state and request all slaves to
+    // register again
+    RecursiveUniqueLock lock(m_mutex);
+    m_state = Master::State::Idle;
+    m_slaves.clear();
+
+    BOOST_LOG_SEV(m_logger, log::normal) << "Entering 'Idle' state as all slaves have aborted.";
+  });
+
+  for (SlaveDescriptor &slave : m_slaves | boost::adaptors::map_values) {
+    NodeIdentifier slaveId = slave.contact.nodeId();
+    slave.service.call<Protocol::AbortRequest, Protocol::AbortResponse>(
+      group,
+      "Testbed.Cluster.Abort",
+      Protocol::AbortRequest(),
+      [this, slaveId](const Protocol::AbortResponse &response, const Message&) {
+        BOOST_LOG_SEV(m_logger, log::normal) << "Simulation aborted on " << slaveId.hex() << ".";
+        m_slavesPendingAbortion--;
+      },
+      [this, slaveId](RpcErrorCode code, const std::string &msg) {
+        BOOST_LOG_SEV(m_logger, log::error) << "Failed to abort simulation on " << slaveId.hex() << ": " << msg;
+      }
+    );
+  }
+
+  return Protocol::AbortResponse();
+}
+
 void Master::run()
 {
   // Register RPC methods
@@ -170,6 +233,9 @@ void Master::run()
 
   rpc().registerMethod<Protocol::StartRequest, Protocol::StartResponse>("Testbed.Cluster.Start",
     boost::bind(&MasterPrivate::rpcStart, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::AbortRequest, Protocol::AbortResponse>("Testbed.Cluster.Abort",
+    boost::bind(&MasterPrivate::rpcAbort, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster master initialized (id=" << linkManager().getLocalNodeId().hex() << ").";
 }

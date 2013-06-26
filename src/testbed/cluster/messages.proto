@@ -58,7 +58,16 @@ message AssignPartitionRequest {
   repeated Node nodes = 1;
   // Number of global nodes
   required uint32 num_global_nodes = 2;
+  // Seed value
+  required uint32 seed = 3;
 };
 
 message AssignPartitionResponse {
 };
+
+message AbortRequest {
+};
+
+message AbortResponse {
+};
+

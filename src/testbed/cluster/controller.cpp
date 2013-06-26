@@ -79,6 +79,12 @@ public:
   std::string m_inputTopology;
   /// Identifier generation type
   TopologyLoader::IdGenerationType m_idGenType;
+  /// Generated network partitions
+  std::vector<TopologyLoader::Partition> m_partitions;
+  /// Number of partitions pending assignment
+  size_t m_unassignedPartitions;
+  /// Seed value
+  std::uint32_t m_seed;
 };
 
 ControllerPrivate::ControllerPrivate()
@@ -187,8 +193,26 @@ void Controller::setupOptions(int argc,
   }
 
   d->m_idGenType = variables["id-gen"].as<TopologyLoader::IdGenerationType>();
+  d->m_seed = variables["seed"].as<std::uint32_t>();
 
   scenario->initialize(argc, argv, options);
+}
+
+void Controller::abortSimulation()
+{
+  // Request the master to abort the simulation
+  d->m_master.call<Protocol::AbortRequest, Protocol::AbortResponse>(
+    "Testbed.Cluster.Abort",
+    Protocol::AbortRequest(),
+    [this](const Protocol::AbortResponse &response, const Message&) {
+      BOOST_LOG_SEV(d->m_logger, log::error) << "Simulation aborted.";
+      context().stop();
+    },
+    [this](RpcErrorCode code, const std::string &msg) {
+      BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to abort simulation: " << msg;
+      context().stop();
+    }
+  );
 }
 
 void Controller::run()
@@ -217,6 +241,8 @@ void Controller::run()
       loader.load(d->m_inputTopology);
       loader.partition(slaves);
       const auto &partitions = loader.getPartitions();
+      d->m_partitions = partitions;
+      d->m_unassignedPartitions = partitions.size();
 
       int i = 0;
       BOOST_LOG_SEV(d->m_logger, log::normal) << "Loaded topology with " << loader.getTopologySize() << " nodes.";
@@ -227,12 +253,20 @@ void Controller::run()
       // Instruct each slave to create its own partition
       auto group = rpc().group([this]() {
         // Called after all RPC calls to slaves complete
-        // TODO: Check if all partitions have been assigned
+        if (d->m_unassignedPartitions != 0) {
+          BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to assign all partitions, aborting.";
+          abortSimulation();
+          return;
+        }
+
+        // TODO: Start the scenario on success
+        abortSimulation();
       });
 
       for (const TopologyLoader::Partition &part : partitions) {
         Protocol::AssignPartitionRequest request;
         request.set_num_global_nodes(loader.getTopologySize());
+        request.set_seed(d->m_seed);
 
         for (const auto &node : part.nodes) {
           Protocol::AssignPartitionRequest::Node *n = request.add_nodes();
@@ -251,6 +285,7 @@ void Controller::run()
           request,
           [this, slaveId](const Protocol::AssignPartitionResponse &response, const Message&) {
             BOOST_LOG_SEV(d->m_logger, log::normal) << "Assigned partition to " << slaveId.hex() << ".";
+            d->m_unassignedPartitions--;
           },
           [this, slaveId](RpcErrorCode code, const std::string &msg) {
             BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to assign partition to " << slaveId.hex() << ": " << msg;

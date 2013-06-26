@@ -20,6 +20,8 @@
 #define UNISPHERE_TESTBED_SLAVEDESCRIPTOR_H
 
 #include "interplex/contact.h"
+#include "interplex/rpc_channel.h"
+#include "rpc/service.hpp"
 
 #include <unordered_map>
 
@@ -35,6 +37,8 @@ public:
   std::string simulationIp;
   /// Port range available for simulation
   std::tuple<unsigned short, unsigned short> simulationPortRange;
+  /// Service for communicating with the slave
+  RpcService<InterplexRpcChannel> service;
 };
 
 /// A mapping of slave descriptors

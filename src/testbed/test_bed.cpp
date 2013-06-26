@@ -96,9 +96,11 @@ ScenarioPtr TestBed::getScenario(const std::string &id) const
   return it->second;
 }
 
-SimulationPtr TestBed::createSimulation(size_t globalNodeCount)
+SimulationPtr TestBed::createSimulation(std::uint32_t seed,
+                                        size_t threads,
+                                        size_t globalNodeCount)
 {
-  SimulationPtr simulation = SimulationPtr(new Simulation(globalNodeCount));
+  SimulationPtr simulation = SimulationPtr(new Simulation(seed, threads, globalNodeCount));
   return simulation;
 }
 

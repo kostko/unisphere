@@ -39,6 +39,8 @@ protected:
 
   void run();
 private:
+  void abortSimulation();
+private:
   UNISPHERE_DECLARE_PRIVATE(Controller)
 };
 

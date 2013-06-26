@@ -21,6 +21,9 @@
 
 #include "interplex/contact.h"
 
+#include <boost/signals2/signal.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -28,15 +31,46 @@ namespace TestBed {
 /**
  * Simulation instance.
  */
-class UNISPHERE_EXPORT Simulation {
+class UNISPHERE_EXPORT Simulation : public boost::enable_shared_from_this<Simulation> {
 public:
-  Simulation(size_t globalNodeCount);
+  /**
+   * Simulation state.
+   */
+  enum class State {
+    /// Simulation is currently stopped
+    Stopped,
+    /// Simulation is running
+    Running,
+    /// Simulation is stopping
+    Stopping
+  };
+
+  Simulation(std::uint32_t seed,
+             size_t threads,
+             size_t globalNodeCount);
 
   void createNode(const std::string &name,
                   const Contact &contact,
                   const std::list<Contact> &peers);
 
+  State state() const;
+
+  bool isRunning() const;
+
+  bool isStopping() const;
+
   void run();
+
+  /**
+   * Request the simulation to stop. Note that the simulation may not
+   * stop immediately -- to get notified when the simulation stops, subscribe
+   * to the signalStopped signal.
+   */
+  void stop();
+public:
+  /// Signal that gets emitted after simulation has stopped; note that the signal
+  /// is called from the simulation control thread.
+  boost::signals2::signal<void()> signalStopped;
 private:
   UNISPHERE_DECLARE_PRIVATE(Simulation)
 };

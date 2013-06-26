@@ -37,12 +37,20 @@ using Response = RpcResponse<InterplexRpcChannel, ResponseType>;
 
 class SlavePrivate {
 public:
-  SlavePrivate(Context &context);
+  SlavePrivate(Slave &slave);
 
   Response<Protocol::AssignPartitionResponse> rpcAssignPartition(const Protocol::AssignPartitionRequest &request,
                                                                  const Message &msg,
                                                                  RpcId rpcId);
+
+  Response<Protocol::AbortResponse> rpcAbort(const Protocol::AbortRequest &request,
+                                             const Message &msg,
+                                             RpcId rpcId);
 public:
+  UNISPHERE_DECLARE_PUBLIC(Slave)
+
+  /// Mutex to protect the data structure
+  std::recursive_mutex m_mutex;
   /// Logger instance
   Logger m_logger;
   /// Master contact
@@ -53,6 +61,8 @@ public:
   std::string m_simulationIp;
   /// Simulation port range
   std::tuple<unsigned short, unsigned short> m_simulationPortRange;
+  /// Simulation thread count
+  size_t m_simulationThreads;
   /// Heartbeat timer
   boost::asio::deadline_timer m_heartbeatTimer;
   /// Master heartbeat timeout counter
@@ -61,9 +71,10 @@ public:
   SimulationPtr m_simulation;
 };
 
-SlavePrivate::SlavePrivate(Context &context)
-  : m_logger(logging::keywords::channel = "cluster_slave"),
-    m_heartbeatTimer(context.service())
+SlavePrivate::SlavePrivate(Slave &slave)
+  : q(slave),
+    m_logger(logging::keywords::channel = "cluster_slave"),
+    m_heartbeatTimer(q.context().service())
 {
 }
 
@@ -71,11 +82,12 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
                                                                              const Message &msg,
                                                                              RpcId rpcId)
 {
+  RecursiveUniqueLock lock(m_mutex);
   if (m_simulation)
     throw RpcException(RpcErrorCode::BadRequest, "Simulation is already running!");
 
   TestBed &testbed = TestBed::getGlobalTestbed();
-  SimulationPtr simulation = testbed.createSimulation(request.num_global_nodes());
+  SimulationPtr simulation = testbed.createSimulation(request.seed(), m_simulationThreads, request.num_global_nodes());
 
   // Create virtual node instances for each node in the partition
   for (int i = 0; i < request.nodes_size(); i++) {
@@ -91,13 +103,37 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
 
   // Setup currently running simulation
   m_simulation = simulation;
+  m_simulation->run();
 
   return Protocol::AssignPartitionResponse();
 }
 
+Response<Protocol::AbortResponse> SlavePrivate::rpcAbort(const Protocol::AbortRequest &request,
+                                                         const Message &msg,
+                                                         RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // When no simulation is running, abort always succeeds
+  if (!m_simulation || m_simulation->isStopping())
+    return Protocol::AbortResponse();
+
+  // Note that the actual simulation will not get destroyed until the simulation stops
+  BOOST_LOG_SEV(m_logger, log::warning) << "Aborting simulation as requested by master!";
+  m_simulation->signalStopped.connect([&]() {
+    RecursiveUniqueLock lock(m_mutex);
+    BOOST_LOG_SEV(m_logger, log::normal) << "Simulation stopped.";
+    m_simulation.reset();
+    q.rejoinCluster();
+  });
+  m_simulation->stop();
+
+  return Protocol::AbortResponse();
+}
+
 Slave::Slave()
   : ClusterNode(),
-    d(new SlavePrivate(context()))
+    d(new SlavePrivate(*this))
 {
 }
 
@@ -124,6 +160,7 @@ void Slave::setupOptions(int argc,
       ("sim-ip", po::value<std::string>(), "IP address available for simulation")
       ("sim-port-start", po::value<unsigned short>(), "start of simulation port range")
       ("sim-port-end", po::value<unsigned short>(), "end of simulation port range")
+      ("sim-threads", po::value<size_t>(), "number of simulation threads")
     ;
     options.add(simulation);
     return;
@@ -169,6 +206,8 @@ void Slave::setupOptions(int argc,
     throw ArgumentError("Missing required --sim-port-start option!");
   } else if (!variables.count("sim-port-end")) {
     throw ArgumentError("Missing required --sim-port-end option!");
+  } else if (!variables.count("sim-threads")) {
+    throw ArgumentError("Missing required --sim-threads option!");
   }
 
   d->m_simulationIp = variables["sim-ip"].as<std::string>();
@@ -176,6 +215,7 @@ void Slave::setupOptions(int argc,
     variables["sim-port-start"].as<unsigned short>(),
     variables["sim-port-end"].as<unsigned short>()
   );
+  d->m_simulationThreads = variables["sim-threads"].as<size_t>();
 
   if (std::get<0>(d->m_simulationPortRange) > std::get<1>(d->m_simulationPortRange)) {
     throw ArgumentError("Invalid port range specified!");
@@ -187,6 +227,9 @@ void Slave::run()
   // Register RPC methods
   rpc().registerMethod<Protocol::AssignPartitionRequest, Protocol::AssignPartitionResponse>("Testbed.Cluster.AssignPartition",
     boost::bind(&SlavePrivate::rpcAssignPartition, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::AbortRequest, Protocol::AbortResponse>("Testbed.Cluster.Abort",
+    boost::bind(&SlavePrivate::rpcAbort, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
 
