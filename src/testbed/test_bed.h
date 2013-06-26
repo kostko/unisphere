@@ -45,10 +45,27 @@ public:
    */
   static TestBed &getGlobalTestbed();
 
+  /**
+   * Returns a map of registered scenarios.
+   */
   const std::map<std::string, ScenarioPtr> &scenarios() const;
 
+  /**
+   * Returns a scenario with specific id.
+   *
+   * @param id Scenario identifier
+   * @return A corresponding scenario instance or null when one doesn't exist
+   */
   ScenarioPtr getScenario(const std::string &id) const;
 
+  /**
+   * Creates a new simulation.
+   *
+   * @param seed Seed for the simulation's basic RNG
+   * @param threads Number of threads
+   * @param globalNodeCount Number of all nodes (over the whole cluster)
+   * @return A new simulation instance
+   */
   SimulationPtr createSimulation(std::uint32_t seed,
                                  size_t threads,
                                  size_t globalNodeCount);
