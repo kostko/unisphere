@@ -19,6 +19,7 @@
 #include "core/context.h"
 
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/thread/tss.hpp>
 #include <unordered_map>
 #include <thread>
 
@@ -27,11 +28,6 @@ namespace UniSphere {
 class ContextPrivate {
 public:
   ContextPrivate();
-
-  /**
-   * Creates the random number generators for the local thread.
-   */
-  void createThreadRNGs();
 public:
   /// ASIO I/O service for all network operations
   boost::asio::io_service m_io;
@@ -44,11 +40,11 @@ public:
   /// Logger instance
   Logger m_logger;
   /// Cryptographically secure random number generator (per-thread)
-  std::unordered_map<std::thread::id, Botan::AutoSeeded_RNG*> m_rng;
+  boost::thread_specific_ptr<Botan::AutoSeeded_RNG> m_rng;
   /// Basic random generator that should not be used for crypto ops (per-thread)
-  std::unordered_map<std::thread::id, std::mt19937*> m_basicRng;
-  /// Seed for the basic RNG (if set to 0, a random seed is used)
-  std::uint32_t m_basicRngSeed;
+  boost::thread_specific_ptr<std::mt19937> m_basicRng;
+  /// Worker thread initializer
+  std::function<void()> m_threadInitializer;
 };
 
 LibraryInitializer::LibraryInitializer()
@@ -60,38 +56,13 @@ LibraryInitializer::LibraryInitializer()
 
 ContextPrivate::ContextPrivate()
   : m_work(m_io),
-    m_logger(logging::keywords::channel = "context"),
-    m_basicRngSeed(0)
+    m_logger(logging::keywords::channel = "context")
 {
-}
-
-void ContextPrivate::createThreadRNGs()
-{
-  RecursiveUniqueLock lock(m_mutex);
-  std::thread::id tid = std::this_thread::get_id();
-  Botan::AutoSeeded_RNG *rng = new Botan::AutoSeeded_RNG();
-  std::mt19937 *basicRng = new std::mt19937();
-
-  // Seed the basic random generator from the cryptographic random number generator
-  if (m_basicRngSeed == 0) {
-    std::uint32_t seed;
-    rng->randomize((Botan::byte*) &seed, sizeof(seed));
-    basicRng->seed(seed);
-  } else {
-    basicRng->seed(m_basicRngSeed);
-  }
-
-  // Register per-thread RNGs
-  m_rng.insert({{ tid, rng }});
-  m_basicRng.insert({{ tid, basicRng }});
 }
 
 Context::Context()
   : d(new ContextPrivate)
 {
-  // Create RNGs for the main thread
-  d->createThreadRNGs();
-
   // Log context initialization
   BOOST_LOG(d->m_logger) << "UNISPHERE context initialized.";
 }
@@ -107,26 +78,35 @@ boost::asio::io_service &Context::service()
 
 Botan::RandomNumberGenerator &Context::rng()
 {
-  RecursiveUniqueLock lock(d->m_mutex);
-  return *d->m_rng.at(std::this_thread::get_id());
+  Botan::AutoSeeded_RNG *rng = d->m_rng.get();
+  if (!rng) {
+    rng = new Botan::AutoSeeded_RNG();
+    d->m_rng.reset(rng);
+  }
+
+  return *rng;
 }
 
 std::mt19937 &Context::basicRng()
 {
-  RecursiveUniqueLock lock(d->m_mutex);
-  return *d->m_basicRng.at(std::this_thread::get_id());
+  std::mt19937 *basicRng = d->m_basicRng.get();
+  if (!basicRng) {
+    basicRng = new std::mt19937();
+    d->m_basicRng.reset(basicRng);
+
+    // Seed the basic RNG from the CSRNG
+    std::uint32_t seed;
+    rng().randomize((Botan::byte*) &seed, sizeof(seed));
+    basicRng->seed(seed);
+  }
+
+  return *basicRng;
 }
 
-void Context::setBasicRngSeed(std::uint32_t seed)
+void Context::setThreadInitializer(std::function<void()> initializer)
 {
   RecursiveUniqueLock lock(d->m_mutex);
-  d->m_basicRngSeed = seed;
-
-  // Re-seed the existing basic RNGs (if any)
-  if (seed > 0) {
-    for (auto &p : d->m_basicRng)
-      p.second->seed(seed);
-  }
+  d->m_threadInitializer = initializer;
 }
 
 void Context::schedule(int timeout, std::function<void()> operation)
@@ -169,36 +149,42 @@ boost::posix_time::seconds Context::backoff(size_t attempts, int interval, int m
 
 void Context::run(size_t threads)
 {
-  // Reset the I/O service when needed
-  if (d->m_io.stopped())
-    d->m_io.reset();
-  
-  // Create as many threads as specified and let them run the I/O service
-  for (int i = 0; i < threads; i++) {
-    d->m_pool.create_thread([this]() {
-      // Initialize the random number generators
-      d->createThreadRNGs();
+  {
+    RecursiveUniqueLock lock(d->m_mutex);
+    
+    // Create as many threads as specified and let them run the I/O service
+    for (int i = 0; i < threads; i++) {
+      d->m_pool.create_thread([this]() {
+        // Perform per-thread initialization
+        {
+          RecursiveUniqueLock lock(d->m_mutex);
+          if (d->m_threadInitializer)
+            d->m_threadInitializer();
+        }
 
-      // Run the ASIO service
-      d->m_io.run();
-    });
+        // Run the ASIO service
+        d->m_io.run();
+
+        // Destroy all per-thread RNGs
+        d->m_rng.reset();
+        d->m_basicRng.reset();
+      });
+    }
   }
   
   d->m_pool.join_all();
-
-  // Destroy all per-thread RNGs after threads have joined
-  for (auto p : d->m_rng)
-    delete p.second;
-  for (auto p : d->m_basicRng)
-    delete p.second;
-
-  d->m_rng.clear();
-  d->m_basicRng.clear();
 }
 
 void Context::stop()
 {
+  RecursiveUniqueLock lock(d->m_mutex);
   d->m_io.stop();
+}
+
+void Context::reset()
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_io.reset();
 }
 
 }

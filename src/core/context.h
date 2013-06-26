@@ -118,12 +118,12 @@ public:
   std::mt19937 &basicRng();
 
   /**
-   * Sets a specific seed for the basic random number generator. This should
-   * only be used when testing.
+   * Sets a thread initializer function that gets called from each worker
+   * thread before it enters the event loop.
    *
-   * @param seed Seed for the basic random number generator
+   * @param initializer Initializer function
    */
-  void setBasicRngSeed(std::uint32_t seed);
+  void setThreadInitializer(std::function<void()> initializer);
   
   /**
    * Enters the main event loop. Passing a thread pool size of greater than
@@ -134,9 +134,16 @@ public:
   void run(size_t threads = 1);
   
   /**
-   * Stop the event loop interrupting all operations.
+   * Stop the event loop interrupting all operations. Before subsequent
+   * run method can be invoked, one must first call reset.
    */
   void stop();
+
+  /**
+   * Resets a previous context execution and readies the context to be
+   * run again.
+   */
+  void reset();
 private:
   UNISPHERE_DECLARE_PRIVATE(Context)
 };
