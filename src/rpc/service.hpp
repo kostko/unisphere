@@ -20,6 +20,7 @@
 #define UNISPHERE_RPC_SERVICE_H
 
 #include "rpc/call.hpp"
+#include "rpc/call_group.hpp"
 
 namespace UniSphere {
 
@@ -71,6 +72,26 @@ public:
       return;
     m_engine->call<RequestType, ResponseType>(m_destination, method, request, success, failure, m_options);
   }
+
+  /**
+   * Calls a remote procedure.
+   *
+   * @param method Method name
+   * @param request Request payload
+   * @param success Success callback
+   * @param failure Failure callback
+   */
+  template<typename RequestType, typename ResponseType>
+  void call(RpcCallGroupPtr<Channel> group,
+            const std::string &method,
+            const RequestType &request,
+            std::function<void(const ResponseType&, const typename Channel::message_type&)> success,
+            RpcResponseFailure failure = nullptr)
+  {
+    if (m_destination.isNull())
+      return;
+    group->call<RequestType, ResponseType>(m_destination, method, request, success, failure, m_options);
+  }
   
   /**
    * Calls a remote procedure without confirmation.
@@ -88,6 +109,25 @@ public:
     if (m_destination.isNull())
       return;
     m_engine->call<RequestType>(m_destination, method, request, m_options);
+  }
+
+  /**
+   * Calls a remote procedure without confirmation.
+   *
+   * @param destination Destination key
+   * @param method Method name
+   * @param request Request payload
+   * @param opts Call options
+   */
+  template<typename RequestType>
+  void call(RpcCallGroupPtr<Channel> group,
+            const std::string &method,
+            const RequestType &request = RequestType(),
+            const RpcCallOptions<Channel> &opts = RpcCallOptions<Channel>())
+  {
+    if (m_destination.isNull())
+      return;
+    group->call<RequestType>(m_destination, method, request, m_options);
   }
 private:
   /// RPC engine
