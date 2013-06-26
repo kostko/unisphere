@@ -45,20 +45,46 @@ public:
     Stopping
   };
 
+  /**
+   * Constructs a simulation object.
+   *
+   * @param seed Seed for the basic RNG
+   * @param threads Number of threads for this simulation
+   * @param globalNodeCount Number of all nodes in the simulation (whole cluster)
+   */
   Simulation(std::uint32_t seed,
              size_t threads,
              size_t globalNodeCount);
 
+  /**
+   * Creates a new virtual node inside the simulation.
+   *
+   * @param name Virtual node name
+   * @param contact Node contact information (bindable to local interface)
+   * @param peers A list of peers in the social network
+   */
   void createNode(const std::string &name,
                   const Contact &contact,
                   const std::list<Contact> &peers);
 
+  /**
+   * Returns the current simulation state.
+   */
   State state() const;
 
+  /**
+   * Returns true if the simulation is running.
+   */
   bool isRunning() const;
 
+  /**
+   * Returns true if the simulation is stopping.
+   */
   bool isStopping() const;
 
+  /**
+   * Starts the simulation.
+   */
   void run();
 
   /**
