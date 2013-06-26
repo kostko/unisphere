@@ -30,7 +30,7 @@ TEST_CASE("core/context", "verify that context operations work")
   // Framework context
   Context ctx;
   // Seed the random number generator to get predictable results
-  ctx.setBasicRngSeed(42);
+  ctx.basicRng().seed(42);
   
   SECTION("s1", "adding jitter to timers")
   {
