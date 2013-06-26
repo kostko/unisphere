@@ -39,14 +39,18 @@ ScenarioPrivate::ScenarioPrivate(const std::string &name)
 }
 
 Scenario::Scenario(const std::string &name)
-  : d(new ScenarioPrivate(name)),
-    testbed(TestBed::getGlobalTestbed())
+  : d(new ScenarioPrivate(name))
 {
 }
 
 std::string Scenario::name() const
 {
   return d->m_name;
+}
+
+void Scenario::start(ScenarioApi &api)
+{
+  run(d->m_options, api);
 }
 
 void Scenario::setupOptions(int argc,

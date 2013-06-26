@@ -21,12 +21,11 @@
 
 #include "core/globals.h"
 #include "core/program_options.h"
+#include "testbed/scenario_api.h"
 
 namespace UniSphere {
 
 namespace TestBed {
-
-class TestBed;
 
 /**
  * A scenario defines the temporal order and type of tests
@@ -43,22 +42,25 @@ public:
   Scenario &operator=(const Scenario&) = delete;
 
   /**
-   * Performs post-construction initialization.
+   * Starts the scenario.
+   *
+   * @param api API for executing this scenario
    */
-  void init();
+  void start(ScenarioApi &api);
 
   /**
    * Returns the scenario name.
    */
   std::string name() const;
-
+protected:
   /**
-   * Performs scenario setup.
+   * Runs the scenario.
    *
    * @param options Program options
    */
-  virtual void setup(boost::program_options::variables_map &options) = 0;
-protected:
+  virtual void run(boost::program_options::variables_map &options,
+                   ScenarioApi &api) = 0;
+
   /**
    * Called by OptionModule to configure the scenario.
    */
@@ -72,9 +74,6 @@ protected:
    */
   virtual void setupOptions(boost::program_options::options_description &options,
                             boost::program_options::variables_map &variables) {};
-protected:
-  /// Testbed instance
-  TestBed &testbed;
 private:
   UNISPHERE_DECLARE_PRIVATE(Scenario)
 };
@@ -87,7 +86,9 @@ UNISPHERE_SHARED_POINTER(Scenario)
 
 #define UNISPHERE_SCENARIO(Class) struct Class : public UniSphere::TestBed::Scenario { \
                                     Class() : UniSphere::TestBed::Scenario(#Class) {}; \
-                                    void setup(boost::program_options::variables_map &options)
+                                    protected: \
+                                    void run(boost::program_options::variables_map &options, \
+                                             UniSphere::TestBed::ScenarioApi &api)
 
 #define UNISPHERE_SCENARIO_END };
 

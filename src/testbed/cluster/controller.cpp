@@ -21,6 +21,7 @@
 #include "testbed/cluster/topology_loader.h"
 #include "testbed/test_bed.h"
 #include "testbed/exceptions.h"
+#include "testbed/scenario_api.h"
 #include "identity/node_identifier.h"
 #include "core/context.h"
 #include "interplex/link_manager.h"
@@ -65,6 +66,21 @@ std::ostream &operator<<(std::ostream &os, const TopologyLoader::IdGenerationTyp
   return os;
 }
 
+class ControllerPrivate;
+
+class ControllerScenarioApi : public ScenarioApi {
+public:
+  ControllerScenarioApi(Context &context,
+                        ControllerPrivate &controller);
+
+  void runTestCase(int timeout, const std::string &name);
+public:
+  /// Context
+  Context &m_context;
+  /// Controller
+  ControllerPrivate &m_controller;
+};
+
 class ControllerPrivate {
 public:
   ControllerPrivate();
@@ -85,7 +101,23 @@ public:
   size_t m_unassignedPartitions;
   /// Seed value
   std::uint32_t m_seed;
+  /// Active scenario
+  ScenarioPtr m_scenario;
+  /// Scenario API instance
+  boost::shared_ptr<ControllerScenarioApi> m_scenarioApi;
 };
+
+ControllerScenarioApi::ControllerScenarioApi(Context &context,
+                                             ControllerPrivate &controller)
+  : m_context(context),
+    m_controller(controller)
+{
+}
+
+void ControllerScenarioApi::runTestCase(int timeout, const std::string &name)
+{
+  // TODO
+}
 
 ControllerPrivate::ControllerPrivate()
   : m_logger(logging::keywords::channel = "cluster_controller")
@@ -196,6 +228,7 @@ void Controller::setupOptions(int argc,
   d->m_seed = variables["seed"].as<std::uint32_t>();
 
   scenario->initialize(argc, argv, options);
+  d->m_scenario = scenario;
 }
 
 void Controller::abortSimulation()
@@ -217,6 +250,9 @@ void Controller::abortSimulation()
 
 void Controller::run()
 {
+  // Create controller scenario API instance
+  d->m_scenarioApi = boost::shared_ptr<ControllerScenarioApi>(new ControllerScenarioApi(context(), *d));
+
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster controller initialized.";
 
   // Get slave list from master and start simulation so no new slaves can register
@@ -259,8 +295,8 @@ void Controller::run()
           return;
         }
 
-        // TODO: Start the scenario on success
-        abortSimulation();
+        BOOST_LOG_SEV(d->m_logger, log::normal) << "Partitions assigned. Starting scenario '" << d->m_scenario->name() << "'.";
+        d->m_scenario->start(*d->m_scenarioApi);
       });
 
       for (const TopologyLoader::Partition &part : partitions) {
