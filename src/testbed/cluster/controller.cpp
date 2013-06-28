@@ -96,7 +96,7 @@ public:
   /// Identifier generation type
   TopologyLoader::IdGenerationType m_idGenType;
   /// Generated network partitions
-  std::vector<TopologyLoader::Partition> m_partitions;
+  std::vector<Partition> m_partitions;
   /// Number of partitions pending assignment
   size_t m_unassignedPartitions;
   /// Seed value
@@ -282,7 +282,7 @@ void Controller::run()
 
       int i = 0;
       BOOST_LOG_SEV(d->m_logger, log::normal) << "Loaded topology with " << loader.getTopologySize() << " nodes.";
-      for (const TopologyLoader::Partition &part : partitions) {
+      for (const Partition &part : partitions) {
         BOOST_LOG_SEV(d->m_logger, log::normal) << "  [] Partition " << ++i << ": " << part.nodes.size() << " nodes";
       }
 
@@ -299,7 +299,7 @@ void Controller::run()
         d->m_scenario->start(*d->m_scenarioApi);
       });
 
-      for (const TopologyLoader::Partition &part : partitions) {
+      for (const Partition &part : partitions) {
         Protocol::AssignPartitionRequest request;
         request.set_num_global_nodes(loader.getTopologySize());
         request.set_seed(d->m_seed);

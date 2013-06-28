@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_TOPOLOGYLOADER_H
 
 #include "testbed/cluster/slave_descriptor.h"
+#include "testbed/cluster/partition.h"
 
 #include <vector>
 
@@ -42,31 +43,6 @@ public:
     Random,
     /// Generate identifiers by hashing the node names
     Consistent
-  };
-
-  /**
-   * Partition is an assignment of nodes to slaves.
-   */
-  struct Partition {
-    struct Node {
-      /// Node name (from original topology file)
-      std::string name;
-      /// Assigned contact
-      Contact contact;
-      /// A list of peers in the topology
-      std::list<Contact> peers;
-    };
-
-    /// Slave that will own this partition
-    Contact slave;
-    /// IP address for nodes in this partition
-    std::string ip;
-    /// Port range for nodes in this partition
-    std::tuple<unsigned short, unsigned short> ports;
-    /// Last used port
-    unsigned short usedPorts;
-    /// A list of nodes assigned to this partition
-    std::list<Node> nodes;
   };
 
   /**

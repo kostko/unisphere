@@ -48,12 +48,12 @@ public:
                             const NodeIdentifier &nodeId,
                             size_t partitions);
 
-  Contact assignContact(TopologyLoader::Partition &part, const NodeIdentifier &nodeId);
+  Contact assignContact(Partition &part, const NodeIdentifier &nodeId);
 public:
   /// Graph
   Topology m_topology;
   /// Generated partitions
-  std::vector<TopologyLoader::Partition> m_partitions;
+  std::vector<Partition> m_partitions;
   /// Identifier generation type
   TopologyLoader::IdGenerationType m_idGenType;
   /// Mapping of node names to identifiers
@@ -99,7 +99,7 @@ int TopologyLoaderPrivate::assignNodeToPartition(const std::string &name,
   return std::hash<NodeIdentifier>()(nodeId) % partitions;
 }
 
-Contact TopologyLoaderPrivate::assignContact(TopologyLoader::Partition &part, const NodeIdentifier &nodeId)
+Contact TopologyLoaderPrivate::assignContact(Partition &part, const NodeIdentifier &nodeId)
 {
   auto it = m_contacts.find(nodeId);
   if (it != m_contacts.end())
@@ -172,7 +172,7 @@ size_t TopologyLoader::getTopologySize() const
   return boost::num_vertices(d->m_topology);
 }
 
-const std::vector<TopologyLoader::Partition> &TopologyLoader::getPartitions() const
+const std::vector<Partition> &TopologyLoader::getPartitions() const
 {
   return d->m_partitions;
 }
