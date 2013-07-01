@@ -21,6 +21,7 @@
 #include "core/context.h"
 
 #include <boost/log/attributes/constant.hpp>
+#include <botan/botan.h>
 
 namespace UniSphere {
 
@@ -30,6 +31,8 @@ class TestCasePrivate {
 public:
   TestCasePrivate(const std::string &name);
 public:
+  /// Unique test case identifier
+  TestCase::Identifier m_id;
   /// Test case name
   std::string m_name;
   /// Virtual node map
@@ -43,6 +46,10 @@ TestCasePrivate::TestCasePrivate(const std::string &name)
     m_nodes(nullptr),
     m_logger(logging::keywords::channel = "test_case")
 {
+  // Generate random test case identifier
+  Botan::AutoSeeded_RNG rng;
+  rng.randomize((Botan::byte*) &m_id, sizeof(m_id));
+
   m_logger.add_attribute("TestCase", logging::attributes::constant<std::string>(name));
 }
 
@@ -50,6 +57,18 @@ TestCase::TestCase(const std::string &name)
   : d(new TestCasePrivate(name)),
     testbed(TestBed::getGlobalTestbed())
 {
+}
+
+TestCase::Identifier TestCase::getId() const
+{
+  return d->m_id;
+}
+
+SelectedPartition::Node TestCase::selectNode(const Partition &partition,
+                                             const Partition::Node &node) const
+{
+  // By default we select all nodes and pass empty arguments to test case run
+  return SelectedPartition::Node{ node.contact.nodeId() };
 }
 
 void TestCase::run()

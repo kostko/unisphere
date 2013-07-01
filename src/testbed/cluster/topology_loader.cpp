@@ -142,8 +142,9 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves)
   std::vector<Partition> &partitions = d->m_partitions;
 
   // Create one partition per slave
+  size_t index = 0;
   for (const SlaveDescriptor &slave : slaves | boost::adaptors::map_values) {
-    partitions.push_back(Partition{ slave.contact, slave.simulationIp, slave.simulationPortRange,
+    partitions.push_back(Partition{ index++, slave.contact, slave.simulationIp, slave.simulationPortRange,
      std::get<0>(slave.simulationPortRange) });
   }
 

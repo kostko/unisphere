@@ -59,6 +59,14 @@ public:
   ScenarioPtr getScenario(const std::string &id) const;
 
   /**
+   * Creates a new instance of the specified test case.
+   *
+   * @param id Test case identifier
+   * @return A corresponding test case or null when one doesn't exist
+   */
+  TestCasePtr createTestCase(const std::string &id) const;
+
+  /**
    * Creates a new simulation.
    *
    * @param seed Seed for the simulation's basic RNG

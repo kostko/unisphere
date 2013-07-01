@@ -22,6 +22,7 @@
 #include "interplex/contact.h"
 
 #include <list>
+#include <boost/property_tree/ptree.hpp>
 
 namespace UniSphere {
 
@@ -40,6 +41,8 @@ struct Partition {
     std::list<Contact> peers;
   };
 
+  /// Partition index
+  size_t index;
   /// Slave that will own this partition
   Contact slave;
   /// IP address for nodes in this partition
@@ -49,6 +52,23 @@ struct Partition {
   /// Last used port
   unsigned short usedPorts;
   /// A list of nodes assigned to this partition
+  std::list<Node> nodes;
+};
+
+/**
+ * A partition selected for test case run.
+ */
+struct SelectedPartition {
+  struct Node {
+    /// Node identifier
+    NodeIdentifier nodeId;
+    /// Arguments for test case run
+    boost::property_tree::ptree args;
+  };
+
+  /// Partition index
+  size_t index;
+  /// A list of selected nodes
   std::list<Node> nodes;
 };
 

@@ -71,3 +71,22 @@ message AbortRequest {
 message AbortResponse {
 };
 
+message RunTestRequest {
+  message Node {
+    // Node identifier
+    required bytes id = 1;
+    // JSON argument representation
+    required string arguments = 2;
+  }
+
+  // Test case name
+  required string name = 1;
+  // Test case run identifier
+  required uint32 id = 2;
+  // A list of nodes where the test should be run
+  repeated Node nodes = 3;
+};
+
+message RunTestResponse {
+};
+

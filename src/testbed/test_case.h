@@ -27,6 +27,7 @@
 
 #include "core/globals.h"
 #include "testbed/nodes.h"
+#include "testbed/cluster/partition.h"
 #include "testbed/data_collector.h"
 
 namespace UniSphere {
@@ -40,9 +41,9 @@ class TestBed;
  */
 class UNISPHERE_EXPORT TestCase : public boost::enable_shared_from_this<TestCase> {
 public:
-  friend class TestBed;
-  friend class TestBedPrivate;
-
+  /// Test case identifier type
+  typedef std::uint32_t Identifier;
+public:
   /**
    * Class constructor.
    */
@@ -50,6 +51,11 @@ public:
 
   TestCase(const TestCase&) = delete;
   TestCase &operator=(const TestCase&) = delete;
+
+  Identifier getId() const;
+
+  virtual SelectedPartition::Node selectNode(const Partition &partition,
+                                             const Partition::Node &node) const;
 
   /**
    * Runs the test case.

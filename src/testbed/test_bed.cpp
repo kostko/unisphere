@@ -51,24 +51,6 @@ TestBedPrivate::TestBedPrivate()
 {
 }
 
-/*void TestBedPrivate::runTest(const std::string &test, std::function<void()> finished)
-{
-  TestCaseFactoryPtr factory;
-  TestCasePtr ptest;
-  {
-    RecursiveUniqueLock lock(m_mutex);
-    factory = m_testCases.at(test);
-    ptest = factory->create();
-    m_runningCases.insert(ptest);
-  }
-
-  if (finished)
-    ptest->signalFinished.connect(finished);
-
-  BOOST_LOG(ptest->logger()) << "Starting test case.";
-  ptest->run();
-}
-*/
 TestBed::TestBed()
   : d(new TestBedPrivate)
 {
@@ -89,11 +71,22 @@ const std::map<std::string, ScenarioPtr> &TestBed::scenarios() const
 
 ScenarioPtr TestBed::getScenario(const std::string &id) const
 {
+  RecursiveUniqueLock lock(d->m_mutex);
   auto it = d->m_scenarios.find(id);
   if (it == d->m_scenarios.end())
     return ScenarioPtr();
 
   return it->second;
+}
+
+TestCasePtr TestBed::createTestCase(const std::string &id) const
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  auto it = d->m_testCases.find(id);
+  if (it == d->m_testCases.end())
+    return TestCasePtr();
+
+  return it->second->create();
 }
 
 SimulationPtr TestBed::createSimulation(std::uint32_t seed,

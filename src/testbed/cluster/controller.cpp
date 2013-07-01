@@ -79,12 +79,16 @@ public:
   Context &m_context;
   /// Controller
   ControllerPrivate &m_controller;
+  /// Running test cases
+  std::unordered_map<TestCase::Identifier, TestCasePtr> m_runningCases;
 };
 
 class ControllerPrivate {
 public:
-  ControllerPrivate();
+  ControllerPrivate(Controller &controller);
 public:
+  UNISPHERE_DECLARE_PUBLIC(Controller)
+
   /// Logger instance
   Logger m_logger;
   /// Master contact
@@ -116,17 +120,54 @@ ControllerScenarioApi::ControllerScenarioApi(Context &context,
 
 void ControllerScenarioApi::runTestCase(int timeout, const std::string &name)
 {
-  // TODO
+  TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name);
+  if (!test) {
+    BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Test case '" << name << "' not found.";
+    return;
+  }
+
+  // First obtain a list of virtual nodes that we should run the test on
+  std::vector<SelectedPartition> selectedNodes;
+  for (const Partition &partition : m_controller.m_partitions) {
+    selectedNodes.push_back(SelectedPartition{ partition.index });
+  }
+
+  for (const Partition &partition : m_controller.m_partitions) {
+    for (const Partition::Node &node : partition.nodes) {
+      SelectedPartition::Node selected = test->selectNode(partition, node);
+      if (!selected.nodeId.isNull())
+        selectedNodes[partition.index].nodes.push_back(selected);
+    }
+  }
+
+  // Register the test case under running test cases
+  BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
+  m_runningCases[test->getId()] = test;
+
+  // Request slaves to run local portions of test cases and report back
+  boost::shared_ptr<size_t> pendingConfirms = boost::make_shared<size_t>();
+  auto group = m_controller.q.rpc().group([this, pendingConfirms]() {
+    if (*pendingConfirms != 0) {
+      // Failed to run test case
+      // TODO: What to do?
+      return;
+    }
+
+    // TODO Test case now running on selected partitions
+  });
+
+  
 }
 
-ControllerPrivate::ControllerPrivate()
-  : m_logger(logging::keywords::channel = "cluster_controller")
+ControllerPrivate::ControllerPrivate(Controller &controller)
+  : q(controller),
+    m_logger(logging::keywords::channel = "cluster_controller")
 {
 }
 
 Controller::Controller()
   : ClusterNode(),
-    d(new ControllerPrivate)
+    d(new ControllerPrivate(*this))
 {
 }
 

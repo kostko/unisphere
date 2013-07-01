@@ -26,6 +26,7 @@ namespace UniSphere {
 namespace TestBed {
 
 class UNISPHERE_EXPORT Controller : public ClusterNode {
+  friend class ControllerScenarioApi;
 public:
   Controller();
 
