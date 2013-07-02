@@ -22,6 +22,7 @@
 #include <botan/botan.h>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <boost/signals2/signal.hpp>
 #include <random>
 
 #include "core/globals.h"
@@ -144,6 +145,9 @@ public:
    * run again.
    */
   void reset();
+public:
+  /// Signal that gets emitted when the main context thread is interrupted
+  boost::signals2::signal<void()> signalInterrupted;
 private:
   UNISPHERE_DECLARE_PRIVATE(Context)
 };

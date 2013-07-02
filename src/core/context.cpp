@@ -172,7 +172,20 @@ void Context::run(size_t threads)
     }
   }
   
-  d->m_pool.join_all();
+  for (;;) {
+    try {
+      // Wait for the I/O threads to finish execution
+      d->m_pool.join_all();
+      break;
+    } catch (boost::thread_interrupted &e) {
+      // Context thread has been interrupted, we invoke the interruption handler
+      // and then continue with waiting for the thread group to finish; this enables
+      // the context thread to be reused for executing certain operations instead
+      // of simply waiting for other threads
+      signalInterrupted();
+      continue;
+    }
+  }
 }
 
 void Context::stop()
