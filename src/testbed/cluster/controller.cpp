@@ -33,6 +33,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <boost/range/adaptors.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace po = boost::program_options;
 
@@ -68,27 +69,44 @@ std::ostream &operator<<(std::ostream &os, const TopologyLoader::IdGenerationTyp
 
 class ControllerPrivate;
 
+struct RunningTestCase {
+  /// Test case instance
+  TestCasePtr testCase;
+  /// Partitions this test is running on
+  std::vector<SelectedPartition> partitions;
+  /// Number of partitions pending finish
+  size_t pendingFinishes;
+};
+
 class ControllerScenarioApi : public ScenarioApi {
 public:
   ControllerScenarioApi(Context &context,
                         ControllerPrivate &controller);
 
-  void runTestCase(int timeout, const std::string &name);
+  void runTestCase(const std::string &name);
+
+  void runTestCaseAt(int timeout, const std::string &name);
 public:
   /// Context
   Context &m_context;
   /// Controller
   ControllerPrivate &m_controller;
   /// Running test cases
-  std::unordered_map<TestCase::Identifier, TestCasePtr> m_runningCases;
+  std::unordered_map<TestCase::Identifier, RunningTestCase> m_runningCases;
 };
 
 class ControllerPrivate {
 public:
   ControllerPrivate(Controller &controller);
+
+  Response<Protocol::TestDoneResponse> rpcTestDone(const Protocol::TestDoneRequest &request,
+                                                   const Message &msg,
+                                                   RpcId rpcId);
 public:
   UNISPHERE_DECLARE_PUBLIC(Controller)
 
+  /// Mutex to protect the data structure
+  std::recursive_mutex m_mutex;
   /// Logger instance
   Logger m_logger;
   /// Master contact
@@ -118,8 +136,10 @@ ControllerScenarioApi::ControllerScenarioApi(Context &context,
 {
 }
 
-void ControllerScenarioApi::runTestCase(int timeout, const std::string &name)
+void ControllerScenarioApi::runTestCase(const std::string &name)
 {
+  RecursiveUniqueLock lock(m_controller.m_mutex);
+
   TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name);
   if (!test) {
     BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Test case '" << name << "' not found.";
@@ -142,27 +162,99 @@ void ControllerScenarioApi::runTestCase(int timeout, const std::string &name)
 
   // Register the test case under running test cases
   BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
-  m_runningCases[test->getId()] = test;
+  m_runningCases[test->getId()] = RunningTestCase{ test, selectedNodes, selectedNodes.size() };
 
   // Request slaves to run local portions of test cases and report back
-  boost::shared_ptr<size_t> pendingConfirms = boost::make_shared<size_t>();
-  auto group = m_controller.q.rpc().group([this, pendingConfirms]() {
+  boost::shared_ptr<std::atomic<unsigned int>> pendingConfirms =
+    boost::make_shared<std::atomic<unsigned int>>(selectedNodes.size());
+
+  auto group = m_controller.q.rpc().group([this, pendingConfirms, test]() {
     if (*pendingConfirms != 0) {
-      // Failed to run test case
-      // TODO: What to do?
+      // Failed to run test case, abort whole simulation
+      m_controller.q.abortSimulation();
       return;
     }
 
-    // TODO Test case now running on selected partitions
+    // Test case now running on selected partitions
+    BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Test case '" << test->getName() << "' now running.";
   });
 
-  
+  for (SelectedPartition &selected : selectedNodes) {
+    Partition &partition = m_controller.m_partitions[selected.index];
+    Protocol::RunTestRequest request;
+    request.set_name(test->getName());
+    request.set_id(test->getId());
+
+    for (SelectedPartition::Node &node : selected.nodes) {
+      Protocol::RunTestRequest::Node *pnode = request.add_nodes();
+      pnode->set_id(node.nodeId.raw());
+
+      // Serialize arguments to JSON string
+      std::ostringstream buffer;
+      boost::property_tree::write_json(buffer, node.args, false);
+      pnode->set_arguments(buffer.str());
+    }
+
+    NodeIdentifier slaveId = partition.slave.nodeId();
+    group->call<Protocol::RunTestRequest, Protocol::RunTestResponse>(
+      partition.slave.nodeId(),
+      "Testbed.Simulation.RunTest",
+      request,
+      [this, slaveId, pendingConfirms](const Protocol::RunTestResponse &response, const Message&) {
+        BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Test case running on " << slaveId.hex() << ".";
+        (*pendingConfirms)--;
+      },
+      [this, slaveId](RpcErrorCode code, const std::string &msg) {
+        BOOST_LOG_SEV(m_controller.m_logger, log::error) << "Failed to run test case on " << slaveId.hex() << ".";
+      },
+      m_controller.q.rpc().options()
+                          .setTimeout(5)
+                          .setChannelOptions(
+                            MessageOptions().setContact(partition.slave)
+                          )
+    );
+  }
+}
+
+void ControllerScenarioApi::runTestCaseAt(int timeout, const std::string &name)
+{
+  m_context.schedule(timeout, boost::bind(&ControllerScenarioApi::runTestCase, this, name));
 }
 
 ControllerPrivate::ControllerPrivate(Controller &controller)
   : q(controller),
     m_logger(logging::keywords::channel = "cluster_controller")
 {
+}
+
+Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protocol::TestDoneRequest &request,
+                                                                    const Message &msg,
+                                                                    RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  
+  // Obtain the running test
+  auto &runningCases = m_scenarioApi->m_runningCases;
+  auto it = runningCases.find(request.id());
+  if (it == runningCases.end()) {
+    BOOST_LOG_SEV(m_logger, log::warning) << "Received finish() for non-running test case!";
+    throw RpcException(RpcErrorCode::BadRequest, "Specified test case is not running!");
+  }
+
+  RunningTestCase &tc = it->second;
+  BOOST_LOG_SEV(m_logger, log::normal) << "Test case '" << tc.testCase->getName() << "' finished on " << msg.originator().hex() << ".";
+
+  if (--tc.pendingFinishes == 0) {
+    BOOST_LOG_SEV(m_logger, log::normal) << "Test case '" << tc.testCase->getName() << "' done.";
+
+    // All partitions have finished with test case execution, invoke proper handler and
+    // then finish the test case locally as well
+    tc.testCase->processGlobalResults();
+    // TODO: This could take some time, should it be dispatched into another thread?
+    runningCases.erase(it);
+  }
+
+  return Protocol::TestDoneResponse();
 }
 
 Controller::Controller()
@@ -293,6 +385,10 @@ void Controller::run()
 {
   // Create controller scenario API instance
   d->m_scenarioApi = boost::shared_ptr<ControllerScenarioApi>(new ControllerScenarioApi(context(), *d));
+
+  // Register RPC methods
+  rpc().registerMethod<Protocol::TestDoneRequest, Protocol::TestDoneResponse>("Testbed.Simulation.TestDone",
+    boost::bind(&ControllerPrivate::rpcTestDone, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster controller initialized.";
 

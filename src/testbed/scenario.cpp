@@ -50,7 +50,7 @@ std::string Scenario::name() const
 
 void Scenario::start(ScenarioApi &api)
 {
-  run(d->m_options, api);
+  run(api, d->m_options);
 }
 
 void Scenario::setupOptions(int argc,

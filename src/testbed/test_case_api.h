@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_TESTBED_SCENARIOAPI_H
-#define UNISPHERE_TESTBED_SCENARIOAPI_H
+#ifndef UNISPHERE_TESTBED_TESTCASEAPI_H
+#define UNISPHERE_TESTBED_TESTCASEAPI_H
 
 #include "core/globals.h"
 
@@ -25,25 +25,20 @@ namespace UniSphere {
 
 namespace TestBed {
 
+class TestCase;
+UNISPHERE_SHARED_POINTER(TestCase)
+
 /**
- * Public interface that can be used by scenarios to perform tasks.
+ * Public interface that can be used by test cases to perform tasks.
  */
-class UNISPHERE_EXPORT ScenarioApi {
+class UNISPHERE_EXPORT TestCaseApi {
 public:
   /**
-   * Runs a specific test case immediately.
+   * Immediately finish the specified test case.
    *
-   * @param name Test case to run
+   * @param testCase Test case instance
    */
-  virtual void runTestCase(const std::string &name) = 0;
-
-  /**
-   * Schedules a specific test case to be run after some delay.
-   *
-   * @param timeout Number of seconds to wait before running
-   * @param name Test case to run
-   */
-  virtual void runTestCaseAt(int timeout, const std::string &name) = 0;
+  virtual void finishNow(TestCasePtr testCase) = 0;
 };
 
 }

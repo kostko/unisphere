@@ -26,6 +26,9 @@
 #include "rpc/service.hpp"
 #include "src/testbed/cluster/messages.pb.h"
 
+#include <boost/property_tree/json_parser.hpp>
+#include <atomic>
+
 namespace po = boost::program_options;
 
 namespace UniSphere {
@@ -34,6 +37,20 @@ namespace TestBed {
 
 template <typename ResponseType>
 using Response = RpcResponse<InterplexRpcChannel, ResponseType>;
+
+class SlavePrivate;
+
+class SlaveTestCaseApi : public TestCaseApi {
+public:
+  SlaveTestCaseApi(SlavePrivate &slave);
+
+  void finishNow(TestCasePtr testCase);
+public:
+  /// Slave instance
+  SlavePrivate &m_slave;
+  /// Running test cases
+  std::unordered_map<TestCase::Identifier, TestCasePtr> m_runningCases;
+};
 
 class SlavePrivate {
 public:
@@ -46,6 +63,10 @@ public:
   Response<Protocol::AbortResponse> rpcAbort(const Protocol::AbortRequest &request,
                                              const Message &msg,
                                              RpcId rpcId);
+
+  Response<Protocol::RunTestResponse> rpcRunTest(const Protocol::RunTestRequest &request,
+                                                 const Message &msg,
+                                                 RpcId rpcId);
 public:
   UNISPHERE_DECLARE_PUBLIC(Slave)
 
@@ -57,6 +78,8 @@ public:
   Contact m_masterContact;
   /// Master service
   RpcService<InterplexRpcChannel> m_master;
+  /// Controller service
+  RpcService<InterplexRpcChannel> m_controller;
   /// Simulation IP address
   std::string m_simulationIp;
   /// Simulation port range
@@ -69,7 +92,41 @@ public:
   size_t m_masterMissedHeartbeats;
   /// Currently active simulation
   SimulationPtr m_simulation;
+  /// Test case API instance
+  boost::shared_ptr<SlaveTestCaseApi> m_testCaseApi;
 };
+
+SlaveTestCaseApi::SlaveTestCaseApi(SlavePrivate &slave)
+  : m_slave(slave)
+{
+}
+
+void SlaveTestCaseApi::finishNow(TestCasePtr testCase)
+{
+  RecursiveUniqueLock lock(m_slave.m_mutex);
+
+  // Ensure that test case is destroyed after we exit
+  auto it = m_runningCases.find(testCase->getId());
+  if (it == m_runningCases.end()) {
+    BOOST_LOG_SEV(m_slave.m_logger, log::error) << "Test case not found while finish()-ing!";
+    return;
+  }
+
+  BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Test case '" << testCase->getName() << "' finished.";
+  m_runningCases.erase(it);
+
+  // Notify the controller that we are done with the test case
+  Protocol::TestDoneRequest request;
+  request.set_id(testCase->getId());
+
+  // TODO: Should we do error handling when notification can't be done?
+  m_slave.m_controller.call<Protocol::TestDoneRequest, Protocol::TestDoneResponse>(
+    "Testbed.Simulation.TestDone",
+    request,
+    nullptr,
+    nullptr
+  );
+}
 
 SlavePrivate::SlavePrivate(Slave &slave)
   : q(slave),
@@ -101,6 +158,15 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
     simulation->createNode(node.name(), contact, peers);
   }
 
+  // Setup controller service
+  m_controller = q.rpc().service(msg.originator(),
+    q.rpc().options()
+           .setTimeout(5)
+           .setChannelOptions(
+             MessageOptions().setContact(q.linkManager().getLinkContact(msg.originator()))
+           )
+  );
+
   // Setup currently running simulation
   m_simulation = simulation;
   m_simulation->run();
@@ -129,6 +195,66 @@ Response<Protocol::AbortResponse> SlavePrivate::rpcAbort(const Protocol::AbortRe
   m_simulation->stop();
 
   return Protocol::AbortResponse();
+}
+
+Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::RunTestRequest &request,
+                                                             const Message &msg,
+                                                             RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Fail when no simulation is running
+  if (!m_simulation || m_simulation->isStopping())
+    throw RpcException(RpcErrorCode::BadRequest, "Simulation is not running!");
+
+  // Create a new test case
+  TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(request.name());
+  if (!test) {
+    BOOST_LOG_SEV(m_logger, log::warning) << "Test case '" << request.name() << "' not found.";
+    throw RpcException(RpcErrorCode::BadRequest, "Test case '" + request.name() + "' not found!");
+  }
+  test->setId(request.id());
+  m_testCaseApi->m_runningCases.insert({{ test->getId(), test }});
+
+  BOOST_LOG_SEV(m_logger, log::normal) << "Running test case '" << request.name() << "' on " << request.nodes_size() << " nodes.";
+
+  // Run the test case on all specified nodes
+  SimulationSectionPtr section = m_simulation->section();
+  for (int i = 0; i < request.nodes_size(); i++) {
+    const Protocol::RunTestRequest::Node &node = request.nodes(i);
+    boost::property_tree::ptree args;
+    std::istringstream buffer(node.arguments());
+    boost::property_tree::read_json(buffer, args);
+
+    try {
+      // Schedule executions within the simulation
+      section->execute(
+        NodeIdentifier(node.id(), NodeIdentifier::Format::Raw),
+        [this, test, args](VirtualNodePtr vnode) {
+          test->runNode(*m_testCaseApi, vnode, args);
+        }
+      );
+    } catch (VirtualNodeNotFound &e) {
+      BOOST_LOG_SEV(m_logger, log::error) << "Failed to run test case in simulation: virtual node not found.";
+      throw RpcException(RpcErrorCode::BadRequest, "Failed to run test case in simulation: virtual node not found.");
+    }
+  }
+
+  // Setup a completion handler
+  section->signalFinished.connect([this, test]() {
+    // If test case is not yet finished, we transition it to running state; otherwise
+    // process local test results and finish it immediately
+    if (!test->isFinished()) {
+      test->setState(TestCase::State::Running);
+    } else {
+      test->processLocalResults(*m_testCaseApi);
+      m_testCaseApi->finishNow(test);
+    }
+  });
+
+  section->run();
+
+  return Protocol::RunTestResponse();
 }
 
 Slave::Slave()
@@ -224,12 +350,17 @@ void Slave::setupOptions(int argc,
 
 void Slave::run()
 {
+  d->m_testCaseApi = boost::shared_ptr<SlaveTestCaseApi>(new SlaveTestCaseApi(*d));
+
   // Register RPC methods
   rpc().registerMethod<Protocol::AssignPartitionRequest, Protocol::AssignPartitionResponse>("Testbed.Cluster.AssignPartition",
     boost::bind(&SlavePrivate::rpcAssignPartition, d, _1, _2, _3));
 
   rpc().registerMethod<Protocol::AbortRequest, Protocol::AbortResponse>("Testbed.Cluster.Abort",
     boost::bind(&SlavePrivate::rpcAbort, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::RunTestRequest, Protocol::RunTestResponse>("Testbed.Simulation.RunTest",
+    boost::bind(&SlavePrivate::rpcRunTest, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
 
@@ -298,7 +429,6 @@ void Slave::heartbeat(const boost::system::error_code &error)
     [this](RpcErrorCode, const std::string&) {
       // Failed to receive heartbeat from master
       if (++d->m_masterMissedHeartbeats > 2) {
-        
         BOOST_LOG_SEV(d->m_logger, log::error) << "Connection to master has timed out!";
         rejoinCluster();
       }

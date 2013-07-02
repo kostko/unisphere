@@ -39,12 +39,15 @@ public:
   VirtualNodeMap *m_nodes;
   /// Logger instance
   Logger m_logger;
+  /// Test case state
+  TestCase::State m_state;
 };
 
 TestCasePrivate::TestCasePrivate(const std::string &name)
   : m_name(name),
     m_nodes(nullptr),
-    m_logger(logging::keywords::channel = "test_case")
+    m_logger(logging::keywords::channel = "test_case"),
+    m_state(TestCase::State::Initializing)
 {
   // Generate random test case identifier
   Botan::AutoSeeded_RNG rng;
@@ -54,9 +57,13 @@ TestCasePrivate::TestCasePrivate(const std::string &name)
 }
 
 TestCase::TestCase(const std::string &name)
-  : d(new TestCasePrivate(name)),
-    testbed(TestBed::getGlobalTestbed())
+  : d(new TestCasePrivate(name))
 {
+}
+
+std::string &TestCase::getName() const
+{
+  return d->m_name;
 }
 
 TestCase::Identifier TestCase::getId() const
@@ -64,75 +71,52 @@ TestCase::Identifier TestCase::getId() const
   return d->m_id;
 }
 
+void TestCase::setId(Identifier id)
+{
+  d->m_id = id;
+}
+
+void TestCase::setState(State state)
+{
+  d->m_state = state;
+}
+
+bool TestCase::isFinished() const
+{
+  return d->m_state == State::Finished;
+}
+
 SelectedPartition::Node TestCase::selectNode(const Partition &partition,
-                                             const Partition::Node &node) const
+                                             const Partition::Node &node)
 {
   // By default we select all nodes and pass empty arguments to test case run
   return SelectedPartition::Node{ node.contact.nodeId() };
 }
 
-void TestCase::run()
+void TestCase::runNode(TestCaseApi &api,
+                       VirtualNodePtr node,
+                       const boost::property_tree::ptree &args)
 {
-  /*if (snapshot()) {
-    testbed.snapshot(boost::bind(&TestCase::start, this));
+  finish(api);
+}
+
+void TestCase::processLocalResults(TestCaseApi &api)
+{
+}
+
+void TestCase::processGlobalResults()
+{
+}
+
+void TestCase::finish(TestCaseApi &api)
+{
+  if (d->m_state == State::Running) {
+    // We should immediately finish with this test case
+    d->m_state = State::Finished;
+    processLocalResults(api);
+    api.finishNow(shared_from_this());
   } else {
-    start();
-  }*/
-}
-
-void TestCase::finish()
-{
-  signalFinished();
-  //testbed.finishTestCase(shared_from_this());
-}
-
-bool TestCase::snapshot()
-{
-  return false;
-}
-
-int TestCase::time() const
-{
-  //return testbed.time();
-  return 0;
-}
-
-VirtualNodeMap &TestCase::nodes()
-{
-  return *d->m_nodes;
-}
-
-Logger &TestCase::logger()
-{
-  return d->m_logger;
-}
-
-DataCollector TestCase::data(const std::string &category,
-                             std::initializer_list<std::string> columns,
-                             const std::string &type)
-{
-  std::string component = d->m_name;
-  if (!category.empty())
-    component += "-" + category;
-
-  return DataCollector(
-    ".", // XXX
-    component,
-    columns,
-    type
-  );
-}
-
-DataCollector TestCase::data(const std::string &category,
-                             const std::string &type)
-{
-  return data(category, {}, type);
-}
-
-void TestCase::require(bool assertion)
-{
-  if (!assertion) {
-    BOOST_LOG_SEV(d->m_logger, log::error) << "Requirement not satisfied.";
+    d->m_state = State::Finished;
   }
 }
 

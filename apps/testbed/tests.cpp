@@ -36,6 +36,7 @@ using namespace UniSphere;
 
 namespace Tests {
 
+#if 0
 class AllPairs : public TestBed::TestCase
 {
 public:
@@ -168,6 +169,7 @@ protected:
 };
 
 UNISPHERE_REGISTER_TEST_CASE(AllPairs, "routing/all_pairs")
+#endif
 
 class CountState : public TestBed::TestCase
 {
@@ -175,9 +177,34 @@ public:
   using TestBed::TestCase::TestCase;
 protected:
   /**
+   * Count the amount of state a node is using.
+   */
+  void runNode(TestBed::TestCaseApi &api,
+               TestBed::VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    // Routing table state
+    size_t stateRtAll = node->router->routingTable().size();
+    size_t stateRtActive = node->router->routingTable().sizeActive();
+    size_t stateRtVicinity = node->router->routingTable().sizeVicinity();
+    // Name database state
+    size_t stateNdbAll = node->router->nameDb().size();
+    size_t stateNdbActive = node->router->nameDb().sizeActive();
+    size_t stateNdbCache = node->router->nameDb().sizeCache();
+
+    // TODO report
+    finish(api);
+  }
+
+  void processGlobalResults()
+  {
+    // TODO process received reports
+  }
+
+  /**
    * Count the amount of state all nodes are using.
    */
-  void start()
+  /*void start()
   {
     unsigned long stateAllNodes = 0;
     auto state = data("state", {
@@ -211,11 +238,12 @@ protected:
 
     BOOST_LOG(logger()) << "Global state = " << stateAllNodes;
     finish();
-  }
+  }*/
 };
 
 UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
 
+#if 0
 class DumpSloppyGroupTopology : public TestBed::TestCase
 {
 public:
@@ -283,5 +311,6 @@ protected:
 };
 
 UNISPHERE_REGISTER_TEST_CASE(DumpRoutingTopology, "state/routing_topology")
+#endif
 
 }

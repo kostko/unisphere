@@ -58,8 +58,8 @@ protected:
    *
    * @param options Program options
    */
-  virtual void run(boost::program_options::variables_map &options,
-                   ScenarioApi &api) = 0;
+  virtual void run(ScenarioApi &api,
+                   boost::program_options::variables_map &options) = 0;
 
   /**
    * Called by OptionModule to configure the scenario.
@@ -87,8 +87,8 @@ UNISPHERE_SHARED_POINTER(Scenario)
 #define UNISPHERE_SCENARIO(Class) struct Class : public UniSphere::TestBed::Scenario { \
                                     Class() : UniSphere::TestBed::Scenario(#Class) {}; \
                                     protected: \
-                                    void run(boost::program_options::variables_map &options, \
-                                             UniSphere::TestBed::ScenarioApi &api)
+                                    void run(UniSphere::TestBed::ScenarioApi &api, \
+                                             boost::program_options::variables_map &options)
 
 #define UNISPHERE_SCENARIO_END };
 

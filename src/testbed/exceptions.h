@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_EXCEPTIONS_H
 
 #include "core/exception.h"
+#include "identity/node_identifier.h"
 
 namespace UniSphere {
 
@@ -67,6 +68,13 @@ class UNISPHERE_EXPORT TopologyLoadingFailed : public TestBedException {
 public:
   TopologyLoadingFailed(const std::string &filename)
     : TestBedException("Loading of GraphML topology from '" + filename + "' failed!")
+  {}
+};
+
+class UNISPHERE_EXPORT VirtualNodeNotFound : public TestBedException {
+public:
+  VirtualNodeNotFound(const NodeIdentifier &nodeId)
+    : TestBedException("Virtual node '" + nodeId.hex() + "' not found!")
   {}
 };
 

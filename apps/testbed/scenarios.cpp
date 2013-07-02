@@ -25,12 +25,18 @@ using namespace UniSphere;
 namespace Scenarios {
 
 /**
- * A scenario that performs mixed tests at various intervals.
+ * A scenario that does nothing at all.
  */
 UNISPHERE_SCENARIO(IdleScenario)
 {
-  // TODO
 }
 UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
+
+UNISPHERE_SCENARIO(StandardTests)
+{
+  // Count routing state after 30 seconds
+  api.runTestCaseAt(30, "state/count");
+}
+UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 
 }

@@ -90,3 +90,10 @@ message RunTestRequest {
 message RunTestResponse {
 };
 
+message TestDoneRequest {
+  // Test identifier
+  required uint32 id = 1;
+};
+
+message TestDoneResponse {
+};

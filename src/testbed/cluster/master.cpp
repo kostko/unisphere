@@ -96,30 +96,34 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
   if (m_state == Master::State::Idle) {
     response.set_registered(true);
 
-    // Perform registration
-    SlaveDescriptor descriptor;
-    descriptor.contact = q.linkManager().getLinkContact(msg.originator());
-    descriptor.simulationIp = request.simulation_ip();
-    descriptor.simulationPortRange = std::make_tuple(
-      request.simulation_port_start(),
-      request.simulation_port_end()
-    );
-    descriptor.service = q.rpc().service(
-      descriptor.contact.nodeId(),
-      q.rpc().options()
-             .setTimeout(5)
-             .setChannelOptions(
-               MessageOptions().setContact(descriptor.contact)
-             )
-    );
+    if (m_slaves.find(msg.originator()) == m_slaves.end()) {
+      // Perform registration
+      SlaveDescriptor descriptor;
+      descriptor.contact = q.linkManager().getLinkContact(msg.originator());
+      descriptor.simulationIp = request.simulation_ip();
+      descriptor.simulationPortRange = std::make_tuple(
+        request.simulation_port_start(),
+        request.simulation_port_end()
+      );
+      descriptor.service = q.rpc().service(
+        descriptor.contact.nodeId(),
+        q.rpc().options()
+               .setTimeout(5)
+               .setChannelOptions(
+                 MessageOptions().setContact(descriptor.contact)
+               )
+      );
 
-    // Perform simple validation of the port range
-    if (std::get<0>(descriptor.simulationPortRange) > std::get<1>(descriptor.simulationPortRange))
-      throw RpcException(RpcErrorCode::BadRequest, "Invalid simulation port range specified!");
+      // Perform simple validation of the port range
+      if (std::get<0>(descriptor.simulationPortRange) > std::get<1>(descriptor.simulationPortRange))
+        throw RpcException(RpcErrorCode::BadRequest, "Invalid simulation port range specified!");
 
-    m_slaves.insert({{ msg.originator(), descriptor }});
+      // TODO: Master should check for conflicting addresses/port ranges
 
-    BOOST_LOG_SEV(m_logger, log::normal) << "Registered new slave (id=" << msg.originator().hex() << ").";
+      m_slaves.insert({{ msg.originator(), descriptor }});
+
+      BOOST_LOG_SEV(m_logger, log::normal) << "Registered new slave (id=" << msg.originator().hex() << ").";
+    }
   } else {
     // After the simulation has started new slaves can't be registered
     BOOST_LOG_SEV(m_logger, log::warning) << "Refusing registration of new slave (id=" << msg.originator().hex() << ") while simulation is running!";

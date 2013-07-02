@@ -29,6 +29,7 @@
 #include "testbed/nodes.h"
 #include "testbed/cluster/partition.h"
 #include "testbed/data_collector.h"
+#include "testbed/test_case_api.h"
 
 namespace UniSphere {
 
@@ -37,13 +38,27 @@ namespace TestBed {
 class TestBed;
 
 /**
- * A test case that can be executed.
+ * A test case that can be executed by the distributed test bed.
  */
 class UNISPHERE_EXPORT TestCase : public boost::enable_shared_from_this<TestCase> {
 public:
   /// Test case identifier type
   typedef std::uint32_t Identifier;
 public:
+  /**
+   * Current state the test case instance is in.
+   */
+  enum class State {
+    /// Test case is in the process of being initialized (runNode metod is being
+    /// called for each virtual node)
+    Initializing,
+    /// Test case is running in the background (runNode has completed, but has not
+    /// marked the test case as being finished -- some other handler must do so)
+    Running,
+    /// Test case has finished
+    Finished
+  };
+
   /**
    * Class constructor.
    */
@@ -52,81 +67,91 @@ public:
   TestCase(const TestCase&) = delete;
   TestCase &operator=(const TestCase&) = delete;
 
+  /**
+   * Returns the test case name.
+   */
+  std::string &getName() const;
+
+  /**
+   * Returns the test case's unique identifier.
+   */
   Identifier getId() const;
 
+  /**
+   * Sets the test case's unique identifier.
+   *
+   * @param id Identifier
+   */
+  void setId(Identifier id);
+
+  /**
+   * Changes current test case state.
+   *
+   * @param state New state
+   */
+  void setState(State state);
+
+  /**
+   * Returns true if the test case has finished.
+   */
+  bool isFinished() const;
+
+  /**
+   * Selects which nodes will execute this test case. This method is
+   * called by the controller for each virtual node and should return a
+   * valid selected node descriptor when a node is to be included.
+   * Returning an invalid (default-constructed) descriptor will cause
+   * the node to be excluded.
+   *
+   * Default implementation selects all nodes and passes empty arguments
+   * for each node.
+   *
+   * @param partition Node's assigned partition
+   * @param node Virtual node descriptor
+   * @return Selected node descriptor
+   */
   virtual SelectedPartition::Node selectNode(const Partition &partition,
-                                             const Partition::Node &node) const;
+                                             const Partition::Node &node);
 
   /**
-   * Runs the test case.
+   * This method is run on the slaves for each node that has been
+   * previously selected. It should setup the test case.
+   *
+   * Default implementation marks the test case as finished.
+   *
+   * @param api Test case API interface
+   * @param node Virtual node instance
+   * @param args Arguments passed from controller
    */
-  void run();
-public:
-  /// Signal that gets called before the test case completes
-  boost::signals2::signal<void()> signalFinished;
+  virtual void runNode(TestCaseApi &api,
+                       VirtualNodePtr node,
+                       const boost::property_tree::ptree &args);
+
+  /**
+   * This method is run on the slaves after runNode has been called
+   * for all virtual nodes in the local partition. It can be used to
+   * perform further processing of local results.
+   *
+   * Default implementation does nothing.
+   *
+   * @param api Test case API interface
+   */
+  virtual void processLocalResults(TestCaseApi &api);
+
+  /**
+   * This method is run on the controller after test cases in all
+   * partitions have been completed and all results received. It can
+   * be used to perform processing and reporting of overall test case
+   * results.
+   *
+   * Default implementation does nothing.
+   */
+  virtual void processGlobalResults();
 protected:
   /**
-   * This method should provide the code that will execute the actual
-   * test case.
+   * Marks the test case as a candidate for finishing.
    */
-  virtual void start() = 0;
-
-  /**
-   * Should return true if this test case should be run inside a
-   * snapshot.
-   */
-  virtual bool snapshot();
-
-  /**
-   * Returns the current time since testbed start.
-   */
-  int time() const;
-
-  /**
-   * Requires a given assertion to be true.
-   */
-  void require(bool assertion);
-
-  /**
-   * Reporting logger.
-   */
-  Logger &logger();
-
-  /**
-   * Returns the data collector for a specific category.
-   *
-   * @param category Data category name
-   * @param columns Column definitions
-   * @param type Optional data type (defaults to "csv")
-   * @return The specified data collector
-   */
-  DataCollector data(const std::string &category,
-                     std::initializer_list<std::string> columns,
-                     const std::string &type = "csv");
-
-  /**
-   * Returns the data collector for a specific category without any columns
-   * defined (this is useful for outputing graphs).
-   *
-   * @param category Data category name
-   * @param type Optional data type (defaults to "graphml")
-   * @return The specified data collector
-   */
-  DataCollector data(const std::string &category,
-                     const std::string &type = "graphml");
-
-  /**
-   * Returns the virtual node map instance.
-   */
-  VirtualNodeMap &nodes();
-
-  /**
-   * Notifies the testbed that this test case is finished.
-   */
-  void finish();
-protected:
-  /// Reference to global testbed instance for easier access from test cases
-  TestBed &testbed;
+  void finish(TestCaseApi &api);
 private:
   UNISPHERE_DECLARE_PRIVATE(TestCase)
 };

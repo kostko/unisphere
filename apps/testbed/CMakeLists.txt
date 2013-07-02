@@ -1,7 +1,7 @@
 
 set(testbed_src
 main.cpp
-#tests.cpp
+tests.cpp
 scenarios.cpp
 )
 

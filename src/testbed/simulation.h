@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_SIMULATION_H
 
 #include "interplex/contact.h"
+#include "testbed/nodes.h"
 
 #include <boost/signals2/signal.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -28,10 +29,56 @@ namespace UniSphere {
 
 namespace TestBed {
 
+class Simulation;
+
+/**
+ * A section of scheduled executions that should be run inside the
+ * simulation.
+ */
+class UNISPHERE_EXPORT SimulationSection : public boost::enable_shared_from_this<SimulationSection> {
+  friend class Simulation;
+  friend class SimulationPrivate;
+public:
+  /// Section function type
+  typedef std::function<void(VirtualNodePtr)> SectionFunction;
+public:
+  SimulationSection(const SimulationSection&) = delete;
+  SimulationSection &operator=(const SimulationSection&) = delete;
+
+  /**
+   * Schedules a specific function to be executed inside the simulation on
+   * for a specific node.
+   *
+   * @param nodeId Virtual node identifier
+   * @param fun Function to be executed
+   */
+  void execute(const NodeIdentifier &nodeId, SectionFunction fun);
+
+  /**
+   * Starts executing all the scheduled functions. The functions are run inside
+   * the simulation thread. If the simulation is not running, this method does
+   * nothing.
+   */
+  void run();
+public:
+  /// Signal that gets called when all pending functions have executed
+  boost::signals2::signal<void()> signalFinished;
+private:
+  /**
+   * Private constructor.
+   */
+  explicit SimulationSection(Simulation &simulation);
+private:
+  UNISPHERE_DECLARE_PRIVATE(SimulationSection)
+};
+
+UNISPHERE_SHARED_POINTER(SimulationSection)
+
 /**
  * Simulation instance.
  */
 class UNISPHERE_EXPORT Simulation : public boost::enable_shared_from_this<Simulation> {
+  friend class SimulationSection;
 public:
   /**
    * Simulation state.
@@ -55,6 +102,14 @@ public:
   Simulation(std::uint32_t seed,
              size_t threads,
              size_t globalNodeCount);
+
+  Simulation(const Simulation&) = delete;
+  Simulation &operator=(const Simulation&) = delete;
+
+  /**
+   * Creates a new section of execution.
+   */
+  SimulationSectionPtr section();
 
   /**
    * Creates a new virtual node inside the simulation.

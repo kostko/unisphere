@@ -28,6 +28,7 @@ namespace UniSphere {
 namespace TestBed {
 
 class UNISPHERE_EXPORT Slave : public ClusterNode {
+  friend class SlaveTestCaseApi;
 public:
   Slave();
 
