@@ -118,7 +118,21 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
       if (std::get<0>(descriptor.simulationPortRange) > std::get<1>(descriptor.simulationPortRange))
         throw RpcException(RpcErrorCode::BadRequest, "Invalid simulation port range specified!");
 
-      // TODO: Master should check for conflicting addresses/port ranges
+      // Scan existing slaves and check for conflicting addresses/port ranges
+      for (const SlaveDescriptor &slave : m_slaves | boost::adaptors::map_values) {
+        unsigned short c0, c1, s0, s1;
+        std::tie(c0, c1) = descriptor.simulationPortRange;
+        std::tie(s0, s1) = slave.simulationPortRange;
+
+        if (slave.simulationIp == descriptor.simulationIp &&
+            (
+              (c0 >= s0 && c0 <= s1) ||
+              (c1 >= s0 && c1 <= s1) ||
+              (s0 >= c0 && s0 <= c1) ||
+              (s1 >= c0 && s1 <= c1)
+            ))
+          throw RpcException(RpcErrorCode::BadRequest, "Simulation port range overlaps with another slave!");
+      }
 
       m_slaves.insert({{ msg.originator(), descriptor }});
 
