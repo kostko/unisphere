@@ -176,6 +176,8 @@ class CountState : public TestBed::TestCase
 public:
   using TestBed::TestCase::TestCase;
 protected:
+  TestBed::DataSet ds_state{"ds_state"};
+
   /**
    * Count the amount of state a node is using.
    */
@@ -183,22 +185,31 @@ protected:
                TestBed::VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    // Routing table state
-    size_t stateRtAll = node->router->routingTable().size();
-    size_t stateRtActive = node->router->routingTable().sizeActive();
-    size_t stateRtVicinity = node->router->routingTable().sizeVicinity();
-    // Name database state
-    size_t stateNdbAll = node->router->nameDb().size();
-    size_t stateNdbActive = node->router->nameDb().sizeActive();
-    size_t stateNdbCache = node->router->nameDb().sizeCache();
+    ds_state.add({
+      { "node_name",    node->name },
+      // Routing table state
+      { "rt_all",       node->router->routingTable().size() },
+      { "rt_active",    node->router->routingTable().sizeActive() },
+      { "rt_vicinity",  node->router->routingTable().sizeVicinity() },
+      // Name database state
+      { "ndb_all",      node->router->nameDb().size() },
+      { "ndb_active",   node->router->nameDb().sizeActive() },
+      { "ndb_cache",    node->router->nameDb().sizeCache() }
+    });
 
-    // TODO report
     finish(api);
   }
 
-  void processGlobalResults()
+  void processLocalResults(TestBed::TestCaseApi &api)
   {
-    // TODO process received reports
+    BOOST_LOG(logger()) << "Sending " << ds_state.size() << " records in ds_state.";
+    api.send(ds_state);
+  }
+
+  void processGlobalResults(TestBed::TestCaseApi &api)
+  {
+    api.receive(ds_state);
+    BOOST_LOG(logger()) << "Received " << ds_state.size() << " records in ds_state.";
   }
 
   /**

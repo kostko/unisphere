@@ -80,9 +80,9 @@ message RunTestRequest {
   }
 
   // Test case name
-  required string name = 1;
+  required string test_name = 1;
   // Test case run identifier
-  required uint32 id = 2;
+  required uint32 test_id = 2;
   // A list of nodes where the test should be run
   repeated Node nodes = 3;
 };
@@ -92,8 +92,20 @@ message RunTestResponse {
 
 message TestDoneRequest {
   // Test identifier
-  required uint32 id = 1;
+  required uint32 test_id = 1;
 };
 
 message TestDoneResponse {
+};
+
+message DatasetRequest {
+  // Test identifier
+  required uint32 test_id = 1;
+  // Dataset name
+  required string ds_name = 2;
+  // Dataset contents
+  required bytes ds_data = 3;
+};
+
+message DatasetResponse {
 };

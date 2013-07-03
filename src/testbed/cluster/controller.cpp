@@ -32,6 +32,7 @@
 
 #include <unordered_map>
 #include <sstream>
+#include <boost/archive/text_iarchive.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -69,9 +70,29 @@ std::ostream &operator<<(std::ostream &os, const TopologyLoader::IdGenerationTyp
 
 class ControllerPrivate;
 
-struct RunningTestCase {
+class ControllerTestCaseApi : public TestCaseApi {
+public:
+  ControllerTestCaseApi(ControllerPrivate &controller, TestCasePtr testCase);
+
+  void finishNow() {};
+
+  void send(const DataSet &dataset) {};
+
+  bool receive(DataSet &dataset);
+public:
+  /// Slave instance
+  ControllerPrivate &m_controller;
+  /// Test case instance
+  TestCasePtr m_testCase;
+  /// Received datasets
+  std::unordered_map<std::string, DataSet> m_datasets;
+};
+
+struct RunningControllerTestCase {
   /// Test case instance
   TestCasePtr testCase;
+  /// API instance
+  boost::shared_ptr<ControllerTestCaseApi> api;
   /// Partitions this test is running on
   std::vector<SelectedPartition> partitions;
   /// Number of partitions pending finish
@@ -92,12 +113,16 @@ public:
   /// Controller
   ControllerPrivate &m_controller;
   /// Running test cases
-  std::unordered_map<TestCase::Identifier, RunningTestCase> m_runningCases;
+  std::unordered_map<TestCase::Identifier, RunningControllerTestCase> m_runningCases;
 };
 
 class ControllerPrivate {
 public:
   ControllerPrivate(Controller &controller);
+
+  Response<Protocol::DatasetResponse> rpcDataset(const Protocol::DatasetRequest &request,
+                                                 const Message &msg,
+                                                 RpcId rpcId);
 
   Response<Protocol::TestDoneResponse> rpcTestDone(const Protocol::TestDoneRequest &request,
                                                    const Message &msg,
@@ -128,6 +153,29 @@ public:
   /// Scenario API instance
   boost::shared_ptr<ControllerScenarioApi> m_scenarioApi;
 };
+
+ControllerTestCaseApi::ControllerTestCaseApi(ControllerPrivate &controller,
+                                             TestCasePtr testCase)
+  : m_controller(controller),
+    m_testCase(testCase)
+{
+}
+
+bool ControllerTestCaseApi::receive(DataSet &dataset)
+{
+  RecursiveUniqueLock lock(m_controller.m_mutex);
+  
+  // Check if a given dataset has been received
+  auto it = m_datasets.find(dataset.getName());
+  if (it == m_datasets.end()) {
+    BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Dataset '" << m_testCase->getName() << "/" << dataset.getName() << "' not received.";
+    return false;
+  }
+
+  dataset = std::move(it->second);
+  m_datasets.erase(it);
+  return true;
+}
 
 ControllerScenarioApi::ControllerScenarioApi(Context &context,
                                              ControllerPrivate &controller)
@@ -162,7 +210,10 @@ void ControllerScenarioApi::runTestCase(const std::string &name)
 
   // Register the test case under running test cases
   BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
-  m_runningCases[test->getId()] = RunningTestCase{ test, selectedNodes, selectedNodes.size() };
+  boost::shared_ptr<ControllerTestCaseApi> api =
+    boost::make_shared<ControllerTestCaseApi>(m_controller, test);
+
+  m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedNodes.size() };
 
   // Request slaves to run local portions of test cases and report back
   boost::shared_ptr<std::atomic<unsigned int>> pendingConfirms =
@@ -182,8 +233,8 @@ void ControllerScenarioApi::runTestCase(const std::string &name)
   for (SelectedPartition &selected : selectedNodes) {
     Partition &partition = m_controller.m_partitions[selected.index];
     Protocol::RunTestRequest request;
-    request.set_name(test->getName());
-    request.set_id(test->getId());
+    request.set_test_name(test->getName());
+    request.set_test_id(test->getId());
 
     for (SelectedPartition::Node &node : selected.nodes) {
       Protocol::RunTestRequest::Node *pnode = request.add_nodes();
@@ -227,6 +278,34 @@ ControllerPrivate::ControllerPrivate(Controller &controller)
 {
 }
 
+Response<Protocol::DatasetResponse> ControllerPrivate::rpcDataset(const Protocol::DatasetRequest &request,
+                                                                  const Message &msg,
+                                                                  RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Obtain the running test
+  auto &runningCases = m_scenarioApi->m_runningCases;
+  auto it = runningCases.find(request.test_id());
+  if (it == runningCases.end()) {
+    BOOST_LOG_SEV(m_logger, log::warning) << "Received dataset for non-running test case!";
+    throw RpcException(RpcErrorCode::BadRequest, "Specified test case is not running!");
+  }
+
+  RunningControllerTestCase &tc = it->second;
+  BOOST_LOG_SEV(m_logger, log::normal) << "Received dataset '" << tc.testCase->getName() << "/" << request.ds_name() << "' from " << msg.originator().hex() << ".";
+
+  // Deserialize data and move records from new to existing dataset
+  DataSet &ds = tc.api->m_datasets[request.ds_name()];
+  DataSet received;
+  std::istringstream buffer(request.ds_data());
+  boost::archive::text_iarchive archive(buffer);
+  archive >> received;
+  ds.moveFrom(received);
+
+  return Protocol::DatasetResponse();
+}
+
 Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protocol::TestDoneRequest &request,
                                                                     const Message &msg,
                                                                     RpcId rpcId)
@@ -235,13 +314,13 @@ Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protoc
   
   // Obtain the running test
   auto &runningCases = m_scenarioApi->m_runningCases;
-  auto it = runningCases.find(request.id());
+  auto it = runningCases.find(request.test_id());
   if (it == runningCases.end()) {
     BOOST_LOG_SEV(m_logger, log::warning) << "Received finish() for non-running test case!";
     throw RpcException(RpcErrorCode::BadRequest, "Specified test case is not running!");
   }
 
-  RunningTestCase &tc = it->second;
+  RunningControllerTestCase &tc = it->second;
   BOOST_LOG_SEV(m_logger, log::normal) << "Test case '" << tc.testCase->getName() << "' finished on " << msg.originator().hex() << ".";
 
   if (--tc.pendingFinishes == 0) {
@@ -249,7 +328,7 @@ Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protoc
 
     // All partitions have finished with test case execution, invoke proper handler and
     // then finish the test case locally as well
-    tc.testCase->processGlobalResults();
+    tc.testCase->processGlobalResults(*tc.api);
     // TODO: This could take some time, should it be dispatched into another thread?
     runningCases.erase(it);
   }
@@ -387,6 +466,9 @@ void Controller::run()
   d->m_scenarioApi = boost::shared_ptr<ControllerScenarioApi>(new ControllerScenarioApi(context(), *d));
 
   // Register RPC methods
+  rpc().registerMethod<Protocol::DatasetRequest, Protocol::DatasetResponse>("Testbed.Simulation.Dataset",
+    boost::bind(&ControllerPrivate::rpcDataset, d, _1, _2, _3));
+
   rpc().registerMethod<Protocol::TestDoneRequest, Protocol::TestDoneResponse>("Testbed.Simulation.TestDone",
     boost::bind(&ControllerPrivate::rpcTestDone, d, _1, _2, _3));
 

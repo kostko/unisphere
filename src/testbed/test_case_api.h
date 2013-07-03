@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_TESTCASEAPI_H
 
 #include "core/globals.h"
+#include "testbed/dataset.h"
 
 namespace UniSphere {
 
@@ -34,11 +35,24 @@ UNISPHERE_SHARED_POINTER(TestCase)
 class UNISPHERE_EXPORT TestCaseApi {
 public:
   /**
-   * Immediately finish the specified test case.
-   *
-   * @param testCase Test case instance
+   * Immediately finish the current test case.
    */
-  virtual void finishNow(TestCasePtr testCase) = 0;
+  virtual void finishNow() = 0;
+
+  /**
+   * Transmits the specified dataset back to the controller.
+   *
+   * @param dataset Dataset to transmit
+   */
+  virtual void send(const DataSet &dataset) = 0;
+
+  /**
+   * Receives an aggregated dataset from slaves.
+   *
+   * @param dataset Dataset to receive
+   * @return True if dataset has been received, false otherwise
+   */
+  virtual bool receive(DataSet &dataset) = 0;
 };
 
 }

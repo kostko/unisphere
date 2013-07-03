@@ -104,7 +104,7 @@ void TestCase::processLocalResults(TestCaseApi &api)
 {
 }
 
-void TestCase::processGlobalResults()
+void TestCase::processGlobalResults(TestCaseApi &api)
 {
 }
 
@@ -114,10 +114,15 @@ void TestCase::finish(TestCaseApi &api)
     // We should immediately finish with this test case
     d->m_state = State::Finished;
     processLocalResults(api);
-    api.finishNow(shared_from_this());
+    api.finishNow();
   } else {
     d->m_state = State::Finished;
   }
+}
+
+Logger &TestCase::logger()
+{
+  return d->m_logger;
 }
 
 }

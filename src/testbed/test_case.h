@@ -28,7 +28,6 @@
 #include "core/globals.h"
 #include "testbed/nodes.h"
 #include "testbed/cluster/partition.h"
-#include "testbed/data_collector.h"
 #include "testbed/test_case_api.h"
 
 namespace UniSphere {
@@ -145,13 +144,20 @@ public:
    * results.
    *
    * Default implementation does nothing.
+   *
+   * @param api Test case API interface
    */
-  virtual void processGlobalResults();
+  virtual void processGlobalResults(TestCaseApi &api);
 protected:
   /**
    * Marks the test case as a candidate for finishing.
    */
   void finish(TestCaseApi &api);
+
+  /**
+   * Logger that can be used for reporting from test cases.
+   */
+  Logger &logger();
 private:
   UNISPHERE_DECLARE_PRIVATE(TestCase)
 };
