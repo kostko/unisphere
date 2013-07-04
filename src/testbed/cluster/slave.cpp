@@ -46,10 +46,11 @@ public:
   SlaveTestCaseApi(SlavePrivate &slave, TestCasePtr testCase);
 
   void finishNow();
+private:
+  void send_(const std::string &dsName,
+             const std::string &dsData);
 
-  void send(const DataSet &dataset);
-
-  bool receive(DataSet &dataset) { return false; };
+  DataSetBuffer &receive_(const std::string &dsName);
 public:
   /// Slave instance
   SlavePrivate &m_slave;
@@ -141,21 +142,17 @@ void SlaveTestCaseApi::finishNow()
   );
 }
 
-void SlaveTestCaseApi::send(const DataSet &dataset)
+void SlaveTestCaseApi::send_(const std::string &dsName,
+                             const std::string &dsData)
 {
   RecursiveUniqueLock lock(m_slave.m_mutex);
   
   Protocol::DatasetRequest request;
   request.set_test_id(m_testCase->getId());
-  request.set_ds_name(dataset.getName());
+  request.set_ds_name(dsName);
+  request.set_ds_data(dsData);
 
-  // Serialize the dataset
-  std::ostringstream buffer;
-  boost::archive::text_oarchive archive(buffer);
-  archive << dataset;
-  request.set_ds_data(buffer.str());
-
-  BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sending dataset '" << m_testCase->getName() << "/" << dataset.getName() << "'.";
+  BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sending dataset '" << m_testCase->getName() << "/" << dsName << "'.";
 
   // TODO: Should we do error handling when notification can't be done?
   m_slave.m_controller.call<Protocol::DatasetRequest, Protocol::DatasetResponse>(
@@ -164,6 +161,11 @@ void SlaveTestCaseApi::send(const DataSet &dataset)
     nullptr,
     nullptr
   );
+}
+
+DataSetBuffer &SlaveTestCaseApi::receive_(const std::string &dsName)
+{
+  throw DataSetNotFound(dsName);
 }
 
 SlavePrivate::SlavePrivate(Slave &slave)

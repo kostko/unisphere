@@ -20,7 +20,8 @@
 #define UNISPHERE_TESTBED_TESTCASEAPI_H
 
 #include "core/globals.h"
-#include "testbed/dataset.h"
+#include "testbed/dataset.hpp"
+#include "testbed/exceptions.h"
 
 namespace UniSphere {
 
@@ -44,7 +45,14 @@ public:
    *
    * @param dataset Dataset to transmit
    */
-  virtual void send(const DataSet &dataset) = 0;
+  template <typename DataSetType>
+  void send(const DataSetType &dataset)
+  {
+    std::ostringstream buffer;
+    boost::archive::text_oarchive archive(buffer);
+    archive << dataset;
+    send_(dataset.getName(), buffer.str());
+  }
 
   /**
    * Receives an aggregated dataset from slaves.
@@ -52,7 +60,41 @@ public:
    * @param dataset Dataset to receive
    * @return True if dataset has been received, false otherwise
    */
-  virtual bool receive(DataSet &dataset) = 0;
+  template <typename DataSetType>
+  bool receive(DataSetType &dataset)
+  {
+    try {
+      DataSetBuffer &buf = receive_(dataset.getName());
+      dataset.clear();
+      for (std::string &ds_buffer : buf) {
+        DataSetType received;
+        std::istringstream tmp(ds_buffer);
+        boost::archive::text_iarchive archive(tmp);
+        archive >> received;
+        dataset.moveFrom(received);
+      }
+      return true;
+    } catch (DataSetNotFound &e) {
+      return false;
+    }
+  }
+private:
+  /**
+   * Transmits the specified dataset back to the controller.
+   *
+   * @param dsName Data set name
+   * @param dsData Data set data
+   */
+  virtual void send_(const std::string &dsName,
+                     const std::string &dsData) = 0;
+
+  /**
+   * Receives an aggregated dataset from slaves.
+   *
+   * @param dsName Data set name
+   * @return Reference to received data set buffer
+   */
+  virtual DataSetBuffer &receive_(const std::string &dsName) = 0;
 };
 
 }

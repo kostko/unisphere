@@ -76,16 +76,18 @@ public:
 
   void finishNow() {};
 
-  void send(const DataSet &dataset) {};
+private:
+  void send_(const std::string &dsName,
+             const std::string &dsData) {};
 
-  bool receive(DataSet &dataset);
+  DataSetBuffer &receive_(const std::string &dsName);
 public:
   /// Slave instance
   ControllerPrivate &m_controller;
   /// Test case instance
   TestCasePtr m_testCase;
   /// Received datasets
-  std::unordered_map<std::string, DataSet> m_datasets;
+  std::unordered_map<std::string, DataSetBuffer> m_datasets;
 };
 
 struct RunningControllerTestCase {
@@ -161,20 +163,18 @@ ControllerTestCaseApi::ControllerTestCaseApi(ControllerPrivate &controller,
 {
 }
 
-bool ControllerTestCaseApi::receive(DataSet &dataset)
+DataSetBuffer &ControllerTestCaseApi::receive_(const std::string &dsName)
 {
   RecursiveUniqueLock lock(m_controller.m_mutex);
   
   // Check if a given dataset has been received
-  auto it = m_datasets.find(dataset.getName());
+  auto it = m_datasets.find(dsName);
   if (it == m_datasets.end()) {
-    BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Dataset '" << m_testCase->getName() << "/" << dataset.getName() << "' not received.";
-    return false;
+    BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Dataset '" << m_testCase->getName() << "/" << dsName << "' not received.";
+    throw DataSetNotFound(dsName);
   }
 
-  dataset = std::move(it->second);
-  m_datasets.erase(it);
-  return true;
+  return it->second;
 }
 
 ControllerScenarioApi::ControllerScenarioApi(Context &context,
@@ -295,13 +295,9 @@ Response<Protocol::DatasetResponse> ControllerPrivate::rpcDataset(const Protocol
   RunningControllerTestCase &tc = it->second;
   BOOST_LOG_SEV(m_logger, log::normal) << "Received dataset '" << tc.testCase->getName() << "/" << request.ds_name() << "' from " << msg.originator().hex() << ".";
 
-  // Deserialize data and move records from new to existing dataset
-  DataSet &ds = tc.api->m_datasets[request.ds_name()];
-  DataSet received;
-  std::istringstream buffer(request.ds_data());
-  boost::archive::text_iarchive archive(buffer);
-  archive >> received;
-  ds.moveFrom(received);
+  // Store received (serialized) dataset in buffer
+  DataSetBuffer &buffer = tc.api->m_datasets[request.ds_name()];
+  buffer.push_back(request.ds_data());
 
   return Protocol::DatasetResponse();
 }

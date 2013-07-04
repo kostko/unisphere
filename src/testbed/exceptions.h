@@ -78,6 +78,13 @@ public:
   {}
 };
 
+class UNISPHERE_EXPORT DataSetNotFound : public TestBedException {
+public:
+  DataSetNotFound(const std::string &dsName)
+    : TestBedException("Dataset '" + dsName + "' not found!")
+  {}
+};
+
 }
 
 }

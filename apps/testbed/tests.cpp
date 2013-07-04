@@ -176,7 +176,7 @@ class CountState : public TestBed::TestCase
 public:
   using TestBed::TestCase::TestCase;
 protected:
-  TestBed::DataSet ds_state{"ds_state"};
+  TestBed::DataSet<> ds_state{"ds_state"};
 
   /**
    * Count the amount of state a node is using.
