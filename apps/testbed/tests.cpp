@@ -176,6 +176,7 @@ class CountState : public TestBed::TestCase
 public:
   using TestBed::TestCase::TestCase;
 protected:
+  /// State dataset
   TestBed::DataSet<> ds_state{"ds_state"};
 
   /**
@@ -210,46 +211,9 @@ protected:
   {
     api.receive(ds_state);
     BOOST_LOG(logger()) << "Received " << ds_state.size() << " records in ds_state.";
+
+    // TODO: Reporting
   }
-
-  /**
-   * Count the amount of state all nodes are using.
-   */
-  /*void start()
-  {
-    unsigned long stateAllNodes = 0;
-    auto state = data("state", {
-      "node_id",
-      "rt_all", "rt_active", "rt_vicinity",
-      "ndb_all", "ndb_active", "ndb_cache",
-      "is_landmark"
-    });
-
-    for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
-      // Routing table state
-      size_t stateRtAll = node->router->routingTable().size();
-      size_t stateRtActive = node->router->routingTable().sizeActive();
-      size_t stateRtVicinity = node->router->routingTable().sizeVicinity();
-      // Name database state
-      size_t stateNdbAll = node->router->nameDb().size();
-      size_t stateNdbActive = node->router->nameDb().sizeActive();
-      size_t stateNdbCache = node->router->nameDb().sizeCache();
-
-      stateAllNodes += stateRtAll + stateNdbAll;
-      state
-        << node->name
-        << stateRtAll
-        << stateRtActive
-        << stateRtVicinity
-        << stateNdbAll
-        << stateNdbActive
-        << stateNdbCache
-        << node->router->routingTable().isLandmark();
-    }
-
-    BOOST_LOG(logger()) << "Global state = " << stateAllNodes;
-    finish();
-  }*/
 };
 
 UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
