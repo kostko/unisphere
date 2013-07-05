@@ -71,6 +71,8 @@ public:
 
   /// A single data record contains multiple key-value pairs
   typedef std::map<std::string, ValueType> Record;
+  /// A list of records
+  typedef std::list<Record> RecordList;
 
   /**
    * Constructs an empty dataset.
@@ -167,6 +169,22 @@ public:
   {
     return m_records.size();
   }
+
+  /**
+   * Returns an iterator to the beginning of the record list.
+   */
+  typename RecordList::const_iterator begin() const
+  {
+    return m_records.begin();
+  }
+
+  /**
+   * Returns an iterator past the end of the record list.
+   */
+  typename RecordList::const_iterator end() const
+  {
+    return m_records.end();
+  }
 private:
   /**
    * Serialization support.
@@ -183,7 +201,7 @@ private:
   /// Dataset name
   std::string m_name;
   /// A list of data records
-  std::list<Record> m_records;
+  RecordList m_records;
 };
 
 }
