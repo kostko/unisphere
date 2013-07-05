@@ -46,6 +46,8 @@ public:
   SlaveTestCaseApi(SlavePrivate &slave, TestCasePtr testCase);
 
   void finishNow();
+
+  std::string getOutputFilename(const std::string&, const std::string&) { return std::string(); }
 private:
   void send_(const std::string &dsName,
              const std::string &dsData);

@@ -78,6 +78,16 @@ public:
       return false;
     }
   }
+
+  /**
+   * Returns a filename appropriate for output.
+   *
+   * @param prefix Filename prefix
+   * @param extension Filename extension
+   * @return A filename ready for output or an empty string if none is available
+   */
+  virtual std::string getOutputFilename(const std::string &prefix,
+                                        const std::string &extension) = 0;
 private:
   /**
    * Transmits the specified dataset back to the controller.

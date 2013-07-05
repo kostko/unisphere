@@ -35,6 +35,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/filesystem.hpp>
 
 namespace po = boost::program_options;
 
@@ -76,6 +77,8 @@ public:
 
   void finishNow() {};
 
+  std::string getOutputFilename(const std::string &prefix,
+                                const std::string &extension);
 private:
   void send_(const std::string &dsName,
              const std::string &dsData) {};
@@ -150,6 +153,10 @@ public:
   size_t m_unassignedPartitions;
   /// Seed value
   std::uint32_t m_seed;
+  /// Output directory
+  std::string m_outputDirectory;
+  /// Simulation start time
+  boost::posix_time::ptime m_simulationStartTime;
   /// Active scenario
   ScenarioPtr m_scenario;
   /// Scenario API instance
@@ -175,6 +182,22 @@ DataSetBuffer &ControllerTestCaseApi::receive_(const std::string &dsName)
   }
 
   return it->second;
+}
+
+std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
+                                                     const std::string &extension)
+{
+  if (m_controller.m_outputDirectory.empty())
+    return std::string();
+
+  return (
+    boost::format("%s/%s-%s-%05i.%s")
+      % m_controller.m_outputDirectory
+      % boost::algorithm::replace_all_copy(m_testCase->getName(), "/", "-")
+      % boost::algorithm::replace_all_copy(prefix, "/", "-")
+      % (boost::posix_time::microsec_clock::universal_time() - m_controller.m_simulationStartTime).total_seconds()
+      % extension
+  ).str();
 }
 
 ControllerScenarioApi::ControllerScenarioApi(Context &context,
@@ -434,6 +457,14 @@ void Controller::setupOptions(int argc,
 
   d->m_idGenType = variables["id-gen"].as<TopologyLoader::IdGenerationType>();
   d->m_seed = variables["seed"].as<std::uint32_t>();
+  if (variables.count("out-dir")) {
+    // Validate the output directory
+    try {
+      d->m_outputDirectory = boost::filesystem::canonical(variables["out-dir"].as<std::string>()).string();
+    } catch (boost::filesystem::filesystem_error&) {
+      throw ArgumentError("Invalid output directory specified!");
+    }
+  }
 
   scenario->initialize(argc, argv, options);
   d->m_scenario = scenario;
@@ -512,6 +543,7 @@ void Controller::run()
 
         BOOST_LOG_SEV(d->m_logger, log::normal) << "Partitions assigned. Starting scenario '" << d->m_scenario->name() << "'.";
         d->m_scenario->start(*d->m_scenarioApi);
+        d->m_simulationStartTime = boost::posix_time::microsec_clock::universal_time();
       });
 
       for (const Partition &part : partitions) {
