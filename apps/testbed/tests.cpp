@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/test_bed.h"
+#include "testbed/dataset/graphs.hpp"
 #include "social/compact_router.h"
 #include "social/routing_table.h"
 #include "social/name_database.h"
@@ -30,6 +31,7 @@
 #include <boost/range/adaptors.hpp>
 #include <boost/format.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/floyd_warshall_shortest.hpp>
 
 using namespace UniSphere;
@@ -218,40 +220,56 @@ protected:
 
 UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
 
-#if 0
 class DumpSloppyGroupTopology : public TestBed::TestCase
 {
 public:
   using TestBed::TestCase::TestCase;
 protected:
+  /// Graph topology type
+  typedef SloppyGroupManager::TopologyDumpGraph Graph;
+  /// Graph storage
+  Graph graph;
+  /// Topology dataset
+  TestBed::DataSet<Graph::graph_type> ds_topology{"ds_topology"};
+
   /**
-   * Dump sloppy group topology in GraphML format.
+   * Dump sloppy group topology on each node.
    */
-  void start()
+  void runNode(TestBed::TestCaseApi &api,
+               TestBed::VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
   {
-    SloppyGroupManager::TopologyDumpGraph graph;
-    boost::dynamic_properties properties;
-    properties.property("name", boost::get(SloppyGroupManager::TopologyDumpTags::NodeName(), graph.graph()));
-    properties.property("is_long", boost::get(SloppyGroupManager::TopologyDumpTags::FingerIsLong(), graph.graph()));
-
-    for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
-      node->router->sloppyGroup().dumpTopology(graph);
-    }
-
-    auto topology = data("topology");
-    topology << TestBed::DataCollector::Graph<SloppyGroupManager::TopologyDumpGraph::graph_type>{ graph.graph(), properties };
-
-    finish();
+    node->router->sloppyGroup().dumpTopology(graph);
+    finish(api);
   }
 
-  /**
-   * This testcase should be run inside a snapshot.
-   */
-  bool snapshot() { return true; }
+  void processLocalResults(TestBed::TestCaseApi &api)
+  {
+    ds_topology.add({ "graph", graph.graph() });
+    BOOST_LOG(logger()) << "Sending " << boost::num_vertices(graph.graph()) << " vertices in ds_topology.";
+    api.send(ds_topology);
+  }
+
+  void processGlobalResults(TestBed::TestCaseApi &api)
+  {
+    api.receive(ds_topology);
+    TestBed::mergeGraphDataset<Graph, SloppyGroupManager::TopologyDumpTags::NodeName>
+      (ds_topology, "graph", graph);
+
+    BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
+
+    using Tags = SloppyGroupManager::TopologyDumpTags;
+    boost::dynamic_properties properties;
+    properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
+    properties.property("is_long", boost::get(Tags::FingerIsLong(), graph.graph()));
+    
+    TestBed::outputGraphDataset(graph, properties, api.getOutputFilename("sg-topo", "graphml"));
+  }
 };
 
 UNISPHERE_REGISTER_TEST_CASE(DumpSloppyGroupTopology, "state/sloppy_group_topology")
 
+#if 0
 class DumpRoutingTopology : public TestBed::TestCase
 {
 public:
