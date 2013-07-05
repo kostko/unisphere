@@ -97,6 +97,16 @@ public:
   }
 
   /**
+   * Adds a single new record with a single element to the data set.
+   *
+   * @param element Record element (key-value pair)
+   */
+  void add(const Element &element)
+  {
+    add({ element });
+  }
+
+  /**
    * Adds a single new record to the data set.
    *
    * @param elements Record elements (key-value pairs)
