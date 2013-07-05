@@ -756,12 +756,16 @@ void SloppyGroupManagerPrivate::dumpTopology(SloppyGroupManager::TopologyDumpGra
   if (!resolve)
     resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
 
+  using Tags = SloppyGroupManager::TopologyDumpTags;
   std::string name = resolve(m_localId);
   auto self = graph.add_vertex(name);
-  boost::put(boost::get(SloppyGroupManager::TopologyDumpTags::NodeName(), graph.graph()), self, name);
+  boost::put(boost::get(Tags::NodeName(), graph.graph()), self, name);
   auto addEdge = [&](const NodeIdentifier &id, bool longFinger = false) {
-    auto edge = boost::add_edge(self, graph.add_vertex(resolve(id)), graph).first;
-    boost::put(boost::get(SloppyGroupManager::TopologyDumpTags::FingerIsLong(), graph.graph()), edge, longFinger);
+    auto vertex = graph.add_vertex(resolve(id));
+    boost::put(boost::get(Tags::NodeName(), graph.graph()), vertex, name);
+
+    auto edge = boost::add_edge(self, vertex, graph).first;
+    boost::put(boost::get(Tags::FingerIsLong(), graph.graph()), edge, longFinger);
   };
 
   if (!m_predecessor.isNull())
