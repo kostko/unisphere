@@ -57,7 +57,7 @@ public:
       boost::vecS,
       boost::bidirectionalS,
       boost::property<TopologyDumpTags::NodeName, std::string>,
-      boost::property<TopologyDumpTags::FingerIsLong, bool>
+      boost::property<TopologyDumpTags::FingerIsLong, int>
     >,
     std::string,
     boost::hash_mapS
