@@ -18,6 +18,7 @@
  */
 #include "testbed/test_bed.h"
 #include "testbed/dataset/graphs.hpp"
+#include "testbed/dataset/csv.hpp"
 #include "social/compact_router.h"
 #include "social/routing_table.h"
 #include "social/name_database.h"
@@ -214,7 +215,11 @@ protected:
     api.receive(ds_state);
     BOOST_LOG(logger()) << "Received " << ds_state.size() << " records in ds_state.";
 
-    // TODO: Reporting
+    TestBed::outputCsvDataset(
+      ds_state,
+      { "node_name", "rt_all", "rt_active", "rt_vicinity", "ndb_all", "ndb_active", "ndb_cache" },
+      api.getOutputFilename("state", "csv")
+    );
   }
 };
 
