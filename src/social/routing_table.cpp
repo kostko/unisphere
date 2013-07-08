@@ -903,15 +903,19 @@ void CompactRoutingTablePrivate::dumpTopology(CompactRoutingTable::TopologyDumpG
   if (!resolve)
     resolve = [&](const NodeIdentifier &nodeId) { return nodeId.hex(); };
 
+  using Tags = CompactRoutingTable::TopologyDumpTags;
   std::string name = resolve(m_localId);
   auto self = graph.add_vertex(name);
-  boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::NodeName(), graph.graph()), self, name);
-  boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::NodeIsLandmark(), graph.graph()), self, m_landmark);
-  boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::NodeStateSize(), graph.graph()), self, m_rib.size());
+  boost::put(boost::get(Tags::NodeName(), graph.graph()), self, name);
+  boost::put(boost::get(Tags::NodeIsLandmark(), graph.graph()), self, m_landmark);
+  boost::put(boost::get(Tags::NodeStateSize(), graph.graph()), self, m_rib.size());
   auto addEdge = [&](const NodeIdentifier &id, Vport vportId) {
-    auto edge = boost::add_edge(self, graph.add_vertex(resolve(id)), graph).first;
-    boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()), edge, vportId);
-    boost::put(boost::get(CompactRoutingTable::TopologyDumpTags::LinkWeight(), graph.graph()), edge, 1);
+    auto vertex = graph.add_vertex(resolve(id));
+    boost::put(boost::get(Tags::NodeName(), graph.graph()), vertex, resolve(id));
+
+    auto edge = boost::add_edge(self, vertex, graph).first;
+    boost::put(boost::get(Tags::LinkVportId(), graph.graph()), edge, vportId);
+    boost::put(boost::get(Tags::LinkWeight(), graph.graph()), edge, 1);
   };
 
   auto &entries = m_rib.get<RIBTags::DestinationId>();

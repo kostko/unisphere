@@ -252,13 +252,13 @@ protected:
 
   void processGlobalResults(TestBed::TestCaseApi &api)
   {
+    using Tags = SloppyGroupManager::TopologyDumpTags;
+
     api.receive(ds_topology);
-    TestBed::mergeGraphDataset<Graph, SloppyGroupManager::TopologyDumpTags::NodeName>
-      (ds_topology, "graph", graph);
+    TestBed::mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
-    using Tags = SloppyGroupManager::TopologyDumpTags;
     boost::dynamic_properties properties;
     properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
     properties.property("is_long", boost::get(Tags::FingerIsLong(), graph.graph()));
@@ -269,41 +269,55 @@ protected:
 
 UNISPHERE_REGISTER_TEST_CASE(DumpSloppyGroupTopology, "state/sloppy_group_topology")
 
-#if 0
 class DumpRoutingTopology : public TestBed::TestCase
 {
 public:
   using TestBed::TestCase::TestCase;
 protected:
+  /// Graph topology type
+  typedef CompactRoutingTable::TopologyDumpGraph Graph;
+  /// Graph storage
+  Graph graph;
+  /// Topology dataset
+  TestBed::DataSet<Graph::graph_type> ds_topology{"ds_topology"};
+
   /**
-   * Dump sloppy group topology in GraphML format.
+   * Dump routing topology on each node.
    */
-  void start()
+  void runNode(TestBed::TestCaseApi &api,
+               TestBed::VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
   {
-    CompactRoutingTable::TopologyDumpGraph graph;
-    boost::dynamic_properties properties;
-    properties.property("name", boost::get(CompactRoutingTable::TopologyDumpTags::NodeName(), graph.graph()));
-    properties.property("is_landmark", boost::get(CompactRoutingTable::TopologyDumpTags::NodeIsLandmark(), graph.graph()));
-    properties.property("state", boost::get(CompactRoutingTable::TopologyDumpTags::NodeStateSize(), graph.graph()));
-    properties.property("vport", boost::get(CompactRoutingTable::TopologyDumpTags::LinkVportId(), graph.graph()));
-
-    for (TestBed::VirtualNodePtr node : nodes() | boost::adaptors::map_values) {
-      node->router->routingTable().dumpTopology(graph);
-    }
-
-    auto topology = data("topology");
-    topology << TestBed::DataCollector::Graph<CompactRoutingTable::TopologyDumpGraph::graph_type>{ graph.graph(), properties };
-
-    finish();
+    node->router->routingTable().dumpTopology(graph);
+    finish(api);
   }
 
-  /**
-   * This testcase should be run inside a snapshot.
-   */
-  bool snapshot() { return true; }
+  void processLocalResults(TestBed::TestCaseApi &api)
+  {
+    ds_topology.add({ "graph", graph.graph() });
+    BOOST_LOG(logger()) << "Sending " << boost::num_vertices(graph.graph()) << " vertices in ds_topology.";
+    api.send(ds_topology);
+  }
+
+  void processGlobalResults(TestBed::TestCaseApi &api)
+  {
+    using Tags = CompactRoutingTable::TopologyDumpTags;
+
+    api.receive(ds_topology);
+    TestBed::mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
+
+    BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
+
+    boost::dynamic_properties properties;
+    properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
+    properties.property("is_landmark", boost::get(Tags::NodeIsLandmark(), graph.graph()));
+    properties.property("state", boost::get(Tags::NodeStateSize(), graph.graph()));
+    properties.property("vport", boost::get(Tags::LinkVportId(), graph.graph()));
+    
+    TestBed::outputGraphDataset(graph, properties, api.getOutputFilename("rt-topo", "graphml"));
+  }
 };
 
 UNISPHERE_REGISTER_TEST_CASE(DumpRoutingTopology, "state/routing_topology")
-#endif
 
 }

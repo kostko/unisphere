@@ -38,6 +38,8 @@ UNISPHERE_SCENARIO(StandardTests)
   api.runTestCaseAt(30, "state/count");
   // Dump sloppy group topology after 60 seconds
   api.runTestCaseAt(60, "state/sloppy_group_topology");
+  // Dump routing topology after 60 seconds
+  api.runTestCaseAt(60, "state/routing_topology");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 
