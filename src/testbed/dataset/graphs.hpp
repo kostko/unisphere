@@ -29,6 +29,8 @@ namespace UniSphere {
 
 namespace TestBed {
 
+namespace detail {
+
 template <class LabeledGraph, class NameAttributeTag>
 void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result)
 {
@@ -66,6 +68,8 @@ void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result
   }
 }
 
+}
+
 template <class LabeledGraph, class NameAttributeTag, class Dataset>
 void mergeGraphDataset(const Dataset &dataset, const std::string &key, LabeledGraph &result)
 {
@@ -73,7 +77,7 @@ void mergeGraphDataset(const Dataset &dataset, const std::string &key, LabeledGr
 
   for (const auto &record : dataset) {
     const Graph &g = boost::get<Graph>(record.at(key));
-    mergeGraph<LabeledGraph, NameAttributeTag>(g, result);
+    detail::mergeGraph<LabeledGraph, NameAttributeTag>(g, result);
   }
 }
 
