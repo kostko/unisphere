@@ -557,6 +557,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       boost::tie(vicinitySize, maxCostEntry) = getCurrentVicinity();
 
       if (vicinitySize >= getMaximumVicinitySize()) {
+        // FIXME: This is wrong, should always depend on hop count explicitly!
         if (maxCostEntry->cost > entry->cost) {
           // Remove the entry with maximum cost
           retract(maxCostEntry->destination);

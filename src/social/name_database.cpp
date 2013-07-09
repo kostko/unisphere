@@ -274,6 +274,7 @@ void NameDatabasePrivate::store(const NodeIdentifier &nodeId,
     record = *it;
 
     // If primary address has changed, we need to export
+    // TODO: We should export when any addresses change, not only primary.
     if (record->landmarkAddress() != addresses.front())
       exportNib = true;
 
