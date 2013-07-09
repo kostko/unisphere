@@ -36,6 +36,7 @@
 #include <boost/graph/floyd_warshall_shortest.hpp>
 
 using namespace UniSphere;
+using namespace UniSphere::TestBed;
 
 namespace Tests {
 
@@ -174,19 +175,19 @@ protected:
 UNISPHERE_REGISTER_TEST_CASE(AllPairs, "routing/all_pairs")
 #endif
 
-class CountState : public TestBed::TestCase
+class CountState : public TestCase
 {
 public:
-  using TestBed::TestCase::TestCase;
+  using TestCase::TestCase;
 protected:
   /// State dataset
-  TestBed::DataSet<> ds_state{"ds_state"};
+  DataSet<> ds_state{"ds_state"};
 
   /**
    * Count the amount of state a node is using.
    */
-  void runNode(TestBed::TestCaseApi &api,
-               TestBed::VirtualNodePtr node,
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
     ds_state.add({
@@ -204,18 +205,18 @@ protected:
     finish(api);
   }
 
-  void processLocalResults(TestBed::TestCaseApi &api)
+  void processLocalResults(TestCaseApi &api)
   {
     BOOST_LOG(logger()) << "Sending " << ds_state.size() << " records in ds_state.";
     api.send(ds_state);
   }
 
-  void processGlobalResults(TestBed::TestCaseApi &api)
+  void processGlobalResults(TestCaseApi &api)
   {
     api.receive(ds_state);
     BOOST_LOG(logger()) << "Received " << ds_state.size() << " records in ds_state.";
 
-    TestBed::outputCsvDataset(
+    outputCsvDataset(
       ds_state,
       { "node_name", "rt_all", "rt_active", "rt_vicinity", "ndb_all", "ndb_active", "ndb_cache" },
       api.getOutputFilename("state", "csv")
@@ -225,42 +226,42 @@ protected:
 
 UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
 
-class DumpSloppyGroupTopology : public TestBed::TestCase
+class DumpSloppyGroupTopology : public TestCase
 {
 public:
-  using TestBed::TestCase::TestCase;
+  using TestCase::TestCase;
 protected:
   /// Graph topology type
   typedef SloppyGroupManager::TopologyDumpGraph Graph;
   /// Graph storage
   Graph graph;
   /// Topology dataset
-  TestBed::DataSet<Graph::graph_type> ds_topology{"ds_topology"};
+  DataSet<Graph::graph_type> ds_topology{"ds_topology"};
 
   /**
    * Dump sloppy group topology on each node.
    */
-  void runNode(TestBed::TestCaseApi &api,
-               TestBed::VirtualNodePtr node,
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
     node->router->sloppyGroup().dumpTopology(graph);
     finish(api);
   }
 
-  void processLocalResults(TestBed::TestCaseApi &api)
+  void processLocalResults(TestCaseApi &api)
   {
     ds_topology.add({ "graph", graph.graph() });
     BOOST_LOG(logger()) << "Sending " << boost::num_vertices(graph.graph()) << " vertices in ds_topology.";
     api.send(ds_topology);
   }
 
-  void processGlobalResults(TestBed::TestCaseApi &api)
+  void processGlobalResults(TestCaseApi &api)
   {
     using Tags = SloppyGroupManager::TopologyDumpTags;
 
     api.receive(ds_topology);
-    TestBed::mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
+    mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -268,48 +269,48 @@ protected:
     properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
     properties.property("is_long", boost::get(Tags::FingerIsLong(), graph.graph()));
     
-    TestBed::outputGraphDataset(graph, properties, api.getOutputFilename("sg-topo", "graphml"));
+    outputGraphDataset(graph, properties, api.getOutputFilename("sg-topo", "graphml"));
   }
 };
 
 UNISPHERE_REGISTER_TEST_CASE(DumpSloppyGroupTopology, "state/sloppy_group_topology")
 
-class DumpRoutingTopology : public TestBed::TestCase
+class DumpRoutingTopology : public TestCase
 {
 public:
-  using TestBed::TestCase::TestCase;
+  using TestCase::TestCase;
 protected:
   /// Graph topology type
   typedef CompactRoutingTable::TopologyDumpGraph Graph;
   /// Graph storage
   Graph graph;
   /// Topology dataset
-  TestBed::DataSet<Graph::graph_type> ds_topology{"ds_topology"};
+  DataSet<Graph::graph_type> ds_topology{"ds_topology"};
 
   /**
    * Dump routing topology on each node.
    */
-  void runNode(TestBed::TestCaseApi &api,
-               TestBed::VirtualNodePtr node,
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
     node->router->routingTable().dumpTopology(graph);
     finish(api);
   }
 
-  void processLocalResults(TestBed::TestCaseApi &api)
+  void processLocalResults(TestCaseApi &api)
   {
     ds_topology.add({ "graph", graph.graph() });
     BOOST_LOG(logger()) << "Sending " << boost::num_vertices(graph.graph()) << " vertices in ds_topology.";
     api.send(ds_topology);
   }
 
-  void processGlobalResults(TestBed::TestCaseApi &api)
+  void processGlobalResults(TestCaseApi &api)
   {
     using Tags = CompactRoutingTable::TopologyDumpTags;
 
     api.receive(ds_topology);
-    TestBed::mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
+    mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -319,7 +320,7 @@ protected:
     properties.property("state", boost::get(Tags::NodeStateSize(), graph.graph()));
     properties.property("vport", boost::get(Tags::LinkVportId(), graph.graph()));
     
-    TestBed::outputGraphDataset(graph, properties, api.getOutputFilename("rt-topo", "graphml"));
+    outputGraphDataset(graph, properties, api.getOutputFilename("rt-topo", "graphml"));
   }
 };
 
