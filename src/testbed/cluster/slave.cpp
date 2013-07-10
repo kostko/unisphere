@@ -47,25 +47,17 @@ public:
 
   void finishNow();
 
-  std::string getOutputFilename(const std::string&, const std::string&) { return std::string(); }
-
-  const std::vector<Partition> &getPartitions() { return m_nullPartitions; };
-
   std::mt19937 &rng();
 
   void defer(std::function<void()> fun);
 private:
   void send_(const std::string &dsName,
              const std::string &dsData);
-
-  DataSetBuffer &receive_(const std::string &dsName);
 public:
   /// Slave instance
   SlavePrivate &m_slave;
   /// Test case instance
   TestCasePtr m_testCase;
-  /// Empty partition vector (not available on slaves)
-  std::vector<Partition> m_nullPartitions;
   /// Random number generator
   std::mt19937 m_rng;
 };
@@ -175,11 +167,6 @@ void SlaveTestCaseApi::send_(const std::string &dsName,
     nullptr,
     nullptr
   );
-}
-
-DataSetBuffer &SlaveTestCaseApi::receive_(const std::string &dsName)
-{
-  throw DataSetNotFound(dsName);
 }
 
 std::mt19937 &SlaveTestCaseApi::rng()

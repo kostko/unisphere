@@ -183,7 +183,8 @@ public:
 }
 
 /// A macro for easier test case registration
-#define UNISPHERE_REGISTER_TEST_CASE(Class, name) namespace { UniSphere::TestBed::RegisterTestCase<Class> unisphere_testcase##Class(name); }
+#define UNISPHERE_REGISTER_TEST_CASE(Class, name) namespace { UniSphere::TestBed::RegisterTestCase<Class> unisphere_testcase##Class(name); } \
+                                                  UNISPHERE_SHARED_POINTER(Class)
 /// A macro for easier scenario registration
 #define UNISPHERE_REGISTER_SCENARIO(Class) namespace { UniSphere::TestBed::RegisterScenario<Class> unisphere_scenario##Class; }
 

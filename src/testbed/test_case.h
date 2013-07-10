@@ -96,6 +96,32 @@ public:
   bool isFinished() const;
 
   /**
+   * Try to complete the global test case instance. This method is
+   * called by the controller.
+   *
+   * @param api Test case API interface
+   */
+  void tryComplete(TestCaseApi &api);
+
+  /**
+   * Adds a child test case. The controller will wait on all children
+   * to complete before completing the parent test case.
+   *
+   * @param child Child test case
+   */
+  void addChild(TestCasePtr child);
+
+  /**
+   * Runs before any node selection is performed on the controller. May
+   * be used to schedule additional sub-testcases to be run.
+   *
+   * Default implementation does nothing.
+   *
+   * @param api Test case API interface
+   */
+  virtual void preSelection(TestCaseApi &api);
+
+  /**
    * Selects which nodes will execute this test case. This method is
    * called by the controller for each virtual node and should return a
    * valid selected node descriptor when a node is to be included.

@@ -85,6 +85,13 @@ public:
   {}
 };
 
+class UNISPHERE_EXPORT IllegalApiCall : public TestBedException {
+public:
+  IllegalApiCall()
+    : TestBedException("Illegal API call!")
+  {}
+};
+
 }
 
 }

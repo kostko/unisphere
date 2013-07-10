@@ -23,24 +23,28 @@
 #include "testbed/dataset.hpp"
 #include "testbed/exceptions.h"
 #include "testbed/cluster/partition.h"
+#include "testbed/test_case_fwd.h"
+
+#include <boost/enable_shared_from_this.hpp>
 
 namespace UniSphere {
 
 namespace TestBed {
 
-class TestCase;
-UNISPHERE_SHARED_POINTER(TestCase)
-
 /**
  * Public interface that can be used by test cases to perform tasks.
  */
-class UNISPHERE_EXPORT TestCaseApi {
+class UNISPHERE_EXPORT TestCaseApi : public boost::enable_shared_from_this<TestCaseApi> {
+  friend class TestCase;
 public:
   /**
    * Immediately finish the current test case. This method is only available
    * on slaves.
    */
-  virtual void finishNow() = 0;
+  virtual void finishNow()
+  {
+    throw IllegalApiCall();
+  }
 
   /**
    * Transmits the specified dataset back to the controller. This method is
@@ -91,13 +95,19 @@ public:
    * @return A filename ready for output or an empty string if none is available
    */
   virtual std::string getOutputFilename(const std::string &prefix,
-                                        const std::string &extension) = 0;
+                                        const std::string &extension)
+  {
+    throw IllegalApiCall();
+  }
 
   /**
    * Returns a vector of node partitions. This method is only available on
    * the controller.
    */
-  virtual const std::vector<Partition> &getPartitions() = 0;
+  virtual const std::vector<Partition> &getPartitions()
+  {
+    throw IllegalApiCall();
+  }
 
   /**
    * Returns a random number generator.
@@ -110,7 +120,26 @@ public:
    *
    * @param fun Function to defer
    */
-  virtual void defer(std::function<void()> fun) = 0;
+  virtual void defer(std::function<void()> fun)
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
+   * Calls a dependent test case. Its results will be available in the
+   * processGlobalResults method. This method is only available on the
+   * controller.
+   *
+   * WARNING: Using this method introduces dependencies between tests
+   * and may cause loops if not careful.
+   *
+   * @param name Test case name
+   * @return Running test case instance or null
+   */
+  virtual TestCasePtr callTestCase(const std::string &name)
+  {
+    throw IllegalApiCall();
+  }
 private:
   /**
    * Transmits the specified dataset back to the controller.
@@ -119,7 +148,10 @@ private:
    * @param dsData Data set data
    */
   virtual void send_(const std::string &dsName,
-                     const std::string &dsData) = 0;
+                     const std::string &dsData)
+  {
+    throw IllegalApiCall();
+  }
 
   /**
    * Receives an aggregated dataset from slaves.
@@ -127,8 +159,22 @@ private:
    * @param dsName Data set name
    * @return Reference to received data set buffer
    */
-  virtual DataSetBuffer &receive_(const std::string &dsName) = 0;
+  virtual DataSetBuffer &receive_(const std::string &dsName)
+  {
+    throw DataSetNotFound(dsName);
+  }
+
+  /**
+   * Removes the running test case. This method is only available on the
+   * controller.
+   */
+  virtual void removeRunningTestCase()
+  {
+    throw IllegalApiCall();
+  }
 };
+
+UNISPHERE_SHARED_POINTER(TestCaseApi)
 
 }
 

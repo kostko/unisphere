@@ -20,6 +20,7 @@
 #include "testbed/test_bed.h"
 #include "core/context.h"
 
+#include <set>
 #include <boost/log/attributes/constant.hpp>
 #include <botan/botan.h>
 
@@ -31,6 +32,8 @@ class TestCasePrivate {
 public:
   TestCasePrivate(const std::string &name);
 public:
+  /// Mutex
+  std::recursive_mutex m_mutex;
   /// Unique test case identifier
   TestCase::Identifier m_id;
   /// Test case name
@@ -41,6 +44,12 @@ public:
   Logger m_logger;
   /// Test case state
   TestCase::State m_state;
+  /// Parent test case
+  TestCaseWeakPtr m_parent;
+  /// Running children test cases
+  std::set<TestCasePtr> m_children;
+  /// Temporary API storage until all children complete
+  TestCaseApiPtr m_storedApi;
 };
 
 TestCasePrivate::TestCasePrivate(const std::string &name)
@@ -84,6 +93,53 @@ void TestCase::setState(State state)
 bool TestCase::isFinished() const
 {
   return d->m_state == State::Finished;
+}
+
+void TestCase::addChild(TestCasePtr child)
+{
+  BOOST_ASSERT(child->d->m_parent.expired());
+
+  RecursiveUniqueLock lock(d->m_mutex);
+  child->d->m_parent = shared_from_this();
+  d->m_children.insert(child);
+}
+
+void TestCase::tryComplete(TestCaseApi &api)
+{
+  TestCasePtr self = shared_from_this();
+  TestCaseApiPtr papi = api.shared_from_this();
+  RecursiveUniqueLock lock(d->m_mutex);
+
+  // Mark this test case as finished and remove ourselves from running cases
+  d->m_state = State::Finished;
+  api.removeRunningTestCase();
+
+  // Check if we are waiting on any child test cases to complete first
+  if (!d->m_children.empty()) {
+    // Store the API locally as it will be destroyed otherwise, since the case
+    // is no longer running; we will also need it later when invoked by a child
+    d->m_storedApi = papi;
+    return;
+  }
+
+  // TODO: This could take some time, should it be dispatched into another thread?
+  processGlobalResults(api);
+  BOOST_LOG_SEV(d->m_logger, log::normal) << "Test case '" << getName() << "' done.";
+
+  // We are now complete, so try to complete parent if one exists
+  if (TestCasePtr parent = d->m_parent.lock()) {
+    RecursiveUniqueLock plock(parent->d->m_mutex);
+    parent->d->m_children.erase(shared_from_this());
+    if (parent->d->m_storedApi)
+      parent->tryComplete(*parent->d->m_storedApi);
+  }
+
+  // Clear our reference to stored API if one exists so it can be destroyed
+  d->m_storedApi.reset();
+}
+
+void TestCase::preSelection(TestCaseApi &api)
+{
 }
 
 SelectedPartition::Node TestCase::selectNode(const Partition &partition,

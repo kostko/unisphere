@@ -75,8 +75,6 @@ class ControllerTestCaseApi : public TestCaseApi {
 public:
   ControllerTestCaseApi(ControllerPrivate &controller, TestCasePtr testCase);
 
-  void finishNow() {};
-
   std::string getOutputFilename(const std::string &prefix,
                                 const std::string &extension);
 
@@ -84,12 +82,11 @@ public:
 
   std::mt19937 &rng();
 
-  void defer(std::function<void()> fun) {};
+  TestCasePtr callTestCase(const std::string &name);
 private:
-  void send_(const std::string &dsName,
-             const std::string &dsData) {};
-
   DataSetBuffer &receive_(const std::string &dsName);
+
+  void removeRunningTestCase();
 public:
   /// Slave instance
   ControllerPrivate &m_controller;
@@ -117,7 +114,7 @@ public:
   ControllerScenarioApi(Context &context,
                         ControllerPrivate &controller);
 
-  void runTestCase(const std::string &name);
+  TestCasePtr runTestCase(const std::string &name);
 
   void runTestCaseAt(int timeout, const std::string &name);
 public:
@@ -218,6 +215,19 @@ std::mt19937 &ControllerTestCaseApi::rng()
   return m_rng;
 }
 
+TestCasePtr ControllerTestCaseApi::callTestCase(const std::string &name)
+{
+  TestCasePtr test = m_controller.m_scenarioApi->runTestCase(name);
+  m_testCase->addChild(test);
+  return test;
+}
+
+void ControllerTestCaseApi::removeRunningTestCase()
+{
+  RecursiveUniqueLock lock(m_controller.m_mutex);
+  m_controller.m_scenarioApi->m_runningCases.erase(m_testCase->getId());
+}
+
 ControllerScenarioApi::ControllerScenarioApi(Context &context,
                                              ControllerPrivate &controller)
   : m_context(context),
@@ -225,20 +235,23 @@ ControllerScenarioApi::ControllerScenarioApi(Context &context,
 {
 }
 
-void ControllerScenarioApi::runTestCase(const std::string &name)
+TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name)
 {
   RecursiveUniqueLock lock(m_controller.m_mutex);
 
   TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name);
   if (!test) {
     BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Test case '" << name << "' not found.";
-    return;
+    return TestCasePtr();
   }
 
   // Create API instance
   boost::shared_ptr<ControllerTestCaseApi> api =
     boost::make_shared<ControllerTestCaseApi>(m_controller, test);
   api->m_rng.seed(m_controller.m_seed);
+
+  // Call test case's pre-selection method
+  test->preSelection(*api);
 
   // First obtain a list of virtual nodes that we should run the test on
   std::vector<SelectedPartition> selectedNodes;
@@ -308,6 +321,8 @@ void ControllerScenarioApi::runTestCase(const std::string &name)
                           )
     );
   }
+
+  return test;
 }
 
 void ControllerScenarioApi::runTestCaseAt(int timeout, const std::string &name)
@@ -362,15 +377,9 @@ Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protoc
   RunningControllerTestCase &tc = it->second;
   BOOST_LOG_SEV(m_logger, log::normal) << "Test case '" << tc.testCase->getName() << "' finished on " << msg.originator().hex() << ".";
 
-  if (--tc.pendingFinishes == 0) {
-    BOOST_LOG_SEV(m_logger, log::normal) << "Test case '" << tc.testCase->getName() << "' done.";
-
-    // All partitions have finished with test case execution, invoke proper handler and
-    // then finish the test case locally as well
-    tc.testCase->processGlobalResults(*tc.api);
-    // TODO: This could take some time, should it be dispatched into another thread?
-    runningCases.erase(it);
-  }
+  // When we have received finish notifications from all slaves, try to finish locally
+  if (--tc.pendingFinishes == 0)
+    tc.testCase->tryComplete(*tc.api);
 
   return Protocol::TestDoneResponse();
 }
