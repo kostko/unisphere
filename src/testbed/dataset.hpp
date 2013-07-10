@@ -50,6 +50,7 @@ public:
    * Possible values that a dataset may hold.
    */
   typedef boost::variant<
+    bool,
     int,
     long,
     unsigned int,
