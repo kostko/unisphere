@@ -40,7 +40,9 @@ class UNISPHERE_EXPORT SimulationSection : public boost::enable_shared_from_this
   friend class SimulationPrivate;
 public:
   /// Section function type
-  typedef std::function<void(VirtualNodePtr)> SectionFunction;
+  typedef std::function<void()> SectionFunction;
+  /// Section function with node type
+  typedef std::function<void(VirtualNodePtr)> SectionFunctionNode;
 public:
   SimulationSection(const SimulationSection&) = delete;
   SimulationSection &operator=(const SimulationSection&) = delete;
@@ -52,7 +54,14 @@ public:
    * @param nodeId Virtual node identifier
    * @param fun Function to be executed
    */
-  void execute(const NodeIdentifier &nodeId, SectionFunction fun);
+  void execute(const NodeIdentifier &nodeId, SectionFunctionNode fun);
+
+  /**
+   * Schedules a specific function to be executed inside the simulation.
+   *
+   * @param fun Function to be executed
+   */
+  void execute(SectionFunction fun);
 
   /**
    * Starts executing all the scheduled functions. The functions are run inside
@@ -136,6 +145,11 @@ public:
    * Returns true if the simulation is stopping.
    */
   bool isStopping() const;
+
+  /**
+   * Returns the simulation's random seed.
+   */
+  std::uint32_t seed() const;
 
   /**
    * Starts the simulation.

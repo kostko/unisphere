@@ -87,7 +87,8 @@ bool TestCase::isFinished() const
 }
 
 SelectedPartition::Node TestCase::selectNode(const Partition &partition,
-                                             const Partition::Node &node)
+                                             const Partition::Node &node,
+                                             TestCaseApi &api)
 {
   // By default we select all nodes and pass empty arguments to test case run
   return SelectedPartition::Node{ node.contact.nodeId() };
@@ -98,6 +99,10 @@ void TestCase::runNode(TestCaseApi &api,
                        const boost::property_tree::ptree &args)
 {
   finish(api);
+}
+
+void TestCase::localNodesRunning(TestCaseApi &api)
+{
 }
 
 void TestCase::processLocalResults(TestCaseApi &api)

@@ -77,7 +77,7 @@ SimulationSection::SimulationSection(Simulation &simulation)
 }
 
 void SimulationSection::execute(const NodeIdentifier &nodeId,
-                                SectionFunction fun)
+                                SectionFunctionNode fun)
 {
   RecursiveUniqueLock lock(d->m_simulation.m_mutex);
   auto it = d->m_simulation.m_nodes.find(nodeId);
@@ -86,6 +86,12 @@ void SimulationSection::execute(const NodeIdentifier &nodeId,
 
 
   d->m_queue.push_back(boost::bind(fun, it->second));
+}
+
+void SimulationSection::execute(SectionFunction fun)
+{
+  RecursiveUniqueLock lock(d->m_simulation.m_mutex);
+  d->m_queue.push_back(fun);
 }
 
 void SimulationSection::run()
@@ -163,6 +169,11 @@ bool Simulation::isRunning() const
 bool Simulation::isStopping() const
 {
   return d->m_state == Simulation::State::Stopping;
+}
+
+std::uint32_t Simulation::seed() const
+{
+  return d->m_seed;
 }
 
 void Simulation::run()

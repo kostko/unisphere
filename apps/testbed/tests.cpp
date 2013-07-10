@@ -175,6 +175,127 @@ protected:
 UNISPHERE_REGISTER_TEST_CASE(AllPairs, "routing/all_pairs")
 #endif
 
+class PairWisePing : public TestCase
+{
+public:
+  using TestCase::TestCase;
+protected:
+  /// Raw measurements measurements
+  DataSet<> ds_raw{"ds_raw"};
+  /// Node sampling
+  std::uniform_real_distribution<double> sampler{0.0, 1.0};
+  /// Mutex
+  std::recursive_mutex mutex;
+  /// Nodes pending RPC call
+  std::list<std::function<void()>> pending;
+
+  SelectedPartition::Node selectNode(const Partition &partition,
+                                     const Partition::Node &node,
+                                     TestCaseApi &api)
+  {
+    boost::property_tree::ptree args;
+
+    // Specify identifiers that should be paired with this node
+    for (const Partition &p : api.getPartitions()) {
+      for (const Partition::Node &n : p.nodes) {
+        if (n.contact.nodeId() == node.contact.nodeId())
+          continue;
+
+        // Sample a subset of nodes
+        // TODO: Make this subset configurable per test case instance
+        if (sampler(api.rng()) < 0.8)
+          continue;
+
+        args.add("nodes.node", n.contact.nodeId().hex());
+      }
+    }
+
+    return SelectedPartition::Node{ node.contact.nodeId(), args };
+  }
+
+  void callNext(TestCaseApi &api)
+  {
+    RecursiveUniqueLock lock(mutex);
+
+    if (pending.empty())
+      return finish(api);
+
+    auto next = pending.front();
+    pending.pop_front();
+    api.defer(next);
+  }
+
+  /**
+   * Perform all-pairs reachability testing.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    RecursiveUniqueLock lock(mutex);
+    RpcEngine<SocialRpcChannel> &rpc = node->router->rpcEngine();
+
+    // We should test one node at a time, to prevent overloading the network
+    for (const auto &p : args.get_child("nodes")) {
+      NodeIdentifier nodeId(p.second.data(), NodeIdentifier::Format::Hex);
+      pending.push_back([this, &api, &rpc, node, nodeId]() {
+        using namespace boost::posix_time;
+        ptime xmitTime = microsec_clock::universal_time();
+        Protocol::PingRequest request;
+        request.set_timestamp(1);
+
+        rpc.call<Protocol::PingRequest, Protocol::PingResponse>(nodeId, "Core.Ping", request,
+          [this, &api, node, nodeId, xmitTime](const Protocol::PingResponse &rsp, const RoutedMessage &msg) {
+            ds_raw.add({
+              { "node_a", node->nodeId.hex() },
+              { "node_b", nodeId.hex() },
+              { "success", true },
+              { "hops", rsp.hopcount() - msg.hopCount() },
+              { "rtt", (microsec_clock::universal_time() - xmitTime).total_milliseconds() }
+            });
+            callNext(api);
+          },
+          [this, &api, node, nodeId](RpcErrorCode code, const std::string &msg) {
+            ds_raw.add({
+              { "node_a", node->nodeId.hex() },
+              { "node_b", nodeId.hex() },
+              { "success", false }
+            });
+            callNext(api);
+          },
+          rpc.options().setTimeout(15)
+        );
+      });
+    }
+  }
+
+  void localNodesRunning(TestCaseApi &api)
+  {
+    // Start executing ping calls
+    BOOST_LOG(logger()) << "Pinging " << pending.size() << " node pairs.";
+    callNext(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    BOOST_LOG(logger()) << "Ping calls completed.";
+    api.send(ds_raw);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_raw);
+
+    outputCsvDataset(
+      ds_raw,
+      { "node_a", "node_b", "success", "hops", "rtt" },
+      api.getOutputFilename("raw", "csv")
+    );
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(PairWisePing, "routing/pair_wise_ping")
+
 class CountState : public TestCase
 {
 public:

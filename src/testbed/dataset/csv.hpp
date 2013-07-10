@@ -38,6 +38,11 @@ public:
     file << '"' << value << '"';
   }
 
+  void operator()(bool value) const
+  {
+    file << value ? 1 : 0;
+  }
+
   template <typename T>
   void operator()(const T &value) const
   {
@@ -67,7 +72,11 @@ void outputCsvDataset(const DataSet &dataset,
   // Output data
   for (const auto &record : dataset) {
     for (const std::string &field : fields) {
-      boost::apply_visitor(detail::OutputCsvVisitor(file), record.at(field));
+      if (record.find(field) != record.end())
+        boost::apply_visitor(detail::OutputCsvVisitor(file), record.at(field));
+      else
+        file << "-";
+      
       file << "\t";
     }
     file << "\n";

@@ -22,6 +22,7 @@
 #include "core/globals.h"
 #include "testbed/dataset.hpp"
 #include "testbed/exceptions.h"
+#include "testbed/cluster/partition.h"
 
 namespace UniSphere {
 
@@ -36,12 +37,14 @@ UNISPHERE_SHARED_POINTER(TestCase)
 class UNISPHERE_EXPORT TestCaseApi {
 public:
   /**
-   * Immediately finish the current test case.
+   * Immediately finish the current test case. This method is only available
+   * on slaves.
    */
   virtual void finishNow() = 0;
 
   /**
-   * Transmits the specified dataset back to the controller.
+   * Transmits the specified dataset back to the controller. This method is
+   * only available on slaves.
    *
    * @param dataset Dataset to transmit
    */
@@ -55,7 +58,8 @@ public:
   }
 
   /**
-   * Receives an aggregated dataset from slaves.
+   * Receives an aggregated dataset from slaves. This method is only available
+   * on controller.
    *
    * @param dataset Dataset to receive
    * @return True if dataset has been received, false otherwise
@@ -88,6 +92,25 @@ public:
    */
   virtual std::string getOutputFilename(const std::string &prefix,
                                         const std::string &extension) = 0;
+
+  /**
+   * Returns a vector of node partitions. This method is only available on
+   * the controller.
+   */
+  virtual const std::vector<Partition> &getPartitions() = 0;
+
+  /**
+   * Returns a random number generator.
+   */
+  virtual std::mt19937 &rng() = 0;
+
+  /**
+   * Defers function execution to simulation loop. This method is only
+   * available on slaves.
+   *
+   * @param fun Function to defer
+   */
+  virtual void defer(std::function<void()> fun) = 0;
 private:
   /**
    * Transmits the specified dataset back to the controller.

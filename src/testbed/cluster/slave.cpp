@@ -48,6 +48,12 @@ public:
   void finishNow();
 
   std::string getOutputFilename(const std::string&, const std::string&) { return std::string(); }
+
+  const std::vector<Partition> &getPartitions() { return m_nullPartitions; };
+
+  std::mt19937 &rng();
+
+  void defer(std::function<void()> fun);
 private:
   void send_(const std::string &dsName,
              const std::string &dsData);
@@ -58,6 +64,10 @@ public:
   SlavePrivate &m_slave;
   /// Test case instance
   TestCasePtr m_testCase;
+  /// Empty partition vector (not available on slaves)
+  std::vector<Partition> m_nullPartitions;
+  /// Random number generator
+  std::mt19937 m_rng;
 };
 
 struct RunningSlaveTestCase {
@@ -129,7 +139,6 @@ void SlaveTestCaseApi::finishNow()
   }
 
   BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Test case '" << m_testCase->getName() << "' finished.";
-  m_slave.m_runningCases.erase(it);
 
   // Notify the controller that we are done with the test case
   Protocol::TestDoneRequest request;
@@ -142,6 +151,9 @@ void SlaveTestCaseApi::finishNow()
     nullptr,
     nullptr
   );
+
+  // Erase only after the above has finished as this will destroy the test case instance
+  m_slave.m_runningCases.erase(it);
 }
 
 void SlaveTestCaseApi::send_(const std::string &dsName,
@@ -168,6 +180,18 @@ void SlaveTestCaseApi::send_(const std::string &dsName,
 DataSetBuffer &SlaveTestCaseApi::receive_(const std::string &dsName)
 {
   throw DataSetNotFound(dsName);
+}
+
+std::mt19937 &SlaveTestCaseApi::rng()
+{
+  return m_rng;
+}
+
+void SlaveTestCaseApi::defer(std::function<void()> fun)
+{
+  SimulationSectionPtr section = m_slave.m_simulation->section();
+  section->execute(fun);
+  section->run();
 }
 
 SlavePrivate::SlavePrivate(Slave &slave)
@@ -257,7 +281,8 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
   }
   test->setId(request.test_id());
 
-  boost::shared_ptr<SlaveTestCaseApi> api = boost::shared_ptr<SlaveTestCaseApi>(new SlaveTestCaseApi(*this, test));
+  boost::shared_ptr<SlaveTestCaseApi> api = boost::make_shared<SlaveTestCaseApi>(*this, test);
+  api->m_rng.seed(m_simulation->seed());
   m_runningCases.insert({{ test->getId(), RunningSlaveTestCase{ test, api } }});
 
   BOOST_LOG_SEV(m_logger, log::normal) << "Running test case '" << test->getName() << "' on " << request.nodes_size() << " nodes.";
@@ -286,6 +311,8 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
 
   // Setup a completion handler
   section->signalFinished.connect([this, test, api]() {
+    test->localNodesRunning(*api);
+
     // If test case is not yet finished, we transition it to running state; otherwise
     // process local test results and finish it immediately
     if (!test->isFinished()) {

@@ -40,6 +40,8 @@ UNISPHERE_SCENARIO(StandardTests)
   api.runTestCaseAt(60, "state/sloppy_group_topology");
   // Dump routing topology after 60 seconds
   api.runTestCaseAt(60, "state/routing_topology");
+  // Perform pair-wise ping tests after 65 seconds
+  api.runTestCaseAt(65, "routing/pair_wise_ping");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 

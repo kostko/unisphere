@@ -79,6 +79,12 @@ public:
 
   std::string getOutputFilename(const std::string &prefix,
                                 const std::string &extension);
+
+  const std::vector<Partition> &getPartitions();
+
+  std::mt19937 &rng();
+
+  void defer(std::function<void()> fun) {};
 private:
   void send_(const std::string &dsName,
              const std::string &dsData) {};
@@ -91,6 +97,8 @@ public:
   TestCasePtr m_testCase;
   /// Received datasets
   std::unordered_map<std::string, DataSetBuffer> m_datasets;
+  /// Random number generator
+  std::mt19937 m_rng;
 };
 
 struct RunningControllerTestCase {
@@ -200,6 +208,16 @@ std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
   ).str();
 }
 
+const std::vector<Partition> &ControllerTestCaseApi::getPartitions()
+{
+  return m_controller.m_partitions;
+}
+
+std::mt19937 &ControllerTestCaseApi::rng()
+{
+  return m_rng;
+}
+
 ControllerScenarioApi::ControllerScenarioApi(Context &context,
                                              ControllerPrivate &controller)
   : m_context(context),
@@ -217,6 +235,11 @@ void ControllerScenarioApi::runTestCase(const std::string &name)
     return;
   }
 
+  // Create API instance
+  boost::shared_ptr<ControllerTestCaseApi> api =
+    boost::make_shared<ControllerTestCaseApi>(m_controller, test);
+  api->m_rng.seed(m_controller.m_seed);
+
   // First obtain a list of virtual nodes that we should run the test on
   std::vector<SelectedPartition> selectedNodes;
   for (const Partition &partition : m_controller.m_partitions) {
@@ -225,7 +248,7 @@ void ControllerScenarioApi::runTestCase(const std::string &name)
 
   for (const Partition &partition : m_controller.m_partitions) {
     for (const Partition::Node &node : partition.nodes) {
-      SelectedPartition::Node selected = test->selectNode(partition, node);
+      SelectedPartition::Node selected = test->selectNode(partition, node, *api);
       if (!selected.nodeId.isNull())
         selectedNodes[partition.index].nodes.push_back(selected);
     }
@@ -233,9 +256,6 @@ void ControllerScenarioApi::runTestCase(const std::string &name)
 
   // Register the test case under running test cases
   BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
-  boost::shared_ptr<ControllerTestCaseApi> api =
-    boost::make_shared<ControllerTestCaseApi>(m_controller, test);
-
   m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedNodes.size() };
 
   // Request slaves to run local portions of test cases and report back

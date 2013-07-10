@@ -107,10 +107,12 @@ public:
    *
    * @param partition Node's assigned partition
    * @param node Virtual node descriptor
+   * @param api Test case API interface
    * @return Selected node descriptor
    */
   virtual SelectedPartition::Node selectNode(const Partition &partition,
-                                             const Partition::Node &node);
+                                             const Partition::Node &node,
+                                             TestCaseApi &api);
 
   /**
    * This method is run on the slaves for each node that has been
@@ -128,8 +130,18 @@ public:
 
   /**
    * This method is run on the slaves after runNode has been called
-   * for all virtual nodes in the local partition. It can be used to
-   * perform further processing of local results.
+   * for all virtual nodes in the local partition.
+   *
+   * Default implementation does nothing.
+   *
+   * @param api Test case API interface
+   */
+  virtual void localNodesRunning(TestCaseApi &api);
+
+  /**
+   * This method is run on the slaves after runNode has been called
+   * for all virtual nodes in the local partition and the test case has
+   * finished. It can be used to perform further processing of local results.
    *
    * Default implementation does nothing.
    *
