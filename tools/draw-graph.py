@@ -65,12 +65,12 @@ class ModuleCDF(object):
 
     for idx, (filename, column, legend) in enumerate(args.input):
       try:
-        data = pandas.read_csv(filename)
+        data = pandas.read_csv(filename, sep = None)
       except:
         args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
 
       try:
-        sample = numpy.asarray(data[column])
+        sample = numpy.asarray(data[column].dropna())
       except KeyError:
         args.parser.error('specified COLUMN "%s" does not exist in input file' % column)
 
