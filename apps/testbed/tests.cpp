@@ -266,8 +266,8 @@ public:
     for (const auto &p : args.get_child("nodes")) {
       NodeIdentifier nodeId(p.second.data(), NodeIdentifier::Format::Hex);
       pending.push_back([this, &api, &rpc, node, nodeId]() {
-        using namespace boost::posix_time;
-        ptime xmitTime = microsec_clock::universal_time();
+        using namespace std::chrono;
+        auto xmitTime = high_resolution_clock::now();
         Protocol::PingRequest request;
         request.set_timestamp(1);
 
@@ -278,7 +278,7 @@ public:
               { "node_b", nodeId.hex() },
               { "success", true },
               { "hops", (int) (rsp.hopcount() - msg.hopCount()) },
-              { "rtt", (microsec_clock::universal_time() - xmitTime).total_milliseconds() }
+              { "rtt", duration_cast<microseconds>(high_resolution_clock::now() - xmitTime).count() }
             });
             callNext(api);
           },
