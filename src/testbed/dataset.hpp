@@ -30,6 +30,8 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/variant.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/time_serialize.hpp>
 
 namespace UniSphere {
 
@@ -56,7 +58,9 @@ public:
     unsigned int,
     unsigned long,
     double,
+    std::uint64_t,
     std::string,
+    boost::posix_time::ptime,
     AdditionalTypes...
   > ValueType;
 
