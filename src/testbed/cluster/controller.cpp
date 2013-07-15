@@ -116,7 +116,14 @@ public:
 
   TestCasePtr runTestCase(const std::string &name);
 
+  TestCasePtr runTestCase(const std::string &name,
+                          std::function<void()> completion);
+
   void runTestCaseAt(int timeout, const std::string &name);
+
+  void runTestCaseAt(int timeout,
+                     const std::string &name,
+                     std::function<void()> completion);
 public:
   /// Context
   Context &m_context;
@@ -237,6 +244,12 @@ ControllerScenarioApi::ControllerScenarioApi(Context &context,
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name)
 {
+  return runTestCase(name, nullptr);
+}
+
+TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
+                                               std::function<void()> completion)
+{
   RecursiveUniqueLock lock(m_controller.m_mutex);
 
   TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name);
@@ -244,6 +257,9 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name)
     BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Test case '" << name << "' not found.";
     return TestCasePtr();
   }
+
+  if (completion)
+    test->signalFinished.connect(completion);
 
   // Create API instance
   boost::shared_ptr<ControllerTestCaseApi> api =
@@ -328,6 +344,13 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name)
 void ControllerScenarioApi::runTestCaseAt(int timeout, const std::string &name)
 {
   m_context.schedule(timeout, boost::bind(&ControllerScenarioApi::runTestCase, this, name));
+}
+
+void ControllerScenarioApi::runTestCaseAt(int timeout,
+                                          const std::string &name,
+                                          std::function<void()> completion)
+{
+  m_context.schedule(timeout, boost::bind(&ControllerScenarioApi::runTestCase, this, name, completion));
 }
 
 ControllerPrivate::ControllerPrivate(Controller &controller)

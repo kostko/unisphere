@@ -125,6 +125,7 @@ void TestCase::tryComplete(TestCaseApi &api)
   // TODO: This could take some time, should it be dispatched into another thread?
   processGlobalResults(api);
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Test case '" << getName() << "' done.";
+  signalFinished();
 
   // We are now complete, so try to complete parent if one exists
   if (TestCasePtr parent = d->m_parent.lock()) {

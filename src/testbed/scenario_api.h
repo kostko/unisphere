@@ -40,12 +40,32 @@ public:
   virtual TestCasePtr runTestCase(const std::string &name) = 0;
 
   /**
+   * Runs a specific test case immediately.
+   *
+   * @param name Test case to run
+   * @return Test case instance
+   */
+  virtual TestCasePtr runTestCase(const std::string &name,
+                                  std::function<void()> completion) = 0;
+
+  /**
    * Schedules a specific test case to be run after some delay.
    *
    * @param timeout Number of seconds to wait before running
    * @param name Test case to run
    */
   virtual void runTestCaseAt(int timeout, const std::string &name) = 0;
+
+  /**
+   * Schedules a specific test case to be run after some delay.
+   *
+   * @param timeout Number of seconds to wait before running
+   * @param name Test case to run
+   * @param completion Completion handler
+   */
+  virtual void runTestCaseAt(int timeout,
+                             const std::string &name,
+                             std::function<void()> completion) = 0;
 };
 
 }

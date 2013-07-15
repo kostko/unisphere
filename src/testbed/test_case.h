@@ -186,6 +186,9 @@ public:
    * @param api Test case API interface
    */
   virtual void processGlobalResults(TestCaseApi &api);
+public:
+  /// This signal gets emitted after a test case finishes on the controller
+  boost::signals2::signal<void()> signalFinished;
 protected:
   /**
    * Marks the test case as a candidate for finishing.
