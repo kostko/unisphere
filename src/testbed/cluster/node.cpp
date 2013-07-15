@@ -23,7 +23,9 @@
 #include "interplex/rpc_channel.h"
 #include "rpc/engine.hpp"
 
+#include <boost/log/attributes/current_thread_id.hpp>
 #include <boost/log/utility/setup/console.hpp>
+#include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/empty_deleter.hpp>
 #include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
@@ -37,6 +39,7 @@ namespace UniSphere {
 
 namespace log {
 
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log::LogSeverityLevel)
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
 BOOST_LOG_ATTRIBUTE_KEYWORD(local_node_id, "LocalNodeID", NodeIdentifier)
 
@@ -51,6 +54,8 @@ public:
                   unsigned short port);
 
   void formatLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream);
+
+  void formatProfilingLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream);
 public:
   /// Cluster node communication context
   Context m_context;
@@ -60,6 +65,21 @@ public:
   boost::shared_ptr<InterplexRpcChannel> m_channel;
   /// RPC engine
   boost::shared_ptr<RpcEngine<InterplexRpcChannel>> m_rpc;
+
+  struct BufferedProfilingRecord {
+    std::chrono::high_resolution_clock::time_point start;
+    std::set<std::string> tags;
+  };
+
+  /// Profiling log record buffer
+  std::map<
+    std::tuple<
+      logging::attributes::current_thread_id::value_type,
+      std::string
+    >,
+    BufferedProfilingRecord
+  > m_profilingBuffer;
+  std::mutex m_mutex;
 };
 
 void ClusterNodePrivate::formatLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream)
@@ -77,11 +97,69 @@ void ClusterNodePrivate::formatLogRecord(const logging::record_view &rec, loggin
   stream << rec[logging::expressions::smessage];
 }
 
+void ClusterNodePrivate::formatProfilingLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream)
+{
+  using namespace std::chrono;
+
+  auto id = logging::extract<logging::attributes::current_thread_id::value_type>("ThreadID", rec);
+  auto name = logging::extract<std::string>("ProfileName", rec);
+  auto timeline = logging::extract<high_resolution_clock::time_point>("ProfileTimePoint", rec);
+  auto end = logging::extract<bool>("ProfileEnd", rec);
+  auto tag = logging::extract<std::string>("ProfileTag", rec);
+
+  if (end.empty() || !end.get()) {
+    // Profiling of a section has started or a tag is being added
+    UniqueLock lock(m_mutex);
+    if (!tag.empty()) {
+      // Adding a new tag, buffer must alread exist, otherwise it is ignored
+      auto it = m_profilingBuffer.find(std::make_tuple(id.get(), name.get()));
+      if (it == m_profilingBuffer.end())
+        return;
+
+      auto &buf = it->second;
+      buf.tags.insert(tag.get());
+    } else {
+      // Starting a new profiling section
+      auto &buf = m_profilingBuffer[std::make_tuple(id.get(), name.get())];
+      buf.start = timeline.get();
+      buf.tags.clear();
+    }
+  } else {
+    // Profiling of a section has been completed
+    BufferedProfilingRecord buf;
+    {
+      UniqueLock lock(m_mutex);
+      auto it = m_profilingBuffer.find(std::make_tuple(id.get(), name.get()));
+      if (it == m_profilingBuffer.end())
+        return;
+      
+      buf = it->second;
+      m_profilingBuffer.erase(it);
+    }
+
+    stream << logging::extract<boost::posix_time::ptime>("TimeStamp", rec) << "\t";
+    stream << duration_cast<nanoseconds>(timeline.get() - buf.start).count() << "\t";
+
+    auto nodeId = logging::extract<NodeIdentifier>("LocalNodeID", rec);
+    if (!nodeId.empty())
+      stream << nodeId.get().hex() << "\t";
+    else
+      stream << "global\t";
+
+    stream << logging::extract<std::string>("Channel", rec) << "\t";
+    stream << name.get() << "\t";
+    
+    for (const std::string &tag : buf.tags) {
+      stream << tag << ":";
+    }
+  }
+}
+
 void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
                                     const std::string &ip,
                                     unsigned short port)
 {
-  // Setup a logging sink
+  // Setup a logging sink for general messages
   auto sink = logging::add_console_log(std::clog);
   sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
   sink->set_filter(
@@ -90,7 +168,17 @@ void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
       &&
       log::local_node_id == nodeId
     )
+    &&
+    log::severity != log::profiling
   );
+
+#ifdef UNISPHERE_PROFILE
+  // Setup a profiling sink for profiling
+  auto psink = logging::add_file_log((boost::format("profile-%d.log") % getpid()).str());
+  psink->set_formatter(boost::bind(&ClusterNodePrivate::formatProfilingLogRecord, this, _1, _2));
+  psink->set_filter(log::severity == log::profiling);
+#endif
+
   logging::core::get()->set_logging_enabled(true);
 
   // Initialize the link manager

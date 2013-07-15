@@ -26,6 +26,10 @@
 #include "social/rpc_channel.h"
 #include "rpc/engine.hpp"
 
+#ifdef UNISPHERE_PROFILE
+#include "social/profiling/message_tracer.h"
+#endif
+
 #include "src/social/core_methods.pb.h"
 
 #include <atomic>
@@ -263,7 +267,7 @@ public:
     RpcEngine<SocialRpcChannel> &rpc = node->router->rpcEngine();
 
     // We should test one node at a time, to prevent overloading the network
-    for (const auto &p : args.get_child("nodes")) {
+    for (const auto &p : args.get_child("nodes", boost::property_tree::ptree())) {
       NodeIdentifier nodeId(p.second.data(), NodeIdentifier::Format::Hex);
       pending.push_back([this, &api, &rpc, node, nodeId]() {
         using namespace std::chrono;
@@ -274,9 +278,13 @@ public:
         rpc.call<Protocol::PingRequest, Protocol::PingResponse>(nodeId, "Core.Ping", request,
           [this, &api, node, nodeId, xmitTime](const Protocol::PingResponse &rsp, const RoutedMessage &msg) {
             ds_raw.add({
+              { "timestamp", boost::posix_time::microsec_clock::universal_time() },
               { "node_a", node->nodeId.hex() },
               { "node_b", nodeId.hex() },
               { "success", true },
+#ifdef UNISPHERE_PROFILE
+              { "msg_id", node->router->msgTracer().getMessageId(msg) },
+#endif
               { "hops", (int) (rsp.hopcount() - msg.hopCount()) },
               { "rtt", duration_cast<microseconds>(high_resolution_clock::now() - xmitTime).count() }
             });
@@ -284,6 +292,7 @@ public:
           },
           [this, &api, node, nodeId](RpcErrorCode code, const std::string &msg) {
             ds_raw.add({
+              { "timestamp", boost::posix_time::microsec_clock::universal_time() },
               { "node_a", node->nodeId.hex() },
               { "node_b", nodeId.hex() },
               { "success", false }
@@ -316,7 +325,7 @@ public:
     // Output RAW dataset received from slaves
     outputCsvDataset(
       ds_raw,
-      { "node_a", "node_b", "success", "hops", "rtt" },
+      { "timestamp", "node_a", "node_b", "msg_id", "success", "hops", "rtt" },
       api.getOutputFilename("raw", "csv")
     );
 
@@ -339,6 +348,7 @@ public:
       double stretch = (double) measuredLength / (double) shortestLength;
 
       ds_stretch.add({
+        { "timestamp", record.at("timestamp") },
         { "node_a", nodeA },
         { "node_b", nodeB },
         { "measured", measuredLength },
@@ -356,5 +366,93 @@ public:
 };
 
 UNISPHERE_REGISTER_TEST_CASE(PairWisePing, "routing/pair_wise_ping")
+
+class StartMessageTrace : public TestCase
+{
+public:
+  using TestCase::TestCase;
+
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+#ifdef UNISPHERE_PROFILE
+    node->router->msgTracer().start();
+#endif
+    finish(api);
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(StartMessageTrace, "traces/start")
+
+class EndMessageTrace : public TestCase
+{
+public:
+  using TestCase::TestCase;
+
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+#ifdef UNISPHERE_PROFILE
+    node->router->msgTracer().end();
+#endif
+    finish(api);
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(EndMessageTrace, "traces/end")
+
+class GetMessageTraces : public TestCase
+{
+public:
+  /// Traces dataset
+  DataSet<> ds_traces{"ds_traces"};
+
+  using TestCase::TestCase;
+
+  /**
+   * Retrieve packet traces.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+#ifdef UNISPHERE_PROFILE
+    for (const auto &p : node->router->msgTracer().getTraceRecords()) {
+      ds_traces.add({
+        { "node_id",        node->nodeId.hex() },
+        { "pkt_id",         p.first },
+        { "timestamp",      p.second.at("timestamp") },
+        { "src",            p.second.at("src") },
+        { "dst",            p.second.at("dst") },
+        { "route_duration", p.second.at("route_duration") },
+        { "local",          p.second.at("local") }
+      });
+    }
+#endif
+
+    finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.send(ds_traces);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_traces);
+
+    outputCsvDataset(
+      ds_traces,
+      { "node_id", "pkt_id", "timestamp", "src", "dst", "route_duration", "local" },
+      api.getOutputFilename("traces", "csv")
+    );
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(GetMessageTraces, "traces/retrieve")
+
 
 }

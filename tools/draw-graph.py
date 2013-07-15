@@ -31,6 +31,77 @@ def float_with_none(value):
     return None
   return float(value)
 
+class ModuleProfiling(object):
+  command = 'prof'
+  description = 'generates profiling plots'
+
+  def arguments(self, parser):
+    parser.add_argument('--input', metavar = 'FILE', type = str, required = True,
+                        help = 'input profiling data FILE')
+
+    parser.add_argument('--output', metavar = 'FILE', type = str,
+                        help = 'output filename')
+
+    parser.add_argument('--by-tag', action = 'store_true', default = False,
+                        help = 'group measurements by tag')
+
+    parser.add_argument('--by-name', action = 'store_true', default = False,
+                        help = 'group measurements by name')
+
+  def run(self, args):
+    styles = [
+      ('-', None),
+      ('--', None),
+      ('-.', None),
+      ('-', 'o'),
+      ('--', '^'),
+      ('--', 's')
+    ]
+
+    try:
+      data = pandas.read_csv(args.input, sep = None,
+        names = ['timestamp', 'duration', 'node_id', 'channel', 'name', 'tags'],
+        converters = dict(tags = lambda x: tuple([y for y in x.split(':') if len(y)])))
+    except:
+      args.parser.error('specified input FILE "%s" cannot be parsed' % args.input)
+
+    if args.by_tag:
+      column = 'tags'
+      tags = set([tag for tags in data['tags'].dropna() for tag in tags])
+      mapper = lambda tag: lambda x: tag in x
+    elif args.by_name:
+      column = 'name'
+      tags = set(data['name'].dropna())
+      mapper = lambda tag: lambda x: x == tag
+
+    durations = numpy.asarray(data['duration'].dropna())
+    max_duration = 0
+    
+    for idx, tag in enumerate(tags):
+      sample = data[data[column].map(mapper(tag))]
+      sample = numpy.asarray(sample['duration'].dropna())
+      max_duration = max(max(sample), max_duration)
+
+      ecdf = sm.distributions.ECDF(sample)
+      x = numpy.linspace(min(sample), max(sample))
+      y = ecdf(x)
+
+      ls, marker = styles[idx % len(styles)]
+      plt.plot(x, y, drawstyle = 'steps', linestyle = ls, linewidth = 2, marker = marker, markevery = 2, label = tag)
+
+    plt.legend(loc = 'lower right')
+    plt.grid()
+    ax = plt.gca()
+    ax.set_axisbelow(True)
+    ax.set_ylabel('Cummulative Probability')
+    ax.set_xlabel('ns')
+    plt.axis([0.0, max_duration, 0.0, 1.01])
+
+    if args.output:
+      plt.savefig(args.output)
+    else:
+      plt.show()
+
 class ModuleCDF(object):
   command = 'cdf'
   description = 'generates empiric CDF plots'
@@ -172,7 +243,8 @@ class ModuleSimplePlot(object):
 # A list of registered modules
 modules = [
   ModuleCDF,
-  ModuleSimplePlot
+  ModuleSimplePlot,
+  ModuleProfiling
 ]
 
 main_parser = argparse.ArgumentParser("draw-graph")

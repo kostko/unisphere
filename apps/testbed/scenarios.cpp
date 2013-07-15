@@ -40,8 +40,17 @@ UNISPHERE_SCENARIO(StandardTests)
   api.runTestCaseAt(60, "state/sloppy_group_topology");
   // Dump routing topology after 60 seconds
   api.runTestCaseAt(60, "state/routing_topology");
-  // Perform pair-wise ping tests after 65 seconds
-  api.runTestCaseAt(65, "routing/pair_wise_ping");
+  
+  // TODO: Scenario API should be changed to use Coroutines
+  api.runTestCaseAt(65, "traces/start", [&api]() {
+    // Perform pair-wise ping tests after traces are enabled
+    api.runTestCaseAt(0, "routing/pair_wise_ping", [&api]() {
+      // After pair-wise ping completes, retrieve message traces
+      api.runTestCaseAt(0, "traces/retrieve", [&api]() {
+        api.runTestCaseAt(0, "traces/end");
+      });
+    });
+  });
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 

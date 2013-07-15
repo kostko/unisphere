@@ -8,6 +8,7 @@ routed_message.cpp
 name_database.cpp
 sloppy_group.cpp
 rpc_channel.cpp
+profiling/message_tracer.cpp
 )
 
 PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr

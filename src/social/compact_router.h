@@ -35,6 +35,9 @@ class CompactRoutingTable;
 class NameDatabase;
 class SloppyGroupManager;
 class SocialRpcChannel;
+#ifdef UNISPHERE_PROFILE
+class MessageTracer;
+#endif
 
 template <typename Channel>
 class RpcEngine;
@@ -122,6 +125,14 @@ public:
    * Returns the reference to underlying RPC engine.
    */
   RpcEngine<SocialRpcChannel> &rpcEngine();
+
+#ifdef UNISPHERE_PROFILE
+  /**
+   * Returns a reference to message tracer. Only available when
+   * profiling is enabled at compile-time.
+   */
+  MessageTracer &msgTracer();
+#endif
 
   /**
    * Routes the specified message via the overlay.

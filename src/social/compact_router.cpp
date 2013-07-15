@@ -27,6 +27,10 @@
 #include "interplex/link_manager.h"
 #include "core/operators.h"
 
+#ifdef UNISPHERE_PROFILE
+#include "social/profiling/message_tracer.h"
+#endif
+
 #include "src/social/messages.pb.h"
 #include "src/social/core_methods.pb.h"
 
@@ -223,6 +227,10 @@ public:
   std::uint16_t m_seqno;
   /// Aggregated path announcement
   std::unordered_map<NodeIdentifier, AggregationBufferPtr> m_ribExportAggregate;
+#ifdef UNISPHERE_PROFILE
+  /// Message tracer for packet traversal profiling
+  MessageTracer m_msgTracer;
+#endif
 };
 
 CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
@@ -531,9 +539,23 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
     }
 
     case Message::Type::Social_Routed: {
+#ifdef UNISPHERE_PROFILE
+      using namespace std::chrono;
+      auto start = high_resolution_clock::now();
+#endif
+
       RoutedMessage rmsg(msg);
       rmsg.processHop();
       route(rmsg);
+
+#ifdef UNISPHERE_PROFILE
+      std::uint64_t duration = duration_cast<microseconds>(high_resolution_clock::now() - start).count();
+      auto &record = m_msgTracer.trace(rmsg);
+      if (!record.empty()) {
+        record["route_duration"] = duration;
+        record["local"] = false;
+      }
+#endif
       break;
     }
 
@@ -561,7 +583,11 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 {
   // Drop invalid messages
   if (!msg.isValid()) {
+#ifdef UNISPHERE_PROFILE
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping invalid message " << m_msgTracer.getMessageId(msg) << ".";
+#else
     BOOST_LOG_SEV(m_logger, log::warning) << "Dropping invalid message.";
+#endif
     return;
   }
 
@@ -735,9 +761,30 @@ RpcEngine<SocialRpcChannel> &CompactRouter::rpcEngine()
   return d->m_rpc;
 }
 
+#ifdef UNISPHERE_PROFILE
+MessageTracer &CompactRouter::msgTracer()
+{
+  return d->m_msgTracer;
+}
+#endif
+
 void CompactRouter::route(RoutedMessage &msg)
 {
+#ifdef UNISPHERE_PROFILE
+  using namespace std::chrono;
+  auto start = high_resolution_clock::now();
+#endif
+
   d->route(msg);
+
+#ifdef UNISPHERE_PROFILE
+  std::uint64_t duration = duration_cast<microseconds>(high_resolution_clock::now() - start).count();
+  auto &record = d->m_msgTracer.trace(msg);
+  if (!record.empty()) {
+    record["route_duration"] = duration;
+    record["local"] = true;
+  }
+#endif
 }
 
 void CompactRouter::route(std::uint32_t sourceCompId,
@@ -762,7 +809,7 @@ void CompactRouter::route(std::uint32_t sourceCompId,
   );
 
   // Processing of locally originating messages should be deferred to avoid deadlocks
-  d->m_context.service().post(boost::bind(&CompactRouterPrivate::route, d, rmsg));
+  d->m_context.service().post(boost::bind(&CompactRouter::route, this, rmsg));
 }
 
 }

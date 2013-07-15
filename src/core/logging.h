@@ -19,11 +19,14 @@
 #ifndef UNISPHERE_CORE_LOGGING_H
 #define UNISPHERE_CORE_LOGGING_H
 
+#include <chrono>
 #include <boost/log/core.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/utility/formatting_ostream.hpp>
 #include <boost/log/utility/manipulators/to_log.hpp>
+#include <boost/log/utility/manipulators/add_value.hpp>
+#include <boost/log/attributes/scoped_attribute.hpp>
 
 namespace UniSphere {
 
@@ -39,7 +42,8 @@ namespace log {
 enum LogSeverityLevel {
   normal,
   warning,
-  error
+  error,
+  profiling
 };
 
 /**
@@ -52,7 +56,8 @@ inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stre
   {
     "NORM",
     "WARN",
-    "ERRR"
+    "ERRR",
+    "PROF"
   };
 
   LogSeverityLevel level = manip.get();
@@ -70,5 +75,29 @@ inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stre
 typedef logging::sources::severity_channel_logger<log::LogSeverityLevel, std::string> Logger;
 
 }
+
+#ifdef UNISPHERE_PROFILE
+
+#define UNISPHERE_LOG_PROFILING_START(logger, name) \
+  BOOST_LOG_SEV(logger, log::profiling) \
+    << boost::log::add_value("ProfileTimePoint", std::chrono::high_resolution_clock::now()) \
+    << boost::log::add_value("ProfileName", std::string(#name))
+
+#define UNISPHERE_LOG_PROFILING_TAG(logger, name, tag) \
+  BOOST_LOG_SEV(logger, log::profiling) \
+    << boost::log::add_value("ProfileTag", std::string(#tag)) \
+    << boost::log::add_value("ProfileName", std::string(#name))
+
+#define UNISPHERE_LOG_PROFILING_END(logger, name) \
+  BOOST_LOG_SEV(logger, log::profiling) \
+    << boost::log::add_value("ProfileTimePoint", std::chrono::high_resolution_clock::now()) \
+    << boost::log::add_value("ProfileEnd", true) \
+    << boost::log::add_value("ProfileName", std::string(#name))
+
+#else
+#define UNISPHERE_LOG_PROFILING_START(logger, name)
+#define UNISPHERE_LOG_PROFILING_TAG(logger, name, tag)
+#define UNISPHERE_LOG_PROFILING_END(logger, name)
+#endif
 
 #endif
