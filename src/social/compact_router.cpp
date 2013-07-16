@@ -277,17 +277,17 @@ void CompactRouterPrivate::initialize()
     << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouterPrivate::peerRemoved, this, _1))
   ;
 
-  // Compute whether we should become a landmark or not
-  networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
-
-  // Start announcing ourselves to all neighbours
-  announceOurselves(boost::system::error_code());
-
   // Initialize the name database
   m_nameDb.initialize();
 
   // Initialize the sloppy group manager
   m_sloppyGroup.initialize();
+
+  // Compute whether we should become a landmark or not
+  networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
+
+  // Start announcing ourselves to all neighbours
+  announceOurselves(boost::system::error_code());
 }
 
 void CompactRouterPrivate::shutdown()
