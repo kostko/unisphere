@@ -71,7 +71,7 @@ public:
   Context &context() const { return m_context; }
   
   /**
-   * Returns the router instance associated with this RPC engine.
+   * Returns the channel instance associated with this RPC engine.
    */
   Channel &channel() const { return m_channel; }
 
