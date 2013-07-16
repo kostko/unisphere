@@ -254,6 +254,7 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
   m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(manager.getLocalNodeId()));
+  m_rpc.logger().add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(manager.getLocalNodeId()));
 }
 
 void CompactRouterPrivate::initialize()

@@ -76,6 +76,11 @@ public:
   Channel &channel() const { return m_channel; }
 
   /**
+   * Returns the logger instance associated with this RPC engine.
+   */
+  Logger &logger() { return m_logger; }
+
+  /**
    * Starts an RPC call group.
    *
    * @param complete Completion handler that gets invoked when all grouped
