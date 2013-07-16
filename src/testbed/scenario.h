@@ -23,6 +23,9 @@
 #include "core/program_options.h"
 #include "testbed/scenario_api.h"
 
+#include <boost/coroutine/all.hpp>
+#include <boost/signals2/signal.hpp>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -52,6 +55,20 @@ public:
    * Returns the scenario name.
    */
   std::string name() const;
+
+  /**
+   * Suspends execution of the scenario coroutine. This method may only
+   * be called from inside the coroutine or it will throw.
+   */
+  void suspend();
+
+  /**
+   * Schedules the coroutine to be resumed in the scenario thread.
+   */
+  void resume();
+public:
+  /// Signal that gets emitted when scenario completes
+  boost::signals2::signal<void()> signalFinished;
 protected:
   /**
    * Runs the scenario.

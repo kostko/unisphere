@@ -18,10 +18,16 @@
  */
 #include "testbed/scenario.h"
 #include "testbed/test_bed.h"
+#include "testbed/exceptions.h"
+
+#include <boost/thread.hpp>
 
 namespace UniSphere {
 
 namespace TestBed {
+
+/// Scenario coroutine type
+typedef boost::coroutines::coroutine<void()> ScenarioCoroutine;
 
 class ScenarioPrivate {
 public:
@@ -31,10 +37,21 @@ public:
   std::string m_name;
   /// Scenario configuration
   boost::program_options::variables_map m_options;
+  /// Scenario thread
+  boost::thread m_thread;
+  /// Scenario ASIO event loop
+  boost::asio::io_service m_io;
+  /// Work to keep the event loop busy
+  boost::asio::io_service::work m_work;
+  /// Scenario coroutine
+  ScenarioCoroutine m_coroutine;
+  /// Coroutine caller
+  ScenarioCoroutine::caller_type *m_coroutineCaller;
 };
 
 ScenarioPrivate::ScenarioPrivate(const std::string &name)
-  : m_name(name)
+  : m_name(name),
+    m_work(m_io)
 {
 }
 
@@ -48,9 +65,45 @@ std::string Scenario::name() const
   return d->m_name;
 }
 
+void Scenario::resume()
+{
+  if (boost::this_thread::get_id() == d->m_thread.get_id())
+    throw IllegalApiCall();
+
+  // Request the coroutine to resume execution in the scenario thread
+  d->m_io.post([this]() { d->m_coroutine(); });
+}
+
+void Scenario::suspend()
+{
+  if (!d->m_coroutineCaller)
+    throw ScenarioNotRunning();
+
+  // Ensure that suspend can only be called from the scenario thread/coroutine
+  if (boost::this_thread::get_id() != d->m_thread.get_id())
+    throw IllegalApiCall();
+  
+  // Suspend current coroutine
+  (*d->m_coroutineCaller)();
+}
+
 void Scenario::start(ScenarioApi &api)
 {
-  run(api, d->m_options);
+  d->m_thread = std::move(boost::thread([this, &api]() {
+    // Initialize and enter the scenario coroutine
+    d->m_coroutine = std::move(ScenarioCoroutine([this, &api](ScenarioCoroutine::caller_type &ca) {
+      d->m_coroutineCaller = &ca;
+      run(api, d->m_options);
+      d->m_coroutineCaller = nullptr;
+      d->m_io.stop();
+    }));
+
+    // Start ASIO event loop to allow forwarding of coroutine events
+    d->m_io.run();
+
+    // Emit finished signal
+    signalFinished();
+  }));
 }
 
 void Scenario::setupOptions(int argc,

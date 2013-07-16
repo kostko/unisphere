@@ -22,6 +22,8 @@
 #include "core/globals.h"
 #include "testbed/test_case_fwd.h"
 
+#include <list>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -32,40 +34,28 @@ namespace TestBed {
 class UNISPHERE_EXPORT ScenarioApi {
 public:
   /**
-   * Runs a specific test case immediately.
+   * Suspends scenario for a specific number of seconds.
    *
-   * @param name Test case to run
+   * @param timeout Number of seconds to suspend for
+   */
+  virtual void wait(int timeout) = 0;
+
+  /**
+   * Runs a specific test case and waits for its completion.
+   *
+   * @param name Test case name
    * @return Test case instance
    */
-  virtual TestCasePtr runTestCase(const std::string &name) = 0;
+  virtual TestCasePtr test(const std::string &name) = 0;
 
   /**
-   * Runs a specific test case immediately.
+   * Runs multiple tests in parallel and waits for all of them to
+   * complete.
    *
-   * @param name Test case to run
-   * @return Test case instance
+   * @param names A list of test case names
+   * @return A list of test case instances
    */
-  virtual TestCasePtr runTestCase(const std::string &name,
-                                  std::function<void()> completion) = 0;
-
-  /**
-   * Schedules a specific test case to be run after some delay.
-   *
-   * @param timeout Number of seconds to wait before running
-   * @param name Test case to run
-   */
-  virtual void runTestCaseAt(int timeout, const std::string &name) = 0;
-
-  /**
-   * Schedules a specific test case to be run after some delay.
-   *
-   * @param timeout Number of seconds to wait before running
-   * @param name Test case to run
-   * @param completion Completion handler
-   */
-  virtual void runTestCaseAt(int timeout,
-                             const std::string &name,
-                             std::function<void()> completion) = 0;
+  virtual std::list<TestCasePtr> test(std::initializer_list<std::string> names) = 0;
 };
 
 }

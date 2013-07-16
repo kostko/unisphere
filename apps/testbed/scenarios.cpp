@@ -34,23 +34,19 @@ UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
 UNISPHERE_SCENARIO(StandardTests)
 {
+  api.wait(30);
   // Count routing state after 30 seconds
-  api.runTestCaseAt(30, "state/count");
-  // Dump sloppy group topology after 60 seconds
-  api.runTestCaseAt(60, "state/sloppy_group_topology");
-  // Dump routing topology after 60 seconds
-  api.runTestCaseAt(60, "state/routing_topology");
-  
-  // TODO: Scenario API should be changed to use Coroutines
-  api.runTestCaseAt(65, "traces/start", [&api]() {
-    // Perform pair-wise ping tests after traces are enabled
-    api.runTestCaseAt(0, "routing/pair_wise_ping", [&api]() {
-      // After pair-wise ping completes, retrieve message traces
-      api.runTestCaseAt(0, "traces/retrieve", [&api]() {
-        api.runTestCaseAt(0, "traces/end");
-      });
-    });
-  });
+  api.test("state/count");
+  // Dump sloppy group and routing topologies in parallel
+  api.wait(30);
+  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+  // Perform pair-wise ping test to compute latency and stretch; when
+  // profiling is enabled, also collect traces in this section
+  api.wait(10);
+  api.test("traces/start");
+    api.test("routing/pair_wise_ping");
+    api.test("traces/retrieve");
+  api.test("traces/end");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 

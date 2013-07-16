@@ -92,6 +92,13 @@ public:
   {}
 };
 
+class UNISPHERE_EXPORT ScenarioNotRunning : public TestBedException {
+public:
+  ScenarioNotRunning()
+    : TestBedException("Scenario not running!")
+  {}
+};
+
 }
 
 }

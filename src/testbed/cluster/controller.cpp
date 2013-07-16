@@ -114,16 +114,14 @@ public:
   ControllerScenarioApi(Context &context,
                         ControllerPrivate &controller);
 
-  TestCasePtr runTestCase(const std::string &name);
+  void wait(int timeout);
+
+  TestCasePtr test(const std::string &name);
+
+  std::list<TestCasePtr> test(std::initializer_list<std::string> names);
 
   TestCasePtr runTestCase(const std::string &name,
                           std::function<void()> completion);
-
-  void runTestCaseAt(int timeout, const std::string &name);
-
-  void runTestCaseAt(int timeout,
-                     const std::string &name,
-                     std::function<void()> completion);
 public:
   /// Context
   Context &m_context;
@@ -224,7 +222,7 @@ std::mt19937 &ControllerTestCaseApi::rng()
 
 TestCasePtr ControllerTestCaseApi::callTestCase(const std::string &name)
 {
-  TestCasePtr test = m_controller.m_scenarioApi->runTestCase(name);
+  TestCasePtr test = m_controller.m_scenarioApi->runTestCase(name, nullptr);
   m_testCase->addChild(test);
   return test;
 }
@@ -242,9 +240,52 @@ ControllerScenarioApi::ControllerScenarioApi(Context &context,
 {
 }
 
-TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name)
+void ControllerScenarioApi::wait(int timeout)
 {
-  return runTestCase(name, nullptr);
+  ScenarioPtr scenario = m_controller.m_scenario;
+  m_context.schedule(timeout, boost::bind(&Scenario::resume, scenario));
+  scenario->suspend();
+}
+
+TestCasePtr ControllerScenarioApi::test(const std::string &name)
+{
+  ScenarioPtr scenario = m_controller.m_scenario;
+  TestCasePtr test = runTestCase(name, boost::bind(&Scenario::resume, scenario));
+  if (test) {
+    // Suspend execution while the test is running
+    scenario->suspend();
+  }
+  return test;
+}
+
+std::list<TestCasePtr> ControllerScenarioApi::test(std::initializer_list<std::string> names)
+{
+  ScenarioPtr scenario = m_controller.m_scenario;
+  std::list<TestCasePtr> tests;
+  boost::shared_ptr<std::atomic<unsigned int>> pendingTests =
+    boost::make_shared<std::atomic<unsigned int>>(names.size());
+  
+  auto testCompletionHandler = [scenario, pendingTests]() {
+    (*pendingTests)--;
+    if (*pendingTests == 0)
+      scenario->resume();
+  };
+
+  bool suspend = false;
+  for (const std::string &name : names) {
+    TestCasePtr test = runTestCase(name, testCompletionHandler);
+    if (!test)
+      m_context.schedule(0, testCompletionHandler);
+    else
+      suspend = true;
+    tests.push_back(test);
+  }
+
+  if (suspend) {
+    // Suspend execution while tests are running
+    scenario->suspend();
+  }
+  return tests;
 }
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
@@ -339,18 +380,6 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
   }
 
   return test;
-}
-
-void ControllerScenarioApi::runTestCaseAt(int timeout, const std::string &name)
-{
-  m_context.schedule(timeout, boost::bind(&ControllerScenarioApi::runTestCase, this, name));
-}
-
-void ControllerScenarioApi::runTestCaseAt(int timeout,
-                                          const std::string &name,
-                                          std::function<void()> completion)
-{
-  m_context.schedule(timeout, boost::bind(&ControllerScenarioApi::runTestCase, this, name, completion));
 }
 
 ControllerPrivate::ControllerPrivate(Controller &controller)
@@ -594,8 +623,12 @@ void Controller::run()
         }
 
         BOOST_LOG_SEV(d->m_logger, log::normal) << "Partitions assigned. Starting scenario '" << d->m_scenario->name() << "'.";
-        d->m_scenario->start(*d->m_scenarioApi);
         d->m_simulationStartTime = boost::posix_time::microsec_clock::universal_time();
+        d->m_scenario->signalFinished.connect([this]() {
+          BOOST_LOG(d->m_logger) << "Scenario completed.";
+          // TODO: Ask the master to stop simulation
+        });
+        d->m_scenario->start(*d->m_scenarioApi);
       });
 
       for (const Partition &part : partitions) {
