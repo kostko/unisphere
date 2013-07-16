@@ -41,6 +41,8 @@ protected:
   void run();
 private:
   void abortSimulation();
+
+  void finishSimulation();
 private:
   UNISPHERE_DECLARE_PRIVATE(Controller)
 };

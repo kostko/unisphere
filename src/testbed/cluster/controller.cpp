@@ -568,6 +568,24 @@ void Controller::abortSimulation()
   );
 }
 
+void Controller::finishSimulation()
+{
+  // Request the master to abort the simulation
+  // TODO: Should finishSimulation use a separate method call?
+  d->m_master.call<Protocol::AbortRequest, Protocol::AbortResponse>(
+    "Testbed.Cluster.Abort",
+    Protocol::AbortRequest(),
+    [this](const Protocol::AbortResponse &response, const Message&) {
+      BOOST_LOG(d->m_logger) << "Simulation finished.";
+      context().stop();
+    },
+    [this](RpcErrorCode code, const std::string &msg) {
+      BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to finish simulation: " << msg;
+      context().stop();
+    }
+  );
+}
+
 void Controller::run()
 {
   // Create controller scenario API instance
@@ -626,7 +644,7 @@ void Controller::run()
         d->m_simulationStartTime = boost::posix_time::microsec_clock::universal_time();
         d->m_scenario->signalFinished.connect([this]() {
           BOOST_LOG(d->m_logger) << "Scenario completed.";
-          // TODO: Ask the master to stop simulation
+          finishSimulation();
         });
         d->m_scenario->start(*d->m_scenarioApi);
       });
