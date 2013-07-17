@@ -164,12 +164,14 @@ void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
   sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
   sink->set_filter(
     !(
-      (log::channel == "link" || log::channel == "linklet" || log::channel == "ip_linklet" || log::channel == "rpc_engine")
+      (log::channel == "link" || log::channel == "ip_linklet" || log::channel == "rpc_engine")
       &&
       log::local_node_id == nodeId
     )
     &&
     log::severity != log::profiling
+    &&
+    log::channel != "link" && log::channel != "ip_linklet"
   );
 
 #ifdef UNISPHERE_PROFILE
