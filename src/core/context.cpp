@@ -109,6 +109,11 @@ void Context::setThreadInitializer(std::function<void()> initializer)
   d->m_threadInitializer = initializer;
 }
 
+void Context::defer(std::function<void()> operation)
+{
+  schedule(0, operation);
+}
+
 void Context::schedule(int timeout, std::function<void()> operation)
 {
   // The timer pointer is passed into a closure so it will be automatically removed

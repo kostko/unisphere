@@ -65,6 +65,13 @@ public:
    * Class destructor.
    */
   ~Context();
+
+  /**
+   * Defers operation execution to another thread.
+   *
+   * @param operation Operation to be executed
+   */
+  void defer(std::function<void()> operation);
   
   /**
    * Schedules an operation to be executed after a timeout.
