@@ -81,10 +81,12 @@ NodeIdentifier TopologyLoaderPrivate::getNodeId(const std::string &name)
       Botan::Pipe pipe(new Botan::Hash_Filter("SHA-1"));
       pipe.process_msg(name);
       nodeId = NodeIdentifier(pipe.read_all_as_string(0), NodeIdentifier::Format::Raw);
+      break;
     }
     default:
     case TopologyLoader::IdGenerationType::Random: {
       nodeId = NodeIdentifier::random();
+      break;
     }
   }
   m_names.insert({{ name, nodeId }});
