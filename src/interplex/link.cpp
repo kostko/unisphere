@@ -30,7 +30,7 @@ namespace UniSphere {
 Link::Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTime)
   : enable_shared_from_this<Link>(),
     m_manager(manager),
-    m_logger(logging::keywords::channel = "linklet"),
+    m_logger(logging::keywords::channel = "link"),
     m_nodeId(nodeId),
     m_state(Link::State::Closed),
     m_maxIdleTime(maxIdleTime),
