@@ -88,9 +88,13 @@ MessageTracer::Record &MessageTracer::trace(const RoutedMessage &msg)
   }
 
   Record &record = d->m_records[getMessageId(msg)];
+  std::ostringstream tmp;
   record["timestamp"] = boost::posix_time::microsec_clock::universal_time();
   record["src"] = msg.sourceNodeId().hex();
   record["dst"] = msg.destinationNodeId().hex();
+
+  tmp << msg.destinationAddress();
+  record["dst_lr"] = tmp.str();
   return record;
 }
 

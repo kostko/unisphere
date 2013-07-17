@@ -555,6 +555,10 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
       if (!record.empty()) {
         record["route_duration"] = duration;
         record["local"] = false;
+        if (!record.count("processed"))
+          record["processed"] = 1;
+        else
+          record["processed"] = boost::get<int>(record["processed"]) + 1;
       }
 #endif
       break;
@@ -585,9 +589,9 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
   // Drop invalid messages
   if (!msg.isValid()) {
 #ifdef UNISPHERE_PROFILE
-    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping invalid message " << m_msgTracer.getMessageId(msg) << ".";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message " << m_msgTracer.getMessageId(msg) << " (invalid).";
 #else
-    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping invalid message.";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message (invalid).";
 #endif
     return;
   }
@@ -621,8 +625,16 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
           // Landmark-relative address is empty but we are the designated landmark; this
           // means that we are responsible for resolving the destination L-R address
           NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
-          if (record)
+          if (record) {
             msg.setDestinationAddress(record->landmarkAddress());
+          } else {
+#ifdef UNISPHERE_PROFILE
+            BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message " << m_msgTracer.getMessageId(msg) << " (no route to destination at SG member).";
+#else
+            BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message (no route to destination at SG member).";
+#endif
+            return;
+          }
         } else {
           // We are the landmark, enter delivery mode
           msg.setDeliveryMode(true);
@@ -632,7 +644,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
       if (msg.deliveryMode()) {
         // We must route based on source path
         if (msg.destinationAddress().path().empty()) {
-          BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message with dm = true and empty path.";
+          BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message (dm = true and empty path).";
           return;
         }
 
@@ -663,7 +675,11 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 
   // Drop messages where no next hop can be determined
   if (nextHop.isNull()) {
-    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message - no route to destination.";
+#ifdef UNISPHERE_PROFILE
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message " << m_msgTracer.getMessageId(msg) << " (no route to destination).";
+#else
+    BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message (no route to destination).";
+#endif
     return;
   }
 
@@ -784,6 +800,7 @@ void CompactRouter::route(RoutedMessage &msg)
   if (!record.empty()) {
     record["route_duration"] = duration;
     record["local"] = true;
+    record["processed"] = 1;
   }
 #endif
 }
