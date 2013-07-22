@@ -120,6 +120,18 @@ public:
 
   std::list<TestCasePtr> test(std::initializer_list<std::string> names);
 
+  const std::vector<Partition> &getPartitions() const;
+
+  const std::vector<Partition::Node> &getNodes() const;
+
+  void startNodes(const std::vector<Partition::Node> &nodes,
+                  size_t offset,
+                  size_t len);
+
+  void startNode(const NodeIdentifier &nodeId);
+
+  void stopNode(const NodeIdentifier &nodeId);
+public:
   TestCasePtr runTestCase(const std::string &name,
                           std::function<void()> completion);
 public:
@@ -159,6 +171,10 @@ public:
   TopologyLoader::IdGenerationType m_idGenType;
   /// Generated network partitions
   std::vector<Partition> m_partitions;
+  /// Generated network nodes
+  std::vector<Partition::Node> m_nodes;
+  /// Mapping of nodes to partitions
+  std::unordered_map<NodeIdentifier, size_t> m_partitionMap;
   /// Number of partitions pending assignment
   size_t m_unassignedPartitions;
   /// Seed value
@@ -286,6 +302,73 @@ std::list<TestCasePtr> ControllerScenarioApi::test(std::initializer_list<std::st
     scenario->suspend();
   }
   return tests;
+}
+
+const std::vector<Partition> &ControllerScenarioApi::getPartitions() const
+{
+  return m_controller.m_partitions;
+}
+
+const std::vector<Partition::Node> &ControllerScenarioApi::getNodes() const
+{
+  return m_controller.m_nodes;
+}
+
+void ControllerScenarioApi::startNodes(const std::vector<Partition::Node> &nodes,
+                                       size_t offset,
+                                       size_t len)
+{
+  ScenarioPtr scenario = m_controller.m_scenario;
+  std::vector<std::list<NodeIdentifier>> partitions;
+  partitions.resize(m_controller.m_partitions.size());
+  size_t nodeCount = 0;
+
+  for (int i = offset; i - offset < len && i < nodes.size(); i++) {
+    const Partition::Node &node = nodes.at(i);
+    size_t partitionId = m_controller.m_partitionMap.at(node.contact.nodeId());
+    partitions[partitionId].push_back(node.contact.nodeId());
+    nodeCount++;
+  }
+
+  BOOST_LOG(m_controller.m_logger) << "Requesting to start " << nodeCount << " nodes.";
+
+  // Contact proper slaves and instruct them to start the virtual nodes
+  auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
+  for (int i = 0; i < partitions.size(); i++) {
+    std::list<NodeIdentifier> &nodes = partitions.at(i);
+    const Partition &partition = m_controller.m_partitions.at(i);
+    Protocol::StartNodesRequest request;
+
+    for (const NodeIdentifier &nodeId : nodes) {
+      request.add_node_ids(nodeId.raw());
+    }
+
+    NodeIdentifier slaveId = partition.slave.nodeId();
+    group->call<Protocol::StartNodesRequest, Protocol::StartNodesResponse>(
+      partition.slave.nodeId(),
+      "Testbed.Simulation.StartNodes",
+      request,
+      nullptr,
+      nullptr,
+      m_controller.q.rpc().options()
+                          .setTimeout(5)
+                          .setChannelOptions(
+                            MessageOptions().setContact(partition.slave)
+                          )
+    );
+  }
+
+  scenario->suspend();
+}
+
+void ControllerScenarioApi::startNode(const NodeIdentifier &nodeId)
+{
+  // TODO: Request the slave to start a specific node
+}
+
+void ControllerScenarioApi::stopNode(const NodeIdentifier &nodeId)
+{
+  // TODO: Request the slave to stop a specific node
 }
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
@@ -662,6 +745,9 @@ void Controller::run()
           for (const Contact &contact : node.peers) {
             *n->add_peers() = contact.toMessage();
           }
+
+          d->m_nodes.push_back(node);
+          d->m_partitionMap.insert({{ node.contact.nodeId(), part.index }});
         }
         
         NodeIdentifier slaveId = part.slave.nodeId();

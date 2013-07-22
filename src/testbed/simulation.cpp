@@ -195,14 +195,6 @@ void Simulation::run()
     // Seed the basic RNG
     d->m_context.basicRng().seed(d->m_seed);
 
-    // Initialize all virtual nodes
-    {
-      RecursiveUniqueLock lock(d->m_mutex);
-      for (VirtualNodePtr vnode : d->m_nodes | boost::adaptors::map_values) {
-        vnode->initialize();
-      }
-    }
-
     // Run the simulated context
     d->m_context.run(d->m_threads);
 

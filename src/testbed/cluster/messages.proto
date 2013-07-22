@@ -109,3 +109,11 @@ message DatasetRequest {
 
 message DatasetResponse {
 };
+
+message StartNodesRequest {
+  // Nodes to start
+  repeated bytes node_ids = 1;
+};
+
+message StartNodesResponse {
+};

@@ -21,6 +21,7 @@
 
 #include "core/globals.h"
 #include "testbed/test_case_fwd.h"
+#include "testbed/cluster/partition.h"
 
 #include <list>
 
@@ -56,6 +57,41 @@ public:
    * @return A list of test case instances
    */
   virtual std::list<TestCasePtr> test(std::initializer_list<std::string> names) = 0;
+
+  /**
+   * Returns a vector of node partitions.
+   */
+  virtual const std::vector<Partition> &getPartitions() const = 0;
+
+  /**
+   * Returns a list of nodes.
+   */
+  virtual const std::vector<Partition::Node> &getNodes() const = 0;
+
+  /**
+   * Requests specific nodes to start.
+   *
+   * @param nodes A list of nodes
+   * @param offset Offset into the list
+   * @param len Number of nodes to start
+   */
+  virtual void startNodes(const std::vector<Partition::Node> &nodes,
+                          size_t offset,
+                          size_t len) = 0;
+
+  /**
+   * Requests to start a specific node.
+   *
+   * @param nodeId Node identifier
+   */
+  virtual void startNode(const NodeIdentifier &nodeId) = 0;
+
+  /**
+   * Requests to stop a specific node.
+   *
+   * @param nodeId Node identifier
+   */
+  virtual void stopNode(const NodeIdentifier &nodeId) = 0;
 };
 
 }
