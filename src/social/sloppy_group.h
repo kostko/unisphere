@@ -85,6 +85,11 @@ public:
   void shutdown();
 
   /**
+   * Queues a neighbor set refresh operation.
+   */
+  void refresh();
+
+  /**
    * Outputs the sloppy group state to a stream.
    *
    * @param stream Output stream to dump into

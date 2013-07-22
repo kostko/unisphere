@@ -265,7 +265,6 @@ void NameDatabasePrivate::store(const NodeIdentifier &nodeId,
         nibCache.erase(nibCache.lower_bound(NameRecord::Type::Cache));
       }
     }
-
     
     // TODO: Ensure that only sqrt(n*logn) Authority entries are stored at the local node
     exportNib = true;
@@ -622,6 +621,7 @@ void NameDatabasePrivate::publishLocalAddress()
   // Determine which landmarks are responsible for our local address
   m_publishLandmarks = getLandmarkCaches(m_localId);
   for (const NodeIdentifier &landmarkId : m_publishLandmarks) {
+    // TODO: Reschedule publish on failure
     // Send RPC to publish the address
     rpc.call<Protocol::PublishAddressRequest>(
       landmarkId,
@@ -805,9 +805,17 @@ size_t NameDatabase::sizeCache() const
   return nibType.count(NameRecord::Type::Cache);
 }
 
-NameRecordRange NameDatabase::names() const
+std::list<NameRecordPtr> NameDatabase::getNames(NameRecord::Type type) const
 {
-  return d->m_nameDb;
+  RecursiveUniqueLock lock(d->m_mutex);
+  std::list<NameRecordPtr> names;
+  
+  auto records = d->m_nameDb.get<NIBTags::TypeDestination>().equal_range(type);
+  for (auto it = records.first; it != records.second; ++it) {
+    names.push_back(*it);
+  }
+
+  return names;
 }
 
 void NameDatabase::store(const NodeIdentifier &nodeId,

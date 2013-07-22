@@ -426,8 +426,10 @@ public:
         { "timestamp",      p.second.at("timestamp") },
         { "src",            p.second.at("src") },
         { "dst",            p.second.at("dst") },
+        { "dst_lr",         p.second.at("dst_lr") },
         { "route_duration", p.second.at("route_duration") },
-        { "local",          p.second.at("local") }
+        { "local",          p.second.at("local") },
+        { "processed",      p.second.at("processed") }
       });
     }
 #endif
@@ -446,7 +448,7 @@ public:
 
     outputCsvDataset(
       ds_traces,
-      { "node_id", "pkt_id", "timestamp", "src", "dst", "route_duration", "local" },
+      { "node_id", "pkt_id", "timestamp", "src", "dst", "dst_lr", "route_duration", "local", "processed" },
       api.getOutputFilename("traces", "csv")
     );
   }
@@ -454,5 +456,46 @@ public:
 
 UNISPHERE_REGISTER_TEST_CASE(GetMessageTraces, "traces/retrieve")
 
+class NdbConsistentSanityCheck : public TestCase
+{
+public:
+  /// Traces dataset
+  DataSet<> ds_ndb{"ds_ndb"};
+
+  using TestCase::TestCase;
+
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    for (NameRecordPtr record : node->router->nameDb().getNames(NameRecord::Type::SloppyGroup)) {
+      ds_ndb.add({
+        { "node_id",    node->nodeId.hex() },
+        { "record_id",  record->nodeId.hex() }
+      });
+    }
+    finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.send(ds_ndb);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_ndb);
+
+    // TODO: Check consistency
+
+    outputCsvDataset(
+      ds_ndb,
+      { "node_id", "record_id" },
+      api.getOutputFilename("raw", "csv")
+    );
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(NdbConsistentSanityCheck, "sanity/check_consistent_ndb")
 
 }

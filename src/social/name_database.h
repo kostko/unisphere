@@ -23,7 +23,6 @@
 #include <unordered_set>
 
 #include <boost/asio.hpp>
-#include <boost/range/any_range.hpp>
 
 #include "core/context.h"
 #include "social/address.h"
@@ -91,14 +90,6 @@ public:
 };
 
 UNISPHERE_SHARED_POINTER(NameRecord)
-
-/// A traversable range of name record pointers
-typedef boost::any_range<
-  NameRecordPtr,
-  boost::bidirectional_traversal_tag,
-  NameRecordPtr,
-  std::ptrdiff_t
-> NameRecordRange;
 
 /**
  * The name database is a central part of the routing process. It is
@@ -270,12 +261,7 @@ public:
    *
    * @param peer Peer to export the routing table to
    */
-  void fullUpdate(const NodeIdentifier &peer);
-
-  /**
-   * Returns a range containing the contents of the name database.
-   */
-  NameRecordRange names() const;
+  void fullUpdate(const NodeIdentifier &peer = NodeIdentifier::INVALID);
 
   /**
    * Returns the number of name records stored in the name database.
@@ -292,6 +278,16 @@ public:
    * Returns the number of cache name records in the name database.
    */
   size_t sizeCache() const;
+
+  /**
+   * Returns a copy of the name database of specified type. Use of this method
+   * should be avoided due to copy overhead. Copying is required to ensure
+   * consistency.
+   *
+   * @param type Name record type
+   * @return A copied list of name records
+   */
+  std::list<NameRecordPtr> getNames(NameRecord::Type type) const;
 
   /**
    * Outputs the name database to a stream.

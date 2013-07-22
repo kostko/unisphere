@@ -26,6 +26,7 @@
 #include "rpc/engine.hpp"
 #include "interplex/link_manager.h"
 #include "core/operators.h"
+#include "core/signal.h"
 
 #include "src/social/messages.pb.h"
 
@@ -189,7 +190,9 @@ public:
   void dumpTopology(SloppyGroupManager::TopologyDumpGraph &graph,
                     std::function<std::string(const NodeIdentifier&)> resolve);
 
-  void refreshNeighborSet(const boost::system::error_code &error);
+  void periodicRefreshNeighborSet(const boost::system::error_code &error);
+
+  void refreshNeighborSet();
 
   void refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
                             RpcCallGroupPtr<SocialRpcChannel> rpcGroup = RpcCallGroupPtr<SocialRpcChannel>());
@@ -260,6 +263,8 @@ public:
   double m_groupSize;
   /// Number of short finger refresh retries
   size_t m_shortFingerRefreshRetries;
+  /// Refresh signal
+  RateDelayedSignal<3, 10, 30> m_signalRefresh;
 };
 
 SloppyPeer::SloppyPeer()
@@ -306,7 +311,8 @@ SloppyGroupManagerPrivate::SloppyGroupManagerPrivate(CompactRouter &router, Netw
     m_neighborRefreshTimer(router.context().service()),
     m_announceTimer(router.context().service()),
     m_groupPrefixLength(0),
-    m_shortFingerRefreshRetries(0)
+    m_shortFingerRefreshRetries(0),
+    m_signalRefresh(router.context())
 {
   m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(m_localId));
 }
@@ -322,6 +328,7 @@ void SloppyGroupManagerPrivate::initialize()
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManagerPrivate::networkSizeEstimateChanged, this, _1))
     << m_nameDb.signalExportRecord.connect(boost::bind(&SloppyGroupManagerPrivate::nibExportRecord, this, _1, _2))
     << m_router.signalDeliverMessage.connect(boost::bind(&SloppyGroupManagerPrivate::messageDelivery, this, _1))
+    << m_signalRefresh.connect(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this))
   ;
 
   // Initialize sloppy group prefix length
@@ -329,7 +336,7 @@ void SloppyGroupManagerPrivate::initialize()
 
   // Start periodic neighbor set refresh timer
   m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(30));
-  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
+  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::periodicRefreshNeighborSet, this, _1));
 }
 
 void SloppyGroupManagerPrivate::shutdown()
@@ -367,11 +374,20 @@ void SloppyGroupManagerPrivate::networkSizeEstimateChanged(std::uint64_t size)
   // TODO: Refresh neighbor set when the group prefix length has been changed
 }
 
-void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_code &error)
+void SloppyGroupManagerPrivate::periodicRefreshNeighborSet(const boost::system::error_code &error)
 {
   if (error)
     return;
 
+  m_signalRefresh();
+
+  // Reschedule neighbor set refresh
+  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_ns_refresh));
+  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::periodicRefreshNeighborSet, this, _1));
+}
+
+void SloppyGroupManagerPrivate::refreshNeighborSet()
+{
   RecursiveUniqueLock lock(m_mutex);
   RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
 
@@ -388,10 +404,6 @@ void SloppyGroupManagerPrivate::refreshNeighborSet(const boost::system::error_co
   for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
     refreshOneLongFinger(boost::bind(&SloppyGroupManagerPrivate::ndbHandleResponseLong, this, _1, _2), group);
   }
-
-  // Reschedule neighbor set refresh
-  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_ns_refresh));
-  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
 }
 
 void SloppyGroupManagerPrivate::refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
@@ -438,7 +450,7 @@ void SloppyGroupManagerPrivate::ndbRefreshCompleted()
     // Retry neighbor set refresh using exponential backoff
     m_shortFingerRefreshRetries++;
     m_neighborRefreshTimer.expires_from_now(m_router.context().backoff(m_shortFingerRefreshRetries, 5, SloppyGroupManager::interval_ns_refresh));
-    m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this, _1));
+    m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::periodicRefreshNeighborSet, this, _1));
     return;
   } else {
     m_shortFingerRefreshRetries = 0;
@@ -500,8 +512,8 @@ void SloppyGroupManagerPrivate::ndbRefreshCompleted()
 
   // Preempt full records announce
   // TODO: Do this only when the neighbor set has changed
-  m_announceTimer.expires_from_now(m_router.context().roughly(15));
-  m_announceTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, _1));
+  m_router.context().defer(
+    boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, boost::system::error_code()));
 }
 
 NameRecordPtr SloppyGroupManagerPrivate::filterLongFingers(const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId)
@@ -541,15 +553,7 @@ void SloppyGroupManagerPrivate::announceFullRecords(const boost::system::error_c
     return;
 
   RecursiveUniqueLock lock(m_mutex);
-  
-  // Announce full updates to the neighbor set
-  for (const auto &pf : m_fingersOut) {
-    m_nameDb.fullUpdate(pf.second.nodeId);
-  }
-
-  for (const auto &pf : m_fingersIn) {
-    m_nameDb.fullUpdate(pf.second.nodeId);
-  }
+  m_nameDb.fullUpdate();
 
   // Schedule next periodic export
   m_announceTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_announce));
@@ -558,6 +562,16 @@ void SloppyGroupManagerPrivate::announceFullRecords(const boost::system::error_c
 
 void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId)
 {
+  // Prepare announcement message
+  Protocol::NameAnnounce announce;
+  announce.set_originid(record->nodeId.raw());
+  for (const LandmarkAddress &address : record->addresses) {
+    Protocol::LandmarkAddress *laddr = announce.add_addresses();
+    laddr->set_landmarkid(address.landmarkId().raw());
+    for (Vport port : address.path())
+      laddr->add_address(port);
+  }
+
   auto exportRecord = [&](const SloppyPeer &peer) {
     if (!record->originId.isNull()) {
       int forwardDirection = (record->originId > m_localId) ? -1 : 1;
@@ -567,16 +581,6 @@ void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const Node
         return;
       else if (forwardDirection == -1 && peer.nodeId > m_localId)
         return;
-    }
-
-    // Export record to selected peer
-    Protocol::NameAnnounce announce;
-    announce.set_originid(record->nodeId.raw());
-    for (const LandmarkAddress &address : record->addresses) {
-      Protocol::LandmarkAddress *laddr = announce.add_addresses();
-      laddr->set_landmarkid(address.landmarkId().raw());
-      for (Vport port : address.path())
-        laddr->add_address(port);
     }
 
     m_router.route(
@@ -647,11 +651,14 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
           auto it = m_fingersIn.find(msg.sourceNodeId());
           if (it == m_fingersIn.end()) {
             // Reject the peer if there are too many incoming fingers already
-            if (m_fingersIn.size() >= SloppyGroupManager::finger_count)
+            if (m_fingersIn.size() >= SloppyGroupManager::finger_count + 2)
               return rejectPeerLink(msg);
 
             // Create a new incoming peer entry
             m_fingersIn.insert({{ msg.sourceNodeId(), SloppyPeer(msg.sourceNodeId(), msg.sourceAddress()) }});
+
+            // Since a new link has been establish, we should send a full record update to this peer
+            m_nameDb.fullUpdate(msg.sourceNodeId());
           } else {
             // Update source address of the finger as it should be more recent
             if (it->second.landmarkAddress() != msg.sourceAddress()) {
@@ -664,6 +671,13 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
 
       Protocol::NameAnnounce announce = message_cast<Protocol::NameAnnounce>(msg);
 
+      // Accept announces only for peers in the same sloppy group
+      NodeIdentifier originId(announce.originid(), NodeIdentifier::Format::Raw);
+      if (originId.prefix(m_groupPrefixLength) != m_groupPrefix) {
+        BOOST_LOG_SEV(m_logger, log::warning) << "Dropping name record (origin not in our SG).";
+        return;
+      }
+
       std::list<LandmarkAddress> addresses;
       for (int j = 0; j < announce.addresses_size(); j++) {
         const Protocol::LandmarkAddress &laddr = announce.addresses(j);
@@ -673,9 +687,16 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
         ));
       }
 
+      // Check if the received record should be one of the short fingers
+      if ((originId > m_predecessor.nodeId && originId < m_localId) ||
+          (originId < m_successor.nodeId && originId > m_localId)) {
+        // Queue a refresh operation
+        m_signalRefresh();
+      }
+
       // Store record into the name database
       m_nameDb.store(
-        NodeIdentifier(announce.originid(), NodeIdentifier::Format::Raw),
+        originId,
         addresses,
         NameRecord::Type::SloppyGroup,
         msg.sourceNodeId()
@@ -687,6 +708,11 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
       // One of our outgoing fingers got rejected by the destination node; remove the finger
       // from our outgoing list and retry the selection of a single finger
       RecursiveUniqueLock lock(m_mutex);
+
+      if (msg.sourceNodeId() == m_successor.nodeId || msg.sourceNodeId() == m_predecessor.nodeId) {
+        BOOST_LOG_SEV(m_logger, log::warning) << "Ignoring rejection of successor/predecessor.";
+        return;
+      }
 
       auto fit = m_fingersOut.find(msg.sourceNodeId());
       if (fit == m_fingersOut.end())
@@ -793,6 +819,11 @@ void SloppyGroupManager::initialize()
 void SloppyGroupManager::shutdown()
 {
   d->shutdown();
+}
+
+void SloppyGroupManager::refresh()
+{
+  d->m_signalRefresh();
 }
 
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)

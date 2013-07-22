@@ -630,6 +630,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
           } else {
 #ifdef UNISPHERE_PROFILE
             BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message " << m_msgTracer.getMessageId(msg) << " (no route to destination at SG member).";
+            m_nameDb.dump(std::cout);
 #else
             BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message (no route to destination at SG member).";
 #endif

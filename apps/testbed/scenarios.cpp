@@ -34,7 +34,15 @@ UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
 UNISPHERE_SCENARIO(StandardTests)
 {
+  const auto &nodes = api.getNodes();
+  for (int i = 0; i <= nodes.size() / 10; i++) {
+    api.startNodes(nodes, i*10, 10);
+    api.wait(5);
+  }
   api.wait(30);
+  /// Perform some sanity checks before continuing
+  api.test("sanity/check_consistent_ndb");
+
   // Count routing state after 30 seconds
   api.test("state/count");
   // Dump sloppy group and routing topologies in parallel
