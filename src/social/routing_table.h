@@ -109,6 +109,11 @@ public:
   Vport originVport() const { return forwardPath.front(); }
 
   /**
+   * Returns the length of the forward path.
+   */
+  size_t hops() const { return forwardPath.size(); }
+
+  /**
    * Returns the age of this routing entry.
    */
   boost::posix_time::time_duration age() const;

@@ -39,7 +39,7 @@ namespace RIBTags {
   class DestinationId;
   class ActiveRoutes;
   class LandmarkCost;
-  class LandmarkDestinationCost;
+  class LandmarkDestinationHops;
   class VportDestination;
 }
 
@@ -78,12 +78,12 @@ typedef boost::multi_index_container<
     
     // Index by landmark status, destination and cost
     midx::ordered_non_unique<
-      midx::tag<RIBTags::LandmarkDestinationCost>,
+      midx::tag<RIBTags::LandmarkDestinationHops>,
       midx::composite_key<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, landmark),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
+        midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::hops>
       >
     >,
 
@@ -429,7 +429,7 @@ size_t CompactRoutingTablePrivate::getMaximumVicinitySize() const
 
 boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVicinity() const
 {
-  auto entries = m_rib.get<RIBTags::LandmarkDestinationCost>().equal_range(false);
+  auto entries = m_rib.get<RIBTags::LandmarkDestinationHops>().equal_range(false);
   RoutingEntryPtr maxCostEntry;
   NodeIdentifier lastDestination;
   size_t vicinitySize = 0;
@@ -438,7 +438,7 @@ boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVici
   for (auto it = entries.first; it != entries.second; ++it) {
     if ((*it)->destination != lastDestination) {
       vicinitySize++;
-      if (!maxCostEntry || (*it)->cost > maxCostEntry->cost)
+      if (!maxCostEntry || (*it)->hops() > maxCostEntry->hops())
         maxCostEntry = *it;
     }
 
@@ -450,7 +450,7 @@ boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVici
 
 size_t CompactRoutingTablePrivate::getLandmarkCount() const
 {
-  auto entries = m_rib.get<RIBTags::LandmarkDestinationCost>().equal_range(true);
+  auto entries = m_rib.get<RIBTags::LandmarkDestinationHops>().equal_range(true);
   NodeIdentifier lastDestination;
   size_t landmarkCount = 0;
 
@@ -557,9 +557,8 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       boost::tie(vicinitySize, maxCostEntry) = getCurrentVicinity();
 
       if (vicinitySize >= getMaximumVicinitySize()) {
-        // FIXME: This is wrong, should always depend on hop count explicitly!
-        if (maxCostEntry->cost > entry->cost) {
-          // Remove the entry with maximum cost
+        if (maxCostEntry->hops() > entry->hops()) {
+          // Remove the entry with maximum hop count
           retract(maxCostEntry->destination);
         } else {
           return false;
