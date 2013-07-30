@@ -90,6 +90,16 @@ public:
   void refresh();
 
   /**
+   * Returns the current group prefix length.
+   */
+  size_t getGroupPrefixLength() const;
+
+  /**
+   * Returns the current group prefix.
+   */
+  const NodeIdentifier &getGroupPrefix() const;
+
+  /**
    * Outputs the sloppy group state to a stream.
    *
    * @param stream Output stream to dump into

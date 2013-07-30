@@ -29,6 +29,15 @@ namespace Scenarios {
  */
 UNISPHERE_SCENARIO(IdleScenario)
 {
+  const auto &nodes = api.getNodes();
+  for (int i = 0; i <= nodes.size() / 10; i++) {
+    api.startNodes(nodes, i*10, 10);
+    api.wait(5);
+  }
+  api.wait(600);
+
+  // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
+  // api.startNodesBatch(nodes, 10, 5);
 }
 UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 

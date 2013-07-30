@@ -244,11 +244,11 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
     m_identity(identity),
     m_manager(manager),
     m_sizeEstimator(sizeEstimator),
-    m_routes(m_context, identity.localId(), sizeEstimator),
     m_channel(router),
     m_rpc(m_channel),
     m_nameDb(router),
     m_sloppyGroup(router, sizeEstimator),
+    m_routes(m_context, identity.localId(), sizeEstimator, m_sloppyGroup),
     m_announceTimer(manager.context().service()),
     m_seqno(1)
 {

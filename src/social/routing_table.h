@@ -133,6 +133,10 @@ public:
   RoutingPath reversePath;
   /// Entry type
   bool landmark;
+  /// Vicinity status
+  bool vicinity;
+  /// Extended vicinity status
+  bool extendedVicinity;
   /// Sequence number
   std::uint16_t seqno;
   /// Cost to route to that entry
@@ -146,6 +150,8 @@ public:
 };
 
 UNISPHERE_SHARED_POINTER(RoutingEntry)
+
+class SloppyGroupManager;
 
 /**
  * The routing table data structure.
@@ -196,10 +202,12 @@ public:
    * @param context UNISPHERE context
    * @param localId Local node identifier
    * @param sizeEstimator A network size estimator
+   * @param sloppyGroup Sloppy group manager
    */
   CompactRoutingTable(Context &context,
                       const NodeIdentifier &localId,
-                      NetworkSizeEstimator &sizeEstimator);
+                      NetworkSizeEstimator &sizeEstimator,
+                      SloppyGroupManager &sloppyGroup);
   
   /**
    * Returns the currently active route to the given destination

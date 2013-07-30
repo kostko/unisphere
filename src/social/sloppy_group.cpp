@@ -826,6 +826,16 @@ void SloppyGroupManager::refresh()
   d->m_signalRefresh();
 }
 
+size_t SloppyGroupManager::getGroupPrefixLength() const
+{
+  return d->m_groupPrefixLength;
+}
+
+const NodeIdentifier &SloppyGroupManager::getGroupPrefix() const
+{
+  return d->m_groupPrefix;
+}
+
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)
 {
   d->dump(stream, resolve);

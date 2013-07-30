@@ -18,6 +18,7 @@
  */
 #include "social/routing_table.h"
 #include "social/compact_router.h"
+#include "social/sloppy_group.h"
 
 #include <unordered_map>
 #include <boost/multi_index_container.hpp>
@@ -39,7 +40,9 @@ namespace RIBTags {
   class DestinationId;
   class ActiveRoutes;
   class LandmarkCost;
-  class LandmarkDestinationHops;
+  class LandmarkDestination;
+  class Vicinity;
+  class VicinityAny;
   class VportDestination;
 }
 
@@ -76,12 +79,34 @@ typedef boost::multi_index_container<
       >
     >,
     
-    // Index by landmark status, destination and cost
+    // Index by landmark status and destination
     midx::ordered_non_unique<
-      midx::tag<RIBTags::LandmarkDestinationHops>,
+      midx::tag<RIBTags::LandmarkDestination>,
       midx::composite_key<
         RoutingEntry,
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, landmark),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
+      >
+    >,
+
+    // Index by vicinity and extended vicinity
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::Vicinity>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, vicinity),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, extendedVicinity),
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
+        midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::hops>
+      >
+    >,
+
+    // Index by vicinity
+    midx::ordered_non_unique<
+      midx::tag<RIBTags::VicinityAny>,
+      midx::composite_key<
+        RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, vicinity),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
         midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::hops>
       >
@@ -111,16 +136,44 @@ typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMa
 class CompactRoutingTablePrivate {
 public:
   /**
+   * Current vicinity descriptor.
+   */
+  struct CurrentVicinity {
+    /// Current vicinity size
+    size_t size;
+    /// Routing entry with the largest hop count within the vicinity
+    /// (retract candidate in case of overflows)
+    RoutingEntryPtr maxHopEntry;
+    /// Iterator pointing to the maxHopEntry
+    RoutingInformationBase::index<RIBTags::Vicinity>::type::iterator maxHopIterator;
+  };
+
+  /**
+   * Sloppy group bucket descriptor.
+   */
+  struct SloppyGroupBucket {
+    /// Current bucket size
+    size_t size;
+    /// Routing entry with the largest hop count within the bucket
+    /// (retract candidate in case of overflows)
+    RoutingEntryPtr maxHopEntry;
+    /// Iterator pointing to the maxHopEntry
+    RoutingInformationBase::index<RIBTags::VicinityAny>::type::iterator maxHopIterator;
+  };
+
+  /**
    * Class constructor.
    *
    * @param context UNISPHERE context
    * @param localId Local node identifier
    * @param sizeEstimator A network size estimator
+   * @param sloppyGroup Sloppy group manager
    * @param rt Public instance
    */
   CompactRoutingTablePrivate(Context &context,
                              const NodeIdentifier &localId,
                              NetworkSizeEstimator &sizeEstimator,
+                             SloppyGroupManager &sloppyGroup,
                              CompactRoutingTable &rt);
   
   /**
@@ -256,12 +309,25 @@ public:
   size_t getMaximumVicinitySize() const;
 
   /**
-   * Returns the size of the current vicinity together with the routing entry
-   * of a destination with the largest minimum cost.
-   *
-   * @return A tuple (size, entry)
+   * Returns the maximum extended vicinity bucket size.
    */
-  boost::tuple<size_t, RoutingEntryPtr> getCurrentVicinity() const;
+  size_t getMaximumBucketSize() const;
+
+  /**
+   * Returns the size of the current vicinity together with the routing entry
+   * with the largest hop count within the vicinity.
+   *
+   * @return Current vicinity descriptor
+   */
+  CurrentVicinity getCurrentVicinity() const;
+
+  /**
+   * Returns the size of an extended vicinity bucket together with the routing
+   * entry with the largest hop count within the bucket.
+   *
+   * @return Sloppy group bucket descriptor
+   */
+  SloppyGroupBucket getSloppyGroupBucket(const NodeIdentifier &nodeId) const;
 
   /**
    * Returns the number of landmarks in the routing table.
@@ -307,6 +373,8 @@ public:
   NodeIdentifier m_localId;
   /// Network size estimator
   NetworkSizeEstimator &m_sizeEstimator;
+  /// Sloppy group manager
+  SloppyGroupManager &m_sloppyGroup;
   /// Mutex protecting the routing table
   mutable std::recursive_mutex m_mutex;
   /// Information needed for routing to any node
@@ -387,11 +455,13 @@ bool RoutingEntry::operator==(const RoutingEntry &other) const
 CompactRoutingTablePrivate::CompactRoutingTablePrivate(Context &context,
                                                        const NodeIdentifier &localId,
                                                        NetworkSizeEstimator &sizeEstimator,
+                                                       SloppyGroupManager &sloppyGroup,
                                                        CompactRoutingTable &rt)
   : q(rt),
     m_context(context),
     m_localId(localId),
     m_sizeEstimator(sizeEstimator),
+    m_sloppyGroup(sloppyGroup),
     m_nextVport(0),
     m_landmark(false)
 {
@@ -427,30 +497,68 @@ size_t CompactRoutingTablePrivate::getMaximumVicinitySize() const
   return static_cast<size_t>(std::sqrt(n * std::log(n)));
 }
 
-boost::tuple<size_t, RoutingEntryPtr> CompactRoutingTablePrivate::getCurrentVicinity() const
+size_t CompactRoutingTablePrivate::getMaximumBucketSize() const
 {
-  auto entries = m_rib.get<RIBTags::LandmarkDestinationHops>().equal_range(false);
-  RoutingEntryPtr maxCostEntry;
+  // TODO: This is probably not the best way (int -> double -> log -> int)
+  double n = static_cast<double>(m_sizeEstimator.getNetworkSize());
+  return static_cast<size_t>(std::log(n));
+}
+
+CompactRoutingTablePrivate::CurrentVicinity CompactRoutingTablePrivate::getCurrentVicinity() const
+{
+  auto entries = m_rib.get<RIBTags::Vicinity>().equal_range(boost::make_tuple(true, false));
   NodeIdentifier lastDestination;
-  size_t vicinitySize = 0;
+  CurrentVicinity vicinity;
+  vicinity.size = 0;
 
   // Count the number of unique destinations in the vicinity
   for (auto it = entries.first; it != entries.second; ++it) {
     if ((*it)->destination != lastDestination) {
-      vicinitySize++;
-      if (!maxCostEntry || (*it)->hops() > maxCostEntry->hops())
-        maxCostEntry = *it;
+      vicinity.size++;
+      if (!vicinity.maxHopEntry || (*it)->hops() >= vicinity.maxHopEntry->hops()) {
+        vicinity.maxHopEntry = *it;
+        vicinity.maxHopIterator = it;
+      }
     }
 
     lastDestination = (*it)->destination;
   }
 
-  return boost::make_tuple(vicinitySize, maxCostEntry);
+  return vicinity;
+}
+
+CompactRoutingTablePrivate::SloppyGroupBucket CompactRoutingTablePrivate::getSloppyGroupBucket(const NodeIdentifier &nodeId) const
+{
+  NodeIdentifier groupStart = nodeId.prefix(m_sloppyGroup.getGroupPrefixLength());
+  NodeIdentifier groupEnd = nodeId.prefix(m_sloppyGroup.getGroupPrefixLength(), 0xFF);
+
+  auto &ribVicinity = m_rib.get<RIBTags::VicinityAny>();
+  auto begin = ribVicinity.lower_bound(boost::make_tuple(true, groupStart));
+  auto end = ribVicinity.upper_bound(boost::make_tuple(true, groupEnd));
+  NodeIdentifier lastDestination;
+  SloppyGroupBucket bucket;
+  bucket.size = 0;
+
+  for (auto it = begin; it != end; ++it) {
+    if ((*it)->destination != lastDestination) {
+      bucket.size++;
+      // Only consider entries in extended vicinity for removal
+      if ((*it)->extendedVicinity && 
+          (!bucket.maxHopEntry || (*it)->hops() >= bucket.maxHopEntry->hops())) {
+        bucket.maxHopEntry = *it;
+        bucket.maxHopIterator = it;
+      }
+    }
+
+    lastDestination = (*it)->destination;
+  }
+
+  return bucket;
 }
 
 size_t CompactRoutingTablePrivate::getLandmarkCount() const
 {
-  auto entries = m_rib.get<RIBTags::LandmarkDestinationHops>().equal_range(true);
+  auto entries = m_rib.get<RIBTags::LandmarkDestination>().equal_range(true);
   NodeIdentifier lastDestination;
   size_t landmarkCount = 0;
 
@@ -535,6 +643,9 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       if (e->landmark != entry->landmark)
         landmarkChangedType = true;
 
+      // TODO: In some cases modification can cause the entry to be retracted; for example
+      // when it is no longer a landmark and it doesn't fall into the (extended) vicinity
+
       e->forwardPath = entry->forwardPath;
       e->reversePath = entry->reversePath;
       e->landmark = entry->landmark;
@@ -548,23 +659,70 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       }
     });
   } else {
-    // An entry should be inserted if it represents a landmark or if it falls
-    // into the vicinity of the current node
-    if (!entry->landmark) {
-      // Verify that it falls into the vicinity
-      size_t vicinitySize;
-      RoutingEntryPtr maxCostEntry;
-      boost::tie(vicinitySize, maxCostEntry) = getCurrentVicinity();
+    // An entry should be inserted if it represents a landmark or if it falls into the vicinity
+    // or the extended vicinity (based on sloppy group membership) of the current node
+    bool isVicinity = false;
+    bool isExtendedVicinity = false;
+    // Fetch current vicinity
+    CurrentVicinity vicinity = getCurrentVicinity();
 
-      if (vicinitySize >= getMaximumVicinitySize()) {
-        if (maxCostEntry->hops() > entry->hops()) {
-          // Remove the entry with maximum hop count
-          retract(maxCostEntry->destination);
+    if (vicinity.size >= getMaximumVicinitySize()) {
+      if (vicinity.maxHopEntry->hops() > entry->hops()) {
+        // In vicinity, but we might need to retract an entry if it isn't in any bucket
+        isVicinity = true;
+        // Modify maxHopEntry as it is no longer in vicinity (but is in extended vicinity)
+        m_rib.get<RIBTags::Vicinity>().modify(vicinity.maxHopIterator, [&](RoutingEntryPtr e) {
+          e->extendedVicinity = true;
+        });
+        // Fetch corresponding SG bucket
+        SloppyGroupBucket bucket = getSloppyGroupBucket(entry->destination);
+        // Retract entry when bucket would overflow
+        if (bucket.size >= getMaximumBucketSize() && bucket.maxHopEntry) {
+          if (bucket.maxHopEntry->landmark) {
+            // Landmark entries should never be removed, so they are moved from vicinity
+            m_rib.get<RIBTags::VicinityAny>().modify(bucket.maxHopIterator, [&](RoutingEntryPtr e) {
+              e->vicinity = false;
+              e->extendedVicinity = false;
+            });
+          } else {
+            retract(bucket.maxHopEntry->destination);
+          }
+        }
+      } else {
+        // Not part of standard vicinity, but might still be accepted if it belongs
+        // to the sloppy group we need
+        SloppyGroupBucket bucket = getSloppyGroupBucket(entry->destination);
+        if (bucket.size >= getMaximumBucketSize()) {
+          // Check if there is any entry that can be removed
+          if (bucket.maxHopEntry && bucket.maxHopEntry->hops() > entry->hops()) {
+            isVicinity = true;
+            isExtendedVicinity = true;
+            
+            // Retract the entry to make room for new one
+            if (bucket.maxHopEntry->landmark) {
+              // Landmark entries should never be removed, so they are moved from vicinity
+              m_rib.get<RIBTags::VicinityAny>().modify(bucket.maxHopIterator, [&](RoutingEntryPtr e) {
+                e->vicinity = false;
+                e->extendedVicinity = false;
+              });
+            } else {
+              retract(bucket.maxHopEntry->destination);
+            }
+          }
         } else {
-          return false;
+          isVicinity = true;
+          isExtendedVicinity = true;
         }
       }
+    } else {
+      // Inside vicinity as it is not yet full
+      isVicinity = true;
     }
+
+    if (!isVicinity && !entry->landmark)
+      return false;
+    entry->vicinity = isVicinity;
+    entry->extendedVicinity = isExtendedVicinity;
 
     m_rib.insert(entry);
 
@@ -699,11 +857,12 @@ CompactRoutingTable::LongestPrefixMatch CompactRoutingTablePrivate::getLongestPr
     return CompactRoutingTable::LongestPrefixMatch();
 
   // Find the entry with longest common prefix
-  auto &ribDestination = m_rib.get<RIBTags::DestinationId>();
-  auto it = ribDestination.upper_bound(boost::make_tuple(destination));
-  if (it == ribDestination.end()) {
+  auto &ribVicinity = m_rib.get<RIBTags::VicinityAny>();
+  auto entries = ribVicinity.equal_range(boost::make_tuple(true));
+  auto it = ribVicinity.upper_bound(boost::make_tuple(true, destination));
+  if (it == entries.second) {
     --it;
-  } else if (it != ribDestination.begin()) {
+  } else if (it != entries.first) {
     // Check if previous entry has longer common prefix
     auto pit = it;
     if ((*(--pit))->destination.longestCommonPrefix(destination) >
@@ -798,7 +957,7 @@ size_t CompactRoutingTablePrivate::sizeActive() const
 
 size_t CompactRoutingTablePrivate::sizeVicinity() const
 {
-  return getCurrentVicinity().get<0>();
+  return getCurrentVicinity().size;
 }
 
 void CompactRoutingTablePrivate::clear()
@@ -866,7 +1025,12 @@ void CompactRoutingTablePrivate::dump(std::ostream &stream, std::function<std::s
 
     // Output type, cost and forward path
     stream << "  " << "t=";
-    stream << e->landmark ? "LND" : "VIC";
+    if (e->landmark)
+      stream << "LND ";
+    if (e->vicinity)
+      stream << "VIC ";
+    if (e->extendedVicinity)
+      stream << "EVIC";
     stream << " c=" << e->cost << " f-path=";
     for (auto p = e->forwardPath.begin(); p != e->forwardPath.end(); ++p) {
       stream << *p << " ";
@@ -884,7 +1048,7 @@ void CompactRoutingTablePrivate::dump(std::ostream &stream, std::function<std::s
 
   // Dump vicinity size and maximum
   stream << "*** Vicinity:" << std::endl;
-  stream << "Current size: " << getCurrentVicinity().get<0>() << std::endl;
+  stream << "Current size: " << getCurrentVicinity().size << std::endl;
   stream << "Maximum size: " << getMaximumVicinitySize() << std::endl;
 
   // Dump number of landmarks
@@ -930,14 +1094,15 @@ void CompactRoutingTablePrivate::dumpTopology(CompactRoutingTable::TopologyDumpG
 
 CompactRoutingTable::CompactRoutingTable(Context &context,
                                          const NodeIdentifier &localId,
-                                         NetworkSizeEstimator &sizeEstimator)
+                                         NetworkSizeEstimator &sizeEstimator,
+                                         SloppyGroupManager &sloppyGroup)
   : signalExportEntry(context),
     signalRetractEntry(context),
     signalAddressChanged(context),
     signalLandmarkLearned(context),
     signalLandmarkRemoved(context),
 
-    d(new CompactRoutingTablePrivate(context, localId, sizeEstimator, *this))
+    d(new CompactRoutingTablePrivate(context, localId, sizeEstimator, sloppyGroup, *this))
 {
 }
 
