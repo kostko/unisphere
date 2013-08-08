@@ -111,7 +111,7 @@ void Context::setThreadInitializer(std::function<void()> initializer)
 
 void Context::defer(std::function<void()> operation)
 {
-  schedule(0, operation);
+  d->m_io.post(operation);
 }
 
 void Context::schedule(int timeout, std::function<void()> operation)
