@@ -278,14 +278,6 @@ public:
   void setLandmark(bool landmark);
 
   /**
-   * Returns a list of landmark-relative local addresses.
-   *
-   * @param count Number of addresses to return
-   * @return A list of landmark addresses
-   */
-  std::list<LandmarkAddress> getLocalAddresses(size_t count) const;
-
-  /**
    * Outputs the routing table to a stream.
    *
    * @param stream Output stream to dump into
@@ -364,11 +356,20 @@ public:
    *   previously active entry or null if there was no such entry before
    */
   boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> selectBestRoute(const NodeIdentifier &destination);
+
+  /**
+   * Performs local address selection.
+   *
+   * @return True when local address has changed, false otherwise
+   */
+  bool selectLocalAddress();
 public:
   UNISPHERE_DECLARE_PUBLIC(CompactRoutingTable)
 
   /// UNISPHERE context
   Context &m_context;
+  /// Logger instance
+  Logger m_logger;
   /// Local node identifier
   NodeIdentifier m_localId;
   /// Network size estimator
@@ -385,10 +386,13 @@ public:
   VportMap m_vportMap;
   /// Vport index counter
   Vport m_nextVport;
-  /// Local address based on nearest landmark; multiple for redundancy?
-  std::list<LandmarkAddress> m_localAddress;
+  /// Local address based on nearest landmark (multiple for redundancy)
+  LandmarkAddressList m_localAddress;
   /// Landmark status of the current node
   bool m_landmark;
+
+  /// Counter for tracking update statistics
+  size_t m_statsRouteUpdates = 0;
 };
 
 RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
@@ -459,12 +463,14 @@ CompactRoutingTablePrivate::CompactRoutingTablePrivate(Context &context,
                                                        CompactRoutingTable &rt)
   : q(rt),
     m_context(context),
+    m_logger(logging::keywords::channel = "routing_table"),
     m_localId(localId),
     m_sizeEstimator(sizeEstimator),
     m_sloppyGroup(sloppyGroup),
     m_nextVport(0),
     m_landmark(false)
 {
+  m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(localId));
 }
 
 Vport CompactRoutingTablePrivate::getVportForNeighbor(const NodeIdentifier &neighbor)
@@ -624,22 +630,24 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
   auto &ribVport = m_rib.get<RIBTags::VportDestination>();
   auto existing = ribVport.find(boost::make_tuple(entry->originVport(), entry->destination));
   if (existing != ribVport.end()) {
+    //BOOST_LOG(m_logger) << "Updated entry " << *existing << " for " << entry->destination.hex() << " path " << entry->forwardPath;
+
     // Ignore import when the existing entry is the same as the new one
     if (**existing == *entry) {
       // Update the entry's last seen timestamp
-      ribVport.modify(existing, [&](RoutingEntryPtr e) {
+      BOOST_ASSERT(ribVport.modify(existing, [&](RoutingEntryPtr e) {
         e->lastUpdate = entry->lastUpdate;
 
         // Restart expiry timer
         if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
           e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, e));
         }
-      });
+      }));
       return false;
     }
 
     // Update certain attributes of the routing entry
-    ribVport.modify(existing, [&](RoutingEntryPtr e) {
+    BOOST_ASSERT(ribVport.modify(existing, [&](RoutingEntryPtr e) {
       if (e->landmark != entry->landmark)
         landmarkChangedType = true;
 
@@ -657,7 +665,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
         e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, e));
       }
-    });
+    }));
   } else {
     // An entry should be inserted if it represents a landmark or if it falls into the vicinity
     // or the extended vicinity (based on sloppy group membership) of the current node
@@ -743,6 +751,10 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       q.signalLandmarkRemoved.defer(entry->destination);
   }
 
+  // Determine whether local address has changed
+  if (entry->landmark || landmarkChangedType)
+    selectLocalAddress();
+
   return true;
 }
 
@@ -797,6 +809,7 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
   // If there are no feasible routes, return early
   if (newBest == ribDestination.end()) {
     // TODO: Request a new sequence number from route originator
+    BOOST_LOG_SEV(m_logger, log::warning) << "No feasible routes towards " << destination.hex() << ".";
     return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
   }
 
@@ -824,16 +837,74 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
         q.signalLandmarkRemoved.defer(destination);
       else if (!oldBestEntry->landmark && newBestEntry->landmark)
         q.signalLandmarkLearned.defer(destination);
-    } else if (newBestEntry->landmark) {
-      // A landmark has become the active route
-      q.signalLandmarkLearned.defer(destination);
+
+      // Check if vicinity type for the active entry has changed
+      if (oldBestEntry->vicinity && !newBestEntry->vicinity)
+        q.signalVicinityRemoved.defer(destination);
+      else if (!oldBestEntry->vicinity && newBestEntry->vicinity)
+        q.signalVicinityLearned.defer(CompactRoutingTable::VicinityDescriptor{ newBestEntry->destination, newBestEntry->hops() });
+    } else {
+      // Check if a landmark has become the active route
+      if (newBestEntry->landmark)
+        q.signalLandmarkLearned.defer(destination);
+
+      // Check if a vicinity member has become the active route
+      if (newBestEntry->vicinity)
+        q.signalVicinityLearned.defer(CompactRoutingTable::VicinityDescriptor{ newBestEntry->destination, newBestEntry->hops() });
     }
+
+    m_statsRouteUpdates++;
 
     // Export new active route to neighbors
     exportEntry(newBestEntry);
   }
 
   return boost::make_tuple(true, *newBest, oldBestEntry);
+}
+
+bool CompactRoutingTablePrivate::selectLocalAddress()
+{
+  if (m_landmark) {
+    if (m_localAddress.empty() ||
+        m_localAddress.front().landmarkId() != m_localId ||
+        m_localAddress.size() > 1) {
+      m_localAddress.clear();
+      m_localAddress.push_back(LandmarkAddress(m_localId));
+      q.signalAddressChanged.defer(m_localAddress);
+      return true;
+    }
+    
+    return false;
+  }
+
+  auto ait = m_localAddress.begin();
+  auto entries = m_rib.get<RIBTags::LandmarkCost>().equal_range(true);
+  bool changed = false;
+  for (auto it = entries.first; it != entries.second; ++it) {
+    LandmarkAddress lrAddress((*it)->destination, (*it)->reversePath);
+
+    if (ait == m_localAddress.end()) {
+      if (m_localAddress.size() >= CompactRoutingTable::local_address_redundancy)
+        break;
+
+      // Address inserted at the end of list
+      changed = true;
+      m_localAddress.push_back(lrAddress);
+      continue;
+    }
+
+    if (*ait != lrAddress) {
+      // Address has changed position
+      *ait = lrAddress;
+      changed = true;
+    }
+
+    ++ait;
+  }
+  
+  if (changed)
+    q.signalAddressChanged.defer(m_localAddress);
+  return changed;
 }
 
 NodeIdentifier CompactRoutingTablePrivate::getActiveRoute(const NodeIdentifier &destination)
@@ -892,8 +963,9 @@ bool CompactRoutingTablePrivate::retract(const NodeIdentifier &destination)
     if (entry->landmark)
       wasLandmark = true;
 
-    // Call the erasure method to ensure that the routing table is updated before any
-    // announcements are sent
+    // Timer must be cancelled as its handler contains a closure with a self-reference to
+    // the routing entry pointer -- otherwise the entry will not get freed until the timer fires
+    entry->expiryTimer.cancel();
     it = ribDestination.erase(it);
 
     // Send retractions for active entries
@@ -901,9 +973,11 @@ bool CompactRoutingTablePrivate::retract(const NodeIdentifier &destination)
       q.signalRetractEntry(entry);
   }
 
-  // If this was a landmark, we have just unlearned it
+  // We have just unlearned a vicinity member or landmark
   if (wasLandmark)
     q.signalLandmarkRemoved.defer(destination);
+  else
+    q.signalVicinityRemoved.defer(destination);
 
   return true;
 }
@@ -928,8 +1002,9 @@ bool CompactRoutingTablePrivate::retract(Vport vport, const NodeIdentifier &dest
   for (auto it = routes.first; it != routes.second;) {
     RoutingEntryPtr entry = *it;
 
-    // Call the erasure method to ensure that the routing table is updated before any
-    // announcements are sent
+    // Timer must be cancelled as its handler contains a closure with a self-reference to
+    // the routing entry pointer -- otherwise the entry will not get freed until the timer fires
+    entry->expiryTimer.cancel();
     it = ribVport.erase(it);
 
     // If entry was part of an active route, we must determine a new active route for this destination
@@ -966,36 +1041,20 @@ void CompactRoutingTablePrivate::clear()
 
   m_rib.clear();
   m_vportMap.clear();
+  m_statsRouteUpdates = 0;
 }
 
 void CompactRoutingTablePrivate::setLandmark(bool landmark)
 {
-  // TODO: Handle landmark setup/tear down
+  RecursiveUniqueLock lock(m_mutex);
+
+  bool changed = (landmark != m_landmark);
   m_landmark = landmark;
-}
-
-std::list<LandmarkAddress> CompactRoutingTablePrivate::getLocalAddresses(size_t count) const
-{
-  std::list<LandmarkAddress> addresses;
-
-  if (m_landmark) {
-    // Landmark nodes don't need an explicit address as all the other nodes have them in RIB
-    addresses.push_back(LandmarkAddress(m_localId));
-  } else {
-    // Extract nearest count landmarks from RIB and return reverse paths as addresses
-    auto entries = m_rib.get<RIBTags::LandmarkCost>().equal_range(true);
-    for (auto it = entries.first; it != entries.second; ++it) {
-      if (!addresses.empty() && (*it)->destination == addresses.back().landmarkId())
-        continue;
-
-      addresses.push_back(LandmarkAddress((*it)->destination, (*it)->reversePath));
-
-      if (addresses.size() >= count)
-        break;
-    }
+  
+  if (changed) {
+    // Perform local address selection
+    selectLocalAddress();
   }
-
-  return addresses;
 }
 
 void CompactRoutingTablePrivate::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const
@@ -1101,6 +1160,8 @@ CompactRoutingTable::CompactRoutingTable(Context &context,
     signalAddressChanged(context),
     signalLandmarkLearned(context),
     signalLandmarkRemoved(context),
+    signalVicinityLearned(context),
+    signalVicinityRemoved(context),
 
     d(new CompactRoutingTablePrivate(context, localId, sizeEstimator, sloppyGroup, *this))
 {
@@ -1162,6 +1223,18 @@ size_t CompactRoutingTable::sizeVicinity() const
   return d->sizeVicinity();
 }
 
+std::list<CompactRoutingTable::VicinityDescriptor> CompactRoutingTable::getVicinity() const
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  std::list<VicinityDescriptor> vicinity;
+  auto entries = d->m_rib.get<RIBTags::VicinityAny>().equal_range(true);
+  for (auto it = entries.first; it != entries.second; ++it) {
+    vicinity.push_back(VicinityDescriptor{ (*it)->destination, (*it)->hops() });
+  }
+
+  return vicinity;
+}
+
 void CompactRoutingTable::clear()
 {
   return d->clear();
@@ -1177,18 +1250,24 @@ bool CompactRoutingTable::isLandmark() const
   return d->m_landmark;
 }
 
-std::list<LandmarkAddress> CompactRoutingTable::getLocalAddresses(size_t count) const
+LandmarkAddressList CompactRoutingTable::getLocalAddresses() const
 {
-  return d->getLocalAddresses(count);
+  RecursiveUniqueLock lock(d->m_mutex);
+  return d->m_localAddress;
 }
 
 LandmarkAddress CompactRoutingTable::getLocalAddress() const
 {
-  std::list<LandmarkAddress> addresses = d->getLocalAddresses(1);
-  if (addresses.empty())
+  RecursiveUniqueLock lock(d->m_mutex);
+  if (d->m_localAddress.empty())
     return LandmarkAddress();
 
-  return addresses.front();
+  return d->m_localAddress.front();
+}
+
+size_t CompactRoutingTable::getStatsRouteUpdates() const
+{
+  return d->m_statsRouteUpdates;
 }
 
 void CompactRoutingTable::dump(std::ostream &stream,

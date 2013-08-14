@@ -152,6 +152,12 @@ boost::posix_time::seconds Context::backoff(size_t attempts, int interval, int m
   return roughly(v);
 }
 
+std::uint32_t Context::getCurrentTimestamp() const
+{
+  boost::posix_time::ptime epoch(boost::gregorian::date(2013, 1, 1));
+  return (boost::posix_time::microsec_clock::universal_time() - epoch).total_seconds();
+}
+
 void Context::run(size_t threads)
 {
   {

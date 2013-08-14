@@ -44,7 +44,7 @@ LandmarkAddress::LandmarkAddress(const NodeIdentifier &landmarkId,
   }
 }
 
-void LandmarkAddress::hop()
+void LandmarkAddress::shift()
 {
   if (!m_path.empty())
     m_path.pop_front();
@@ -55,13 +55,32 @@ bool LandmarkAddress::operator==(const LandmarkAddress &other) const
   return m_landmarkId == other.m_landmarkId && m_path == other.m_path;
 }
 
+std::ostream &operator<<(std::ostream &stream, const LandmarkAddressList &addresses)
+{
+  if (addresses.empty()) {
+    stream << "{}";
+  } else {
+    auto it = addresses.begin();
+    stream << "{" << *it;
+    while (++it != addresses.end())
+      stream << ", " << *it;
+    stream << "}";
+  }
+
+  return stream;
+}
+
 std::ostream &operator<<(std::ostream &stream, const LandmarkAddress &address)
 {
   stream << "[" << address.landmarkId().hex() << ", " << address.path() << "]";
   return stream;
 }
 
-std::ostream &operator<<(std::ostream &stream, const RoutingPath &path)
+}
+
+namespace std {
+
+std::ostream &operator<<(std::ostream &stream, const UniSphere::RoutingPath &path)
 {
   if (path.empty()) {
     stream << "<>";

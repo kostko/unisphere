@@ -33,6 +33,11 @@ namespace UniSphere {
 class CompactRouter;
 class SocialRpcChannel;
 
+// TODO: Rename NameDatabase, etc. to LocationDatabase?
+
+class NameRecord;
+UNISPHERE_SHARED_POINTER(NameRecord)
+
 /**
  * An entry in the name database.
  */
@@ -44,10 +49,8 @@ public:
   enum class Type : std::uint8_t {
     /// Locally cached name record
     Cache       = 0x01,
-    /// Current node is landmark authority for this record
-    Authority   = 0x02,
     /// Record received via sloppy group dissemination protocol
-    SloppyGroup = 0x03,
+    SloppyGroup = 0x02,
   };
 
   /**
@@ -73,20 +76,34 @@ public:
    * Returns the age of this name record.
    */
   boost::posix_time::time_duration age() const;
+
+  /**
+   * Returs true if this record is more fresh than the other record. This
+   * decision is based on timestamp and seqno of both records.
+   *
+   * @param other The other record
+   * @return True if this record is more fresh than the other
+   */
+  bool isMoreFresh(NameRecordPtr other) const;
 public:
   /// Node identifier
   NodeIdentifier nodeId;
   /// Record type
   Type type;
   /// Current node landmark-relative addresses
-  std::list<LandmarkAddress> addresses;
+  LandmarkAddressList addresses;
   /// Record liveness
   boost::posix_time::ptime lastUpdate;
   /// Expiration timer
   boost::asio::deadline_timer expiryTimer;
+
   /// Node that this record was received from (for records received via the
   /// sloppy group dissemination protocol)
-  NodeIdentifier originId;
+  NodeIdentifier receivedPeerId;
+  /// Originator timestamp
+  std::uint32_t timestamp;
+  /// Sequence number
+  std::uint8_t seqno;
 };
 
 UNISPHERE_SHARED_POINTER(NameRecord)
@@ -98,22 +115,10 @@ UNISPHERE_SHARED_POINTER(NameRecord)
  */
 class UNISPHERE_EXPORT NameDatabase {
 public:
-  /// Number of landmarks to replicate the name cache to
-  static const int cache_redundancy = 3;
   /// Maximum number of addresses stored in a record
   static const int max_stored_addresses = 3;
   /// Maximum number of entries in local cache
   static const int max_cache_entries = 5;
-
-  /**
-   * Lookup types.
-   */
-  enum class LookupType : std::uint8_t {
-    /// Return the closest name record that is not equal to the query originator
-    Closest = 1,
-    /// Return the left and right neighbors of the looked up identifier
-    ClosestNeighbors = 2,
-  };
 
   /**
    * Class constructor.
@@ -126,17 +131,9 @@ public:
   NameDatabase &operator=(const NameDatabase&) = delete;
 
   /**
-   * Initializes the name database.
-   */
-  void initialize();
-
-  /**
-   * Shuts down the name database.
-   */
-  void shutdown();
-
-  /**
-   * Stores a name record into the database.
+   * Stores a name record into the database. This method should be
+   * used for locally-originating records -- it will abort when
+   * attempting to save non-local sloppy group records.
    *
    * @param nodeId Destination node identifier
    * @param addresses A list of L-R addresses for this node
@@ -144,11 +141,12 @@ public:
    */
   void store(const NodeIdentifier &nodeId,
              const std::list<LandmarkAddress> &addresses,
-             NameRecord::Type type,
-             const NodeIdentifier &originId = NodeIdentifier::INVALID);
+             NameRecord::Type type);
 
   /**
-   * Stores a name record into the database.
+   * Stores a name record into the database. This method should be
+   * used for locally-originating records -- it will abort when
+   * attempting to save non-local sloppy group records.
    *
    * @param nodeId Destination node identifier
    * @param address A L-R address for this node
@@ -156,8 +154,15 @@ public:
    */
   void store(const NodeIdentifier &nodeId,
              const LandmarkAddress &address,
-             NameRecord::Type type,
-             const NodeIdentifier &originId = NodeIdentifier::INVALID);
+             NameRecord::Type type);
+
+  /**
+   * Stores a foreign sloppy group record into the database. The database
+   * will take ownership of the record.
+   *
+   * @param record Name record
+   */
+  void store(NameRecordPtr record);
 
   /**
    * Removes an existing name record from the database.
@@ -181,82 +186,6 @@ public:
   const NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
   /**
-   * Performs sloppy-group related lookups.
-   *
-   * @param nodeId Node identifier to look up
-   * @param prefixLength Sloppy group prefix length
-   * @param origin Node that initiated the lookup
-   * @param type Lookup type
-   * @return Resulting name records or an empty list
-   */
-  const std::list<NameRecordPtr> lookupSloppyGroup(const NodeIdentifier &nodeId,
-                                                   size_t prefixLength,
-                                                   const NodeIdentifier &origin,
-                                                   LookupType type) const;
-
-  /**
-   * Performs sloppy-group related lookups on a remote node.
-   *
-   * @param nodeId Node identifier to look up
-   * @param prefixLength Sloppy group prefix length
-   * @param type Lookup type
-   * @param complete Completion handler
-   */
-  void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
-                               size_t prefixLength,
-                               LookupType type,
-                               std::function<void(const std::list<NameRecordPtr>&)> complete) const;
-
-  /**
-   * Performs sloppy-group related lookups on a remote node.
-   *
-   * @param nodeId Node identifier to look up
-   * @param prefixLength Sloppy group prefix length
-   * @param type Lookup type
-   * @param rpcGroup RPC call group
-   * @param complete Completion handler
-   */
-  void remoteLookupSloppyGroup(const NodeIdentifier &nodeId,
-                               size_t prefixLength,
-                               LookupType type,
-                               RpcCallGroupPtr<SocialRpcChannel> rpcGroup,
-                               std::function<void(const std::list<NameRecordPtr>&)> complete) const;
-
-  /**
-   * Registers a landmark node. This is needed for determining which landmarks
-   * store which name records by the use of consistent hashing.
-   *
-   * @param landmarkId Landmark identifier
-   */
-  void registerLandmark(const NodeIdentifier &landmarkId);
-
-  /**
-   * Unregisters a landmark node. This is needed for determining which landmarks
-   * store which name records by the use of consistent hashing.
-   *
-   * @param landmarkId Landmark identifier
-   */
-  void unregisterLandmark(const NodeIdentifier &landmarkId);
-
-  /**
-   * Returns a list of landmarks that are responsible for caching the given address.
-   *
-   * @param nodeId Destination node identifier that needs to be resolved
-   * @param sgPrefixLength Sloppy group prefix length (optional); this is to return
-   *   caches that contain predecessor and successor fingers
-   * @return A set of landmark identifiers that should have the address
-   */
-  std::unordered_set<NodeIdentifier> getLandmarkCaches(const NodeIdentifier &nodeId,
-                                                       size_t sgPrefixLength = 0) const;
-
-  /**
-   * Publishes local address information to designated landmarks. This method
-   * should be called when the local address changes or when the set of destination
-   * landmarks change.
-   */
-  void publishLocalAddress();
-
-  /**
    * Exports the full name database to the selected peer.
    *
    * @param peer Peer to export the routing table to
@@ -269,8 +198,7 @@ public:
   size_t size() const;
 
   /**
-   * Returns the number of active (authoritative and sloppy group) name records
-   * in the name database.
+   * Returns the number of active (non-cache) name records in the name database.
    */
   size_t sizeActive() const;
 
@@ -300,8 +228,6 @@ public:
 public:
   /// Signal that gets called when a name record should be exported to neighbours
   boost::signals2::signal<void(NameRecordPtr, const NodeIdentifier&)> signalExportRecord;
-  /// Signal that gets called when a name record should be retracted from neighbours
-  boost::signals2::signal<void(NameRecordPtr)> signalRetractRecord;
 private:
   UNISPHERE_DECLARE_PRIVATE(NameDatabase)
 };

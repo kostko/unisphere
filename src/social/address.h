@@ -86,10 +86,15 @@ public:
   const RoutingPath &path() const { return m_path; }
 
   /**
-   * Moves the address one hop forward by removing the first element in
+   * Returns the length of the L-R source route.
+   */
+  size_t size() const { return m_path.size(); }
+
+  /**
+   * Shifts the address one hop forward by removing the first element in
    * the reverse routing path.
    */
-  void hop();
+  void shift();
 
   /**
    * Compares two landmark addresses for equality.
@@ -107,11 +112,21 @@ private:
   RoutingPath m_path;
 };
 
+/// A list of L-R addresses
+typedef std::list<LandmarkAddress> LandmarkAddressList;
+
+/// Operator for easier display of L-R address lists
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const LandmarkAddressList &addresses);
+
 /// Operator for easier display of L-R addresses
 UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const LandmarkAddress &address);
 
+}
+
+namespace std {
+
 /// Operator for easier display of paths
-UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const RoutingPath &path);
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const UniSphere::RoutingPath &path);
 
 }
 

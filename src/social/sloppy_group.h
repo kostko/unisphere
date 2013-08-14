@@ -35,19 +35,14 @@ class NetworkSizeEstimator;
  */
 class UNISPHERE_EXPORT SloppyGroupManager {
 public:
-  /// Number of long-distance fingers to establish
-  static const int finger_count = 1;
-  /// Announce interval
-  static const int interval_announce = 600;
-  /// Neighbor set refresh interval
-  static const int interval_ns_refresh = 600;
-
   /// Tags for topology dump graph properties.
   struct TopologyDumpTags {
     /// Specifies the node's name
     struct NodeName { typedef boost::vertex_property_tag kind; };
-    /// Specifies whether the finger link is a long one
-    struct FingerIsLong { typedef boost::edge_property_tag kind; };
+    /// Specifies whether the link is a foreign one
+    struct LinkIsForeign { typedef boost::edge_property_tag kind; };
+    /// Specifies whether the link is a reverse one
+    struct LinkIsReverse { typedef boost::edge_property_tag kind; };
   };
 
   /// Graph definition for dumping the sloppy group topology into
@@ -57,7 +52,8 @@ public:
       boost::vecS,
       boost::bidirectionalS,
       boost::property<TopologyDumpTags::NodeName, std::string>,
-      boost::property<TopologyDumpTags::FingerIsLong, int>
+      boost::property<TopologyDumpTags::LinkIsForeign, int,
+        boost::property<TopologyDumpTags::LinkIsReverse, int>>
     >,
     std::string,
     boost::hash_mapS
@@ -85,11 +81,6 @@ public:
   void shutdown();
 
   /**
-   * Queues a neighbor set refresh operation.
-   */
-  void refresh();
-
-  /**
    * Returns the current group prefix length.
    */
   size_t getGroupPrefixLength() const;
@@ -98,6 +89,11 @@ public:
    * Returns the current group prefix.
    */
   const NodeIdentifier &getGroupPrefix() const;
+
+  /**
+   * Returns the combined size of all peer views.
+   */
+  size_t sizePeerViews() const;
 
   /**
    * Outputs the sloppy group state to a stream.

@@ -107,6 +107,12 @@ public:
    * @return Number of seconds to wait before next retry
    */
   boost::posix_time::seconds backoff(size_t attempts, int interval, int maximum);
+
+  /**
+   * Returns the current 32-bit timestamp. The timestamp is based on
+   * the number of seconds since the UNISPHERE epoch.
+   */
+  std::uint32_t getCurrentTimestamp() const;
   
   /**
    * Returns the ASIO I/O service for this UNISPHERE context. This service

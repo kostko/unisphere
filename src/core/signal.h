@@ -100,24 +100,44 @@ private:
  * Wrapper around boost::signals2::signal to support signals that
  * are rate-limited and delayed before being emitted.
  */
-template <int Delay, int MaxDelay, int Rate>
-class RateDelayedSignal : public boost::signals2::signal<void()> {
+template <int Delay, int MaxDelay, int Rate, int Period = 0>
+class PeriodicRateDelayedSignal : public boost::signals2::signal<void()> {
 public:
   /// Base class
   typedef typename boost::signals2::signal<void()>::signal base_class;
 
-  BOOST_STATIC_ASSERT(Delay < MaxDelay);
-  BOOST_STATIC_ASSERT(MaxDelay < Rate);
+  BOOST_STATIC_ASSERT(Delay <= MaxDelay);
+  BOOST_STATIC_ASSERT(MaxDelay <= Rate);
 
   /**
    * Class constructor.
    */
-  RateDelayedSignal(Context &context)
+  PeriodicRateDelayedSignal(Context &context)
     : base_class(),
       m_context(context),
       m_timer(context.service()),
+      m_periodic(context.service()),
       m_limited(false)
   {
+  }
+
+  /**
+   * Starts periodic signal emission.
+   */
+  void start()
+  {
+    if (Period > 0) {
+      m_periodic.expires_from_now(m_context.roughly(Period));
+      m_periodic.async_wait(boost::bind(&PeriodicRateDelayedSignal::periodicInvoke, this, _1));
+    }
+  }
+
+  /**
+   * Stops periodic signal emission.
+   */
+  void stop()
+  {
+    m_periodic.cancel();
   }
 
   /**
@@ -135,7 +155,7 @@ public:
       // This call must be rate limited
       m_limited = true;
       m_timer.expires_from_now(m_context.roughly(Rate - (now - m_lastEmit).total_seconds()));
-      m_timer.async_wait(boost::bind(&RateDelayedSignal::limit, this, _1));
+      m_timer.async_wait(boost::bind(&PeriodicRateDelayedSignal::limit, this, _1));
       return;
     }
 
@@ -143,17 +163,29 @@ public:
       // First call
       m_firstCall = now;
       m_timer.expires_from_now(m_context.roughly(Delay));
-      m_timer.async_wait(boost::bind(&RateDelayedSignal::emit, this, _1));
+      m_timer.async_wait(boost::bind(&PeriodicRateDelayedSignal::emit, this, _1));
     } else {
       if ((now - m_firstCall + m_timer.expires_from_now()).total_seconds() < MaxDelay) {
         // We are still within the bounds of max delay, reschedule timer
         if (m_timer.expires_from_now(m_context.roughly(Delay)) > 0) {
-          m_timer.async_wait(boost::bind(&RateDelayedSignal::emit, this, _1));
+          m_timer.async_wait(boost::bind(&PeriodicRateDelayedSignal::emit, this, _1));
         }
       }
     }
   }
 protected:
+  void periodicInvoke(const boost::system::error_code &error)
+  {
+    if (error)
+      return;
+
+    operator()();
+
+    UniqueLock lock(m_mutex);
+    m_periodic.expires_from_now(m_context.roughly(Period));
+    m_periodic.async_wait(boost::bind(&PeriodicRateDelayedSignal::periodicInvoke, this, _1));
+  }
+
   void limit(const boost::system::error_code &error)
   {
     if (error)
@@ -188,9 +220,23 @@ private:
   boost::posix_time::ptime m_lastEmit;
   /// Timer
   boost::asio::deadline_timer m_timer;
+  /// Periodic timer
+  boost::asio::deadline_timer m_periodic;
   /// Flag if signal is currently rate-limited
   bool m_limited;
 };
+
+template <int Delay, int MaxDelay>
+using DelayedSignal = PeriodicRateDelayedSignal<Delay, MaxDelay, 0, 0>;
+
+template <int Delay, int MaxDelay, int Rate>
+using RateDelayedSignal = PeriodicRateDelayedSignal<Delay, MaxDelay, Rate, 0>;
+
+template <int Rate>
+using RateLimitedSignal = PeriodicRateDelayedSignal<0, 0, Rate, 0>;
+
+template <int Rate, int Period>
+using PeriodicRateLimitedSignal = PeriodicRateDelayedSignal<0, 0, Rate, Period>;
 
 }
 

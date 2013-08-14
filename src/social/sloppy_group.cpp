@@ -18,6 +18,7 @@
  */
 #include "social/sloppy_group.h"
 #include "social/compact_router.h"
+#include "social/routing_table.h"
 #include "social/address.h"
 #include "social/name_database.h"
 #include "social/social_identity.h"
@@ -30,9 +31,14 @@
 
 #include "src/social/messages.pb.h"
 
-#include <set>
 #include <boost/asio.hpp>
 #include <boost/log/attributes/constant.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/member.hpp>
+
+namespace midx = boost::multi_index;
 
 namespace UniSphere {
 
@@ -48,20 +54,15 @@ public:
 
   /**
    * Constructs a sloppy peer with a specified node identifier and
-   * without a known landmark address.
-   *
-   * @param nodeId Peer identifier
-   */
-  explicit SloppyPeer(const NodeIdentifier &nodeId);
-
-  /**
-   * Constructs a sloppy peer with a specified node identifier and
    * with a known landmark address.
    *
    * @param nodeId Peer identifier
    * @param address L-R address of this peer
+   * @param hops Hop count to this peer
    */
-  SloppyPeer(const NodeIdentifier &nodeId, const LandmarkAddress &address);
+  SloppyPeer(const NodeIdentifier &nodeId,
+             const LandmarkAddress &address,
+             size_t hops);
 
   /**
    * Constructs a sloppy peer from a name record.
@@ -76,93 +77,75 @@ public:
   bool isNull() const { return nodeId.isNull(); }
 
   /**
-   * Makes this sloppy peer a null one.
-   */
-  void clear();
-
-  /**
-   * Returns the first landmark address for this peer.
+   * Returns the first landmark address of the peer.
    */
   LandmarkAddress landmarkAddress() const;
 
   /**
-   * Comparison operator.
+   * Makes this sloppy peer a null one.
    */
-  bool operator<(const SloppyPeer &other) const
-  {
-    return nodeId < other.nodeId;
-  }
-
-  /**
-   * Comparison operator.
-   */
-  bool operator>(const SloppyPeer &other) const
-  {
-    return nodeId > other.nodeId;
-  }
-
-  /**
-   * Comparison operator.
-   */
-  bool operator==(const SloppyPeer &other) const
-  {
-    return nodeId == other.nodeId;
-  }
+  void clear();
 public:
   /// Sloppy peer node identifier
   NodeIdentifier nodeId;
   /// A list of L-R addresses for this sloppy peer
-  std::list<LandmarkAddress> addresses;
+  LandmarkAddressList addresses;
+  /// Hop count distance
+  size_t hops;
 };
 
 /**
- * Descriptor of a peer that has been temporarily blacklisted.
+ * This structure is used for each peer to manage aggregation of NIB
+ * exports. Multiple announces are buffered and then transmitted in
+ * a single message to reduce the number of messages.
  */
-class BlacklistedPeer {
-public:
+struct NameAggregationBuffer {
   /**
-   * Constructs a blacklisted peer from a node identifier.
-   *
-   * @param peerId Peer identifier
+   * Class constructor.
    */
-  explicit BlacklistedPeer(const NodeIdentifier &peerId)
-    : peerId(peerId)
-  {
-  }
+  NameAggregationBuffer(Context &context, const SloppyPeer &peer)
+    : peer(peer),
+      timer(context.service()),
+      buffering(false)
+  {}
 
-  /**
-   * Constructs a blacklisted peer.
-   *
-   * @param context UNISPHERE context
-   * @param peerId Peer identifier
-   */
-  BlacklistedPeer(Context &context, const NodeIdentifier &peerId)
-    : peerId(peerId),
-      timer(new boost::asio::deadline_timer(context.service()))
-  {
-  }
-
-  /**
-   * Comparison operator.
-   */
-  bool operator<(const BlacklistedPeer &other) const
-  {
-    return peerId < other.peerId;
-  }
-
-  /**
-   * Comparison operator.
-   */
-  bool operator==(const BlacklistedPeer &other) const
-  {
-    return peerId == other.peerId;
-  }
-public:
-  /// Blacklisted peer identifier
-  NodeIdentifier peerId;
-  /// Timer that will remove the blacklisted entry upon expiration
-  boost::shared_ptr<boost::asio::deadline_timer> timer;
+  /// Peer we are agregating for
+  SloppyPeer peer;
+  /// Aggregated name announcement
+  Protocol::AggregateNameAnnounce aggregate;
+  /// Timer to transmit the buffered announcement
+  boost::asio::deadline_timer timer;
+  /// Buffering indicator
+  bool buffering;
 };
+
+UNISPHERE_SHARED_POINTER(NameAggregationBuffer);
+
+/// Peer view index tags
+namespace PVTags {
+  class NodeId;
+  class HopCount;
+}
+
+/**
+ * A data structure for storing sloppy group siblings.
+ */
+typedef boost::multi_index_container<
+  SloppyPeer,
+  midx::indexed_by<
+    // Unique index by node identifier
+    midx::hashed_unique<
+      midx::tag<PVTags::NodeId>,
+      BOOST_MULTI_INDEX_MEMBER(SloppyPeer, NodeIdentifier, nodeId)
+    >,
+
+    // Index by hop count
+    midx::ordered_non_unique<
+      midx::tag<PVTags::HopCount>,
+      BOOST_MULTI_INDEX_MEMBER(SloppyPeer, size_t, hops)
+    >
+  >
+> PeerView;
 
 /**
  * Private details of the sloppy group manager.
@@ -175,8 +158,6 @@ public:
   enum class MessageType : std::uint8_t {
     /// Name announce propagated via DV-like protocol
     NameAnnounce  = 0x01,
-    /// Finger reject
-    FingerReject  = 0x02
   };
 
   SloppyGroupManagerPrivate(CompactRouter &router, NetworkSizeEstimator &sizeEstimator);
@@ -190,32 +171,30 @@ public:
   void dumpTopology(SloppyGroupManager::TopologyDumpGraph &graph,
                     std::function<std::string(const NodeIdentifier&)> resolve);
 
-  void periodicRefreshNeighborSet(const boost::system::error_code &error);
-
-  void refreshNeighborSet();
-
-  void refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
-                            RpcCallGroupPtr<SocialRpcChannel> rpcGroup = RpcCallGroupPtr<SocialRpcChannel>());
-
-  NameRecordPtr filterLongFingers(const std::list<NameRecordPtr> &records,
-                                  const NodeIdentifier &referenceId);
-
-  void ndbHandleResponseShort(const std::list<NameRecordPtr> &records);
-
-  void ndbHandleResponseLong(const std::list<NameRecordPtr> &records, const NodeIdentifier &targetId);
-
-  void ndbRefreshCompleted();
-
   /**
    * Announces local sloppy group name records to the neighbor set.
    */
-  void announceFullRecords(const boost::system::error_code &error);
+  void announceFullRecords();
+
+  void nibExportQueueRecord(const SloppyPeer &peer,
+                            const Protocol::NameAnnounce &announce);
+
+  void nibExportTransmitBuffer(const boost::system::error_code &error,
+                               NameAggregationBufferPtr buffer);
 
   void nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId);
 
   void networkSizeEstimateChanged(std::uint64_t size);
 
-  void rejectPeerLink(const RoutedMessage &msg);
+  /**
+   * Returns the local peer view (generated from extended vicinity).
+   */
+  std::list<SloppyPeer> getLocalPeerView() const;
+
+  /**
+   * Refreshes the foreign peer view.
+   */
+  void refreshForeignPeerView();
 
   /**
    * Called by the router when a message is to be delivered to the local
@@ -235,24 +214,20 @@ public:
   mutable std::recursive_mutex m_mutex;
   /// Local node identifier (cached from social identity)
   NodeIdentifier m_localId;
-  /// Predecessor in the overlay
-  SloppyPeer m_predecessor;
-  /// Successor in the overlay
-  SloppyPeer m_successor;
-  /// Outgoing fingers (including predecessor and successor)
-  std::map<NodeIdentifier, SloppyPeer> m_fingersOut;
-  /// Incoming fingers
-  std::map<NodeIdentifier, SloppyPeer> m_fingersIn;
-  /// The set of newly discovered short fingers
-  std::set<SloppyPeer> m_newShortFingers;
-  /// The set of newly discovered long fingers
-  std::map<NodeIdentifier, std::list<NameRecordPtr>> m_newLongFingers;
-  /// A list of peers that should be temporarily excluded from becoming fingers
-  std::set<BlacklistedPeer> m_blacklistedPeers;
-  /// Timer for periodic neighbor set refresh
-  boost::asio::deadline_timer m_neighborRefreshTimer;
-  /// Timer for periodic annouces
-  boost::asio::deadline_timer m_announceTimer;
+
+  /// Foreign peer view of O(log n) entries
+  PeerView m_peerViewForeign;
+  /// Reverse peer view of O((log n)^2) entries
+  PeerView m_peerViewReverse;
+  
+  /// Signal for announcing own records (periodic announce every 600 seconds)
+  PeriodicRateDelayedSignal<5, 15, 30, 600> m_announceSignal;
+  /// Signal for maintaining the sloppy group topology (periodic refresh every 600 seconds)
+  PeriodicRateLimitedSignal<30, 600> m_maintenanceSignal;
+
+  /// Aggregated name announcement
+  std::unordered_map<NodeIdentifier, NameAggregationBufferPtr> m_nibExportAggregate;
+
   /// Active subscriptions to other components
   std::list<boost::signals2::connection> m_subscriptions;
   /// Sloppy group prefix length
@@ -261,24 +236,20 @@ public:
   NodeIdentifier m_groupPrefix;
   /// Expected sloppy group size
   double m_groupSize;
-  /// Number of short finger refresh retries
-  size_t m_shortFingerRefreshRetries;
-  /// Refresh signal
-  RateDelayedSignal<3, 10, 30> m_signalRefresh;
+  /// Maximum peer view size
+  size_t m_maxPeerViewSize;
 };
 
 SloppyPeer::SloppyPeer()
 {
 }
 
-SloppyPeer::SloppyPeer(const NodeIdentifier &nodeId)
-  : nodeId(nodeId)
-{
-}
-
-SloppyPeer::SloppyPeer(const NodeIdentifier &nodeId, const LandmarkAddress &address)
+SloppyPeer::SloppyPeer(const NodeIdentifier &nodeId,
+                       const LandmarkAddress &address,
+                       size_t hops)
   : nodeId(nodeId),
-    addresses({ address })
+    addresses({ address }),
+    hops(hops)
 {
 }
 
@@ -308,11 +279,9 @@ SloppyGroupManagerPrivate::SloppyGroupManagerPrivate(CompactRouter &router, Netw
     m_sizeEstimator(sizeEstimator),
     m_nameDb(router.nameDb()),
     m_localId(router.identity().localId()),
-    m_neighborRefreshTimer(router.context().service()),
-    m_announceTimer(router.context().service()),
-    m_groupPrefixLength(0),
-    m_shortFingerRefreshRetries(0),
-    m_signalRefresh(router.context())
+    m_announceSignal(router.context()),
+    m_maintenanceSignal(router.context()),
+    m_groupPrefixLength(0)
 {
   m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(m_localId));
 }
@@ -328,15 +297,25 @@ void SloppyGroupManagerPrivate::initialize()
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManagerPrivate::networkSizeEstimateChanged, this, _1))
     << m_nameDb.signalExportRecord.connect(boost::bind(&SloppyGroupManagerPrivate::nibExportRecord, this, _1, _2))
     << m_router.signalDeliverMessage.connect(boost::bind(&SloppyGroupManagerPrivate::messageDelivery, this, _1))
-    << m_signalRefresh.connect(boost::bind(&SloppyGroupManagerPrivate::refreshNeighborSet, this))
+    << m_announceSignal.connect(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this))
+    << m_maintenanceSignal.connect(boost::bind(&SloppyGroupManagerPrivate::refreshForeignPeerView, this))
+    << m_router.routingTable().signalVicinityLearned.connect(
+        [this](const CompactRoutingTable::VicinityDescriptor &vicinity) {
+          // TODO: Move this to a method
+          // TODO: Use per-destination damping (LRU cache) to avoid flooding the destination
+          if (vicinity.nodeId.prefix(m_groupPrefixLength) == m_groupPrefix) {
+            BOOST_LOG_SEV(m_logger, log::debug) << "Triggering vicinity-directed full NDB update to " << vicinity.nodeId.hex() << ".";
+            m_nameDb.fullUpdate(vicinity.nodeId);
+          }
+        })
   ;
 
   // Initialize sloppy group prefix length
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
 
-  // Start periodic neighbor set refresh timer
-  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(30));
-  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::periodicRefreshNeighborSet, this, _1));
+  // Start periodic signals
+  m_announceSignal.start();
+  m_maintenanceSignal.start();
 }
 
 void SloppyGroupManagerPrivate::shutdown()
@@ -350,15 +329,13 @@ void SloppyGroupManagerPrivate::shutdown()
     c.disconnect();
   m_subscriptions.clear();
 
-  // Cancel refresh timer
-  m_neighborRefreshTimer.cancel();
+  // Cancel periodic signals
+  m_announceSignal.stop();
+  m_maintenanceSignal.stop();
 
-  // Clear the neighbor set
-  m_predecessor.clear();
-  m_successor.clear();
-  m_fingersOut.clear();
-  m_fingersIn.clear();
-  m_blacklistedPeers.clear();
+  // Clear the peer views
+  m_peerViewForeign.clear();
+  m_peerViewReverse.clear();
 }
 
 void SloppyGroupManagerPrivate::networkSizeEstimateChanged(std::uint64_t size)
@@ -370,201 +347,95 @@ void SloppyGroupManagerPrivate::networkSizeEstimateChanged(std::uint64_t size)
 
   m_groupPrefix = m_localId.prefix(m_groupPrefixLength);
   m_groupSize = std::sqrt(n * std::log(n));
+  m_maxPeerViewSize = static_cast<int>(std::round(std::log(n)));
 
-  // TODO: Refresh neighbor set when the group prefix length has been changed
+  // Preempt peer view maintenance when the group prefix length has been changed
+  m_maintenanceSignal();
 }
 
-void SloppyGroupManagerPrivate::periodicRefreshNeighborSet(const boost::system::error_code &error)
+void SloppyGroupManagerPrivate::refreshForeignPeerView()
 {
-  if (error)
-    return;
+  // TODO
 
-  m_signalRefresh();
-
-  // Reschedule neighbor set refresh
-  m_neighborRefreshTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_ns_refresh));
-  m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::periodicRefreshNeighborSet, this, _1));
+  // TODO: After the foreign peer view has been refreshed, do a full update
 }
 
-void SloppyGroupManagerPrivate::refreshNeighborSet()
+void SloppyGroupManagerPrivate::announceFullRecords()
 {
-  RecursiveUniqueLock lock(m_mutex);
-  RpcEngine<SocialRpcChannel> &rpc = m_router.rpcEngine();
-
-  m_newShortFingers.clear();
-  m_newLongFingers.clear();
-
-  auto group = rpc.group(boost::bind(&SloppyGroupManagerPrivate::ndbRefreshCompleted, this));
-
-  // Lookup successor and predecessor
-  m_nameDb.remoteLookupSloppyGroup(m_localId, m_groupPrefixLength,
-    NameDatabase::LookupType::ClosestNeighbors,
-    group, boost::bind(&SloppyGroupManagerPrivate::ndbHandleResponseShort, this, _1));
-
-  for (int i = 0; i < SloppyGroupManager::finger_count; i++) {
-    refreshOneLongFinger(boost::bind(&SloppyGroupManagerPrivate::ndbHandleResponseLong, this, _1, _2), group);
-  }
-}
-
-void SloppyGroupManagerPrivate::refreshOneLongFinger(std::function<void(const std::list<NameRecordPtr>&, const NodeIdentifier&)> handler,
-                                                     RpcCallGroupPtr<SocialRpcChannel> rpcGroup)
-{
-  // Compute long distance finger identifier based on a harmonic probability distribution
-  NodeIdentifier fingerId = m_groupPrefix;
-  double r = std::generate_canonical<double, 32>(m_router.context().basicRng());
-  fingerId += std::exp(std::log(m_groupSize) * (r - 1.0)) * std::pow(2, NodeIdentifier::bit_length - m_groupPrefixLength);
-
-  m_nameDb.remoteLookupSloppyGroup(fingerId, m_groupPrefixLength, NameDatabase::LookupType::Closest, rpcGroup,
-    boost::bind(handler, _1, fingerId));
-}
-
-void SloppyGroupManagerPrivate::ndbHandleResponseShort(const std::list<NameRecordPtr> &records)
-{
-  RecursiveUniqueLock lock(m_mutex);
-
-  for (NameRecordPtr record : records) {
-    // Skip records that are not in our sloppy group
-    if (record->nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
-      continue;
-
-    // Skip records that are equal to our node identifier
-    if (record->nodeId == m_localId)
-      continue;
-
-    m_newShortFingers.insert(SloppyPeer(record));
-  }
-}
-
-void SloppyGroupManagerPrivate::ndbHandleResponseLong(const std::list<NameRecordPtr> &records, const NodeIdentifier &targetId)
-{
-  RecursiveUniqueLock lock(m_mutex);
-  m_newLongFingers[targetId] = records;
-}
-
-void SloppyGroupManagerPrivate::ndbRefreshCompleted()
-{
-  RecursiveUniqueLock lock(m_mutex);
-
-  // Ensure that we have enough short fingers
-  if (m_newShortFingers.size() < 2) {
-    // Retry neighbor set refresh using exponential backoff
-    m_shortFingerRefreshRetries++;
-    m_neighborRefreshTimer.expires_from_now(m_router.context().backoff(m_shortFingerRefreshRetries, 5, SloppyGroupManager::interval_ns_refresh));
-    m_neighborRefreshTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::periodicRefreshNeighborSet, this, _1));
-    return;
-  } else {
-    m_shortFingerRefreshRetries = 0;
-  }
-
-  // Determine successor and predecessor from our fingers list
-  auto it = m_newShortFingers.upper_bound(SloppyPeer(m_localId));
-  if (it == m_newShortFingers.end())
-    --it;
-
-  // Check if previous entry is closer
-  auto pit = it;
-  if (it != m_newShortFingers.begin()) {
-    if ((*(--pit)).nodeId.distanceTo(m_localId) < (*it).nodeId.distanceTo(m_localId))
-      it = pit;
-  }
-
-  // Iterator now contains the closest element to self; determine
-  // successor and predecessor
-
-  // Predecessor
-  if ((*it).nodeId < m_localId) {
-    m_predecessor = *it;
-  } else {
-    pit = it;
-    if (pit == m_newShortFingers.begin())
-      pit = m_newShortFingers.end();
-
-    m_predecessor = *(--pit);
-  }
-
-  // Successor
-  if ((*it).nodeId > m_localId) {
-    m_successor = *it;
-  } else {
-    pit = it;
-    if (++pit != m_newShortFingers.end())
-      m_successor = *pit;
-    else
-      m_successor = *m_newShortFingers.begin();
-  }
-
-  m_fingersOut.clear();
-  m_fingersOut.insert({{ m_predecessor.nodeId, m_predecessor }});
-  m_fingersOut.insert({{ m_successor.nodeId, m_successor }});
-
-  // Determine long fingers
-  for (auto pr : m_newLongFingers) {
-    NameRecordPtr closest = filterLongFingers(pr.second, pr.first);
-
-    if (closest)
-      m_fingersOut.insert({{ closest->nodeId, SloppyPeer(closest) }});
-  }
-
-  m_newShortFingers.clear();
-  m_newLongFingers.clear();
-
-  // TODO: If there are no long fingers, retry the selection (a limited amount of times)
-
-  // Preempt full records announce
-  // TODO: Do this only when the neighbor set has changed
-  m_router.context().defer(
-    boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, boost::system::error_code()));
-}
-
-NameRecordPtr SloppyGroupManagerPrivate::filterLongFingers(const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId)
-{
-  RecursiveUniqueLock lock(m_mutex);
-  NameRecordPtr closest;
-  for (NameRecordPtr record : records) {
-    // Skip records that are not in our sloppy group
-    if (record->nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
-      continue;
-
-    // Skip records that are equal to our node identifier
-    if (record->nodeId == m_localId)
-      continue;
-
-    // Skip records that are already among the outgoing fingers
-    if (m_fingersOut.find(record->nodeId) != m_fingersOut.end())
-      continue;
-
-    // Skip records that are blacklisted
-    if (m_blacklistedPeers.find(BlacklistedPeer(record->nodeId)) != m_blacklistedPeers.end())
-      continue;
-
-    // Skip records that are further away
-    if (closest && closest->nodeId.distanceTo(referenceId) < record->nodeId.distanceTo(referenceId))
-      continue;
-
-    closest = record;
-  }
-
-  return closest;
-}
-
-void SloppyGroupManagerPrivate::announceFullRecords(const boost::system::error_code &error)
-{
-  if (error)
-    return;
-
-  RecursiveUniqueLock lock(m_mutex);
+  BOOST_LOG_SEV(m_logger, log::debug) << "Triggering global full NDB update.";
   m_nameDb.fullUpdate();
+}
 
-  // Schedule next periodic export
-  m_announceTimer.expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_announce));
-  m_announceTimer.async_wait(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this, _1));
+void SloppyGroupManagerPrivate::nibExportQueueRecord(const SloppyPeer &peer,
+                                                     const Protocol::NameAnnounce &announce)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Perform entry aggregation into a single announce message containing multiple
+  // name announces
+  NameAggregationBufferPtr buffer;
+  auto it = m_nibExportAggregate.find(peer.nodeId);
+  if (it == m_nibExportAggregate.end()) {
+    buffer = boost::make_shared<NameAggregationBuffer>(m_router.context(), peer);
+    m_nibExportAggregate.insert({{ peer.nodeId, buffer }});
+  } else {
+    buffer = it->second;
+  }
+
+  // TODO: Smart aggregation (only latest announces, retraction drops announce, don't transmit empty announces)
+
+  Protocol::NameAnnounce *a = buffer->aggregate.add_announces();
+  *a = announce;
+
+  // Buffer further messages for another 5 seconds, then transmit all of them
+  if (!buffer->buffering) {
+    buffer->buffering = true;
+    buffer->timer.expires_from_now(m_router.context().roughly(5));
+    buffer->timer.async_wait(boost::bind(&SloppyGroupManagerPrivate::nibExportTransmitBuffer, this, _1, buffer));
+  }
+}
+
+void SloppyGroupManagerPrivate::nibExportTransmitBuffer(const boost::system::error_code &error,
+                                                        NameAggregationBufferPtr buffer)
+{
+  if (error)
+    return;
+
+  RecursiveUniqueLock lock(m_mutex);
+  m_router.route(
+    static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
+    buffer->peer.nodeId,
+    buffer->peer.landmarkAddress(),
+    static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
+    static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::NameAnnounce),
+    buffer->aggregate
+  );
+
+  // Clear the buffer after transmission
+  buffer->buffering = false;
+  buffer->aggregate.Clear();
+}
+
+std::list<SloppyPeer> SloppyGroupManagerPrivate::getLocalPeerView() const
+{
+  std::list<SloppyPeer> peerView;
+  for (const CompactRoutingTable::VicinityDescriptor &vicinity : m_router.routingTable().getVicinity()) {
+    if (vicinity.nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
+      continue;
+
+    peerView.push_back(SloppyPeer(vicinity.nodeId, LandmarkAddress(), vicinity.hops));
+  }
+
+  return peerView;
 }
 
 void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId)
 {
   // Prepare announcement message
   Protocol::NameAnnounce announce;
-  announce.set_originid(record->nodeId.raw());
+  announce.set_origin_id(record->nodeId.raw());
+  announce.set_timestamp(record->timestamp);
+  announce.set_seqno(record->seqno);
   for (const LandmarkAddress &address : record->addresses) {
     Protocol::LandmarkAddress *laddr = announce.add_addresses();
     laddr->set_landmarkid(address.landmarkId().raw());
@@ -572,58 +443,34 @@ void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const Node
       laddr->add_address(port);
   }
 
-  auto exportRecord = [&](const SloppyPeer &peer) {
-    if (!record->originId.isNull()) {
-      int forwardDirection = (record->originId > m_localId) ? -1 : 1;
-
-      // Only forward in the given direction, never backtrack
-      if (forwardDirection == 1 && peer.nodeId < m_localId)
-        return;
-      else if (forwardDirection == -1 && peer.nodeId > m_localId)
-        return;
-    }
-
-    m_router.route(
-      static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
-      peer.nodeId,
-      peer.landmarkAddress(),
-      static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
-      static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::NameAnnounce),
-      announce
-    );
-  };
-
   if (peerId.isNull()) {
-    // Export record to all overlay fingers
-    for (const auto &pf : m_fingersOut) {
-      exportRecord(pf.second);
+    // Export record to the whole peer view
+    // TODO: Should we unify this?
+    for (const SloppyPeer &peer : getLocalPeerView()) {
+      if (record->receivedPeerId != peer.nodeId)
+        nibExportQueueRecord(peer, announce);
     }
-    for (const auto &pf : m_fingersIn) {
-      exportRecord(pf.second);
+    for (const SloppyPeer &peer : m_peerViewForeign) {
+      if (record->receivedPeerId != peer.nodeId)
+        nibExportQueueRecord(peer, announce);
+    }
+    for (const SloppyPeer &peer : m_peerViewReverse) {
+      if (record->receivedPeerId != peer.nodeId)
+        nibExportQueueRecord(peer, announce);
     }
   } else {
-    auto it = m_fingersOut.find(peerId);
-    if (it != m_fingersOut.end()) {
-      exportRecord(it->second);
+    SloppyPeer peer(peerId, LandmarkAddress(), 0);
+    auto it = m_peerViewForeign.find(peerId);
+    if (it == m_peerViewForeign.end()) {
+      it = m_peerViewReverse.find(peerId);
+      if (it != m_peerViewReverse.end())
+        peer = *it;
     } else {
-      auto jt = m_fingersIn.find(peerId);
-      if (jt != m_fingersIn.end())
-        exportRecord(jt->second);
+      peer = *it;
     }
-  }
-}
 
-void SloppyGroupManagerPrivate::rejectPeerLink(const RoutedMessage &msg)
-{
-  Protocol::SloppyGroupRejectFinger rejection;
-  m_router.route(
-    static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
-    msg.sourceNodeId(),
-    msg.sourceAddress(),
-    static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
-    static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::FingerReject),
-    rejection
-  );
+    nibExportQueueRecord(peer, announce);
+  }
 }
 
 void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
@@ -635,110 +482,38 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
     case static_cast<std::uint32_t>(MessageType::NameAnnounce): {
       // Accept message only if source node belongs to this sloppy group
       if (msg.sourceNodeId().prefix(m_groupPrefixLength) != m_groupPrefix)
-        return rejectPeerLink(msg);
+        return;
 
-      // Check if this peer is already registered among the incoming or outgoing fingers
-      {
-        RecursiveUniqueLock lock(m_mutex);
-        auto jt = m_fingersOut.find(msg.sourceNodeId());
-        if (jt != m_fingersOut.end()) {
-          // Update source address of the finger as it should be more recent
-          if (jt->second.landmarkAddress() != msg.sourceAddress()) {
-            jt->second.addresses.clear();
-            jt->second.addresses.push_back(msg.sourceAddress());
-          }
-        } else {
-          auto it = m_fingersIn.find(msg.sourceNodeId());
-          if (it == m_fingersIn.end()) {
-            // Reject the peer if there are too many incoming fingers already
-            if (m_fingersIn.size() >= SloppyGroupManager::finger_count + 2)
-              return rejectPeerLink(msg);
+      // TODO: Establish backlinks?
 
-            // Create a new incoming peer entry
-            m_fingersIn.insert({{ msg.sourceNodeId(), SloppyPeer(msg.sourceNodeId(), msg.sourceAddress()) }});
+      Protocol::AggregateNameAnnounce announces = message_cast<Protocol::AggregateNameAnnounce>(msg);
+      for (int i = 0; i < announces.announces_size(); i++) {
+        const Protocol::NameAnnounce &announce = announces.announces(i);
 
-            // Since a new link has been establish, we should send a full record update to this peer
-            m_nameDb.fullUpdate(msg.sourceNodeId());
-          } else {
-            // Update source address of the finger as it should be more recent
-            if (it->second.landmarkAddress() != msg.sourceAddress()) {
-              it->second.addresses.clear();
-              it->second.addresses.push_back(msg.sourceAddress());
-            }
-          }
+        // Accept announces only for peers in the same sloppy group
+        NodeIdentifier originId(announce.origin_id(), NodeIdentifier::Format::Raw);
+        if (originId.prefix(m_groupPrefixLength) != m_groupPrefix) {
+          BOOST_LOG_SEV(m_logger, log::warning) << "Dropping name record (origin not in our SG).";
+          return;
         }
-      }
 
-      Protocol::NameAnnounce announce = message_cast<Protocol::NameAnnounce>(msg);
+        NameRecordPtr record = boost::make_shared<NameRecord>(m_router.context(),
+          originId, NameRecord::Type::SloppyGroup);
+        record->receivedPeerId = msg.sourceNodeId();
+        record->timestamp = announce.timestamp();
+        record->seqno = announce.seqno();
 
-      // Accept announces only for peers in the same sloppy group
-      NodeIdentifier originId(announce.originid(), NodeIdentifier::Format::Raw);
-      if (originId.prefix(m_groupPrefixLength) != m_groupPrefix) {
-        BOOST_LOG_SEV(m_logger, log::warning) << "Dropping name record (origin not in our SG).";
-        return;
-      }
-
-      std::list<LandmarkAddress> addresses;
-      for (int j = 0; j < announce.addresses_size(); j++) {
-        const Protocol::LandmarkAddress &laddr = announce.addresses(j);
-        addresses.push_back(LandmarkAddress(
-          NodeIdentifier(laddr.landmarkid(), NodeIdentifier::Format::Raw),
-          laddr.address()
-        ));
-      }
-
-      // Check if the received record should be one of the short fingers
-      if ((originId > m_predecessor.nodeId && originId < m_localId) ||
-          (originId < m_successor.nodeId && originId > m_localId)) {
-        // Queue a refresh operation
-        m_signalRefresh();
-      }
-
-      // Store record into the name database
-      m_nameDb.store(
-        originId,
-        addresses,
-        NameRecord::Type::SloppyGroup,
-        msg.sourceNodeId()
-      );
-      break;
-    }
-
-    case static_cast<std::uint32_t>(MessageType::FingerReject): {
-      // One of our outgoing fingers got rejected by the destination node; remove the finger
-      // from our outgoing list and retry the selection of a single finger
-      RecursiveUniqueLock lock(m_mutex);
-
-      if (msg.sourceNodeId() == m_successor.nodeId || msg.sourceNodeId() == m_predecessor.nodeId) {
-        BOOST_LOG_SEV(m_logger, log::warning) << "Ignoring rejection of successor/predecessor.";
-        return;
-      }
-
-      auto fit = m_fingersOut.find(msg.sourceNodeId());
-      if (fit == m_fingersOut.end())
-        return;
-
-      m_fingersOut.erase(fit);
-      // Move the removed peer to a blacklist, otherwise this same finger may be
-      // selected again and again which will cause a nasty loop
-      NodeIdentifier peerId = msg.sourceNodeId();
-      BlacklistedPeer blacklisted(m_router.context(), peerId);
-      blacklisted.timer->expires_from_now(m_router.context().roughly(SloppyGroupManager::interval_announce));
-      blacklisted.timer->async_wait([this, peerId](const boost::system::error_code&) {
-        RecursiveUniqueLock lock(m_mutex);
-        m_blacklistedPeers.erase(BlacklistedPeer(peerId));
-      });
-      m_blacklistedPeers.insert(blacklisted);
-
-      // TODO: Rate limit this so we don't flood the landmarks
-      refreshOneLongFinger([this](const std::list<NameRecordPtr> &records, const NodeIdentifier &referenceId) {
-        RecursiveUniqueLock lock(m_mutex);
-        NameRecordPtr record = filterLongFingers(records, referenceId);
-        if (record) {
-          m_fingersOut.insert({{ record->nodeId, SloppyPeer(record) }});
-          m_nameDb.fullUpdate(record->nodeId);
+        for (int j = 0; j < announce.addresses_size(); j++) {
+          const Protocol::LandmarkAddress &laddr = announce.addresses(j);
+          record->addresses.push_back(LandmarkAddress(
+            NodeIdentifier(laddr.landmarkid(), NodeIdentifier::Format::Raw),
+            laddr.address()
+          ));
         }
-      });
+
+        // Store record into the name database
+        m_nameDb.store(record);
+      }
       break;
     }
   }
@@ -751,25 +526,22 @@ void SloppyGroupManagerPrivate::dump(std::ostream &stream, std::function<std::st
   stream << "*** Sloppy group:" << std::endl;
   stream << "Prefix length: " << m_groupPrefixLength << std::endl;
   stream << "Prefix: " << m_groupPrefix.hex() << std::endl;
-  stream << "Predecessor: " << m_predecessor.nodeId.hex();
-  if (resolve && !m_predecessor.isNull())
-    stream << " (" << resolve(m_predecessor.nodeId) << ")";
-  stream << std::endl;
-  stream << "Successor: " << m_successor.nodeId.hex();
-  if (resolve && !m_successor.isNull())
-    stream << " (" << resolve(m_successor.nodeId) << ")";
-  stream << std::endl;
+  stream << "Max. peer view size: " << m_maxPeerViewSize << std::endl;
+  stream << "Local peer view size: " << getLocalPeerView().size() << std::endl;
+  stream << "Foreign peer view size: " << m_peerViewForeign.size() << std::endl;
+  stream << "Reverse peer view size: " << m_peerViewReverse.size() << std::endl;
 
-  stream << "*** Sloppy group fingers:" << std::endl;
-  for (const auto &pf : m_fingersOut) {
-    if (pf.second == m_successor || pf.second == m_predecessor)
-      continue;
-
-    stream << "  " << pf.second.nodeId.hex();
-    if (resolve)
-      stream << " (" << resolve(pf.second.nodeId) << ")";
-
-    stream << " laddr=" << pf.second.landmarkAddress();
+  stream << "*** Peer views:" << std::endl;
+  for (const SloppyPeer &peer : getLocalPeerView()) {
+    stream << "  L " << peer.nodeId.hex() << " hops=" << peer.hops;
+    stream << std::endl;
+  }
+  for (const SloppyPeer &peer : m_peerViewForeign.get<PVTags::HopCount>()) {
+    stream << "  F " << peer.nodeId.hex() << " hops=" << peer.hops << " laddrs=" << peer.addresses;
+    stream << std::endl;
+  }
+  for (const SloppyPeer &peer : m_peerViewReverse.get<PVTags::HopCount>()) {
+    stream << "  R " << peer.nodeId.hex() << " hops=" << peer.hops << " laddrs=" << peer.addresses;
     stream << std::endl;
   }
 }
@@ -786,23 +558,23 @@ void SloppyGroupManagerPrivate::dumpTopology(SloppyGroupManager::TopologyDumpGra
   std::string name = resolve(m_localId);
   auto self = graph.add_vertex(name);
   boost::put(boost::get(Tags::NodeName(), graph.graph()), self, name);
-  auto addEdge = [&](const NodeIdentifier &id, bool longFinger = false) {
+  auto addEdge = [&](const NodeIdentifier &id, bool foreign = false, bool reverse = false) {
     auto vertex = graph.add_vertex(resolve(id));
     boost::put(boost::get(Tags::NodeName(), graph.graph()), vertex, resolve(id));
 
     auto edge = boost::add_edge(self, vertex, graph).first;
-    boost::put(boost::get(Tags::FingerIsLong(), graph.graph()), edge, longFinger);
+    boost::put(boost::get(Tags::LinkIsForeign(), graph.graph()), edge, foreign);
+    boost::put(boost::get(Tags::LinkIsReverse(), graph.graph()), edge, reverse);
   };
 
-  if (!m_predecessor.isNull())
-    addEdge(m_predecessor.nodeId);
-  if (!m_successor.isNull())
-    addEdge(m_successor.nodeId);
-  for (const auto &pf : m_fingersOut) {
-    if (pf.second == m_successor || pf.second == m_predecessor)
-      continue;
-
-    addEdge(pf.second.nodeId, true);
+  for (const auto &peer : getLocalPeerView()) {
+    addEdge(peer.nodeId);
+  }
+  for (const auto &peer : m_peerViewForeign) {
+    addEdge(peer.nodeId, true);
+  }
+  for (const auto &peer : m_peerViewReverse) {
+    addEdge(peer.nodeId, false, true);
   }
 }
 
@@ -821,11 +593,6 @@ void SloppyGroupManager::shutdown()
   d->shutdown();
 }
 
-void SloppyGroupManager::refresh()
-{
-  d->m_signalRefresh();
-}
-
 size_t SloppyGroupManager::getGroupPrefixLength() const
 {
   return d->m_groupPrefixLength;
@@ -834,6 +601,13 @@ size_t SloppyGroupManager::getGroupPrefixLength() const
 const NodeIdentifier &SloppyGroupManager::getGroupPrefix() const
 {
   return d->m_groupPrefix;
+}
+
+size_t SloppyGroupManager::sizePeerViews() const
+{
+  return d->getLocalPeerView().size() +
+         d->m_peerViewForeign.size() +
+         d->m_peerViewReverse.size();
 }
 
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)

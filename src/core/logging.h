@@ -43,6 +43,7 @@ enum LogSeverityLevel {
   normal,
   warning,
   error,
+  debug,
   profiling
 };
 
@@ -57,6 +58,7 @@ inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stre
     "NORM",
     "WARN",
     "ERRR",
+    "DEBG",
     "PROF"
   };
 

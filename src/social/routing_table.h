@@ -158,6 +158,8 @@ class SloppyGroupManager;
  */
 class UNISPHERE_EXPORT CompactRoutingTable {
 public:
+  /// Local address redundancy
+  static const int local_address_redundancy = 3;
   /// Tags for topology dump graph properties.
   struct TopologyDumpTags {
     /// Specifies the node's name
@@ -196,6 +198,14 @@ public:
     NodeIdentifier nextHop;
   };
 
+  /// A helper structure for returning vicinity descriptors
+  struct VicinityDescriptor {
+    /// Destination node identifier
+    NodeIdentifier nodeId;
+    /// Number of hops to reach the destination
+    size_t hops;
+  };
+
   /**
    * Class constructor.
    *
@@ -208,6 +218,9 @@ public:
                       const NodeIdentifier &localId,
                       NetworkSizeEstimator &sizeEstimator,
                       SloppyGroupManager &sloppyGroup);
+
+  CompactRoutingTable(const CompactRoutingTable&) = delete;
+  CompactRoutingTable &operator=(const CompactRoutingTable&) = delete;
   
   /**
    * Returns the currently active route to the given destination
@@ -299,6 +312,11 @@ public:
   size_t sizeVicinity() const;
 
   /**
+   * Returns a list of vicinity descriptors for the node's vicinity.
+   */
+  std::list<VicinityDescriptor> getVicinity() const;
+
+  /**
    * Clears the whole routing table (RIB and vport mappings).
    */
   void clear();
@@ -319,15 +337,19 @@ public:
   /**
    * Returns a list of landmark-relative local addresses.
    *
-   * @param count Number of addresses to return
    * @return A list of landmark addresses
    */
-  std::list<LandmarkAddress> getLocalAddresses(size_t count = 1) const;
+  LandmarkAddressList getLocalAddresses() const;
 
   /**
    * Returns the first local address.
    */
   LandmarkAddress getLocalAddress() const;
+
+  /**
+   * Returns the number of route updates since router initialization.
+   */
+  size_t getStatsRouteUpdates() const;
 
   /**
    * Outputs the routing table to a stream.
@@ -356,11 +378,15 @@ public:
   /// that acquire additional mutexes, otherwise deadlocks might ocurr!
   DeferrableSignal<void(RoutingEntryPtr)> signalRetractEntry;
   /// Signal that gets called when the local address changes (deferred)
-  DeferrableSignal<void(const LandmarkAddress&)> signalAddressChanged;
+  DeferrableSignal<void(const LandmarkAddressList&)> signalAddressChanged;
   /// Signal that gets called when a new landmark is learned (deferred)
   DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkLearned;
   /// Signal that gets called when a landmark is removed (deferred)
   DeferrableSignal<void(const NodeIdentifier&)> signalLandmarkRemoved;
+  /// Signal that gets called when a new vicinity node is learned (deferred)
+  DeferrableSignal<void(const VicinityDescriptor&)> signalVicinityLearned;
+  /// Signal that gets called when a new vicinity node is removed (deferred)
+  DeferrableSignal<void(const NodeIdentifier&)> signalVicinityRemoved;
 private:
   UNISPHERE_DECLARE_PRIVATE(CompactRoutingTable)
 };

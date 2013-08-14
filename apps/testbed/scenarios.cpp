@@ -34,10 +34,19 @@ UNISPHERE_SCENARIO(IdleScenario)
     api.startNodes(nodes, i*10, 10);
     api.wait(5);
   }
-  api.wait(600);
-
   // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
   // api.startNodesBatch(nodes, 10, 5);
+
+  api.wait(30);
+  // Perform some sanity checks
+  api.test("sanity/check_consistent_ndb");
+  api.wait(570);
+
+  // Perform some sanity checks again
+  api.test("sanity/check_consistent_ndb");
+
+  // Retrieve performance statistics
+  api.test("stats/performance");
 }
 UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
@@ -52,7 +61,7 @@ UNISPHERE_SCENARIO(StandardTests)
   /// Perform some sanity checks before continuing
   api.test("sanity/check_consistent_ndb");
 
-  // Count routing state after 30 seconds
+  // Count routing state
   api.test("state/count");
   // Dump sloppy group and routing topologies in parallel
   api.wait(30);
@@ -64,6 +73,9 @@ UNISPHERE_SCENARIO(StandardTests)
     api.test("routing/pair_wise_ping");
     api.test("traces/retrieve");
   api.test("traces/end");
+
+  // Retrieve performance statistics
+  api.test("stats/performance");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 

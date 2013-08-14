@@ -85,7 +85,7 @@ void RoutedMessage::processSourceRouteHop()
   if (m_deliveryMode) {
     // After the message has reached a designated landmark it should be source-routed,
     // so we remove one hop in the address
-    m_destinationAddress.hop();
+    m_destinationAddress.shift();
   }
 }
 

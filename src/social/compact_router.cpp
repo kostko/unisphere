@@ -171,18 +171,11 @@ public:
   void ribRetractEntry(RoutingEntryPtr entry);
 
   /**
-   * Called when a new landmark is learned via route exchange.
+   * Called by the routing table when local address set changes.
    *
-   * @param landmarkId Landmark identifier
+   * @param addresses A list of local addresses
    */
-  void landmarkLearned(const NodeIdentifier &landmarkId);
-
-  /**
-   * Called when a landmark is unlearned.
-   *
-   * @param landmarkId Landmark identifier
-   */
-  void landmarkRemoved(const NodeIdentifier &landmarkId);
+  void ribLocalAddressChanged(const LandmarkAddressList &addresses);
 
   /**
    * Performs registration of core RPC methods that are required for routing.
@@ -271,14 +264,10 @@ void CompactRouterPrivate::initialize()
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&CompactRouterPrivate::networkSizeEstimateChanged, this, _1))
     << m_routes.signalExportEntry.connect(boost::bind(&CompactRouterPrivate::ribExportEntry, this, _1, _2))
     << m_routes.signalRetractEntry.connect(boost::bind(&CompactRouterPrivate::ribRetractEntry, this, _1))
-    << m_routes.signalLandmarkLearned.connect(boost::bind(&CompactRouterPrivate::landmarkLearned, this, _1))
-    << m_routes.signalLandmarkRemoved.connect(boost::bind(&CompactRouterPrivate::landmarkRemoved, this, _1))
+    << m_routes.signalAddressChanged.connect(boost::bind(&CompactRouterPrivate::ribLocalAddressChanged, this, _1))
     << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouterPrivate::peerAdded, this, _1))
     << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouterPrivate::peerRemoved, this, _1))
   ;
-
-  // Initialize the name database
-  m_nameDb.initialize();
 
   // Initialize the sloppy group manager
   m_sloppyGroup.initialize();
@@ -299,9 +288,6 @@ void CompactRouterPrivate::shutdown()
 
   // Shutdown the sloppy group manager
   m_sloppyGroup.shutdown();
-
-  // Shutdown the name database
-  m_nameDb.shutdown();
 
   // Unsubscribe from all events
   for (boost::signals2::connection c : m_subscriptions)
@@ -416,11 +402,13 @@ void CompactRouterPrivate::ribExportQueueAnnounce(const Contact &contact,
   AggregationBufferPtr buffer;
   auto it = m_ribExportAggregate.find(contact.nodeId());
   if (it == m_ribExportAggregate.end()) {
-    buffer = AggregationBufferPtr(new AggregationBuffer(m_context, contact));
+    buffer = boost::make_shared<AggregationBuffer>(m_context, contact);
     m_ribExportAggregate.insert({{ contact.nodeId(), buffer }});
   } else {
     buffer = it->second;
   }
+
+  // TODO: Smart aggregation (only latest announces, retraction drops announce, don't transmit empty announces)
 
   Protocol::PathAnnounce *a = buffer->aggregate.add_announces();
   *a = announce;
@@ -470,6 +458,14 @@ void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
 
   // TODO: Think about compaction/aggregation of multiple entries (perhaps retractions should be
   //       unified with announcements)
+}
+
+void CompactRouterPrivate::ribLocalAddressChanged(const LandmarkAddressList &addresses)
+{
+  BOOST_LOG_SEV(m_logger, log::normal) << "Local address set updated: " << addresses;
+
+  // Update local address in the name database
+  m_nameDb.store(m_identity.localId(), addresses, NameRecord::Type::SloppyGroup);
 }
 
 bool CompactRouterPrivate::linkVerifyPeer(const Contact &peer)
@@ -579,8 +575,6 @@ void CompactRouterPrivate::networkSizeEstimateChanged(std::uint64_t size)
   if (x < std::sqrt(std::log(n) / n)) {
     BOOST_LOG_SEV(m_logger, log::normal) << "Becoming a LANDMARK.";
     m_routes.setLandmark(true);
-    m_nameDb.registerLandmark(m_manager.getLocalNodeId());
-    // TODO: Unregister landmark when local node ceases to be one
   }
 }
 
@@ -628,6 +622,9 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
           if (record) {
             msg.setDestinationAddress(record->landmarkAddress());
           } else {
+            if (msg.sourceCompId() == static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup))
+              return;
+
 #ifdef UNISPHERE_PROFILE
             BOOST_LOG_SEV(m_logger, log::warning) << "Dropping message " << m_msgTracer.getMessageId(msg) << " (no route to destination at SG member).";
             m_nameDb.dump(std::cout);
@@ -658,7 +655,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
     }
 
     if (nextHop.isNull()) {
-      // Check local sloppy group state to see if we have the address (landmark-relative address)
+      // Check local name database to see if we have the L-R address
       NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
       if (record) {
         msg.setDestinationAddress(record->landmarkAddress());
@@ -689,16 +686,6 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
   Protocol::RoutedMessage pmsg;
   msg.serialize(pmsg);
   m_manager.send(nextHop, Message(Message::Type::Social_Routed, pmsg));
-}
-
-void CompactRouterPrivate::landmarkLearned(const NodeIdentifier &landmarkId)
-{
-  m_nameDb.registerLandmark(landmarkId);
-}
-
-void CompactRouterPrivate::landmarkRemoved(const NodeIdentifier &landmarkId)
-{
-  m_nameDb.unregisterLandmark(landmarkId);
 }
 
 void CompactRouterPrivate::registerCoreRpcMethods()

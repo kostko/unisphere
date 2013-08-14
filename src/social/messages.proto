@@ -7,6 +7,10 @@ package UniSphere.Protocol;
 
 import "src/social/address.proto";
 
+// TODO: Cryptographic signing
+// TODO: Timestamp to avoid replay attacks
+// TODO: Missing optional cost field
+// TODO: Change from camel-case to underscore-case
 message PathAnnounce {
   // Destination identifier
   required bytes destinationId = 1;
@@ -25,16 +29,19 @@ message AggregatePathAnnounce {
   repeated PathAnnounce announces = 1;
 }
 
+// TODO: Retraction should be done as an announce with all fields but destination missing
 message PathRetract {
   // Destination identifier
   required bytes destinationId = 1;
 }
 
+// TODO: Change from camel-case to underscore-case
 message PathRefresh {
   // Destination identifier
   required bytes destinationId = 1;
 }
 
+// TODO: Change from camel-case to underscore-case
 message RoutedMessage {
   // Source landmark
   required bytes sourceLandmark = 1;
@@ -65,12 +72,21 @@ message RoutedMessage {
   required bytes payload = 12;
 }
 
+// TODO: Rename to LocationAnnounce?
+// TODO: Cryptographic signing
 message NameAnnounce {
   // Originator node identifier
-  required bytes originId = 1;
+  required bytes origin_id = 1;
+  // Originator-local timestamp
+  required uint32 timestamp = 2;
+  // Sequence number
+  required uint32 seqno = 3;
   // List of landmark addresses to announce
-  repeated LandmarkAddress addresses = 2;
+  repeated LandmarkAddress addresses = 4;
 }
 
-message SloppyGroupRejectFinger {
+// TODO: Rename to AggregateLocationAnnounce?
+message AggregateNameAnnounce {
+  // Aggregated name announcements
+  repeated NameAnnounce announces = 1;
 }

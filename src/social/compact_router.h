@@ -51,7 +51,7 @@ public:
   /// Self-announce refresh interval
   static const int interval_announce = 10;
   /// Neighbor expiry interval
-  static const int interval_neighbor_expiry = 30;
+  static const int interval_neighbor_expiry = 60;
   /// Route origin descriptor expiry time
   static const int origin_expiry_time = 300;
 

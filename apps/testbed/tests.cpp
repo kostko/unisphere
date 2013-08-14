@@ -136,7 +136,8 @@ public:
 
     boost::dynamic_properties properties;
     properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
-    properties.property("is_long", boost::get(Tags::FingerIsLong(), graph.graph()));
+    properties.property("is_foreign", boost::get(Tags::LinkIsForeign(), graph.graph()));
+    properties.property("is_reverse", boost::get(Tags::LinkIsReverse(), graph.graph()));
     
     outputGraphDataset(graph, properties, api.getOutputFilename("sg-topo", "graphml"));
   }
@@ -459,8 +460,10 @@ UNISPHERE_REGISTER_TEST_CASE(GetMessageTraces, "traces/retrieve")
 class NdbConsistentSanityCheck : public TestCase
 {
 public:
-  /// Traces dataset
+  /// Name database dataset
   DataSet<> ds_ndb{"ds_ndb"};
+  /// Group membership dataset
+  DataSet<> ds_groups{"ds_groups"};
 
   using TestCase::TestCase;
 
@@ -468,10 +471,17 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
+    ds_groups.add({
+      { "node_id",    node->nodeId.hex() },
+      { "group_len",  node->router->sloppyGroup().getGroupPrefixLength() }
+    });
+
     for (NameRecordPtr record : node->router->nameDb().getNames(NameRecord::Type::SloppyGroup)) {
       ds_ndb.add({
         { "node_id",    node->nodeId.hex() },
-        { "record_id",  record->nodeId.hex() }
+        { "record_id",  record->nodeId.hex() },
+        { "ts",         static_cast<int>(record->timestamp) },
+        { "seqno",      static_cast<int>(record->seqno) }
       });
     }
     finish(api);
@@ -480,22 +490,103 @@ public:
   void processLocalResults(TestCaseApi &api)
   {
     api.send(ds_ndb);
+    api.send(ds_groups);
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
     api.receive(ds_ndb);
-
-    // TODO: Check consistency
+    api.receive(ds_groups);
 
     outputCsvDataset(
       ds_ndb,
-      { "node_id", "record_id" },
+      { "node_id", "record_id", "ts", "seqno" },
+      api.getOutputFilename("raw", "csv")
+    );
+
+    // Build a per-node map of name records
+    std::unordered_map<std::string, std::unordered_set<std::string>> globalNdb;
+    for (const auto &record : ds_ndb) {
+      globalNdb[boost::get<std::string>(record.at("node_id"))].insert(
+        boost::get<std::string>(record.at("record_id")));
+    }
+    ds_ndb.clear();
+
+    // Check record consistency
+    bool consistent = true;
+    size_t checkedRecords = 0;
+    for (const auto &record : ds_groups) {
+      std::string nodeStringId = boost::get<std::string>(record.at("node_id"));
+      NodeIdentifier nodeId(nodeStringId, NodeIdentifier::Format::Hex);
+      size_t groupPrefixLen = boost::get<size_t>(record.at("group_len"));
+      NodeIdentifier groupPrefix = nodeId.prefix(groupPrefixLen);
+
+      for (const auto &sibling : ds_groups) {
+        std::string siblingStringId = boost::get<std::string>(sibling.at("node_id"));
+        NodeIdentifier siblingId(siblingStringId, NodeIdentifier::Format::Hex);
+        if (nodeId == siblingId)
+          continue;
+
+        if (siblingId.prefix(groupPrefixLen) != groupPrefix)
+          continue;
+
+        // Ensure that this node has our record
+        checkedRecords++;
+        if (!globalNdb[siblingStringId].count(nodeStringId)) {
+          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node " << siblingStringId << " misses record for " << nodeStringId << ".";
+          consistent = false;
+        }
+      }
+    }
+
+    if (!consistent)
+      BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent after checking " << checkedRecords << " records.";
+    else
+      BOOST_LOG(logger()) << "NDB consistent after checking " << checkedRecords << " records.";
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(NdbConsistentSanityCheck, "sanity/check_consistent_ndb")
+
+class GetPerformanceStatistics : public TestCase
+{
+public:
+  /// Statistics dataset
+  DataSet<> ds_stats{"ds_stats"};
+
+  using TestCase::TestCase;
+
+  /**
+   * Gather some statistics.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    ds_stats.add({
+      { "node_id",    node->nodeId.hex() },
+      { "rt_updates", node->router->routingTable().getStatsRouteUpdates() }
+    });
+    finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.send(ds_stats);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_stats);
+
+    outputCsvDataset(
+      ds_stats,
+      { "node_id", "rt_updates" },
       api.getOutputFilename("raw", "csv")
     );
   }
 };
 
-UNISPHERE_REGISTER_TEST_CASE(NdbConsistentSanityCheck, "sanity/check_consistent_ndb")
+UNISPHERE_REGISTER_TEST_CASE(GetPerformanceStatistics, "stats/performance")
 
 }
