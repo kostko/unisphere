@@ -10,14 +10,13 @@ import "src/social/address.proto";
 // TODO: Cryptographic signing
 // TODO: Timestamp to avoid replay attacks
 // TODO: Missing optional cost field
-// TODO: Change from camel-case to underscore-case
 message PathAnnounce {
   // Destination identifier
-  required bytes destinationId = 1;
+  required bytes destination_id = 1;
   // Forward path
-  repeated uint32 forwardPath = 2;
+  repeated uint32 forward_path = 2;
   // Reverse path (included only for landmark announces)
-  repeated uint32 reversePath = 3;
+  repeated uint32 reverse_path = 3;
   // Landmark status of the origin
   required bool landmark = 4;
   // Sequence number
@@ -32,37 +31,35 @@ message AggregatePathAnnounce {
 // TODO: Retraction should be done as an announce with all fields but destination missing
 message PathRetract {
   // Destination identifier
-  required bytes destinationId = 1;
+  required bytes destination_id = 1;
 }
 
-// TODO: Change from camel-case to underscore-case
 message PathRefresh {
   // Destination identifier
-  required bytes destinationId = 1;
+  required bytes destination_id = 1;
 }
 
-// TODO: Change from camel-case to underscore-case
 message RoutedMessage {
   // Source landmark
-  required bytes sourceLandmark = 1;
+  required bytes source_landmark = 1;
   // Source node landmark-relative address
-  repeated uint32 sourceAddress = 2;
+  repeated uint32 source_address = 2;
   // Source node identifier
-  required bytes sourceNode = 3;
+  required bytes source_node = 3;
   // Source component identifier
-  required uint32 sourceComp = 4;
+  required uint32 source_comp = 4;
   
   // Destination landmark
-  optional bytes destinationLandmark = 5;
+  optional bytes destination_landmark = 5;
   // Destination node landmark-relative address
-  repeated uint32 destinationAddress = 6;
+  repeated uint32 destination_address = 6;
   // Destination node identifier
-  required bytes destinationNode = 7;
+  required bytes destination_node = 7;
   // Destination component identifier
-  required uint32 destinationComp = 8;
+  required uint32 destination_comp = 8;
   
   // Hop count
-  required uint32 hopCount = 9;
+  required uint32 hop_count = 9;
   // Delivery mode flag
   required bool delivery = 10;
   

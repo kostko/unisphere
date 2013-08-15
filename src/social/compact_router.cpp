@@ -321,12 +321,12 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
   Protocol::PathAnnounce announce;
   for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
     announce.Clear();
-    announce.set_destinationid(m_identity.localId().as(NodeIdentifier::Format::Raw));
+    announce.set_destination_id(m_identity.localId().as(NodeIdentifier::Format::Raw));
     announce.set_landmark(m_routes.isLandmark());
     if (m_routes.isLandmark()) {
       // Get/assign the outgoing vport for this announcement
       Vport vport = m_routes.getVportForNeighbor(peer.first);
-      announce.add_reversepath(vport);
+      announce.add_reverse_path(vport);
     }
 
     announce.set_seqno(m_seqno);
@@ -345,7 +345,7 @@ void CompactRouterPrivate::requestFullRoutes()
 {
   // Request full routing table dump from all neighbors
   Protocol::PathRefresh request;
-  request.set_destinationid(NodeIdentifier().as(NodeIdentifier::Format::Raw));
+  request.set_destination_id(NodeIdentifier().as(NodeIdentifier::Format::Raw));
 
   for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
     m_manager.send(peer.second, Message(Message::Type::Social_Refresh, request));
@@ -367,18 +367,18 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
 
     // Prepare the announce message
     Protocol::PathAnnounce announce;
-    announce.set_destinationid(entry->destination.as(NodeIdentifier::Format::Raw));
+    announce.set_destination_id(entry->destination.as(NodeIdentifier::Format::Raw));
     announce.set_landmark(entry->landmark);
     announce.set_seqno(entry->seqno);
 
     for (Vport v : entry->forwardPath) {
-      announce.add_forwardpath(v);
+      announce.add_forward_path(v);
     }
 
     for (Vport v : entry->reversePath) {
-      announce.add_reversepath(v);
+      announce.add_reverse_path(v);
     }
-    announce.add_reversepath(vport);
+    announce.add_reverse_path(vport);
     ribExportQueueAnnounce(contact, announce);
   };
 
@@ -450,7 +450,7 @@ void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
 
     // Prepare the retract message
     retract.Clear();
-    retract.set_destinationid(entry->destination.as(NodeIdentifier::Format::Raw));
+    retract.set_destination_id(entry->destination.as(NodeIdentifier::Format::Raw));
 
     // Send the announcement
     m_manager.send(peer.second, Message(Message::Type::Social_Retract, retract));
@@ -492,7 +492,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
         const Protocol::PathAnnounce &pan = agg.announces(j);
         RoutingEntryPtr entry(new RoutingEntry(
           m_context,
-          NodeIdentifier(pan.destinationid(), NodeIdentifier::Format::Raw),
+          NodeIdentifier(pan.destination_id(), NodeIdentifier::Format::Raw),
           pan.landmark(),
           pan.seqno()
         ));
@@ -500,14 +500,14 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
         entry->forwardPath.push_back(vport);
 
         // Populate the forwarding path
-        for (int i = 0; i < pan.forwardpath_size(); i++) {
-          entry->forwardPath.push_back(pan.forwardpath(i));
+        for (int i = 0; i < pan.forward_path_size(); i++) {
+          entry->forwardPath.push_back(pan.forward_path(i));
         }
 
         // Populate the reverse path (for landmarks)
         if (entry->landmark) {
-          for (int i = 0; i < pan.reversepath_size(); i++) {
-            entry->reversePath.push_back(pan.reversepath(i));
+          for (int i = 0; i < pan.reverse_path_size(); i++) {
+            entry->reversePath.push_back(pan.reverse_path(i));
           }
         }
 
@@ -520,13 +520,13 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
     case Message::Type::Social_Retract: {
       Protocol::PathRetract prt = message_cast<Protocol::PathRetract>(msg);
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
-      m_routes.retract(vport, NodeIdentifier(prt.destinationid(), NodeIdentifier::Format::Raw));
+      m_routes.retract(vport, NodeIdentifier(prt.destination_id(), NodeIdentifier::Format::Raw));
       break;
     }
 
     case Message::Type::Social_Refresh: {
       Protocol::PathRefresh prf = message_cast<Protocol::PathRefresh>(msg);
-      NodeIdentifier destinationId = NodeIdentifier(prf.destinationid(), NodeIdentifier::Format::Raw);
+      NodeIdentifier destinationId = NodeIdentifier(prf.destination_id(), NodeIdentifier::Format::Raw);
       if (destinationId.isNull()) {
         m_routes.fullUpdate(msg.originator());
       } else {

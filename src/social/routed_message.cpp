@@ -24,22 +24,22 @@ RoutedMessage::RoutedMessage(const Message &msg)
 {
   Protocol::RoutedMessage pmsg = message_cast<Protocol::RoutedMessage>(msg);
   m_sourceAddress = LandmarkAddress(
-    NodeIdentifier(pmsg.sourcelandmark(), NodeIdentifier::Format::Raw),
-    pmsg.sourceaddress()
+    NodeIdentifier(pmsg.source_landmark(), NodeIdentifier::Format::Raw),
+    pmsg.source_address()
   );
-  m_sourceNodeId = NodeIdentifier(pmsg.sourcenode(), NodeIdentifier::Format::Raw);
-  m_sourceCompId = pmsg.sourcecomp();
+  m_sourceNodeId = NodeIdentifier(pmsg.source_node(), NodeIdentifier::Format::Raw);
+  m_sourceCompId = pmsg.source_comp();
 
-  if (pmsg.has_destinationlandmark()) {
+  if (pmsg.has_destination_landmark()) {
     m_destinationAddress = LandmarkAddress(
-      NodeIdentifier(pmsg.destinationlandmark(), NodeIdentifier::Format::Raw),
-      pmsg.destinationaddress()
+      NodeIdentifier(pmsg.destination_landmark(), NodeIdentifier::Format::Raw),
+      pmsg.destination_address()
     );
   }
   
-  m_destinationNodeId = NodeIdentifier(pmsg.destinationnode(), NodeIdentifier::Format::Raw);
-  m_destinationCompId = pmsg.destinationcomp();
-  m_hopCount = pmsg.hopcount();
+  m_destinationNodeId = NodeIdentifier(pmsg.destination_node(), NodeIdentifier::Format::Raw);
+  m_destinationCompId = pmsg.destination_comp();
+  m_hopCount = pmsg.hop_count();
   m_deliveryMode = pmsg.delivery();
   m_payloadType = pmsg.type();
   m_payload = pmsg.payload();
@@ -92,17 +92,17 @@ void RoutedMessage::processSourceRouteHop()
 void RoutedMessage::serialize(Protocol::RoutedMessage &pmsg) const
 {
   pmsg.Clear();
-  pmsg.set_sourcelandmark(m_sourceAddress.landmarkId().as(NodeIdentifier::Format::Raw));
+  pmsg.set_source_landmark(m_sourceAddress.landmarkId().as(NodeIdentifier::Format::Raw));
   for (Vport port : m_sourceAddress.path())
-    pmsg.add_sourceaddress(port);
-  pmsg.set_sourcenode(m_sourceNodeId.as(NodeIdentifier::Format::Raw));
-  pmsg.set_sourcecomp(m_sourceCompId);
-  pmsg.set_destinationlandmark(m_destinationAddress.landmarkId().as(NodeIdentifier::Format::Raw));
+    pmsg.add_source_address(port);
+  pmsg.set_source_node(m_sourceNodeId.as(NodeIdentifier::Format::Raw));
+  pmsg.set_source_comp(m_sourceCompId);
+  pmsg.set_destination_landmark(m_destinationAddress.landmarkId().as(NodeIdentifier::Format::Raw));
   for (Vport port : m_destinationAddress.path())
-    pmsg.add_destinationaddress(port);
-  pmsg.set_destinationnode(m_destinationNodeId.as(NodeIdentifier::Format::Raw));
-  pmsg.set_destinationcomp(m_destinationCompId);
-  pmsg.set_hopcount(m_hopCount);
+    pmsg.add_destination_address(port);
+  pmsg.set_destination_node(m_destinationNodeId.as(NodeIdentifier::Format::Raw));
+  pmsg.set_destination_comp(m_destinationCompId);
+  pmsg.set_hop_count(m_hopCount);
   pmsg.set_delivery(m_deliveryMode);
   pmsg.set_type(m_payloadType);
   pmsg.set_payload(m_payload);
