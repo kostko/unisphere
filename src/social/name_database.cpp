@@ -108,7 +108,7 @@ public:
   /**
    * Called when a record expires.
    */
-  void entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record);
+  void entryTimerExpired(const boost::system::error_code &error, NameRecordWeakPtr record);
 public:
   UNISPHERE_DECLARE_PUBLIC(NameDatabase)
 
@@ -216,11 +216,13 @@ void NameDatabasePrivate::store(NameRecordPtr record)
   if (record->nodeId == m_localId)
     return;
 
+  // Set last update timestamp
+  record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
+
   RecursiveUniqueLock lock(m_mutex);
   auto it = m_nameDb.find(boost::make_tuple(record->nodeId, NameRecord::Type::SloppyGroup));
   if (it == m_nameDb.end()) {
     // Insertion of a new record
-    record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
     m_nameDb.insert(record);
     m_statistics.recordInsertions++;
   } else {
@@ -235,7 +237,7 @@ void NameDatabasePrivate::store(NameRecordPtr record)
 
   // Install a timer on the record
   record->expiryTimer.expires_from_now(m_router.context().roughly(record->ttl()));
-  record->expiryTimer.async_wait(boost::bind(&NameDatabasePrivate::entryTimerExpired, this, _1, record));
+  record->expiryTimer.async_wait(boost::bind(&NameDatabasePrivate::entryTimerExpired, this, _1, NameRecordWeakPtr(record)));
 
   // Export entry to sloppy group peers
   q.signalExportRecord(record, NodeIdentifier::INVALID);
@@ -304,7 +306,7 @@ void NameDatabasePrivate::store(const NodeIdentifier &nodeId,
   // Own records should never expire, so we don't install a timer
   if (record->nodeId != m_localId) {
     record->expiryTimer.expires_from_now(m_router.context().roughly(record->ttl()));
-    record->expiryTimer.async_wait(boost::bind(&NameDatabasePrivate::entryTimerExpired, this, _1, record));
+    record->expiryTimer.async_wait(boost::bind(&NameDatabasePrivate::entryTimerExpired, this, _1, NameRecordWeakPtr(record)));
   }
 
   // Local sloppy group entry should be exported to sloppy group peers
@@ -347,13 +349,16 @@ const NameRecordPtr NameDatabasePrivate::lookup(const NodeIdentifier &nodeId) co
   return *it;
 }
 
-void NameDatabasePrivate::entryTimerExpired(const boost::system::error_code &error, NameRecordPtr record)
+void NameDatabasePrivate::entryTimerExpired(const boost::system::error_code &error, NameRecordWeakPtr record)
 {
   if (error)
     return;
 
-  m_statistics.recordExpirations++;
-  remove(record->nodeId, record->type);
+  if (NameRecordPtr r = record.lock()) {
+    // Remove the record from the name database
+    m_statistics.recordExpirations++;
+    remove(r->nodeId, r->type);
+  }
 }
 
 void NameDatabasePrivate::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const

@@ -333,7 +333,7 @@ public:
    * @param entry Routing entry that expired
    */
   void entryTimerExpired(const boost::system::error_code &error,
-                         RoutingEntryPtr entry);
+                         RoutingEntryWeakPtr entry);
 
   /**
    * Notifies the router that an entry should be exported to neighbor
@@ -580,14 +580,16 @@ size_t CompactRoutingTablePrivate::getLandmarkCount() const
 }
 
 void CompactRoutingTablePrivate::entryTimerExpired(const boost::system::error_code &error,
-                                                   RoutingEntryPtr entry)
+                                                   RoutingEntryWeakPtr entry)
 {
   if (error)
     return;
 
-  // Retract the entry from the routing table
-  m_statistics.routeExpirations++;
-  retract(entry->originVport(), entry->destination);
+  if (RoutingEntryPtr e = entry.lock()) {
+    // Retract the entry from the routing table
+    m_statistics.routeExpirations++;
+    retract(e->originVport(), e->destination);
+  }
 }
 
 void CompactRoutingTablePrivate::fullUpdate(const NodeIdentifier &peer)
@@ -631,8 +633,6 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
   auto &ribVport = m_rib.get<RIBTags::VportDestination>();
   auto existing = ribVport.find(boost::make_tuple(entry->originVport(), entry->destination));
   if (existing != ribVport.end()) {
-    //BOOST_LOG(m_logger) << "Updated entry " << *existing << " for " << entry->destination.hex() << " path " << entry->forwardPath;
-
     // Ignore import when the existing entry is the same as the new one
     if (**existing == *entry) {
       // Update the entry's last seen timestamp
@@ -641,7 +641,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 
         // Restart expiry timer
         if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
-          e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, e));
+          e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, RoutingEntryWeakPtr(e)));
         }
       }));
       return false;
@@ -664,7 +664,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 
       // Restart expiry timer
       if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
-        e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, e));
+        e->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, RoutingEntryWeakPtr(e)));
       }
     }));
   } else {
@@ -737,7 +737,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 
     // Setup expiry timer for the routing entry
     entry->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry));
-    entry->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, entry));
+    entry->expiryTimer.async_wait(boost::bind(&CompactRoutingTablePrivate::entryTimerExpired, this, _1, RoutingEntryWeakPtr(entry)));
   }
 
   // Determine what the new best route for this destination is
@@ -964,9 +964,6 @@ bool CompactRoutingTablePrivate::retract(const NodeIdentifier &destination)
     if (entry->landmark)
       wasLandmark = true;
 
-    // Timer must be cancelled as its handler contains a closure with a self-reference to
-    // the routing entry pointer -- otherwise the entry will not get freed until the timer fires
-    entry->expiryTimer.cancel();
     it = ribDestination.erase(it);
 
     // Send retractions for active entries
@@ -1003,9 +1000,6 @@ bool CompactRoutingTablePrivate::retract(Vport vport, const NodeIdentifier &dest
   for (auto it = routes.first; it != routes.second;) {
     RoutingEntryPtr entry = *it;
 
-    // Timer must be cancelled as its handler contains a closure with a self-reference to
-    // the routing entry pointer -- otherwise the entry will not get freed until the timer fires
-    entry->expiryTimer.cancel();
     it = ribVport.erase(it);
 
     // If entry was part of an active route, we must determine a new active route for this destination
