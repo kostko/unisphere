@@ -78,6 +78,17 @@ void NodeIdentifier::setIdentifier(const std::string &identifier, Format format)
       }
       break;
     }
+
+    case Format::Bin: {
+      mpz_class id;
+      id.set_str(identifier, 2);
+
+      // Pad resulting string with zeroes to achieve proper size
+      std::string result = id.get_str(16);
+      result.insert(0, 2*NodeIdentifier::length - result.size(), '0');
+      setIdentifier(result, Format::Hex);
+      break;
+    }
   }
   
   if (!isValid())
@@ -103,6 +114,17 @@ std::string NodeIdentifier::as(Format format) const
       Botan::Pipe pipe(new Botan::Hex_Encoder(Botan::Hex_Encoder::Lowercase));
       pipe.process_msg(m_identifier);
       return pipe.read_all_as_string(0);
+    }
+
+    // We need to convert to binary format
+    case Format::Bin: {
+      mpz_class id;
+      id.set_str(hex(), 16);
+
+      // Pad resulting string with zeroes to achieve proper size
+      std::string result = id.get_str(2);
+      result.insert(0, 8*NodeIdentifier::length - result.size(), '0');
+      return result;
     }
   }
   

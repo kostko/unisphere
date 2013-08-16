@@ -43,7 +43,8 @@ public:
    */
   enum class Format {
     Raw,
-    Hex
+    Hex,
+    Bin
   };
   
   /**
@@ -98,6 +99,11 @@ public:
    * Convenience alias for as(Format::Raw).
    */
   inline std::string raw() const { return as(Format::Raw); }
+
+  /**
+   * Convenience alias for as(Format::Bin).
+   */
+  inline std::string bin() const { return as(Format::Bin); }
   
   /**
    * Comparison operator.

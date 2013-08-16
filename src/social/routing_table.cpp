@@ -1125,8 +1125,11 @@ void CompactRoutingTablePrivate::dumpTopology(CompactRoutingTable::TopologyDumpG
   std::string name = resolve(m_localId);
   auto self = graph.add_vertex(name);
   boost::put(boost::get(Tags::NodeName(), graph.graph()), self, name);
+  boost::put(boost::get(Tags::NodeGroup(), graph.graph()), self,
+    m_sloppyGroup.getGroupPrefix().bin().substr(0, m_sloppyGroup.getGroupPrefixLength()));
   boost::put(boost::get(Tags::NodeIsLandmark(), graph.graph()), self, m_landmark);
   boost::put(boost::get(Tags::NodeStateSize(), graph.graph()), self, m_rib.size());
+
   auto addEdge = [&](const NodeIdentifier &id, Vport vportId) {
     auto vertex = graph.add_vertex(resolve(id));
     boost::put(boost::get(Tags::NodeName(), graph.graph()), vertex, resolve(id));

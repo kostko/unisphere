@@ -136,6 +136,7 @@ public:
 
     boost::dynamic_properties properties;
     properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
+    properties.property("group", boost::get(Tags::NodeGroup(), graph.graph()));
     properties.property("is_foreign", boost::get(Tags::LinkIsForeign(), graph.graph()));
     properties.property("is_reverse", boost::get(Tags::LinkIsReverse(), graph.graph()));
     
@@ -186,6 +187,7 @@ public:
 
     boost::dynamic_properties properties;
     properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
+    properties.property("group", boost::get(Tags::NodeGroup(), graph.graph()));
     properties.property("is_landmark", boost::get(Tags::NodeIsLandmark(), graph.graph()));
     properties.property("state", boost::get(Tags::NodeStateSize(), graph.graph()));
     properties.property("vport", boost::get(Tags::LinkVportId(), graph.graph()));

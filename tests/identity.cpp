@@ -117,4 +117,20 @@ TEST_CASE("identity/identifiers", "verify that node identifiers work")
     REQUIRE(n8.distanceToAsDouble(n9) == 3735928559.0);
     REQUIRE(n8.distanceToAsDouble(n9) == n9.distanceToAsDouble(n8));
   }
+
+  SECTION("s9", "binary conversion")
+  {
+    NodeIdentifier zero("0000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+    NodeIdentifier n10("8000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+    NodeIdentifier n11("f000000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+    NodeIdentifier n12("e100000000000000000000000000000000000000", NodeIdentifier::Format::Hex);
+    NodeIdentifier n13("83d4211788762ffc7edc1e39187978dc27e10315", NodeIdentifier::Format::Hex);
+
+    REQUIRE(zero.bin().substr(0, 4) == "0000");
+    REQUIRE(n10.bin().substr(0, 4)  == "1000");
+    REQUIRE(n11.bin().substr(0, 4)  == "1111");
+    REQUIRE(n11.bin().substr(0, 10) == "1111000000");
+    REQUIRE(n12.bin().substr(0, 20) == "11100001000000000000");
+    REQUIRE(n13.bin().substr(0, 30) == "100000111101010000100001000101");
+  }
 }

@@ -164,6 +164,8 @@ public:
   struct TopologyDumpTags {
     /// Specifies the node's name
     struct NodeName { typedef boost::vertex_property_tag kind; };
+    /// Specifies the node's group
+    struct NodeGroup { typedef boost::vertex_property_tag kind; };
     /// Specifies the node's landmark status
     struct NodeIsLandmark { typedef boost::vertex_property_tag kind; };
     /// Node state size
@@ -182,7 +184,8 @@ public:
       boost::bidirectionalS,
       boost::property<TopologyDumpTags::NodeName, std::string,
         boost::property<TopologyDumpTags::NodeIsLandmark, int,
-          boost::property<TopologyDumpTags::NodeStateSize, int>>>,
+          boost::property<TopologyDumpTags::NodeStateSize, int,
+            boost::property<TopologyDumpTags::NodeGroup, std::string>>>>,
       boost::property<TopologyDumpTags::LinkVportId, Vport,
         boost::property<TopologyDumpTags::LinkWeight, int>>
     >,
