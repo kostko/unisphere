@@ -37,16 +37,19 @@ UNISPHERE_SCENARIO(IdleScenario)
   // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
   // api.startNodesBatch(nodes, 10, 5);
 
+  auto standardTests = [&]() {
+    // Perform some sanity checks
+    api.test("sanity/check_consistent_ndb");
+    // Dump topology information
+    api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+    // Retrieve performance statistics
+    api.test("stats/performance");
+  };
+
   api.wait(30);
-  // Perform some sanity checks
-  api.test("sanity/check_consistent_ndb");
+  standardTests();
   api.wait(570);
-
-  // Perform some sanity checks again
-  api.test("sanity/check_consistent_ndb");
-
-  // Retrieve performance statistics
-  api.test("stats/performance");
+  standardTests();
 }
 UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
