@@ -391,8 +391,8 @@ public:
   /// Landmark status of the current node
   bool m_landmark;
 
-  /// Counter for tracking update statistics
-  size_t m_statsRouteUpdates = 0;
+  /// Statistics
+  CompactRoutingTable::Statistics m_statistics;
 };
 
 RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
@@ -586,6 +586,7 @@ void CompactRoutingTablePrivate::entryTimerExpired(const boost::system::error_co
     return;
 
   // Retract the entry from the routing table
+  m_statistics.routeExpirations++;
   retract(entry->originVport(), entry->destination);
 }
 
@@ -853,7 +854,7 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
         q.signalVicinityLearned.defer(CompactRoutingTable::VicinityDescriptor{ newBestEntry->destination, newBestEntry->hops() });
     }
 
-    m_statsRouteUpdates++;
+    m_statistics.routeUpdates++;
 
     // Export new active route to neighbors
     exportEntry(newBestEntry);
@@ -1041,7 +1042,7 @@ void CompactRoutingTablePrivate::clear()
 
   m_rib.clear();
   m_vportMap.clear();
-  m_statsRouteUpdates = 0;
+  m_statistics = CompactRoutingTable::Statistics();
 }
 
 void CompactRoutingTablePrivate::setLandmark(bool landmark)
@@ -1265,9 +1266,9 @@ LandmarkAddress CompactRoutingTable::getLocalAddress() const
   return d->m_localAddress.front();
 }
 
-size_t CompactRoutingTable::getStatsRouteUpdates() const
+const CompactRoutingTable::Statistics &CompactRoutingTable::statistics() const
 {
-  return d->m_statsRouteUpdates;
+  return d->m_statistics;
 }
 
 void CompactRoutingTable::dump(std::ostream &stream,

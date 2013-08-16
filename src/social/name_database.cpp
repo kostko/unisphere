@@ -124,6 +124,9 @@ public:
   NameInformationBase m_nameDb;
   /// Signal for refreshing local address record
   PeriodicRateLimitedSignal<30, 600> m_refreshSignal;
+
+  /// Statistics
+  NameDatabase::Statistics m_statistics;
 };
 
 NameRecord::NameRecord(Context &context, const NodeIdentifier &nodeId, Type type)
@@ -195,6 +198,7 @@ void NameDatabasePrivate::refreshLocalRecord()
   if (record->timestamp == timestamp)
     return;
 
+  m_statistics.localRefreshes++;
   record->timestamp = timestamp;
   record->seqno = 0;
   q.signalExportRecord(record, NodeIdentifier::INVALID);
@@ -218,6 +222,7 @@ void NameDatabasePrivate::store(NameRecordPtr record)
     // Insertion of a new record
     record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
     m_nameDb.insert(record);
+    m_statistics.recordInsertions++;
   } else {
     // Update of an existing record
     NameRecordPtr existing = *it;
@@ -225,6 +230,7 @@ void NameDatabasePrivate::store(NameRecordPtr record)
       return;
 
     BOOST_ASSERT(m_nameDb.replace(it, record));
+    m_statistics.recordUpdates++;
   }
 
   // Install a timer on the record
@@ -318,6 +324,7 @@ void NameDatabasePrivate::clear()
 {
   RecursiveUniqueLock lock(m_mutex);
   m_nameDb.clear();
+  m_statistics = NameDatabase::Statistics();
 }
 
 void NameDatabasePrivate::fullUpdate(const NodeIdentifier &peer)
@@ -345,6 +352,7 @@ void NameDatabasePrivate::entryTimerExpired(const boost::system::error_code &err
   if (error)
     return;
 
+  m_statistics.recordExpirations++;
   remove(record->nodeId, record->type);
 }
 
@@ -394,6 +402,11 @@ size_t NameDatabase::sizeCache() const
 
   auto &nibType = d->m_nameDb.get<NIBTags::TypeDestination>();
   return nibType.count(NameRecord::Type::Cache);
+}
+
+const NameDatabase::Statistics &NameDatabase::statistics() const
+{
+  return d->m_statistics;
 }
 
 std::list<NameRecordPtr> NameDatabase::getNames(NameRecord::Type type) const

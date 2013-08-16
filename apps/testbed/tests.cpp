@@ -563,9 +563,17 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
+    const auto &statsRt = node->router->routingTable().statistics();
+    const auto &statsNdb = node->router->nameDb().statistics();
+
     ds_stats.add({
-      { "node_id",    node->nodeId.hex() },
-      { "rt_updates", node->router->routingTable().getStatsRouteUpdates() }
+      { "node_id",      node->nodeId.hex() },
+      { "rt_updates",   statsRt.routeUpdates },
+      { "rt_exp",       statsRt.routeExpirations },
+      { "ndb_inserts",  statsNdb.recordInsertions },
+      { "ndb_updates",  statsNdb.recordUpdates },
+      { "ndb_exp",      statsNdb.recordExpirations },
+      { "ndb_refresh",  statsNdb.localRefreshes }
     });
     finish(api);
   }
@@ -581,7 +589,11 @@ public:
 
     outputCsvDataset(
       ds_stats,
-      { "node_id", "rt_updates" },
+      {
+        "node_id",
+        "rt_updates", "rt_exp",
+        "ndb_inserts", "ndb_updates", "ndb_exp", "ndb_refresh"
+      },
       api.getOutputFilename("raw", "csv")
     );
   }

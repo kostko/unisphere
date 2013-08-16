@@ -121,6 +121,21 @@ public:
   static const int max_cache_entries = 5;
 
   /**
+   * A structure for reporting name database statistics.
+   */
+  struct Statistics {
+    /// Number of record insertions
+    size_t recordInsertions = 0;
+    /// Number of record updates
+    size_t recordUpdates = 0;
+    /// Number of record expirations
+    size_t recordExpirations = 0;
+    /// Number of local refreshes
+    size_t localRefreshes = 0;
+  };
+
+
+  /**
    * Class constructor.
    *
    * @param router Router instance
@@ -206,6 +221,11 @@ public:
    * Returns the number of cache name records in the name database.
    */
   size_t sizeCache() const;
+
+  /**
+   * Retrieves various statistics about name database operation.
+   */
+  const Statistics &statistics() const;
 
   /**
    * Returns a copy of the name database of specified type. Use of this method

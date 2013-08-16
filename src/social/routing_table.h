@@ -207,6 +207,16 @@ public:
   };
 
   /**
+   * A structure for reporting routing table statistics.
+   */
+  struct Statistics {
+    /// Number of route updates
+    size_t routeUpdates = 0;
+    /// Number of route expirations
+    size_t routeExpirations = 0;
+  };
+
+  /**
    * Class constructor.
    *
    * @param context UNISPHERE context
@@ -347,9 +357,9 @@ public:
   LandmarkAddress getLocalAddress() const;
 
   /**
-   * Returns the number of route updates since router initialization.
+   * Returns various statistics about routing table operation.
    */
-  size_t getStatsRouteUpdates() const;
+  const Statistics &statistics() const;
 
   /**
    * Outputs the routing table to a stream.
