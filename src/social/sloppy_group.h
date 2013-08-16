@@ -50,7 +50,7 @@ public:
   /// Graph definition for dumping the sloppy group topology into
   typedef boost::labeled_graph<
     boost::adjacency_list<
-      boost::vecS,
+      boost::hash_setS,
       boost::vecS,
       boost::bidirectionalS,
       boost::property<TopologyDumpTags::NodeName, std::string,
