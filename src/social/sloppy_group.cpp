@@ -389,10 +389,19 @@ void SloppyGroupManagerPrivate::nibExportQueueRecord(const SloppyPeer &peer,
     buffer = it->second;
   }
 
-  // TODO: Smart aggregation (only latest announces, retraction drops announce, don't transmit empty announces)
+  Protocol::NameAnnounce *ar = nullptr;
+  for (int i = 0; i < buffer->aggregate.announces_size(); i++) {
+    Protocol::NameAnnounce *a = buffer->aggregate.mutable_announces(i);
+    // Replace existing announces with new ones, so only the lastest are transmitted
+    if (a->origin_id() == announce.origin_id()) {
+      ar = a;
+      break;
+    }
+  }
 
-  Protocol::NameAnnounce *a = buffer->aggregate.add_announces();
-  *a = announce;
+  if (!ar)
+    ar = buffer->aggregate.add_announces();
+  *ar = announce;
 
   // Buffer further messages for another 5 seconds, then transmit all of them
   if (!buffer->buffering) {
