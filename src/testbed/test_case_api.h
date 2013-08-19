@@ -119,8 +119,9 @@ public:
    * available on slaves.
    *
    * @param fun Function to defer
+   * @param timeout Number of seconds to wait before running
    */
-  virtual void defer(std::function<void()> fun)
+  virtual void defer(std::function<void()> fun, int timeout = 0)
   {
     throw IllegalApiCall();
   }
@@ -137,6 +138,15 @@ public:
    * @return Running test case instance or null
    */
   virtual TestCasePtr callTestCase(const std::string &name)
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
+   * Returns the current timestamp in UNISPHERE epoch time. This method
+   * is only available on slaves.
+   */
+  virtual std::uint32_t getTime()
   {
     throw IllegalApiCall();
   }

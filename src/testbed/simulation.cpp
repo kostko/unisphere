@@ -84,7 +84,6 @@ void SimulationSection::execute(const NodeIdentifier &nodeId,
   if (it == d->m_simulation.m_nodes.end())
     throw VirtualNodeNotFound(nodeId);
 
-
   d->m_queue.push_back(boost::bind(fun, it->second));
 }
 
@@ -105,6 +104,11 @@ void SimulationSection::run()
 
   // Interrupt the simulation thread to invoke the section runner
   d->m_simulation.m_thread.interrupt();
+}
+
+void SimulationSection::schedule(int timeout)
+{
+  d->m_simulation.m_context.schedule(timeout, boost::bind(&SimulationSection::run, shared_from_this()));
 }
 
 SimulationPrivate::SimulationPrivate(std::uint32_t seed, size_t threads, size_t globalNodeCount)
@@ -174,6 +178,11 @@ bool Simulation::isStopping() const
 std::uint32_t Simulation::seed() const
 {
   return d->m_seed;
+}
+
+const Context &Simulation::context() const
+{
+  return d->m_context;
 }
 
 void Simulation::run()

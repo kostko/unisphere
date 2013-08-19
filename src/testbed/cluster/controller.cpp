@@ -120,6 +120,11 @@ public:
 
   std::list<TestCasePtr> test(std::initializer_list<std::string> names);
 
+  TestCasePtr testInBackground(const std::string &name);
+
+  void signal(TestCasePtr test,
+              const std::string &signal);
+
   const std::vector<Partition> &getPartitions() const;
 
   const std::vector<Partition::Node> &getNodes() const;
@@ -302,6 +307,50 @@ std::list<TestCasePtr> ControllerScenarioApi::test(std::initializer_list<std::st
     scenario->suspend();
   }
   return tests;
+}
+
+TestCasePtr ControllerScenarioApi::testInBackground(const std::string &name)
+{
+  ScenarioPtr scenario = m_controller.m_scenario;
+  return runTestCase(name, nullptr);
+}
+
+void ControllerScenarioApi::signal(TestCasePtr test,
+                                   const std::string &signal)
+{
+  RecursiveUniqueLock lock(m_controller.m_mutex);
+
+  if (test->isFinished())
+    return;
+
+  ScenarioPtr scenario = m_controller.m_scenario;
+  test->signalFinished.connect(boost::bind(&Scenario::resume, scenario));
+
+  BOOST_LOG(m_controller.m_logger) << "Sending signal '" << signal << "' to test '" << test->getName() << "'.";
+
+  Protocol::SignalTestRequest request;
+  request.set_test_id(test->getId());
+  request.set_signal(signal);
+
+  for (const Partition &partition : m_controller.m_partitions) {
+    NodeIdentifier slaveId = partition.slave.nodeId();
+    m_controller.q.rpc().call<Protocol::SignalTestRequest, Protocol::SignalTestResponse>(
+      partition.slave.nodeId(),
+      "Testbed.Simulation.SignalTest",
+      request,
+      nullptr,
+      nullptr,
+      m_controller.q.rpc().options()
+                          .setTimeout(5)
+                          .setChannelOptions(
+                            MessageOptions().setContact(partition.slave)
+                          )
+    );
+  }
+
+  // Unlock the mutex before suspending, otherwise we will not be able to resume
+  lock.unlock();
+  scenario->suspend();
 }
 
 const std::vector<Partition> &ControllerScenarioApi::getPartitions() const

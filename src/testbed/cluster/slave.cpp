@@ -49,7 +49,9 @@ public:
 
   std::mt19937 &rng();
 
-  void defer(std::function<void()> fun);
+  void defer(std::function<void()> fun, int timeout);
+
+  std::uint32_t getTime();
 private:
   void send_(const std::string &dsName,
              const std::string &dsData);
@@ -84,6 +86,10 @@ public:
   Response<Protocol::RunTestResponse> rpcRunTest(const Protocol::RunTestRequest &request,
                                                  const Message &msg,
                                                  RpcId rpcId);
+
+  Response<Protocol::SignalTestResponse> rpcSignalTest(const Protocol::SignalTestRequest &request,
+                                                       const Message &msg,
+                                                       RpcId rpcId);
 
   Response<Protocol::StartNodesResponse> rpcStartNodes(const Protocol::StartNodesRequest &request,
                                                        const Message &msg,
@@ -178,11 +184,26 @@ std::mt19937 &SlaveTestCaseApi::rng()
   return m_rng;
 }
 
-void SlaveTestCaseApi::defer(std::function<void()> fun)
+void SlaveTestCaseApi::defer(std::function<void()> fun, int timeout)
 {
   SimulationSectionPtr section = m_slave.m_simulation->section();
-  section->execute(fun);
-  section->run();
+  section->execute([this, fun]() {
+    // Do not execute the defered function when test case has already finished
+    if (m_testCase->isFinished())
+      return;
+
+    fun();
+  });
+
+  if (timeout > 0)
+    section->schedule(timeout);
+  else
+    section->run();
+}
+
+std::uint32_t SlaveTestCaseApi::getTime()
+{
+  return m_slave.m_simulation->context().getCurrentTimestamp();
 }
 
 SlavePrivate::SlavePrivate(Slave &slave)
@@ -319,6 +340,31 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
   return Protocol::RunTestResponse();
 }
 
+Response<Protocol::SignalTestResponse> SlavePrivate::rpcSignalTest(const Protocol::SignalTestRequest &request,
+                                                                   const Message &msg,
+                                                                   RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Fail when no simulation is running
+  if (!m_simulation || m_simulation->isStopping())
+    throw RpcException(RpcErrorCode::BadRequest, "Simulation is not running!");
+
+  auto it = m_runningCases.find(request.test_id());
+  if (it == m_runningCases.end())
+    throw RpcException(RpcErrorCode::BadRequest, "Test case not found!");
+
+  RunningSlaveTestCase &runningCase = it->second;
+  BOOST_LOG(m_logger) << "Sending signal '" << request.signal() << "' to test '" << runningCase.testCase->getName() << "'.";
+
+  SimulationSectionPtr section = m_simulation->section();
+  section->execute(boost::bind(&TestCase::signalReceived, runningCase.testCase,
+    boost::ref(*runningCase.api), request.signal()));
+  section->run();
+
+  return Protocol::SignalTestResponse();
+}
+
 Response<Protocol::StartNodesResponse> SlavePrivate::rpcStartNodes(const Protocol::StartNodesRequest &request,
                                                                    const Message &msg,
                                                                    RpcId rpcId)
@@ -443,6 +489,9 @@ void Slave::run()
 
   rpc().registerMethod<Protocol::RunTestRequest, Protocol::RunTestResponse>("Testbed.Simulation.RunTest",
     boost::bind(&SlavePrivate::rpcRunTest, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::SignalTestRequest, Protocol::SignalTestResponse>("Testbed.Simulation.SignalTest",
+    boost::bind(&SlavePrivate::rpcSignalTest, d, _1, _2, _3));
 
   rpc().registerMethod<Protocol::StartNodesRequest, Protocol::StartNodesResponse>("Testbed.Simulation.StartNodes",
     boost::bind(&SlavePrivate::rpcStartNodes, d, _1, _2, _3));

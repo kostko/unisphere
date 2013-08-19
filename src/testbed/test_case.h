@@ -155,6 +155,18 @@ public:
                        const boost::property_tree::ptree &args);
 
   /**
+   * This method is called on the slaves when a signal has been
+   * received from the test controller.
+   *
+   * Default implementation does nothing.
+   *
+   * @param api Test case API interface
+   * @param signal Signal name
+   */
+  virtual void signalReceived(TestCaseApi &api,
+                              const std::string &signal);
+
+  /**
    * This method is run on the slaves after runNode has been called
    * for all virtual nodes in the local partition.
    *

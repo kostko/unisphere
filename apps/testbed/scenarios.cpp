@@ -21,6 +21,7 @@
 
 namespace po = boost::program_options;
 using namespace UniSphere;
+using namespace UniSphere::TestBed;
 
 namespace Scenarios {
 
@@ -29,6 +30,9 @@ namespace Scenarios {
  */
 UNISPHERE_SCENARIO(IdleScenario)
 {
+  // Start collecting performance data
+  TestCasePtr testPerfCollector = api.testInBackground("stats/collect_performance");
+
   const auto &nodes = api.getNodes();
   for (int i = 0; i <= nodes.size() / 10; i++) {
     api.startNodes(nodes, i*10, 10);
@@ -50,6 +54,9 @@ UNISPHERE_SCENARIO(IdleScenario)
   standardTests();
   api.wait(570);
   standardTests();
+
+  // Stop collecting performance data
+  api.signal(testPerfCollector, "finish");
 }
 UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 

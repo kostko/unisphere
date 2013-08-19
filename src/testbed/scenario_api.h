@@ -59,6 +59,23 @@ public:
   virtual std::list<TestCasePtr> test(std::initializer_list<std::string> names) = 0;
 
   /**
+   * Runs a specific test case and doesn't wait for its completion.
+   *
+   * @param name  Test case name
+   * @return Test case instance
+   */
+  virtual TestCasePtr testInBackground(const std::string &name) = 0;
+
+  /**
+   * Signal a running test case and wait for test case completion.
+   *
+   * @param test Test case instance
+   * @param signal Signal to send the test case
+   */
+  virtual void signal(TestCasePtr test,
+                      const std::string &signal) = 0;
+
+  /**
    * Returns a vector of node partitions.
    */
   virtual const std::vector<Partition> &getPartitions() const = 0;

@@ -69,6 +69,13 @@ public:
    * nothing.
    */
   void run();
+
+  /**
+   * Schedules the section to be executed after some timeout.
+   *
+   * @param timeout Timeout in seconds
+   */
+  void schedule(int timeout);
 public:
   /// Signal that gets called when all pending functions have executed
   boost::signals2::signal<void()> signalFinished;
@@ -150,6 +157,11 @@ public:
    * Returns the simulation's random seed.
    */
   std::uint32_t seed() const;
+
+  /**
+   * Returns the simulation context.
+   */
+  const Context &context() const;
 
   /**
    * Starts the simulation.

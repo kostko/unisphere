@@ -603,4 +603,73 @@ public:
 
 UNISPHERE_REGISTER_TEST_CASE(GetPerformanceStatistics, "stats/performance")
 
+class CollectPerformanceStatistics : public TestCase
+{
+public:
+  /// Statistics dataset
+  DataSet<> ds_stats{"ds_stats"};
+
+  using TestCase::TestCase;
+
+  void collect(TestCaseApi &api,
+               VirtualNodePtr node)
+  {
+    const auto &statsRt = node->router->routingTable().statistics();
+    const auto &statsNdb = node->router->nameDb().statistics();
+
+    ds_stats.add({
+      { "ts",           static_cast<int>(api.getTime()) },
+      { "node_id",      node->nodeId.hex() },
+      { "rt_updates",   statsRt.routeUpdates },
+      { "rt_exp",       statsRt.routeExpirations },
+      { "ndb_inserts",  statsNdb.recordInsertions },
+      { "ndb_updates",  statsNdb.recordUpdates },
+      { "ndb_exp",      statsNdb.recordExpirations },
+      { "ndb_refresh",  statsNdb.localRefreshes }
+    });
+
+    api.defer(boost::bind(&CollectPerformanceStatistics::collect, this, boost::ref(api), node), 5);
+  }
+
+  /**
+   * Gather some statistics.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    collect(api, node);
+  }
+
+  void signalReceived(TestCaseApi &api,
+                      const std::string &signal)
+  {
+    // Finish the test case as soon as a signal is received
+    finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.send(ds_stats);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_stats);
+
+    outputCsvDataset(
+      ds_stats,
+      {
+        "ts", "node_id",
+        "rt_updates", "rt_exp",
+        "ndb_inserts", "ndb_updates", "ndb_exp", "ndb_refresh"
+      },
+      api.getOutputFilename("raw", "csv")
+    );
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(CollectPerformanceStatistics, "stats/collect_performance")
+
+
 }

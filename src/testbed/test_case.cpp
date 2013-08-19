@@ -110,8 +110,7 @@ void TestCase::tryComplete(TestCaseApi &api)
   TestCaseApiPtr papi = api.shared_from_this();
   RecursiveUniqueLock lock(d->m_mutex);
 
-  // Mark this test case as finished and remove ourselves from running cases
-  d->m_state = State::Finished;
+  // Remove ourselves from running test cases
   api.removeRunningTestCase();
 
   // Check if we are waiting on any child test cases to complete first
@@ -125,6 +124,7 @@ void TestCase::tryComplete(TestCaseApi &api)
   // TODO: This could take some time, should it be dispatched into another thread?
   processGlobalResults(api);
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Test case '" << getName() << "' done.";
+  d->m_state = State::Finished;
   signalFinished();
 
   // We are now complete, so try to complete parent if one exists
@@ -156,6 +156,11 @@ void TestCase::runNode(TestCaseApi &api,
                        const boost::property_tree::ptree &args)
 {
   finish(api);
+}
+
+void TestCase::signalReceived(TestCaseApi &api,
+                              const std::string &signal)
+{
 }
 
 void TestCase::localNodesRunning(TestCaseApi &api)

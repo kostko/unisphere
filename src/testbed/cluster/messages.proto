@@ -117,3 +117,13 @@ message StartNodesRequest {
 
 message StartNodesResponse {
 };
+
+message SignalTestRequest {
+  // Test identifier
+  required uint32 test_id = 1;
+  // Signal name
+  required string signal = 2;
+};
+
+message SignalTestResponse {
+};
