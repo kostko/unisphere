@@ -237,7 +237,7 @@ def test01_random_routes(debug=True, iteration=1, store=True):
       add_group_link(node, vnode, hops)
 
     # XXX: select far away neighbors
-    if foreign_view:
+    if foreign_view and False:
       random.shuffle(foreign_view)
       long_neighbors = {}
       for hops, vnode in foreign_view:
