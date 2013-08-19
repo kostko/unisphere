@@ -238,6 +238,9 @@ public:
   double m_groupSize;
   /// Maximum peer view size
   size_t m_maxPeerViewSize;
+
+  /// Statistics
+  SloppyGroupManager::Statistics m_statistics;
 };
 
 SloppyPeer::SloppyPeer()
@@ -292,6 +295,8 @@ void SloppyGroupManagerPrivate::initialize()
 
   BOOST_LOG_SEV(m_logger, log::normal) << "Initializing sloppy group manager.";
 
+  m_statistics = SloppyGroupManager::Statistics();
+
   // Subscribe to all events
   m_subscriptions
     << m_sizeEstimator.signalSizeChanged.connect(boost::bind(&SloppyGroupManagerPrivate::networkSizeEstimateChanged, this, _1))
@@ -323,6 +328,8 @@ void SloppyGroupManagerPrivate::shutdown()
   RecursiveUniqueLock lock(m_mutex);
 
   BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down sloppy group manager.";
+
+  m_statistics = SloppyGroupManager::Statistics();
 
   // Unsubscribe from all events
   for (boost::signals2::connection c : m_subscriptions)
@@ -410,6 +417,8 @@ void SloppyGroupManagerPrivate::nibExportTransmitBuffer(const boost::system::err
     static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::NameAnnounce),
     buffer->aggregate
   );
+
+  m_statistics.recordXmits += buffer->aggregate.announces_size();
 
   // Clear the buffer after transmission
   buffer->buffering = false;
@@ -611,6 +620,11 @@ size_t SloppyGroupManager::sizePeerViews() const
   return d->getLocalPeerView().size() +
          d->m_peerViewForeign.size() +
          d->m_peerViewReverse.size();
+}
+
+const SloppyGroupManager::Statistics &SloppyGroupManager::statistics() const
+{
+  return d->m_statistics;
 }
 
 void SloppyGroupManager::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve)

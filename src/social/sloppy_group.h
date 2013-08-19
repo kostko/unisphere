@@ -63,6 +63,14 @@ public:
   > TopologyDumpGraph;
 
   /**
+   * A structure for reporting sloppy group statistics.
+   */
+  struct Statistics {
+    /// Number of transmitted records
+    size_t recordXmits = 0;
+  };
+
+  /**
    * Class constructor.
    *
    * @param router Router instance
@@ -97,6 +105,11 @@ public:
    * Returns the combined size of all peer views.
    */
   size_t sizePeerViews() const;
+
+  /**
+   * Retrieves various statistics about sloppy group manager operation.
+   */
+  const Statistics &statistics() const;
 
   /**
    * Outputs the sloppy group state to a stream.

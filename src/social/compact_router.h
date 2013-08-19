@@ -68,6 +68,14 @@ public:
   };
 
   /**
+   * A structure for reporting router statistics.
+   */
+  struct Statistics {
+    /// Number of transmitted routing entries
+    size_t entryXmits = 0;
+  };
+
+  /**
    * Class constructor.
    *
    * @param identity Social identity
@@ -133,6 +141,11 @@ public:
    */
   MessageTracer &msgTracer();
 #endif
+
+  /**
+   * Retrieves various statistics about router operation.
+   */
+  const Statistics &statistics() const;
 
   /**
    * Routes the specified message via the overlay.

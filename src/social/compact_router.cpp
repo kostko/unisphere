@@ -224,6 +224,9 @@ public:
   /// Message tracer for packet traversal profiling
   MessageTracer m_msgTracer;
 #endif
+
+  // Statistics
+  CompactRouter::Statistics m_statistics;
 };
 
 CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
@@ -254,6 +257,8 @@ void CompactRouterPrivate::initialize()
 {
   BOOST_LOG_SEV(m_logger, log::normal) << "Initializing router.";
 
+  m_statistics = CompactRouter::Statistics();
+
   // Register core routing RPC methods
   registerCoreRpcMethods();
 
@@ -282,6 +287,8 @@ void CompactRouterPrivate::initialize()
 void CompactRouterPrivate::shutdown()
 {
   BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down router.";
+
+  m_statistics = CompactRouter::Statistics();
 
   // Unregister core routing RPC methods
   unregisterCoreRpcMethods();
@@ -432,6 +439,8 @@ void CompactRouterPrivate::ribExportTransmitBuffer(const boost::system::error_co
     buffer->contact,
     Message(Message::Type::Social_Announce, buffer->aggregate)
   );
+
+  m_statistics.entryXmits += buffer->aggregate.announces_size();
 
   // Clear the buffer after transmission
   buffer->buffering = false;
@@ -772,6 +781,11 @@ MessageTracer &CompactRouter::msgTracer()
   return d->m_msgTracer;
 }
 #endif
+
+const CompactRouter::Statistics &CompactRouter::statistics() const
+{
+  return d->m_statistics;
+}
 
 void CompactRouter::route(RoutedMessage &msg)
 {

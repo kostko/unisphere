@@ -134,7 +134,6 @@ public:
     size_t localRefreshes = 0;
   };
 
-
   /**
    * Class constructor.
    *
