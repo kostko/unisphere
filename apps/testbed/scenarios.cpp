@@ -54,6 +54,7 @@ UNISPHERE_SCENARIO(IdleScenario)
   standardTests();
   api.wait(570);
   standardTests();
+  api.wait(600);
 
   // Stop collecting performance data
   api.signal(testPerfCollector, "finish");

@@ -624,7 +624,7 @@ public:
                VirtualNodePtr node)
   {
     extractStatistics(api, node);
-    api.defer(boost::bind(&CollectPerformanceStatistics::collect, this, boost::ref(api), node), 5);
+    api.defer(boost::bind(&CollectPerformanceStatistics::collect, this, boost::ref(api), node), 1);
   }
 
   /**

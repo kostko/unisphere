@@ -202,7 +202,7 @@ class ModuleSimplePlot(object):
     Yerr = []
     for filename, column, value in args.input:
       try:
-        data = pandas.read_csv(filename)
+        data = pandas.read_csv(filename, sep=None)
       except:
         args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
 
@@ -240,11 +240,84 @@ class ModuleSimplePlot(object):
     else:
       plt.show()
 
+class ModuleTimeSeriesPlot(object):
+  command = 'timeseries'
+  description = 'generate time series plots'
+
+  def arguments(self, parser):
+    parser.add_argument('--input', metavar=('FILE', 'XCOLUMN', 'YCOLUMN', 'LABEL', 'COLOR'), type=str, nargs=5,
+                        action='append', required = True,
+                        help='input FILE and columns to generate the plot from')
+
+    parser.add_argument('--std', action='store_true',
+                        help='show standard deviations')
+
+    parser.add_argument('--rate', action='store_true',
+                        help='plot rate instead of value')
+
+    parser.add_argument('--output', metavar='FILE', type=str,
+                        help='output filename')
+
+    parser.add_argument('--ylabel', metavar='LABEL', type=str,
+                        help='Y axis label')
+
+    parser.add_argument('--xlabel', metavar='LABEL', type=str,
+                        help='X axis label')
+
+  def run(self, args):
+    for filename, xcolumn, ycolumn, label, color in args.input:
+      try:
+        data = pandas.read_csv(filename, sep=None)
+      except:
+        args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
+
+      X = []
+      Y = []
+      Yerr = []
+      ts_base = min(data[xcolumn])
+      for ts in data[xcolumn].unique():
+        sample = numpy.asarray(data[data[xcolumn] == ts][ycolumn])
+        X += [ts - ts_base]
+        Y += [numpy.average(sample)]
+        Yerr += [numpy.std(sample)]
+
+      if args.rate:
+        Yrate = []
+        for x1, x2, y1, y2 in zip(X, X[1:], Y, Y[1:]):
+          Yrate += [(y2 - y1) / (x2 - x1)]
+        
+        X = X[1:]
+        Y = Yrate
+    
+      if args.std:
+        plt.errorbar(X, Y, Yerr, color=color, alpha=0.4, zorder=0)
+      else:
+        plt.plot(X, Y, color=color, alpha=0.4, zorder=0)
+
+      w = 60
+      Ymean = numpy.asarray(pandas.rolling_mean(pandas.Series([0]*w + Y), w))
+      plt.plot(X, Ymean[w:], label=label, color=color, zorder=1)
+
+    ax = plt.gca()
+    if args.ylabel:
+      ax.set_ylabel(args.ylabel)
+    if args.xlabel:
+      ax.set_xlabel(args.xlabel)
+
+    plt.grid()
+    plt.legend(loc='upper right')
+
+    if args.output:
+      plt.savefig(args.output)
+    else:
+      plt.show()
+
 # A list of registered modules
 modules = [
   ModuleCDF,
   ModuleSimplePlot,
-  ModuleProfiling
+  ModuleProfiling,
+  ModuleTimeSeriesPlot
 ]
 
 main_parser = argparse.ArgumentParser("draw-graph")
