@@ -189,7 +189,7 @@ public:
   /**
    * Returns the local peer view (generated from extended vicinity).
    */
-  std::list<SloppyPeer> getLocalPeerView() const;
+  PeerView getLocalPeerView() const;
 
   /**
    * Refreshes the foreign peer view.
@@ -424,7 +424,8 @@ void SloppyGroupManagerPrivate::nibExportTransmitBuffer(const boost::system::err
     buffer->peer.landmarkAddress(),
     static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
     static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::NameAnnounce),
-    buffer->aggregate
+    buffer->aggregate,
+    RoutingOptions().setTrackHopDistance(true)
   );
 
   m_statistics.recordXmits += buffer->aggregate.announces_size();
@@ -434,14 +435,14 @@ void SloppyGroupManagerPrivate::nibExportTransmitBuffer(const boost::system::err
   buffer->aggregate.Clear();
 }
 
-std::list<SloppyPeer> SloppyGroupManagerPrivate::getLocalPeerView() const
+PeerView SloppyGroupManagerPrivate::getLocalPeerView() const
 {
-  std::list<SloppyPeer> peerView;
+  PeerView peerView;
   for (const CompactRoutingTable::VicinityDescriptor &vicinity : m_router.routingTable().getVicinity()) {
     if (vicinity.nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
       continue;
 
-    peerView.push_back(SloppyPeer(vicinity.nodeId, LandmarkAddress(), vicinity.hops));
+    peerView.insert(SloppyPeer(vicinity.nodeId, LandmarkAddress(), vicinity.hops));
   }
 
   return peerView;
@@ -501,8 +502,17 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
       // Accept message only if source node belongs to this sloppy group
       if (msg.sourceNodeId().prefix(m_groupPrefixLength) != m_groupPrefix)
         return;
+      // Accept message only if it tracks the hop distance
+      if (!msg.hopDistance())
+        return;
 
-      // TODO: Establish backlinks?
+      // Establish backlinks when necessary
+      PeerView localPeerView = getLocalPeerView();
+      if (localPeerView.find(msg.sourceNodeId()) == localPeerView.end()) {
+        if (m_peerViewReverse.find(msg.sourceNodeId()) == m_peerViewReverse.end()) {
+          // TODO
+        }
+      }
 
       Protocol::AggregateNameAnnounce announces = message_cast<Protocol::AggregateNameAnnounce>(msg);
       for (int i = 0; i < announces.announces_size(); i++) {

@@ -712,16 +712,11 @@ void CompactRouterPrivate::registerCoreRpcMethods()
   // Simple ping messages
   m_rpc.registerMethod<Protocol::PingRequest, Protocol::PingResponse>("Core.Ping",
     [this](const Protocol::PingRequest &request, const RoutedMessage &msg, RpcId) -> RpcResponse<SocialRpcChannel, Protocol::PingResponse> {
-      // Fix a hop limit so these messages can be used to measure the number of hops
-      // they have traversed
-      int hopCount = 30;
-      
       Protocol::PingResponse response;
-      response.set_timestamp(1);
-      response.set_hopcount(hopCount);
+      response.set_timestamp(request.timestamp());
       return RpcResponse<SocialRpcChannel, Protocol::PingResponse>(
         response,
-        RoutingOptions().setHopLimit(hopCount)
+        RoutingOptions().setTrackHopDistance(true)
       );
     }
   );

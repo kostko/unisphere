@@ -288,7 +288,7 @@ public:
 #ifdef UNISPHERE_PROFILE
               { "msg_id", node->router->msgTracer().getMessageId(msg) },
 #endif
-              { "hops", (int) (rsp.hopcount() - msg.hopCount()) },
+              { "hops", (int) msg.hopDistance() },
               { "rtt", duration_cast<microseconds>(high_resolution_clock::now() - xmitTime).count() }
             });
             callNext(api);

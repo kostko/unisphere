@@ -58,8 +58,8 @@ message RoutedMessage {
   // Destination component identifier
   required uint32 destination_comp = 8;
   
-  // Hop count
-  required uint32 hop_count = 9;
+  // Hop limit
+  required uint32 hop_limit = 9;
   // Delivery mode flag
   required bool delivery = 10;
   
@@ -67,6 +67,10 @@ message RoutedMessage {
   required uint32 type = 11;
   // Message payload (type dependent)
   required bytes payload = 12;
+
+  // Hop distance (incremented for each hop)
+  // TODO: In reality this should be a cryptographic signature chain with delegations
+  optional uint32 hop_distance = 13;
 }
 
 // TODO: Rename to LocationAnnounce?

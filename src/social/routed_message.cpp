@@ -39,7 +39,8 @@ RoutedMessage::RoutedMessage(const Message &msg)
   
   m_destinationNodeId = NodeIdentifier(pmsg.destination_node(), NodeIdentifier::Format::Raw);
   m_destinationCompId = pmsg.destination_comp();
-  m_hopCount = pmsg.hop_count();
+  m_hopLimit = pmsg.hop_limit();
+  m_hopDistance = pmsg.has_hop_distance() ? pmsg.hop_distance() : 0;
   m_deliveryMode = pmsg.delivery();
   m_payloadType = pmsg.type();
   m_payload = pmsg.payload();
@@ -61,7 +62,8 @@ RoutedMessage::RoutedMessage(const LandmarkAddress &sourceAddress,
     m_destinationAddress(destinationAddress),
     m_destinationNodeId(destinationNodeId),
     m_destinationCompId(destinationCompId),
-    m_hopCount(opts.hopLimit),
+    m_hopLimit(opts.hopLimit),
+    m_hopDistance(opts.trackHopDistance ? 1 : 0),
     m_deliveryMode(false),
     m_payloadType(type),
     m_options(opts)
@@ -71,13 +73,15 @@ RoutedMessage::RoutedMessage(const LandmarkAddress &sourceAddress,
 
 bool RoutedMessage::isValid() const
 {
-  return m_sourceNodeId.isValid() && m_destinationNodeId.isValid() && m_hopCount > 0;
+  return m_sourceNodeId.isValid() && m_destinationNodeId.isValid() && m_hopLimit > 0;
 }
 
 void RoutedMessage::processHop()
 {
-  if (m_hopCount > 0)
-    m_hopCount--;
+  if (m_hopLimit > 0)
+    m_hopLimit--;
+  if (m_hopDistance > 0)
+    m_hopDistance++;
 }
 
 void RoutedMessage::processSourceRouteHop()
@@ -102,7 +106,9 @@ void RoutedMessage::serialize(Protocol::RoutedMessage &pmsg) const
     pmsg.add_destination_address(port);
   pmsg.set_destination_node(m_destinationNodeId.as(NodeIdentifier::Format::Raw));
   pmsg.set_destination_comp(m_destinationCompId);
-  pmsg.set_hop_count(m_hopCount);
+  pmsg.set_hop_limit(m_hopLimit);
+  if (m_hopDistance > 0)
+    pmsg.set_hop_distance(m_hopDistance);
   pmsg.set_delivery(m_deliveryMode);
   pmsg.set_type(m_payloadType);
   pmsg.set_payload(m_payload);

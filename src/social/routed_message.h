@@ -40,7 +40,8 @@ public:
    */
   RoutingOptions()
     : directDelivery(false),
-      hopLimit(30)
+      hopLimit(30),
+      trackHopDistance(false)
   {};
 
   /**
@@ -63,6 +64,11 @@ public:
    * Sets a specific hop limit on the outgoing packet.
    */
   RoutingOptions &setHopLimit(std::uint8_t limit) { hopLimit = limit; return *this; }
+
+  /**
+   * Enables or disables hop distance tracking.
+   */
+  RoutingOptions &setTrackHopDistance(bool track) { trackHopDistance = track; return *this; }
 public:
   /// Force delivery over a specific link
   Contact deliverVia;
@@ -70,6 +76,8 @@ public:
   bool directDelivery;
   /// Set a specific hop limit
   std::uint8_t hopLimit;
+  /// Enables hop count measurement
+  bool trackHopDistance;
 };
   
 /**
@@ -175,9 +183,14 @@ public:
   inline const std::string &payload() const { return m_payload; }
   
   /**
-   * Returns the hop count.
+   * Returns the hop limit.
    */
-  inline std::uint8_t hopCount() const { return m_hopCount; }
+  inline std::uint8_t hopLimit() const { return m_hopLimit; }
+
+  /**
+   * Returns the hop distance.
+   */
+  inline std::uint8_t hopDistance() const { return m_hopDistance; }
 
   /**
    * Returns the delivery mode.
@@ -215,8 +228,10 @@ private:
   /// Destination component identifier
   std::uint32_t m_destinationCompId;
   
-  /// Hop count
-  std::uint8_t m_hopCount;
+  /// Hop limit
+  std::uint8_t m_hopLimit;
+  /// Hop distance (optional)
+  std::uint8_t m_hopDistance;
   /// Delivery mode
   bool m_deliveryMode;
   
