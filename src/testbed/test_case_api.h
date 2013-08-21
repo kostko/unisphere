@@ -26,10 +26,16 @@
 #include "testbed/test_case_fwd.h"
 
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/range/adaptors.hpp>
 
 namespace UniSphere {
 
 namespace TestBed {
+
+/// Data set instance identifier
+typedef std::tuple<NodeIdentifier, std::uint32_t> DataSetInstance;
+/// Buffer that contains received datasets pending deserialization
+typedef std::unordered_map<DataSetInstance, std::stringstream> DataSetBuffer;
 
 /**
  * Public interface that can be used by test cases to perform tasks.
@@ -55,10 +61,10 @@ public:
   template <typename DataSetType>
   void send(const DataSetType &dataset)
   {
-    std::ostringstream buffer;
+    std::stringstream buffer;
     boost::archive::text_oarchive archive(buffer);
     archive << dataset;
-    send_(dataset.getName(), buffer.str());
+    send_(dataset.getName(), buffer);
   }
 
   /**
@@ -74,10 +80,9 @@ public:
     try {
       DataSetBuffer &buf = receive_(dataset.getName());
       dataset.clear();
-      for (std::string &ds_buffer : buf) {
+      for (std::stringstream &ds_buffer : buf | boost::adaptors::map_values) {
         DataSetType received;
-        std::istringstream tmp(ds_buffer);
-        boost::archive::text_iarchive archive(tmp);
+        boost::archive::text_iarchive archive(ds_buffer);
         archive >> received;
         dataset.moveFrom(received);
       }
@@ -155,10 +160,10 @@ private:
    * Transmits the specified dataset back to the controller.
    *
    * @param dsName Data set name
-   * @param dsData Data set data
+   * @param dsData Data set data stream
    */
   virtual void send_(const std::string &dsName,
-                     const std::string &dsData)
+                     std::istream &dsData)
   {
     throw IllegalApiCall();
   }

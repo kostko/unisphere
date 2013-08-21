@@ -37,9 +37,6 @@ namespace UniSphere {
 
 namespace TestBed {
 
-/// Buffer that contains received datasets pending deserialization
-typedef std::list<std::string> DataSetBuffer;
-
 /**
  * A dataset is a collection records where each record can contain
  * multiple key-value pairs and values are predefined serializable objects.

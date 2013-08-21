@@ -54,7 +54,7 @@ public:
   std::uint32_t getTime();
 private:
   void send_(const std::string &dsName,
-             const std::string &dsData);
+             std::istream &dsData);
 public:
   /// Slave instance
   SlavePrivate &m_slave;
@@ -62,6 +62,10 @@ public:
   TestCasePtr m_testCase;
   /// Random number generator
   std::mt19937 m_rng;
+  /// Dataset instance counter
+  std::uint32_t m_datasetInstance;
+  /// Dataset buffer
+  std::vector<char> m_datasetBuffer;
 };
 
 struct RunningSlaveTestCase {
@@ -125,7 +129,8 @@ public:
 
 SlaveTestCaseApi::SlaveTestCaseApi(SlavePrivate &slave, TestCasePtr testCase)
   : m_slave(slave),
-    m_testCase(testCase)
+    m_testCase(testCase),
+    m_datasetInstance(0)
 {
 }
 
@@ -159,24 +164,30 @@ void SlaveTestCaseApi::finishNow()
 }
 
 void SlaveTestCaseApi::send_(const std::string &dsName,
-                             const std::string &dsData)
+                             std::istream &dsData)
 {
   RecursiveUniqueLock lock(m_slave.m_mutex);
   
   Protocol::DatasetRequest request;
   request.set_test_id(m_testCase->getId());
   request.set_ds_name(dsName);
-  request.set_ds_data(dsData);
+  request.set_ds_instance(m_datasetInstance++);
 
   BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sending dataset '" << m_testCase->getName() << "/" << dsName << "'.";
 
-  // TODO: Should we do error handling when notification can't be done?
-  m_slave.m_controller.call<Protocol::DatasetRequest, Protocol::DatasetResponse>(
-    "Testbed.Simulation.Dataset",
-    request,
-    nullptr,
-    nullptr
-  );
+  m_datasetBuffer.resize(1048576);
+  while (!dsData.eof()) {
+    dsData.read(&m_datasetBuffer[0], m_datasetBuffer.size());
+    request.set_ds_data(&m_datasetBuffer[0], dsData.gcount());
+
+    // TODO: Should we do error handling when notification can't be done?
+    m_slave.m_controller.call<Protocol::DatasetRequest, Protocol::DatasetResponse>(
+      "Testbed.Simulation.Dataset",
+      request,
+      nullptr,
+      nullptr
+    );
+  }
 }
 
 std::mt19937 &SlaveTestCaseApi::rng()

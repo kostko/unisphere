@@ -539,7 +539,7 @@ Response<Protocol::DatasetResponse> ControllerPrivate::rpcDataset(const Protocol
 
   // Store received (serialized) dataset in buffer
   DataSetBuffer &buffer = tc.api->m_datasets[request.ds_name()];
-  buffer.push_back(request.ds_data());
+  buffer[std::make_tuple(msg.originator(), request.ds_instance())] << request.ds_data();
 
   return Protocol::DatasetResponse();
 }

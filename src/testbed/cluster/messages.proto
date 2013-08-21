@@ -103,8 +103,10 @@ message DatasetRequest {
   required uint32 test_id = 1;
   // Dataset name
   required string ds_name = 2;
+  // Dataset instance
+  required uint32 ds_instance = 3;
   // Dataset contents
-  required bytes ds_data = 3;
+  required bytes ds_data = 4;
 };
 
 message DatasetResponse {
