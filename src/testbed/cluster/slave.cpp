@@ -198,12 +198,15 @@ std::mt19937 &SlaveTestCaseApi::rng()
 void SlaveTestCaseApi::defer(std::function<void()> fun, int timeout)
 {
   SimulationSectionPtr section = m_slave.m_simulation->section();
-  section->execute([this, fun]() {
+  TestCaseWeakPtr testCase(m_testCase);
+  section->execute([testCase, fun]() {
     // Do not execute the defered function when test case has already finished
-    if (m_testCase->isFinished())
-      return;
+    if (TestCasePtr tc = testCase.lock()) {
+      if (tc->isFinished())
+        return;
 
-    fun();
+      fun();
+    }
   });
 
   if (timeout > 0)
