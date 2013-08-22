@@ -566,9 +566,14 @@ public:
     const auto &statsRt = node->router->routingTable().statistics();
     const auto &statsNdb = node->router->nameDb().statistics();
 
+    const auto &rt = node->router->routingTable();
+    const auto &ndb = node->router->nameDb();
+
     ds_stats.add({
+      // Timestamp and node identifier
       { "ts",           static_cast<int>(api.getTime()) },
       { "node_id",      node->nodeId.hex() },
+      // Messaging complexity
       { "rt_msgs",      statsRouter.entryXmits },
       { "rt_updates",   statsRt.routeUpdates },
       { "rt_exp",       statsRt.routeExpirations },
@@ -576,7 +581,16 @@ public:
       { "ndb_updates",  statsNdb.recordUpdates },
       { "ndb_exp",      statsNdb.recordExpirations },
       { "ndb_refresh",  statsNdb.localRefreshes },
-      { "sg_msgs",      statsSg.recordXmits }
+      { "sg_msgs",      statsSg.recordXmits },
+      // Local state complexity
+      //   Routing table
+      { "rt_s_all",     rt.size() },
+      { "rt_s_act",     rt.sizeActive() },
+      { "rt_s_vic",     rt.sizeVicinity() },
+      //   Name database
+      { "ndb_s_all",    ndb.size() },
+      { "ndb_s_act",    ndb.sizeActive() },
+      { "ndb_s_cac",    ndb.sizeCache() }
     });
   }
 
@@ -606,7 +620,9 @@ public:
         "ts", "node_id",
         "rt_msgs", "rt_updates", "rt_exp",
         "ndb_inserts", "ndb_updates", "ndb_exp", "ndb_refresh",
-        "sg_msgs"
+        "sg_msgs",
+        "rt_s_all", "rt_s_act", "rt_s_vic",
+        "ndb_s_all", "ndb_s_act", "ndb_s_cac"
       },
       api.getOutputFilename("raw", "csv")
     );
