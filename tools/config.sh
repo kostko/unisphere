@@ -20,13 +20,22 @@ BIN_DIR="build/release"
 DATA_DIR="data"
 OUTPUT_DIR="output"
 TOPOLOGIES=(
-  "n16,--max-runtime 120"
-  "n32,--max-runtime 120"
-  "n64,--max-runtime 120"
-  "n128,--max-runtime 120"
-  "n256,--max-runtime 240"
-  "n512,--max-runtime 240"
+  "n16,"
+  "n32,"
+  "n64,"
+  "n128,"
+  "n256,"
+  "n512,"
 )
+
+CLUSTER_MASTER_IP="127.0.0.1"
+CLUSTER_MASTER_NODE_ID="02f1076098d2c57f70ef4bfe35cc8bdfad806f60"
+CLUSTER_CONTROLLER_IP="127.0.0.2"
+CLUSTER_SLAVE_IP="127.0.0.3"
+CLUSTER_SLAVE_SIM_IP="127.0.1.1"
+CLUSTER_SLAVE_SIM_PORT_START=9000
+CLUSTER_SLAVE_SIM_PORT_END=20000
+CLUSTER_SLAVE_SIM_THREADS=$(cat /proc/cpuinfo | grep processor | wc -l)
 
 if [[ ! -d $BIN_DIR || ! -d $DATA_DIR || ! -d $OUTPUT_DIR ]]; then
   echo "ERROR: Not being run from proper location!"

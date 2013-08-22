@@ -25,7 +25,44 @@ echo ">>> Setting up ulimits..."
 # Allow core dumps
 ulimit -c unlimited
 # Increase open file descriptor limit
-ulimit -n 1000000
+ulimit -n 700000
+
+cluster_master_start()
+{
+  # Start the master process
+  ./$BIN_DIR/apps/testbed/testbed \
+    --cluster-role master \
+    --cluster-ip ${CLUSTER_MASTER_IP} \
+    --cluster-node-id ${CLUSTER_MASTER_NODE_ID} 2> $OUTPUT_DIR/master.log &
+  CLUSTER_MASTER_PID=$!
+}
+
+cluster_slave_start()
+{
+  # Start the slave process
+  ./$BIN_DIR/apps/testbed/testbed \
+    --cluster-role slave \
+    --cluster-ip ${CLUSTER_SLAVE_IP} \
+    --cluster-master-ip ${CLUSTER_MASTER_IP} \
+    --cluster-master-id ${CLUSTER_MASTER_NODE_ID} \
+    --sim-ip ${CLUSTER_SLAVE_SIM_IP} \
+    --sim-port-start ${CLUSTER_SLAVE_SIM_PORT_START} \
+    --sim-port-end ${CLUSTER_SLAVE_SIM_PORT_END} \
+    --sim-threads ${CLUSTER_SLAVE_SIM_THREADS} 2> $OUTPUT_DIR/slave.log &
+  CLUSTER_SLAVE_PID=$!
+
+  # Wait for the slave to register itself
+  sleep 5
+}
+
+trap_handler()
+{
+  local pgid=$(ps -p $$ -o pgid="")
+  kill -- -${pgid}
+  exit
+}
+# Install trap to interrupt everything on failure
+trap trap_handler INT QUIT TERM EXIT
 
 echo ">>> Running multiple scenarios..."
 
@@ -40,20 +77,33 @@ for params in "${TOPOLOGIES[@]}"; do
   echo ">>> Topology: $topology"
   echo "    Arguments: $args"
 
+  echo "  > Setting up testbed cluster..."
+  echo "    - master"
+  cluster_master_start
+  echo "    - slave"
+  cluster_slave_start
+
+  echo "  > Running scenario via controller..."
   set -- \
-    --scenario SingleStretchScenario \
-    --phy-ip 127.0.0.1 \
-    --phy-port 8472 \
-    --out-dir $OUTPUT_DIR/$topology/ \
+    --cluster-role controller \
+    --cluster-ip ${CLUSTER_CONTROLLER_IP} \
+    --cluster-master-ip ${CLUSTER_MASTER_IP} \
+    --cluster-master-id ${CLUSTER_MASTER_NODE_ID} \
     --topology $DATA_DIR/symmetric-topo-${topology}.graphml \
+    --scenario IdleScenario \
+    --out-dir $OUTPUT_DIR/$topology/ \
     --id-gen consistent \
     --seed 1 \
-    --num-threads 16 $args
+    $args
 
-  ./$BIN_DIR/apps/testbed/testbed "$@" > $OUTPUT_DIR/scenario-$topology.log || {
+  ./$BIN_DIR/apps/testbed/testbed "$@" 2> $OUTPUT_DIR/scenario-$topology.log || {
     tail -n 50 $OUTPUT_DIR/scenario-$topology.log
     echo "ERROR: Failed to run scenario!"
     exit 1
   }
-done
 
+  sleep 10
+  echo "  > Cleaning up..."
+  kill -9 ${CLUSTER_MASTER_PID} ${CLUSTER_SLAVE_PID}
+  sleep 10
+done
