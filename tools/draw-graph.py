@@ -245,12 +245,9 @@ class ModuleTimeSeriesPlot(object):
   description = 'generate time series plots'
 
   def arguments(self, parser):
-    parser.add_argument('--input', metavar=('FILE', 'XCOLUMN', 'YCOLUMN', 'LABEL', 'COLOR'), type=str, nargs=5,
+    parser.add_argument('--input', metavar=('FILE', 'XCOLUMN', 'YCOLUMN', 'GCOLUMN', 'LABEL', 'COLOR'), type=str, nargs=6,
                         action='append', required = True,
                         help='input FILE and columns to generate the plot from')
-
-    parser.add_argument('--std', action='store_true',
-                        help='show standard deviations')
 
     parser.add_argument('--rate', action='store_true',
                         help='plot rate instead of value')
@@ -265,34 +262,46 @@ class ModuleTimeSeriesPlot(object):
                         help='X axis label')
 
   def run(self, args):
-    for filename, xcolumn, ycolumn, label, color in args.input:
+    for filename, xcolumn, ycolumn, gcolumn, label, color in args.input:
       try:
         data = pandas.read_csv(filename, sep=None)
       except:
         args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
 
-      X = []
-      Y = []
-      Yerr = []
       ts_base = min(data[xcolumn])
-      for ts in data[xcolumn].unique():
-        sample = numpy.asarray(data[data[xcolumn] == ts][ycolumn])
-        X += [ts - ts_base]
-        Y += [numpy.average(sample)]
-        Yerr += [numpy.std(sample)]
+      groups = set(data[gcolumn].unique())
+      data.sort(xcolumn, inplace=True)
+      
+      group_status = {}
+      prev_ts = None
+      current_ts = ts_base
+
+      for _, element in data.iterrows():
+        group_status.setdefault(element[xcolumn], {})[element[gcolumn]] = element[ycolumn]
+        if current_ts != element[xcolumn]:
+          # ts has changed
+          if len(group_status[current_ts]) != len(groups):
+            for group in groups.difference(group_status[current_ts].keys()):
+              group_status[current_ts][group] = group_status[prev_ts][group]
+
+          prev_ts = current_ts
+          current_ts = element[xcolumn]
+
+      X = numpy.asarray(sorted(group_status.keys()))
+      Y = [numpy.average(group_status[x].values()) for x in X]
+      X -= ts_base
 
       if args.rate:
-        Yrate = []
-        for x1, x2, y1, y2 in zip(X, X[1:], Y, Y[1:]):
-          Yrate += [(y2 - y1) / (x2 - x1)]
-        
-        X = X[1:]
-        Y = Yrate
+        def make_rate(xr, yr):
+          Yrate = []
+          for x1, x2, y1, y2 in zip(xr, xr[1:], yr, yr[1:]):
+            Yrate += [(y2 - y1) / (x2 - x1)]
+          
+          return xr[1:], Yrate
+
+        X, Y = make_rate(X, Y)
     
-      if args.std:
-        plt.errorbar(X, Y, Yerr, color=color, alpha=0.4, zorder=0)
-      else:
-        plt.plot(X, Y, color=color, alpha=0.4, zorder=0)
+      plt.plot(X, Y, color=color, alpha=0.4, zorder=0)
 
       w = 60
       Ymean = numpy.asarray(pandas.rolling_mean(pandas.Series([0]*w + Y), w))
@@ -305,7 +314,8 @@ class ModuleTimeSeriesPlot(object):
       ax.set_xlabel(args.xlabel)
 
     plt.grid()
-    plt.legend(loc='upper right')
+    leg = plt.legend(loc='upper right', fontsize='small', fancybox=True)
+    leg.get_frame().set_alpha(0.8)
 
     if args.output:
       plt.savefig(args.output)
