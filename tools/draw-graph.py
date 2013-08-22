@@ -252,6 +252,9 @@ class ModuleTimeSeriesPlot(object):
     parser.add_argument('--rate', action='store_true',
                         help='plot rate instead of value')
 
+    parser.add_argument('--autoscale-xrange', action='store_true',
+                        help='automatically adjust X axis')
+
     parser.add_argument('--output', metavar='FILE', type=str,
                         help='output filename')
 
@@ -262,6 +265,7 @@ class ModuleTimeSeriesPlot(object):
                         help='X axis label')
 
   def run(self, args):
+    min_max_ts = None
     for filename, xcolumn, ycolumn, gcolumn, label, color in args.input:
       try:
         data = pandas.read_csv(filename, sep=None)
@@ -269,6 +273,9 @@ class ModuleTimeSeriesPlot(object):
         args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
 
       ts_base = min(data[xcolumn])
+      ts_max = max(data[xcolumn]) - ts_base
+      if min_max_ts is None or ts_max < min_max_ts:
+        min_max_ts = ts_max
       groups = set(data[gcolumn].unique())
       data.sort(xcolumn, inplace=True)
       
@@ -291,6 +298,10 @@ class ModuleTimeSeriesPlot(object):
       Y = [numpy.average(group_status[x].values()) for x in X]
       X -= ts_base
 
+      # discard last 10 measurements
+      X = X[:-10]
+      Y = Y[:-10]
+
       if args.rate:
         def make_rate(xr, yr):
           Yrate = []
@@ -312,6 +323,9 @@ class ModuleTimeSeriesPlot(object):
       ax.set_ylabel(args.ylabel)
     if args.xlabel:
       ax.set_xlabel(args.xlabel)
+
+    if args.autoscale_xrange:
+      plt.xlim(0, min_max_ts)
 
     plt.grid()
     leg = plt.legend(loc='upper right', fontsize='small', fancybox=True)
