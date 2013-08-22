@@ -13,35 +13,3 @@ message PingRequest {
 message PingResponse {
   required uint64 timestamp = 1;
 }
-
-message PublishAddressRequest {
-  // Addresses to be published for this node
-  repeated LandmarkAddress addresses = 1;
-}
-
-message LookupAddressRequest {
-  enum LookupType {
-    EXACT = 0;
-    SG_CLOSEST = 1;
-    SG_CLOSEST_NEIGHBORS = 2;
-  }
-
-  // Identifier to lookup the address for
-  required bytes nodeId = 1;
-  // Lookup type
-  required LookupType type = 2;
-  // Sloppy group prefix length
-  optional uint32 prefixLength = 3;
-}
-
-message LookupAddressResponse {
-  message Record {
-    // Identifier whose addresses are returned
-    required bytes nodeId = 1;
-    // Published L-R addresses
-    repeated LandmarkAddress addresses = 2;
-  }
-  
-  // Returned records
-  repeated Record records = 1;
-}
