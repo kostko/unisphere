@@ -273,9 +273,6 @@ class ModuleTimeSeriesPlot(object):
         args.parser.error('specified input FILE "%s" cannot be parsed' % filename)
 
       ts_base = min(data[xcolumn])
-      ts_max = max(data[xcolumn]) - ts_base
-      if min_max_ts is None or ts_max < min_max_ts:
-        min_max_ts = ts_max
       groups = set(data[gcolumn].unique())
       data.sort(xcolumn, inplace=True)
       
@@ -301,6 +298,9 @@ class ModuleTimeSeriesPlot(object):
       # discard last 10 measurements
       X = X[:-10]
       Y = Y[:-10]
+
+      if min_max_ts is None or X[-1] < min_max_ts:
+        min_max_ts = X[-1]
 
       if args.rate:
         def make_rate(xr, yr):
