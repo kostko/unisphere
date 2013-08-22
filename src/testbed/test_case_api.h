@@ -27,6 +27,10 @@
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/range/adaptors.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 namespace UniSphere {
 
@@ -62,8 +66,14 @@ public:
   void send(const DataSetType &dataset)
   {
     std::stringstream buffer;
-    boost::archive::text_oarchive archive(buffer);
-    archive << dataset;
+    {
+      boost::iostreams::filtering_ostream f;
+      f.push(boost::iostreams::gzip_compressor());
+      f.push(buffer);
+      boost::archive::text_oarchive archive(f);
+      archive << dataset;
+    }
+    
     send_(dataset.getName(), buffer);
   }
 
@@ -82,7 +92,10 @@ public:
       dataset.clear();
       for (std::stringstream &ds_buffer : buf | boost::adaptors::map_values) {
         DataSetType received;
-        boost::archive::text_iarchive archive(ds_buffer);
+        boost::iostreams::filtering_istream f;
+        f.push(boost::iostreams::gzip_decompressor());
+        f.push(ds_buffer);
+        boost::archive::text_iarchive archive(f);
         archive >> received;
         dataset.moveFrom(received);
       }
