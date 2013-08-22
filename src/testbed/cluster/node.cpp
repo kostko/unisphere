@@ -65,6 +65,8 @@ public:
   boost::shared_ptr<InterplexRpcChannel> m_channel;
   /// RPC engine
   boost::shared_ptr<RpcEngine<InterplexRpcChannel>> m_rpc;
+  /// Return code
+  int m_returnCode = 0;
 
   struct BufferedProfilingRecord {
     std::chrono::high_resolution_clock::time_point start;
@@ -252,10 +254,23 @@ void ClusterNode::setupOptions(int argc,
   );
 }
 
-void ClusterNode::start()
+int ClusterNode::start()
 {
   run();
   d->m_context.run(1);
+  return d->m_returnCode;
+}
+
+void ClusterNode::stop()
+{
+  d->m_returnCode = 0;
+  d->m_context.stop();
+}
+
+void ClusterNode::fail()
+{
+  d->m_returnCode = 1;
+  d->m_context.stop();
 }
 
 }

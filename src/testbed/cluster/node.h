@@ -43,7 +43,7 @@ public:
   ClusterNode(const ClusterNode&) = delete;
   ClusterNode &operator=(const ClusterNode&) = delete;
 
-  void start();
+  int start();
 protected:
   void setupOptions(int argc,
                     char **argv,
@@ -57,6 +57,10 @@ protected:
   LinkManager &linkManager();
 
   RpcEngine<InterplexRpcChannel> &rpc();
+
+  void stop();
+
+  void fail();
 private:
   UNISPHERE_DECLARE_PRIVATE(ClusterNode)
 };

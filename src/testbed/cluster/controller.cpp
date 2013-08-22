@@ -691,11 +691,11 @@ void Controller::abortSimulation()
     Protocol::AbortRequest(),
     [this](const Protocol::AbortResponse &response, const Message&) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Simulation aborted.";
-      context().stop();
+      stop();
     },
     [this](RpcErrorCode code, const std::string &msg) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to abort simulation: " << msg;
-      context().stop();
+      fail();
     }
   );
 }
@@ -709,11 +709,11 @@ void Controller::finishSimulation()
     Protocol::AbortRequest(),
     [this](const Protocol::AbortResponse &response, const Message&) {
       BOOST_LOG(d->m_logger) << "Simulation finished.";
-      context().stop();
+      stop();
     },
     [this](RpcErrorCode code, const std::string &msg) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to finish simulation: " << msg;
-      context().stop();
+      fail();
     }
   );
 }
@@ -821,7 +821,7 @@ void Controller::run()
     },
     [this](RpcErrorCode code, const std::string &msg) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to start simulation: " << msg;
-      context().stop();
+      fail();
     }
   );
 }

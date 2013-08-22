@@ -111,7 +111,7 @@ int RunnerPrivate::run(int argc, char **argv)
       return 1;
     }
 
-    m_clusterNode->start();
+    return m_clusterNode->start();
   } catch (ArgumentError &e) {
     std::cout << "ERROR: There is an error in your invocation arguments!" << std::endl;
     std::cout << "ERROR: " << e.message() << std::endl;
