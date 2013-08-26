@@ -29,8 +29,6 @@
 #endif
 
 #include <unordered_map>
-#include <boost/unordered_map.hpp>
-#include <boost/thread.hpp>
 #include <boost/signals2/signal.hpp>
 
 namespace UniSphere {
@@ -245,7 +243,7 @@ private:
   LinkletFactory m_linkletFactory;
   
   /// Mapping of all managed links by their identifiers
-  boost::unordered_map<NodeIdentifier, LinkPtr> m_links;
+  std::unordered_map<NodeIdentifier, LinkPtr> m_links;
   /// Mutex protecting the link mapping
   std::recursive_mutex m_linksMutex;
   
