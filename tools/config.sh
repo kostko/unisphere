@@ -26,6 +26,7 @@ TOPOLOGIES=(
   "n128,"
   "n256,"
   "n512,"
+  "n1024,"
 )
 
 CLUSTER_MASTER_IP="127.0.0.1"
