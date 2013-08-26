@@ -190,7 +190,7 @@ public:
   /**
    * Returns the hop distance.
    */
-  inline std::uint8_t hopDistance() const { return m_hopDistance; }
+  inline std::uint8_t hopDistance() const { return m_hopDistance > 0 ? m_hopDistance - 1 : 0; }
 
   /**
    * Returns the delivery mode.
