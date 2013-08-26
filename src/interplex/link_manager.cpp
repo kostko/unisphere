@@ -63,6 +63,8 @@ void LinkManager::send(const Contact &contact, const Message &msg)
   }
   
   link->send(msg);
+  m_statistics.global.msgXmits++;
+  m_statistics.links[link->nodeId()].msgXmits++;
 }
 
 void LinkManager::send(const NodeIdentifier &nodeId, const Message &msg)
@@ -172,6 +174,9 @@ std::list<NodeIdentifier> LinkManager::getLinkIds()
 
 void LinkManager::linkMessageReceived(const Message &msg)
 {
+  m_statistics.global.msgRcvd++;
+  m_statistics.links[msg.originator()].msgRcvd++;
+
   try {
     signalMessageReceived(msg);
   } catch (MessageCastFailed &e) {
@@ -235,5 +240,9 @@ Contact LinkManager::getLocalContact() const
   return contact;
 }
 
-  
+const LinkManager::Statistics &LinkManager::statistics() const
+{
+  return m_statistics;
+}
+
 }

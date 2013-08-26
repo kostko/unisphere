@@ -24,6 +24,7 @@
 #include "social/name_database.h"
 #include "social/sloppy_group.h"
 #include "social/rpc_channel.h"
+#include "interplex/link_manager.h"
 #include "rpc/engine.hpp"
 
 #ifdef UNISPHERE_PROFILE
@@ -553,18 +554,22 @@ UNISPHERE_REGISTER_TEST_CASE(NdbConsistentSanityCheck, "sanity/check_consistent_
 class GetPerformanceStatistics : public TestCase
 {
 public:
-  /// Statistics dataset
+  /// General statistics dataset
   DataSet<> ds_stats{"ds_stats"};
+  /// Link congestion dataset
+  DataSet<> ds_links{"ds_links"};
 
   using TestCase::TestCase;
 
   void extractStatistics(TestCaseApi &api,
-                         VirtualNodePtr node)
+                         VirtualNodePtr node,
+                         bool links)
   {
     const auto &statsRouter = node->router->statistics();
     const auto &statsSg = node->router->sloppyGroup().statistics();
     const auto &statsRt = node->router->routingTable().statistics();
     const auto &statsNdb = node->router->nameDb().statistics();
+    const auto &statsLink = node->router->linkManager().statistics();
 
     const auto &rt = node->router->routingTable();
     const auto &ndb = node->router->nameDb();
@@ -582,6 +587,8 @@ public:
       { "ndb_exp",      statsNdb.recordExpirations },
       { "ndb_refresh",  statsNdb.localRefreshes },
       { "sg_msgs",      statsSg.recordXmits },
+      { "lm_sent",      statsLink.global.msgXmits },
+      { "lm_rcvd",      statsLink.global.msgRcvd },
       // Local state complexity
       //   Routing table
       { "rt_s_all",     rt.size() },
@@ -592,6 +599,18 @@ public:
       { "ndb_s_act",    ndb.sizeActive() },
       { "ndb_s_cac",    ndb.sizeCache() }
     });
+
+    // Link congestion
+    if (links) {
+      for (const auto &link : statsLink.links) {
+        ds_links.add({
+          { "ts",       static_cast<int>(api.getTime()) },
+          { "node_id",  node->nodeId.hex() },
+          { "link_id",  link.first.hex() },
+          { "msgs",     link.second.msgRcvd }
+        });
+      }
+    }
   }
 
   /**
@@ -601,18 +620,20 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    extractStatistics(api, node);
+    extractStatistics(api, node, true);
     finish(api);
   }
 
   void processLocalResults(TestCaseApi &api)
   {
     api.send(ds_stats);
+    api.send(ds_links);
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
     api.receive(ds_stats);
+    api.receive(ds_links);
 
     outputCsvDataset(
       ds_stats,
@@ -625,6 +646,12 @@ public:
         "ndb_s_all", "ndb_s_act", "ndb_s_cac"
       },
       api.getOutputFilename("raw", "csv")
+    );
+
+    outputCsvDataset(
+      ds_links,
+      { "ts", "node_id", "link_id", "msgs" },
+      api.getOutputFilename("links", "csv")
     );
   }
 };
@@ -639,7 +666,7 @@ public:
   void collect(TestCaseApi &api,
                VirtualNodePtr node)
   {
-    extractStatistics(api, node);
+    extractStatistics(api, node, false);
     api.defer(boost::bind(&CollectPerformanceStatistics::collect, this, boost::ref(api), node), 1);
   }
 

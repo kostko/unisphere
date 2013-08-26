@@ -28,6 +28,7 @@
 #include "measure/measure.h"
 #endif
 
+#include <unordered_map>
 #include <boost/unordered_map.hpp>
 #include <boost/thread.hpp>
 #include <boost/signals2/signal.hpp>
@@ -68,6 +69,23 @@ public:
 class UNISPHERE_EXPORT LinkManager {
 public:
   friend class Link;
+
+  /**
+   * A structure for reporting link manager statistics.
+   */
+  struct Statistics {
+    struct LinkStatistics {
+      /// Number of transmitted messages
+      size_t msgXmits = 0;
+      /// Number of received messages
+      size_t msgRcvd = 0;
+    };
+
+    /// Global statistics
+    LinkStatistics global;
+    /// Per-link statistics
+    std::unordered_map<NodeIdentifier, LinkStatistics> links;
+  };
   
   /**
    * Constructs a new link manager instance.
@@ -171,6 +189,11 @@ public:
    * @return True if verification was successful, false otherwise
    */
   bool verifyPeer(const Contact &contact);
+
+  /**
+   * Retrieves various statistics about link manager operation.
+   */
+  const Statistics &statistics() const;
 public:
   /// Signal for received messages
   boost::signals2::signal<void (const Message&)> signalMessageReceived;
@@ -208,6 +231,8 @@ protected:
    */
   void linkMessageReceived(const Message &msg);
 private:
+  // TODO: Make this private via PIMPL
+
   /// UNISPHERE context this manager belongs to
   Context& m_context;
   /// Logger instance
@@ -236,6 +261,9 @@ private:
   /// Measurement instance
   Measure m_measure;
 #endif
+
+  /// Statistics
+  Statistics m_statistics;
 };
   
 }
