@@ -512,6 +512,7 @@ size_t CompactRoutingTablePrivate::getMaximumBucketSize() const
 
 CompactRoutingTablePrivate::CurrentVicinity CompactRoutingTablePrivate::getCurrentVicinity() const
 {
+  RecursiveUniqueLock lock(m_mutex);
   auto entries = m_rib.get<RIBTags::Vicinity>().equal_range(boost::make_tuple(true, false));
   NodeIdentifier lastDestination;
   CurrentVicinity vicinity;
@@ -535,6 +536,7 @@ CompactRoutingTablePrivate::CurrentVicinity CompactRoutingTablePrivate::getCurre
 
 CompactRoutingTablePrivate::SloppyGroupBucket CompactRoutingTablePrivate::getSloppyGroupBucket(const NodeIdentifier &nodeId) const
 {
+  RecursiveUniqueLock lock(m_mutex);
   NodeIdentifier groupStart = nodeId.prefix(m_sloppyGroup.getGroupPrefixLength());
   NodeIdentifier groupEnd = nodeId.prefix(m_sloppyGroup.getGroupPrefixLength(), 0xFF);
 
@@ -564,6 +566,7 @@ CompactRoutingTablePrivate::SloppyGroupBucket CompactRoutingTablePrivate::getSlo
 
 size_t CompactRoutingTablePrivate::getLandmarkCount() const
 {
+  RecursiveUniqueLock lock(m_mutex);
   auto entries = m_rib.get<RIBTags::LandmarkDestination>().equal_range(true);
   NodeIdentifier lastDestination;
   size_t landmarkCount = 0;
@@ -1027,6 +1030,7 @@ size_t CompactRoutingTablePrivate::sizeActive() const
 
 size_t CompactRoutingTablePrivate::sizeVicinity() const
 {
+  RecursiveUniqueLock lock(m_mutex);
   return getCurrentVicinity().size;
 }
 
