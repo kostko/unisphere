@@ -63,30 +63,36 @@ UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
 UNISPHERE_SCENARIO(StandardTests)
 {
+  // Start collecting performance data
+  TestCasePtr testPerfCollector = api.testInBackground("stats/collect_performance");
+
   const auto &nodes = api.getNodes();
   for (int i = 0; i <= nodes.size() / 10; i++) {
     api.startNodes(nodes, i*10, 10);
     api.wait(5);
   }
-  api.wait(30);
-  /// Perform some sanity checks before continuing
-  api.test("sanity/check_consistent_ndb");
+  // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
+  // api.startNodesBatch(nodes, 10, 5);
 
-  // Count routing state
-  api.test("state/count");
-  // Dump sloppy group and routing topologies in parallel
-  api.wait(30);
-  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
-  // Perform pair-wise ping test to compute latency and stretch; when
-  // profiling is enabled, also collect traces in this section
-  api.wait(10);
-  api.test("traces/start");
-    api.test("routing/pair_wise_ping");
-    api.test("traces/retrieve");
-  api.test("traces/end");
+  auto standardTests = [&]() {
+    // Perform some sanity checks
+    api.test("sanity/check_consistent_ndb");
+    // Dump topology information
+    api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+    // Retrieve performance statistics
+    api.test("stats/performance");
+  };
 
-  // Retrieve performance statistics
-  api.test("stats/performance");
+  api.wait(30);
+  standardTests();
+  api.wait(570);
+  standardTests();
+  api.test("routing/pair_wise_ping");
+  standardTests();
+  api.wait(600);
+
+  // Stop collecting performance data
+  api.signal(testPerfCollector, "finish");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 

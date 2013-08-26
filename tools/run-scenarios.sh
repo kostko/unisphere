@@ -83,14 +83,14 @@ for params in "${TOPOLOGIES[@]}"; do
   echo "    - slave"
   cluster_slave_start
 
-  echo "  > Running scenario via controller..."
+  echo "  > Running scenario '${SCENARIO}' via controller..."
   set -- \
     --cluster-role controller \
     --cluster-ip ${CLUSTER_CONTROLLER_IP} \
     --cluster-master-ip ${CLUSTER_MASTER_IP} \
     --cluster-master-id ${CLUSTER_MASTER_NODE_ID} \
     --topology $DATA_DIR/symmetric-topo-${topology}.graphml \
-    --scenario IdleScenario \
+    --scenario ${SCENARIO} \
     --out-dir $OUTPUT_DIR/$topology/ \
     --id-gen consistent \
     --seed 1 \
