@@ -602,12 +602,12 @@ public:
 
     // Link congestion
     if (links) {
-      for (const auto &link : statsLink.links) {
+      for (const auto &link : statsRouter.links) {
         ds_links.add({
           { "ts",       static_cast<int>(api.getTime()) },
           { "node_id",  node->nodeId.hex() },
           { "link_id",  link.first.hex() },
-          { "msgs",     link.second.msgRcvd }
+          { "msgs",     link.second.msgRcvd + link.second.msgXmits }
         });
       }
     }

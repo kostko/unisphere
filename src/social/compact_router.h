@@ -23,6 +23,7 @@
 #include "social/routed_message.h"
 
 #include <boost/signals2/signal.hpp>
+#include <unordered_map>
 
 namespace UniSphere {
 
@@ -71,6 +72,15 @@ public:
    * A structure for reporting router statistics.
    */
   struct Statistics {
+    struct LinkStatistics {
+      /// Number of transmitted messages
+      size_t msgXmits = 0;
+      /// Number of received messages
+      size_t msgRcvd = 0;
+    };
+
+    /// Per-link statistics
+    std::unordered_map<NodeIdentifier, LinkStatistics> links;
     /// Number of transmitted routing entries
     size_t entryXmits = 0;
   };

@@ -560,6 +560,8 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
       auto start = high_resolution_clock::now();
 #endif
 
+      m_statistics.links[msg.originator()].msgRcvd++;
+
       RoutedMessage rmsg(msg);
       rmsg.processHop();
       route(rmsg);
@@ -705,6 +707,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
   Protocol::RoutedMessage pmsg;
   msg.serialize(pmsg);
   m_manager.send(nextHop, Message(Message::Type::Social_Routed, pmsg));
+  m_statistics.links[nextHop.nodeId()].msgXmits++;
 }
 
 void CompactRouterPrivate::registerCoreRpcMethods()
