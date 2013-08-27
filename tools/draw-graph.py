@@ -252,6 +252,9 @@ class ModuleTimeSeriesPlot(object):
     parser.add_argument('--rate', action='store_true',
                         help='plot rate instead of value')
 
+    parser.add_argument('--moving-avg', action='store_true',
+                        help='draw moving averages')
+
     parser.add_argument('--autoscale-xrange', action='store_true',
                         help='automatically adjust X axis')
 
@@ -311,12 +314,15 @@ class ModuleTimeSeriesPlot(object):
           return xr[1:], Yrate
 
         X, Y = make_rate(X, Y)
-    
-      plt.plot(X, Y, color=color, alpha=0.4, zorder=0)
 
-      w = 60
-      Ymean = numpy.asarray(pandas.rolling_mean(pandas.Series([0]*w + Y), w))
-      plt.plot(X, Ymean[w:], label=label, color=color, zorder=1)
+      if args.moving_avg:
+        plt.plot(X, Y, color=color, alpha=0.4, zorder=0)
+
+        w = 60
+        Ymean = numpy.asarray(pandas.rolling_mean(pandas.Series([0]*w + Y), w))
+        plt.plot(X, Ymean[w:], label=label, color=color, zorder=1)
+      else:
+        plt.plot(X, Y, color=color, alpha=0.9, zorder=0, label=label)
 
     ax = plt.gca()
     if args.ylabel:
