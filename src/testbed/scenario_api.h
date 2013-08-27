@@ -20,7 +20,7 @@
 #define UNISPHERE_TESTBED_SCENARIOAPI_H
 
 #include "core/globals.h"
-#include "testbed/test_case_fwd.h"
+#include "testbed/test_case.h"
 #include "testbed/cluster/partition.h"
 
 #include <list>
@@ -47,7 +47,8 @@ public:
    * @param name Test case name
    * @return Test case instance
    */
-  virtual TestCasePtr test(const std::string &name) = 0;
+  virtual TestCasePtr test(const std::string &name,
+                           typename TestCase::ArgumentList args = TestCase::ArgumentList()) = 0;
 
   /**
    * Runs multiple tests in parallel and waits for all of them to

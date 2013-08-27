@@ -24,6 +24,7 @@
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/signals2/signal.hpp>
+#include <boost/any.hpp>
 
 #include "core/globals.h"
 #include "testbed/nodes.h"
@@ -59,6 +60,18 @@ public:
   };
 
   /**
+   * Test case argument.
+   */
+  struct Argument {
+    /// Argument name
+    std::string name;
+    /// Argument value
+    boost::any value;
+  };
+  /// Argument initializer list type
+  typedef std::initializer_list<Argument> ArgumentList;
+
+  /**
    * Class constructor.
    */
   TestCase(const std::string &name);
@@ -89,6 +102,15 @@ public:
    * @param state New state
    */
   void setState(State state);
+
+  /**
+   * Configures test case arguments. These arguments are only visible on
+   * the controller -- in order to transfer any of them to slave instances,
+   * they must be forwarded in selectNode for each virtual node.
+   *
+   * @param arguments A list of arguments
+   */
+  void setArguments(ArgumentList arguments);
 
   /**
    * Returns true if the test case has finished.
@@ -211,6 +233,32 @@ protected:
    * Logger that can be used for reporting from test cases.
    */
   Logger &logger();
+
+  /**
+   * Returns the specified test case argument. This method is only available
+   * on the controller -- on slaves, there will be no test-case arguments.
+   *
+   * @param name Argument name
+   * @return Argument value or an invalid value when the argument is not set
+   */
+  boost::any argument(const std::string &name) const;
+
+  /**
+   * Returns the specified test case argument. This method is only available
+   * on the controller -- on slaves, there will be no test-case arguments.
+   *
+   * @param name Argument name
+   * @param def Optional default value to return when argument doesn't exist
+   * @return Argument value 
+   */
+  template <typename T>
+  T argument(const std::string &name, const T &def = T()) const
+  {
+    boost::any arg = argument(name);
+    if (arg.empty())
+      return def;
+    return boost::any_cast<T>(arg);
+  }
 private:
   UNISPHERE_DECLARE_PRIVATE(TestCase)
 };

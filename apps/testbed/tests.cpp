@@ -645,13 +645,13 @@ public:
         "rt_s_all", "rt_s_act", "rt_s_vic",
         "ndb_s_all", "ndb_s_act", "ndb_s_cac"
       },
-      api.getOutputFilename("raw", "csv")
+      api.getOutputFilename("raw", "csv", argument<std::string>("marker"))
     );
 
     outputCsvDataset(
       ds_links,
       { "ts", "node_id", "link_id", "msgs" },
-      api.getOutputFilename("links", "csv")
+      api.getOutputFilename("links", "csv", argument<std::string>("marker"))
     );
   }
 };

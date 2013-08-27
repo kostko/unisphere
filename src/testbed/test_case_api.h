@@ -110,10 +110,12 @@ public:
    *
    * @param prefix Filename prefix
    * @param extension Filename extension
+   * @param marker Optional marker
    * @return A filename ready for output or an empty string if none is available
    */
   virtual std::string getOutputFilename(const std::string &prefix,
-                                        const std::string &extension)
+                                        const std::string &extension,
+                                        const std::string &marker = "")
   {
     throw IllegalApiCall();
   }

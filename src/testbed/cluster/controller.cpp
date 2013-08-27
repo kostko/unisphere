@@ -76,7 +76,8 @@ public:
   ControllerTestCaseApi(ControllerPrivate &controller, TestCasePtr testCase);
 
   std::string getOutputFilename(const std::string &prefix,
-                                const std::string &extension);
+                                const std::string &extension,
+                                const std::string &marker);
 
   const std::vector<Partition> &getPartitions();
 
@@ -116,7 +117,8 @@ public:
 
   void wait(int timeout);
 
-  TestCasePtr test(const std::string &name);
+  TestCasePtr test(const std::string &name,
+                   typename TestCase::ArgumentList args);
 
   std::list<TestCasePtr> test(std::initializer_list<std::string> names);
 
@@ -138,7 +140,8 @@ public:
   void stopNode(const NodeIdentifier &nodeId);
 public:
   TestCasePtr runTestCase(const std::string &name,
-                          std::function<void()> completion);
+                          std::function<void()> completion,
+                          typename TestCase::ArgumentList args = TestCase::ArgumentList());
 public:
   /// Context
   Context &m_context;
@@ -216,16 +219,18 @@ DataSetBuffer &ControllerTestCaseApi::receive_(const std::string &dsName)
 }
 
 std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
-                                                     const std::string &extension)
+                                                     const std::string &extension,
+                                                     const std::string &marker)
 {
   if (m_controller.m_outputDirectory.empty())
     return std::string();
 
   return (
-    boost::format("%s/%s-%s-%05i.%s")
+    boost::format("%s/%s-%s%s-%05i.%s")
       % m_controller.m_outputDirectory
       % boost::algorithm::replace_all_copy(m_testCase->getName(), "/", "-")
       % boost::algorithm::replace_all_copy(prefix, "/", "-")
+      % (marker.empty() ? "" : "-" + marker)
       % (boost::posix_time::microsec_clock::universal_time() - m_controller.m_simulationStartTime).total_seconds()
       % extension
   ).str();
@@ -268,10 +273,11 @@ void ControllerScenarioApi::wait(int timeout)
   scenario->suspend();
 }
 
-TestCasePtr ControllerScenarioApi::test(const std::string &name)
+TestCasePtr ControllerScenarioApi::test(const std::string &name,
+                                        typename TestCase::ArgumentList args)
 {
   ScenarioPtr scenario = m_controller.m_scenario;
-  TestCasePtr test = runTestCase(name, boost::bind(&Scenario::resume, scenario));
+  TestCasePtr test = runTestCase(name, boost::bind(&Scenario::resume, scenario), args);
   if (test) {
     // Suspend execution while the test is running
     scenario->suspend();
@@ -421,7 +427,8 @@ void ControllerScenarioApi::stopNode(const NodeIdentifier &nodeId)
 }
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
-                                               std::function<void()> completion)
+                                               std::function<void()> completion,
+                                               typename TestCase::ArgumentList args)
 {
   RecursiveUniqueLock lock(m_controller.m_mutex);
 
@@ -433,6 +440,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
 
   if (completion)
     test->signalFinished.connect(completion);
+  test->setArguments(args);
 
   // Create API instance
   boost::shared_ptr<ControllerTestCaseApi> api =

@@ -74,21 +74,21 @@ UNISPHERE_SCENARIO(StandardTests)
   // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
   // api.startNodesBatch(nodes, 10, 5);
 
-  auto standardTests = [&]() {
+  auto standardTests = [&](const std::string &marker = "") {
     // Perform some sanity checks
     api.test("sanity/check_consistent_ndb");
     // Dump topology information
     api.test({ "state/sloppy_group_topology", "state/routing_topology" });
     // Retrieve performance statistics
-    api.test("stats/performance");
+    api.test("stats/performance", { { "marker", marker } });
   };
 
   api.wait(30);
   standardTests();
   api.wait(570);
-  standardTests();
+  standardTests("pre-ping");
   api.test("routing/pair_wise_ping");
-  standardTests();
+  standardTests("post-ping");
   api.wait(600);
 
   // Stop collecting performance data

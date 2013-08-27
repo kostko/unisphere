@@ -33,7 +33,7 @@ public:
   TestCasePrivate(const std::string &name);
 public:
   /// Mutex
-  std::recursive_mutex m_mutex;
+  mutable std::recursive_mutex m_mutex;
   /// Unique test case identifier
   TestCase::Identifier m_id;
   /// Test case name
@@ -50,6 +50,8 @@ public:
   std::set<TestCasePtr> m_children;
   /// Temporary API storage until all children complete
   TestCaseApiPtr m_storedApi;
+  /// Controller-local arguments
+  std::unordered_map<std::string, boost::any> m_arguments;
 };
 
 TestCasePrivate::TestCasePrivate(const std::string &name)
@@ -88,6 +90,15 @@ void TestCase::setId(Identifier id)
 void TestCase::setState(State state)
 {
   d->m_state = state;
+}
+
+void TestCase::setArguments(std::initializer_list<Argument> arguments)
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_arguments.clear();
+  for (const Argument &arg : arguments) {
+    d->m_arguments[arg.name] = arg.value;
+  }
 }
 
 bool TestCase::isFinished() const
@@ -190,6 +201,16 @@ void TestCase::finish(TestCaseApi &api)
 Logger &TestCase::logger()
 {
   return d->m_logger;
+}
+
+boost::any TestCase::argument(const std::string &name) const
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  auto it = d->m_arguments.find(name);
+  if (it == d->m_arguments.end())
+    return boost::any();
+
+  return it->second;
 }
 
 }
