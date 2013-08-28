@@ -117,8 +117,8 @@ public:
 
   void wait(int timeout);
 
-  TestCasePtr test(const std::string &name,
-                   typename TestCase::ArgumentList args);
+  TestCasePtr test_(const std::string &name,
+                    typename TestCase::ArgumentList args);
 
   std::list<TestCasePtr> test(std::initializer_list<std::string> names);
 
@@ -138,6 +138,10 @@ public:
   void startNode(const NodeIdentifier &nodeId);
 
   void stopNode(const NodeIdentifier &nodeId);
+
+  std::string getOutputFilename(const std::string &prefix,
+                                const std::string &extension,
+                                const std::string &marker);
 public:
   TestCasePtr runTestCase(const std::string &name,
                           std::function<void()> completion,
@@ -273,8 +277,8 @@ void ControllerScenarioApi::wait(int timeout)
   scenario->suspend();
 }
 
-TestCasePtr ControllerScenarioApi::test(const std::string &name,
-                                        typename TestCase::ArgumentList args)
+TestCasePtr ControllerScenarioApi::test_(const std::string &name,
+                                         typename TestCase::ArgumentList args)
 {
   ScenarioPtr scenario = m_controller.m_scenario;
   TestCasePtr test = runTestCase(name, boost::bind(&Scenario::resume, scenario), args);
@@ -424,6 +428,24 @@ void ControllerScenarioApi::startNode(const NodeIdentifier &nodeId)
 void ControllerScenarioApi::stopNode(const NodeIdentifier &nodeId)
 {
   // TODO: Request the slave to stop a specific node
+}
+
+std::string ControllerScenarioApi::getOutputFilename(const std::string &prefix,
+                                                     const std::string &extension,
+                                                     const std::string &marker)
+{
+  if (m_controller.m_outputDirectory.empty())
+    return std::string();
+
+  return (
+    boost::format("%s/%s-%s%s-%05i.%s")
+      % m_controller.m_outputDirectory
+      % boost::algorithm::replace_all_copy(m_controller.m_scenario->name(), "/", "-")
+      % boost::algorithm::replace_all_copy(prefix, "/", "-")
+      % (marker.empty() ? "" : "-" + marker)
+      % (boost::posix_time::microsec_clock::universal_time() - m_controller.m_simulationStartTime).total_seconds()
+      % extension
+  ).str();
 }
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,

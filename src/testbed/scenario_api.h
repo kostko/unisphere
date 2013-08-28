@@ -47,8 +47,12 @@ public:
    * @param name Test case name
    * @return Test case instance
    */
-  virtual TestCasePtr test(const std::string &name,
-                           typename TestCase::ArgumentList args = TestCase::ArgumentList()) = 0;
+  template <typename T = TestCase>
+  boost::shared_ptr<T> test(const std::string &name,
+                            typename TestCase::ArgumentList args = TestCase::ArgumentList())
+  {
+    return boost::static_pointer_cast<T>(test_(name, args));
+  }
 
   /**
    * Runs multiple tests in parallel and waits for all of them to
@@ -110,6 +114,27 @@ public:
    * @param nodeId Node identifier
    */
   virtual void stopNode(const NodeIdentifier &nodeId) = 0;
+
+  /**
+   * Returns a filename appropriate for output.
+   *
+   * @param prefix Filename prefix
+   * @param extension Filename extension
+   * @param marker Optional marker
+   * @return A filename ready for output or an empty string if none is available
+   */
+  virtual std::string getOutputFilename(const std::string &prefix,
+                                        const std::string &extension,
+                                        const std::string &marker = "") = 0;
+protected:
+  /**
+   * Runs a specific test case and waits for its completion.
+   *
+   * @param name Test case name
+   * @return Test case instance
+   */
+  virtual TestCasePtr test_(const std::string &name,
+                            typename TestCase::ArgumentList args = TestCase::ArgumentList()) = 0;
 };
 
 }

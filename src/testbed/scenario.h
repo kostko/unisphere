@@ -54,6 +54,7 @@ public:
   /**
    * Returns the scenario name.
    */
+  // TODO: Make this consistent with TestCase -> getName()
   std::string name() const;
 
   /**
