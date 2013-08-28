@@ -124,6 +124,17 @@ public:
   }
 
   /**
+   * Adds a single new record to the data set.
+   *
+   * @param record Record to add
+   */
+  void add(const Record &record)
+  {
+    RecursiveUniqueLock lock(m_mutex);
+    m_records.push_back(record);
+  }
+
+  /**
    * Adds another data set to this data set. All records from the source
    * dataset are copied into this one.
    *
