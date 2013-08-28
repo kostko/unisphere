@@ -690,5 +690,23 @@ public:
 
 UNISPHERE_REGISTER_TEST_CASE(CollectPerformanceStatistics, "stats/collect_performance")
 
+class ResetLinkStatistics : public TestCase
+{
+public:
+  using TestCase::TestCase;
+
+  /**
+   * Reset link statistics.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    node->router->resetLinkStatistics();
+    finish(api);
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(ResetLinkStatistics, "stats/reset_link_statistics")
 
 }

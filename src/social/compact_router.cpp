@@ -795,6 +795,12 @@ const CompactRouter::Statistics &CompactRouter::statistics() const
   return d->m_statistics;
 }
 
+void CompactRouter::resetLinkStatistics()
+{
+  RecursiveUniqueLock lock(d->m_mutex);
+  d->m_statistics.links.clear();
+}
+
 void CompactRouter::route(RoutedMessage &msg)
 {
 #ifdef UNISPHERE_PROFILE
