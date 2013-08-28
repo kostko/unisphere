@@ -257,7 +257,16 @@ protected:
     boost::any arg = argument(name);
     if (arg.empty())
       return def;
-    return boost::any_cast<T>(arg);
+
+    try {
+      return boost::any_cast<T>(arg);
+    } catch (const boost::bad_any_cast&) {
+      // Automatically convert const char* to std::string
+      if (typeid(T) == typeid(std::string))
+        return std::string(boost::any_cast<const char*>(arg));
+      else
+        throw;
+    }
   }
 private:
   UNISPHERE_DECLARE_PRIVATE(TestCase)
