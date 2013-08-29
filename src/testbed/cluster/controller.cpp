@@ -122,7 +122,8 @@ public:
 
   std::list<TestCasePtr> test(std::initializer_list<std::string> names);
 
-  TestCasePtr testInBackground(const std::string &name);
+  TestCasePtr testInBackground_(const std::string &name,
+                                typename TestCase::ArgumentList args);
 
   void signal(TestCasePtr test,
               const std::string &signal);
@@ -319,10 +320,11 @@ std::list<TestCasePtr> ControllerScenarioApi::test(std::initializer_list<std::st
   return tests;
 }
 
-TestCasePtr ControllerScenarioApi::testInBackground(const std::string &name)
+TestCasePtr ControllerScenarioApi::testInBackground_(const std::string &name,
+                                                     typename TestCase::ArgumentList args)
 {
   ScenarioPtr scenario = m_controller.m_scenario;
-  return runTestCase(name, nullptr);
+  return runTestCase(name, nullptr, args);
 }
 
 void ControllerScenarioApi::signal(TestCasePtr test,

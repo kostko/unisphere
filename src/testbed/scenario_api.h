@@ -69,7 +69,12 @@ public:
    * @param name  Test case name
    * @return Test case instance
    */
-  virtual TestCasePtr testInBackground(const std::string &name) = 0;
+  template <typename T = TestCase>
+  boost::shared_ptr<T> testInBackground(const std::string &name,
+                                        typename TestCase::ArgumentList args = TestCase::ArgumentList())
+  {
+    return boost::static_pointer_cast<T>(testInBackground_(name, args));
+  }
 
   /**
    * Signal a running test case and wait for test case completion.
@@ -135,6 +140,15 @@ protected:
    */
   virtual TestCasePtr test_(const std::string &name,
                             typename TestCase::ArgumentList args = TestCase::ArgumentList()) = 0;
+
+  /**
+   * Runs a specific test case and doesn't wait for its completion.
+   *
+   * @param name  Test case name
+   * @return Test case instance
+   */
+  virtual TestCasePtr testInBackground_(const std::string &name,
+                                        typename TestCase::ArgumentList args = TestCase::ArgumentList()) = 0;
 };
 
 }
