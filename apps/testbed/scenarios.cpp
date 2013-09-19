@@ -64,7 +64,7 @@ UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 UNISPHERE_SCENARIO(StandardTests)
 {
   // Start collecting performance data
-  TestCasePtr testPerfCollector = api.testInBackground("stats/collect_performance");
+  TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
 
   const auto &nodes = api.getNodes();
   for (int i = 0; i <= nodes.size() / 10; i++) {
@@ -88,15 +88,15 @@ UNISPHERE_SCENARIO(StandardTests)
   api.wait(570);
   standardTests();
 
-  // Reset link statistics so we count the number of routed messages when pinging
-  api.test("stats/reset_link_statistics");
+  // Collect link congestion information while pinging
+  TestCasePtr linkCollector = api.testInBackground("stats/collect_link_congestion");
   api.test("routing/pair_wise_ping");
-  api.test("stats/performance", {{ "marker", "post-ping" }});
+  api.signal(linkCollector, "finish");
   
   api.wait(600);
 
   // Stop collecting performance data
-  api.signal(testPerfCollector, "finish");
+  api.signal(perfCollector, "finish");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 

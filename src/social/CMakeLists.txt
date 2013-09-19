@@ -8,6 +8,7 @@ routed_message.cpp
 name_database.cpp
 sloppy_group.cpp
 rpc_channel.cpp
+message_sniffer.cpp
 profiling/message_tracer.cpp
 )
 

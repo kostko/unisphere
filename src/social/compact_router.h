@@ -158,11 +158,6 @@ public:
   const Statistics &statistics() const;
 
   /**
-   * Resets per-link message count statistics.
-   */
-  void resetLinkStatistics();
-
-  /**
    * Routes the specified message via the overlay.
    * 
    * @param msg A valid message to be routed

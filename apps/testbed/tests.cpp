@@ -24,6 +24,8 @@
 #include "social/name_database.h"
 #include "social/sloppy_group.h"
 #include "social/rpc_channel.h"
+#include "social/social_identity.h"
+#include "social/message_sniffer.h"
 #include "interplex/link_manager.h"
 #include "rpc/engine.hpp"
 
@@ -556,14 +558,11 @@ class GetPerformanceStatistics : public TestCase
 public:
   /// General statistics dataset
   DataSet<> ds_stats{"ds_stats"};
-  /// Link congestion dataset
-  DataSet<> ds_links{"ds_links"};
 
   using TestCase::TestCase;
 
   void extractStatistics(TestCaseApi &api,
-                         VirtualNodePtr node,
-                         bool links)
+                         VirtualNodePtr node)
   {
     const auto &statsRouter = node->router->statistics();
     const auto &statsSg = node->router->sloppyGroup().statistics();
@@ -599,18 +598,6 @@ public:
       { "ndb_s_act",    ndb.sizeActive() },
       { "ndb_s_cac",    ndb.sizeCache() }
     });
-
-    // Link congestion
-    if (links) {
-      for (const auto &link : statsRouter.links) {
-        ds_links.add({
-          { "ts",       static_cast<int>(api.getTime()) },
-          { "node_id",  node->nodeId.hex() },
-          { "link_id",  link.first.hex() },
-          { "msgs",     link.second.msgRcvd + link.second.msgXmits }
-        });
-      }
-    }
   }
 
   /**
@@ -620,20 +607,18 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    extractStatistics(api, node, true);
+    extractStatistics(api, node);
     finish(api);
   }
 
   void processLocalResults(TestCaseApi &api)
   {
     api.send(ds_stats);
-    api.send(ds_links);
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
     api.receive(ds_stats);
-    api.receive(ds_links);
 
     outputCsvDataset(
       ds_stats,
@@ -646,12 +631,6 @@ public:
         "ndb_s_all", "ndb_s_act", "ndb_s_cac"
       },
       api.getOutputFilename("raw", "csv", argument<std::string>("marker"))
-    );
-
-    outputCsvDataset(
-      ds_links,
-      { "ts", "node_id", "link_id", "msgs" },
-      api.getOutputFilename("links", "csv", argument<std::string>("marker"))
     );
   }
 };
@@ -666,7 +645,7 @@ public:
   void collect(TestCaseApi &api,
                VirtualNodePtr node)
   {
-    extractStatistics(api, node, false);
+    extractStatistics(api, node);
     api.defer(boost::bind(&CollectPerformanceStatistics::collect, this, boost::ref(api), node), 1);
   }
 
@@ -690,23 +669,84 @@ public:
 
 UNISPHERE_REGISTER_TEST_CASE(CollectPerformanceStatistics, "stats/collect_performance")
 
-class ResetLinkStatistics : public TestCase
+class CollectLinkCongestion : public TestCase
 {
 public:
+  /// Message sniffer
+  MessageSniffer sniffer;
+  /// Mutex
+  std::recursive_mutex mutex;
+  /// Link congestion
+  std::unordered_map<std::tuple<NodeIdentifier, NodeIdentifier>, size_t> congestion;
+  /// Link congestion dataset
+  DataSet<> ds_links{"ds_links"};
+
   using TestCase::TestCase;
 
-  /**
-   * Reset link statistics.
-   */
+  bool filter(const RoutedMessage &msg)
+  {
+    return msg.sourceCompId() == static_cast<std::uint32_t>(CompactRouter::Component::RPC_Engine);
+  }
+
+  void collect(CompactRouter &router, const RoutedMessage &msg)
+  {
+    // Skip locally-generated messages
+    if (msg.originLinkId().isNull())
+      return;
+
+    RecursiveUniqueLock lock(mutex);
+    congestion[std::make_tuple(router.identity().localId(), msg.originLinkId())]++;
+  }
+
   void runNode(TestCaseApi &api,
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    node->router->resetLinkStatistics();
+    sniffer.attach(*node->router);
+  }
+
+  void localNodesRunning(TestCaseApi &api)
+  {
+    sniffer.signalMatchedMessage.connect(boost::bind(&CollectLinkCongestion::collect, this, _1, _2));
+    sniffer.setFilter(boost::bind(&CollectLinkCongestion::filter, this, _1));
+    sniffer.start();
+  }
+
+  void signalReceived(TestCaseApi &api,
+                      const std::string &signal)
+  {
+    sniffer.stop();
+    // Finish the test case as soon as a signal is received
     finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    for (const auto &p : congestion) {
+      ds_links.add({
+        { "ts",       static_cast<int>(api.getTime()) },
+        { "node_id",  std::get<0>(p.first).hex() },
+        { "link_id",  std::get<1>(p.first).hex() },
+        { "msgs",     p.second }
+      });
+    }
+    api.send(ds_links);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_links);
+
+    outputCsvDataset(
+      ds_links,
+      { "ts", "node_id", "link_id", "msgs" },
+      api.getOutputFilename("raw", "csv", argument<std::string>("marker"))
+    );
+
+    // TODO: Compute expected congestion in shortest-path protocols and compare (congestion stretch?)
   }
 };
 
-UNISPHERE_REGISTER_TEST_CASE(ResetLinkStatistics, "stats/reset_link_statistics")
+UNISPHERE_REGISTER_TEST_CASE(CollectLinkCongestion, "stats/collect_link_congestion")
 
 }
