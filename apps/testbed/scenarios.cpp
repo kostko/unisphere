@@ -19,6 +19,8 @@
 #include "testbed/test_bed.h"
 #include "testbed/exceptions.h"
 
+#include "tests.cpp"
+
 namespace po = boost::program_options;
 using namespace UniSphere;
 using namespace UniSphere::TestBed;
@@ -89,8 +91,8 @@ UNISPHERE_SCENARIO(StandardTests)
   standardTests();
 
   // Collect link congestion information while pinging
-  TestCasePtr linkCollector = api.testInBackground("stats/collect_link_congestion");
-  api.test("routing/pair_wise_ping");
+  auto linkCollector = api.testInBackground<Tests::CollectLinkCongestion>("stats/collect_link_congestion");
+  linkCollector->pairWisePing = api.test<Tests::PairWisePing>("routing/pair_wise_ping");
   api.signal(linkCollector, "finish");
   
   api.wait(600);

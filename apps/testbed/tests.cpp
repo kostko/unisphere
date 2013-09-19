@@ -40,7 +40,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
-#include <boost/graph/floyd_warshall_shortest.hpp>
+#include <boost/graph/bellman_ford_shortest_paths.hpp>
 
 using namespace UniSphere;
 using namespace UniSphere::TestBed;
@@ -204,12 +204,15 @@ UNISPHERE_REGISTER_TEST_CASE(DumpRoutingTopology, "state/routing_topology")
 class PairWisePing : public TestCase
 {
 public:
+  /// Shortest path type
+  typedef std::vector<std::string> ShortestPath;
+
   /// Dependent routing topology dump
   DumpRoutingTopologyPtr rt_topology;
   /// Raw measurements
   DataSet<> ds_raw{"ds_raw"};
   /// Stretch measurements
-  DataSet<> ds_stretch{"ds_stretch"};
+  DataSet<ShortestPath> ds_stretch{"ds_stretch"};
   /// Node sampling
   std::uniform_real_distribution<double> sampler{0.0, 1.0};
   /// Mutex
@@ -337,10 +340,20 @@ public:
 
     // Run all-pairs shortest paths algorithm on the obtained topology
     auto &topology = rt_topology->graph;
-    typedef typename boost::graph_traits<CompactRoutingTable::TopologyDumpGraph>::vertex_descriptor vertex_des;
-    std::unordered_map<vertex_des, std::unordered_map<vertex_des, int>> shortestLengths;
-    boost::floyd_warshall_all_pairs_shortest_paths(topology.graph(), shortestLengths,
-      boost::weight_map(boost::get(CompactRoutingTable::TopologyDumpTags::LinkWeight(), topology.graph())));
+
+    typedef typename CompactRoutingTable::TopologyDumpGraph Graph;
+    typedef typename boost::graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef boost::property_map<Graph, boost::vertex_index_t>::type IndexMap;
+    typedef boost::property_map<Graph, CompactRoutingTable::TopologyDumpTags::NodeName>::type NameMap;
+    typedef boost::iterator_property_map<Vertex*, IndexMap, Vertex, Vertex&> PredecessorMap;
+    typedef boost::iterator_property_map<int*, IndexMap, int, int&> DistanceMap;
+    std::vector<Vertex> predecessors(boost::num_vertices(topology.graph()));
+    std::vector<int> distances(boost::num_vertices(topology.graph()));
+    
+    IndexMap indexMap = boost::get(boost::vertex_index, topology.graph());
+    PredecessorMap predecessorMap(&predecessors[0], indexMap);
+    DistanceMap distanceMap(&distances[0], indexMap);
+    NameMap nameMap = boost::get(CompactRoutingTable::TopologyDumpTags::NodeName(), topology.graph());
 
     // Compute path stretches for each raw measurement pair
     for (const auto &record : ds_raw) {
@@ -349,9 +362,24 @@ public:
 
       std::string nodeA = boost::get<std::string>(record.at("node_a"));
       std::string nodeB = boost::get<std::string>(record.at("node_b"));
+      // TODO: We should group measurements by root vertex to avoid doing the same computation over and over
+      boost::bellman_ford_shortest_paths(topology.graph(),
+        boost::weight_map(boost::get(CompactRoutingTable::TopologyDumpTags::LinkWeight(), topology.graph()))
+        .predecessor_map(predecessorMap)
+        .distance_map(distanceMap)
+        .root_vertex(topology.vertex(nodeA))
+      );
+
       int measuredLength = boost::get<int>(record.at("hops"));
-      int shortestLength = shortestLengths[topology.vertex(nodeA)][topology.vertex(nodeB)];
+      int shortestLength = distanceMap[topology.vertex(nodeB)];
       double stretch = (double) measuredLength / (double) shortestLength;
+
+      ShortestPath path;
+      Vertex v = topology.vertex(nodeB);
+      path.push_back(nameMap[v]);
+      for (Vertex u = predecessorMap[v]; u != v; v = u, u = predecessorMap[v]) {
+        path.push_back(nameMap[u]);
+      }
 
       ds_stretch.add({
         { "timestamp", record.at("timestamp") },
@@ -359,7 +387,8 @@ public:
         { "node_b", nodeB },
         { "measured", measuredLength },
         { "shortest", shortestLength },
-        { "stretch", stretch }
+        { "stretch", stretch },
+        { "shortest_path", path }
       });
     }
 
@@ -680,6 +709,10 @@ public:
   std::unordered_map<std::tuple<NodeIdentifier, NodeIdentifier>, size_t> congestion;
   /// Link congestion dataset
   DataSet<> ds_links{"ds_links"};
+  /// Results of the pair-wise ping test if one wants congestion stretch computation
+  boost::shared_ptr<PairWisePing> pairWisePing;
+  /// Shortest path simulated congestion dataset
+  DataSet<> ds_spcongestion{"ds_spcongestion"};
 
   using TestCase::TestCase;
 
@@ -743,7 +776,34 @@ public:
       api.getOutputFilename("raw", "csv", argument<std::string>("marker"))
     );
 
-    // TODO: Compute expected congestion in shortest-path protocols and compare (congestion stretch?)
+    if (pairWisePing && pairWisePing->isFinished()) {
+      // Compute expected congestion in shortest-path protocols and compare
+      std::unordered_map<std::tuple<std::string, std::string>, size_t> spCongestion;
+
+      auto &pairs = pairWisePing->ds_stretch;
+      for (const auto &record : pairs) {
+        const auto &path = boost::get<PairWisePing::ShortestPath>(record.at("shortest_path"));
+        // Make sure to skip the last (source) vertex; this computation should be consistent with
+        // the above measurements of real congestion
+        for (int i = 0; i < path.size() - 1; i++) {
+          spCongestion[std::make_tuple(path.at(i), path.at(i + 1))]++;
+        }
+      }
+
+      for (const auto &p : spCongestion) {
+        ds_spcongestion.add({
+          { "node_id", std::get<0>(p.first) },
+          { "link_id", std::get<1>(p.first) },
+          { "msgs", p.second }
+        });
+      }
+    }
+
+    outputCsvDataset(
+      ds_spcongestion,
+      { "node_id", "link_id", "msgs" },
+      api.getOutputFilename("sp", "csv", argument<std::string>("marker"))
+    );
   }
 };
 
