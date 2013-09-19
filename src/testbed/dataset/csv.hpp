@@ -43,10 +43,18 @@ public:
     file << value ? 1 : 0;
   }
 
-  template <typename T>
+  template <typename T,
+            typename boost::enable_if<boost::has_left_shift<std::ostream, T>, int>::type = 0>
   void operator()(const T &value) const
   {
     file << value;
+  }
+
+  template <typename T,
+            typename boost::disable_if<boost::has_left_shift<std::ostream, T>, int>::type = 0>
+  void operator()(const T &value) const
+  {
+    // Ignore types that can't be fed into an ostream
   }
 private:
   std::ofstream &file;
