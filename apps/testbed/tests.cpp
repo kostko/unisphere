@@ -716,6 +716,13 @@ public:
 
   using TestCase::TestCase;
 
+  template <typename T>
+  std::tuple<T, T> getEdgeId(const T &a, const T &b)
+  {
+    // Ensure that edge identifiers are unique regardless of the edge direction
+    return a < b ? std::make_tuple(a, b) : std::make_tuple(b, a);
+  }
+
   bool filter(const RoutedMessage &msg)
   {
     return msg.sourceCompId() == static_cast<std::uint32_t>(CompactRouter::Component::RPC_Engine);
@@ -728,7 +735,7 @@ public:
       return;
 
     RecursiveUniqueLock lock(mutex);
-    congestion[std::make_tuple(router.identity().localId(), msg.originLinkId())]++;
+    congestion[getEdgeId(router.identity().localId(), msg.originLinkId())]++;
   }
 
   void runNode(TestCaseApi &api,
@@ -787,7 +794,7 @@ public:
         // the above measurements of real congestion
         for (int i = 0; i < path.size() - 1; i++) {
           // Increase usage by two since each edge is used twice when doing pings (round-trip)
-          spCongestion[std::make_tuple(path.at(i), path.at(i + 1))] += 2;
+          spCongestion[getEdgeId(path.at(i), path.at(i + 1))] += 2;
         }
       }
 
