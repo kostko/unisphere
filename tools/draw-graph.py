@@ -51,7 +51,7 @@ class ModuleProfiling(object):
   def run(self, args):
     styles = [
       ('-', None),
-      ('--', None),
+      ('-', None),
       ('-.', None),
       ('-', 'o'),
       ('--', '^'),
@@ -127,9 +127,9 @@ class ModuleCDF(object):
   def run(self, args):
     styles = [
       ('-', None),
+      ('-', 'o'),
       ('--', None),
       ('-.', None),
-      ('-', 'o'),
       ('--', '^'),
       ('--', 's')
     ]
