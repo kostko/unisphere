@@ -35,13 +35,8 @@ UNISPHERE_SCENARIO(IdleScenario)
   // Start collecting performance data
   TestCasePtr testPerfCollector = api.testInBackground("stats/collect_performance");
 
-  const auto &nodes = api.getNodes();
-  for (int i = 0; i <= nodes.size() / 10; i++) {
-    api.startNodes(nodes, i*10, 10);
-    api.wait(5);
-  }
-  // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
-  // api.startNodesBatch(nodes, 10, 5);
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
 
   auto standardTests = [&]() {
     // Perform some sanity checks
@@ -68,13 +63,8 @@ UNISPHERE_SCENARIO(StandardTests)
   // Start collecting performance data
   TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
 
-  const auto &nodes = api.getNodes();
-  for (int i = 0; i <= nodes.size() / 10; i++) {
-    api.startNodes(nodes, i*10, 10);
-    api.wait(5);
-  }
-  // TODO: Make the following API for starting nodes in batches of 10 with 5 second delay inbetween
-  // api.startNodesBatch(nodes, 10, 5);
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
 
   auto standardTests = [&]() {
     // Perform some sanity checks

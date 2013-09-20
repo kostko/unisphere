@@ -107,6 +107,24 @@ public:
                           size_t len) = 0;
 
   /**
+   * Request specific nodes to start in batches of specific size and
+   * with specified delay between batches.
+   *
+   * @param nodes A list of nodes
+   * @param batchSize Maximum size of each batch
+   * @param delay Delay between batches (in seconds)
+   */
+  void startNodesBatch(const std::vector<Partition::Node> &nodes,
+                       size_t batchSize,
+                       time_t delay)
+  {
+    for (int i = 0; i <= nodes.size() / batchSize; i++) {
+      startNodes(nodes, i*batchSize, batchSize);
+      wait(delay);
+    }
+  }
+
+  /**
    * Requests to start a specific node.
    *
    * @param nodeId Node identifier
