@@ -786,7 +786,8 @@ public:
         // Make sure to skip the last (source) vertex; this computation should be consistent with
         // the above measurements of real congestion
         for (int i = 0; i < path.size() - 1; i++) {
-          spCongestion[std::make_tuple(path.at(i), path.at(i + 1))]++;
+          // Increase usage by two since each edge is used twice when doing pings (round-trip)
+          spCongestion[std::make_tuple(path.at(i), path.at(i + 1))] += 2;
         }
       }
 
