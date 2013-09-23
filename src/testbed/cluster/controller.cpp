@@ -391,6 +391,9 @@ void ControllerScenarioApi::startNodes(const std::vector<Partition::Node> &nodes
     nodeCount++;
   }
 
+  if (!nodeCount)
+    return;
+
   BOOST_LOG(m_controller.m_logger) << "Requesting to start " << nodeCount << " nodes.";
 
   // Contact proper slaves and instruct them to start the virtual nodes
