@@ -44,7 +44,7 @@ def generate_topology(communities, connections, n_err, Psl):
     # select node group prefix
     group = nid[:int(math.floor(math.log(math.sqrt(n_hat / math.log(n_hat)), 2)))]
 
-    data['sybil'] = data.get('sybil', False)
+    data['sybil'] = int(data.get('sybil', False))
     data['name'] = nid
     data['group'] = group
     data['group_bits'] = len(group)
@@ -59,10 +59,10 @@ def generate_topology(communities, connections, n_err, Psl):
       is_landmark = random.random() < math.sqrt(math.log(n_hat) / n_hat)
 
     if is_landmark:
-      data['landmark'] = True
+      data['landmark'] = 1
       landmarks.append(node)
     else:
-      data['landmark'] = False
+      data['landmark'] = 0
 
     trust_topology.add_node(node, data)
 
