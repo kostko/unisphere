@@ -6,3 +6,4 @@ build/
 .kdev4/
 output/
 *.swp
+*.pyc
