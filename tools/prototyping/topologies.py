@@ -45,6 +45,7 @@ def generate_topology(communities, connections, n_err, Psl):
     group = nid[:int(math.floor(math.log(math.sqrt(n_hat / math.log(n_hat)), 2)))]
 
     data['sybil'] = int(data.get('sybil', False))
+    data['label'] = str(node)
     data['name'] = nid
     data['group'] = group
     data['group_bits'] = len(group)
