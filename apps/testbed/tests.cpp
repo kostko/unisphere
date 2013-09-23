@@ -817,4 +817,33 @@ public:
 
 UNISPHERE_REGISTER_TEST_CASE(CollectLinkCongestion, "stats/collect_link_congestion")
 
+class SetupSybilNodes : public TestCase
+{
+public:
+  using TestCase::TestCase;
+
+  SelectedPartition::Node selectNode(const Partition &partition,
+                                     const Partition::Node &node,
+                                     TestCaseApi &api)
+  {
+    if (!node.property<int>("sybil"))
+      return SelectedPartition::Node();
+
+    return SelectedPartition::Node{ node.contact.nodeId() };
+  }
+
+  /**
+   * Make a Sybil node evil.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    BOOST_LOG(logger()) << "I am a Sybil node: " << node->name;
+    finish(api);
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(SetupSybilNodes, "roles/setup_sybil_nodes")
+
 }

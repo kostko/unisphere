@@ -21,8 +21,10 @@
 
 #include "interplex/contact.h"
 
+#include <unordered_map>
 #include <list>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/property_map/dynamic_property_map.hpp>
 
 namespace UniSphere {
 
@@ -39,6 +41,20 @@ struct Partition {
     Contact contact;
     /// A list of peers in the topology
     std::list<Contact> peers;
+    /// Node properties from the input topology
+    std::unordered_map<std::string, boost::any> properties;
+
+    /**
+     * A convenience method for property retrieval.
+     */
+    template <typename T>
+    T property(const std::string &key) const
+    {
+      auto it = properties.find(key);
+      if (it == properties.end())
+        return T();
+      return boost::any_cast<T>(it->second);
+    }
   };
 
   /// Partition index

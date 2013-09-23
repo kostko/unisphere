@@ -63,6 +63,9 @@ UNISPHERE_SCENARIO(StandardTests)
   // Start collecting performance data
   TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
 
+  // Configure Sybil nodes
+  api.test("roles/setup_sybil_nodes");
+
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 

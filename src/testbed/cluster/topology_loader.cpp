@@ -38,9 +38,16 @@ typedef boost::adjacency_list<
   boost::property<boost::edge_weight_t, double>
 > Topology;
 
+/// Vertex descriptor type
+typedef typename boost::graph_traits<Topology>::vertex_descriptor TopologyVertex;
+
 class TopologyLoaderPrivate {
 public:
   TopologyLoaderPrivate(TopologyLoader::IdGenerationType idGenType);
+
+  boost::shared_ptr<boost::dynamic_property_map> generateMap(const std::string &pmap,
+                                                             const boost::any &key,
+                                                             const boost::any &value);
 
   NodeIdentifier getNodeId(const std::string &name);
 
@@ -52,6 +59,10 @@ public:
 public:
   /// Graph
   Topology m_topology;
+  /// Topology dynamic properties
+  boost::dynamic_properties m_properties;
+  /// Property map storage
+  std::unordered_map<std::string, std::map<TopologyVertex, boost::any>> m_mapStorage;
   /// Generated partitions
   std::vector<Partition> m_partitions;
   /// Identifier generation type
@@ -62,8 +73,69 @@ public:
   std::unordered_map<NodeIdentifier, Contact> m_contacts;
 };
 
+/**
+ * Property map for all properties encountered in GraphML topology files.
+ */
+class TopologyPropertyMap : public boost::dynamic_property_map
+{
+public:
+  TopologyPropertyMap(std::map<TopologyVertex, boost::any> &map)
+    : m_map(map)
+  {
+  }
+
+  boost::any get(const boost::any &key)
+  {
+    auto it = m_map.find(boost::any_cast<TopologyVertex>(key));
+    if (it == m_map.end())
+      return boost::any();
+
+    return it->second;
+  }
+
+  std::string get_string(const boost::any &key)
+  {
+    return std::string();
+  }
+
+  void put(const boost::any &key, const boost::any &value)
+  {
+    m_map.insert({ boost::any_cast<TopologyVertex>(key), value });
+  }
+
+  const std::type_info& key() const
+  {
+    return typeid(TopologyVertex);
+  }
+
+  const std::type_info& value() const
+  {
+    return typeid(boost::any);
+  }
+private:
+  /// Reference to the actual map storage
+  std::map<TopologyVertex, boost::any> &m_map;
+};
+
+boost::shared_ptr<boost::dynamic_property_map> TopologyLoaderPrivate::generateMap(const std::string &pmap,
+                                                                                  const boost::any &key,
+                                                                                  const boost::any &value)
+{
+  try {
+    auto v = boost::any_cast<TopologyVertex>(key);
+  } catch (boost::bad_any_cast&) {
+    // Ignore non-vertex properties
+    return boost::shared_ptr<boost::dynamic_property_map>();
+  }
+  
+  return boost::static_pointer_cast<boost::dynamic_property_map>(
+    boost::make_shared<TopologyPropertyMap>(m_mapStorage[pmap])
+  );
+}
+
 TopologyLoaderPrivate::TopologyLoaderPrivate(TopologyLoader::IdGenerationType idGenType)
   : m_topology(0),
+    m_properties(boost::bind(&TopologyLoaderPrivate::generateMap, this, _1, _2, _3)),
     m_idGenType(idGenType)
 {
 }
@@ -122,7 +194,7 @@ TopologyLoader::TopologyLoader(IdGenerationType idGenType)
 void TopologyLoader::load(const std::string &filename)
 {
   Topology &topology = d->m_topology;
-  boost::dynamic_properties properties;
+  boost::dynamic_properties &properties = d->m_properties;
   properties.property("label", boost::get(boost::vertex_name, topology));
   properties.property("weight", boost::get(boost::edge_weight, topology));
 
@@ -156,6 +228,16 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves)
     NodeIdentifier nodeId = d->getNodeId(name);
     Partition &part = partitions[d->assignNodeToPartition(name, nodeId, partitions.size())];
     Partition::Node node{ name, d->assignContact(part, nodeId) };
+    for (const auto &map : d->m_properties) {
+      try {
+        const auto &v = map.second->get(*vp.first);
+        if (!v.empty())
+          node.properties[map.first] = v;
+      } catch (boost::bad_any_cast&) {
+        // Skip non-vertex properties
+        continue;
+      }
+    }
 
     // Add peers
     for (auto np = boost::adjacent_vertices(*vp.first, topology); np.first != np.second; ++np.first) {
