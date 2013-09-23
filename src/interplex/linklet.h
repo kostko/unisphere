@@ -20,6 +20,7 @@
 #define UNISPHERE_INTERPLEX_LINKLET_H
 
 #include "core/globals.h"
+#include "core/signal.h"
 #include "interplex/contact.h"
 #include "interplex/message.h"
 #include "interplex/link_manager.h"
@@ -106,7 +107,7 @@ public:
   // Signals
   boost::signals2::signal<void (LinkletPtr)> signalConnectionFailed;
   boost::signals2::signal<void (LinkletPtr)> signalConnectionSuccess;
-  boost::signals2::signal<bool (LinkletPtr), VerifyPeerCombiner> signalVerifyPeer;
+  boost::signals2::signal<bool (LinkletPtr), AllTrueCombiner> signalVerifyPeer;
   boost::signals2::signal<void (LinkletPtr)> signalDisconnected;
   boost::signals2::signal<void (LinkletPtr)> signalAcceptedConnection;
   boost::signals2::signal<void (LinkletPtr, const Message&)> signalMessageReceived;

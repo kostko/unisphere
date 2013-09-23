@@ -20,6 +20,7 @@
 #define UNISPHERE_INTERPLEX_LINKMANAGER_H
 
 #include "core/context.h"
+#include "core/signal.h"
 #include "interplex/contact.h"
 #include "interplex/linklet_factory.h"
 #include "interplex/message.h"
@@ -34,32 +35,6 @@
 namespace UniSphere {
 
 UNISPHERE_SHARED_POINTER(Link)
-
-/**
- * The verify peer combiner is used to call slots bound to the verifyPeer
- * signal. If any slot returns false, further slots are not called and
- * false is returned as a final result, meaning that the connection will
- * be aborted.
- */
-class UNISPHERE_EXPORT VerifyPeerCombiner {
-public:
-  typedef bool result_type;
-  
-  template<typename InputIterator>
-  result_type operator()(InputIterator first, InputIterator last)
-  {
-    if (first == last)
-      return true;
-    
-    while (first != last) {
-      if (*first == false)
-        return false;
-      ++first;
-    }
-    
-    return true;
-  }
-};
 
 /**
  * A link manager is used to manage links to all peers in a unified way.
@@ -196,7 +171,7 @@ public:
   /// Signal for received messages
   boost::signals2::signal<void (const Message&)> signalMessageReceived;
   /// Signal for additional peer verification
-  boost::signals2::signal<bool (const Contact&), VerifyPeerCombiner> signalVerifyPeer;
+  boost::signals2::signal<bool (const Contact&), AllTrueCombiner> signalVerifyPeer;
 protected:
   /**
    * Returns a link suitable for communication with the specified contact.

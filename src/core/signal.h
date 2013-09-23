@@ -19,6 +19,8 @@
 #ifndef UNISPHERE_CORE_SIGNAL_H
 #define UNISPHERE_CORE_SIGNAL_H
 
+#include "core/context.h"
+
 #include <boost/signals2/signal.hpp>
 
 namespace UniSphere {
@@ -237,6 +239,30 @@ using RateLimitedSignal = PeriodicRateDelayedSignal<0, 0, Rate, 0>;
 
 template <int Rate, int Period>
 using PeriodicRateLimitedSignal = PeriodicRateDelayedSignal<0, 0, Rate, Period>;
+
+/**
+ * An all-true slot combiner. If any slot returns false, further slots are not
+ * called and false is returned as a final result.
+ */
+class AllTrueCombiner {
+public:
+  typedef bool result_type;
+  
+  template<typename InputIterator>
+  result_type operator()(InputIterator first, InputIterator last)
+  {
+    if (first == last)
+      return true;
+    
+    while (first != last) {
+      if (*first == false)
+        return false;
+      ++first;
+    }
+    
+    return true;
+  }
+};
 
 }
 
