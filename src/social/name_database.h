@@ -25,6 +25,7 @@
 #include <boost/asio.hpp>
 
 #include "core/context.h"
+#include "core/signal.h"
 #include "social/address.h"
 #include "rpc/call_group.hpp"
 
@@ -247,6 +248,9 @@ public:
 public:
   /// Signal that gets called when a name record should be exported to neighbours
   boost::signals2::signal<void(NameRecordPtr, const NodeIdentifier&)> signalExportRecord;
+  /// Signal that gets called when a name record should be imported. If any slots return
+  /// false, the name record is not imported.
+  boost::signals2::signal<bool(NameRecordPtr), AllTrueCombiner> signalImportRecord;
 private:
   UNISPHERE_DECLARE_PRIVATE(NameDatabase)
 };

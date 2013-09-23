@@ -400,6 +400,11 @@ public:
   DeferrableSignal<void(const VicinityDescriptor&)> signalVicinityLearned;
   /// Signal that gets called when a new vicinity node is removed (deferred)
   DeferrableSignal<void(const NodeIdentifier&)> signalVicinityRemoved;
+  /// Signal that gets called when a routing entry should be imported. If any slots return
+  /// false, the routing entry is not imported. This signal is called with the internal mutex
+  /// held, so handlers MUST avoid any operations that acquire additional mutexes, otherwise
+  /// deadlocks might ocurr!
+  boost::signals2::signal<bool(RoutingEntryPtr), AllTrueCombiner> signalImportEntry;
 private:
   UNISPHERE_DECLARE_PRIVATE(CompactRoutingTable)
 };

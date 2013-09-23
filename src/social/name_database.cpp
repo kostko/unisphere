@@ -219,6 +219,10 @@ void NameDatabasePrivate::store(NameRecordPtr record)
   // Set last update timestamp
   record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
+  // Call hooks that can filter the record
+  if (!q.signalImportRecord(record))
+    return;
+
   RecursiveUniqueLock lock(m_mutex);
   auto it = m_nameDb.find(boost::make_tuple(record->nodeId, NameRecord::Type::SloppyGroup));
   if (it == m_nameDb.end()) {
