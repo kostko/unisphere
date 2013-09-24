@@ -313,8 +313,19 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
 
   BOOST_LOG_SEV(m_logger, log::normal) << "Running test case '" << test->getName() << "' on " << request.nodes_size() << " nodes.";
 
-  // Run the test case on all specified nodes
   SimulationSectionPtr section = m_simulation->section();
+
+  // Deserialize global test case parameters and schedule pre-run
+  {
+    boost::property_tree::ptree args;
+    std::istringstream buffer(request.test_arguments());
+    boost::property_tree::read_json(buffer, args);
+    section->execute([this, test, api, args]() {
+      test->preRunNodes(*api, args);
+    });
+  }
+
+  // Run the test case on all specified nodes
   for (int i = 0; i < request.nodes_size(); i++) {
     const Protocol::RunTestRequest::Node &node = request.nodes(i);
     boost::property_tree::ptree args;

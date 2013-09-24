@@ -162,6 +162,11 @@ SelectedPartition::Node TestCase::selectNode(const Partition &partition,
   return SelectedPartition::Node{ node.contact.nodeId() };
 }
 
+void TestCase::preRunNodes(TestCaseApi &api,
+                           const boost::property_tree::ptree &args)
+{
+}
+
 void TestCase::runNode(TestCaseApi &api,
                        VirtualNodePtr node,
                        const boost::property_tree::ptree &args)

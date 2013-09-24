@@ -84,6 +84,8 @@ public:
   std::mt19937 &rng();
 
   TestCasePtr callTestCase(const std::string &name);
+
+  void setGlobalArguments(const boost::property_tree::ptree &args);
 private:
   DataSetBuffer &receive_(const std::string &dsName);
 
@@ -95,6 +97,8 @@ public:
   TestCasePtr m_testCase;
   /// Received datasets
   std::unordered_map<std::string, DataSetBuffer> m_datasets;
+  /// Global test case arguments
+  boost::property_tree::ptree m_globalArgs;
   /// Random number generator
   std::mt19937 m_rng;
 };
@@ -256,6 +260,12 @@ TestCasePtr ControllerTestCaseApi::callTestCase(const std::string &name)
   TestCasePtr test = m_controller.m_scenarioApi->runTestCase(name, nullptr);
   m_testCase->addChild(test);
   return test;
+}
+
+void ControllerTestCaseApi::setGlobalArguments(const boost::property_tree::ptree &args)
+{
+  RecursiveUniqueLock lock(m_controller.m_mutex);
+  m_globalArgs = args;
 }
 
 void ControllerTestCaseApi::removeRunningTestCase()
@@ -515,6 +525,13 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
     Protocol::RunTestRequest request;
     request.set_test_name(test->getName());
     request.set_test_id(test->getId());
+
+    // Serialize global arguments to JSON string
+    {
+      std::ostringstream buffer;
+      boost::property_tree::write_json(buffer, api->m_globalArgs, false);
+      request.set_test_arguments(buffer.str());
+    }
 
     for (SelectedPartition::Node &node : selected.nodes) {
       Protocol::RunTestRequest::Node *pnode = request.add_nodes();

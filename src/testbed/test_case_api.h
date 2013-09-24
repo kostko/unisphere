@@ -163,6 +163,17 @@ public:
   }
 
   /**
+   * Sets global test case arguments that will be available in each
+   * partition. This method is only available on the controller.
+   *
+   * @param args Global arguments
+   */
+  virtual void setGlobalArguments(const boost::property_tree::ptree &args)
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
    * Returns the current timestamp in UNISPHERE epoch time. This method
    * is only available on slaves.
    */

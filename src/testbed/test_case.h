@@ -163,6 +163,19 @@ public:
                                              TestCaseApi &api);
 
   /**
+   * This method is run on the slaves for each partition that has been
+   * previously selected. It can be used to transfer test case global
+   * arguments received from the controller.
+   *
+   * Default implementation does nothing.
+   *
+   * @param api Test case API interface
+   * @param args Global arguments passed from controller
+   */
+  virtual void preRunNodes(TestCaseApi &api,
+                           const boost::property_tree::ptree &args);
+
+  /**
    * This method is run on the slaves for each node that has been
    * previously selected. It should setup the test case.
    *

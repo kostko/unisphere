@@ -83,8 +83,10 @@ message RunTestRequest {
   required string test_name = 1;
   // Test case run identifier
   required uint32 test_id = 2;
+  // Test case JSON argument representation
+  required string test_arguments = 3;
   // A list of nodes where the test should be run
-  repeated Node nodes = 3;
+  repeated Node nodes = 4;
 };
 
 message RunTestResponse {
