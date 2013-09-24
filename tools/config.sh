@@ -44,9 +44,14 @@ if [[ ! -d $BIN_DIR || ! -d $DATA_DIR || ! -d $OUTPUT_DIR ]]; then
   exit 1
 fi
 
-# Limit topologies to just a single one when specified
+# Setup a different scenario when specified
 if [[ ! -z "$1" ]]; then
-  filter="$1"
+  SCENARIO="$1"
+fi
+
+# Limit topologies to just a single one when specified
+if [[ ! -z "$2" ]]; then
+  filter="$2"
   tmp=()
   for params in "${TOPOLOGIES[@]}"; do
     IFS=","
