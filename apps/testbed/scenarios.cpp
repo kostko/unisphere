@@ -106,7 +106,7 @@ UNISPHERE_SCENARIO(SybilNodes)
 
   api.wait(30);
   // Perform some sanity checks
-  api.test("sanity/check_consistent_ndb");
+  api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
   
   api.wait(300);
 

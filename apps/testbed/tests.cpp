@@ -548,17 +548,23 @@ public:
     ds_ndb.clear();
 
     // Check record consistency
+    bool sybilMode = argument<bool>("sybil_mode", false);
     bool consistent = true;
     size_t checkedRecords = 0;
     for (const auto &record : ds_groups) {
       std::string nodeStringId = boost::get<std::string>(record.at("node_id"));
       NodeIdentifier nodeId(nodeStringId, NodeIdentifier::Format::Hex);
+      const Partition::Node &node = api.getNodeById(nodeId);
       size_t groupPrefixLen = boost::get<size_t>(record.at("group_len"));
       NodeIdentifier groupPrefix = nodeId.prefix(groupPrefixLen);
+      bool sybilRecord = static_cast<bool>(node.property<int>("sybil"));
 
       for (const auto &sibling : ds_groups) {
         std::string siblingStringId = boost::get<std::string>(sibling.at("node_id"));
         NodeIdentifier siblingId(siblingStringId, NodeIdentifier::Format::Hex);
+        const Partition::Node &siblingNode = api.getNodeById(siblingId);
+        bool sybilNode = static_cast<bool>(siblingNode.property<int>("sybil"));
+
         if (nodeId == siblingId)
           continue;
 
@@ -568,7 +574,12 @@ public:
         // Ensure that this node has our record
         checkedRecords++;
         if (!globalNdb[siblingStringId].count(nodeStringId)) {
-          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node " << siblingStringId << " misses record for " << nodeStringId << ".";
+          if (sybilMode && (sybilRecord || sybilNode))
+            continue;
+
+          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node " 
+            << siblingStringId << " (" << siblingNode.name << ") misses record for "
+            << nodeStringId << " (" << node.name << ").";
           consistent = false;
         }
       }
