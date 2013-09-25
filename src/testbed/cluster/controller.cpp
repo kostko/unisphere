@@ -81,6 +81,8 @@ public:
 
   PartitionRange getPartitions();
 
+  const Partition::Node &getNodeById(const NodeIdentifier &nodeId);
+
   std::mt19937 &rng();
 
   TestCasePtr callTestCase(const std::string &name);
@@ -244,6 +246,11 @@ std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
 PartitionRange ControllerTestCaseApi::getPartitions()
 {
   return m_controller.m_partitions;
+}
+
+const Partition::Node &ControllerTestCaseApi::getNodeById(const NodeIdentifier &nodeId)
+{
+  return m_controller.m_nodeMap.at(nodeId);
 }
 
 std::mt19937 &ControllerTestCaseApi::rng()

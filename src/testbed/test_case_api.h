@@ -130,6 +130,17 @@ public:
   }
 
   /**
+   * Returns a node descriptor for the given node. This method is only available
+   * on the controller.
+   *
+   * @param nodeId Node identifier
+   */
+  virtual const Partition::Node &getNodeById(const NodeIdentifier &nodeId)
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
    * Returns a random number generator.
    */
   virtual std::mt19937 &rng() = 0;
