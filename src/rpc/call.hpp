@@ -223,6 +223,98 @@ public:
   typename Channel::options_type channelOptions;
 };
 
+template <typename Channel, typename ResponseType>
+class UNISPHERE_EXPORT RpcDeferredResponse {
+public:
+  /**
+   * Constructs a deferred response.
+   *
+   * @param rcpId Unique identifier of the RPC call we are responding to
+   * @param success RPC success handler
+   * @param failure RPC failure handler
+   */
+  RpcDeferredResponse(RpcId rpcId,
+                      RpcResponseSuccess<Channel> success,
+                      RpcResponseFailure failure)
+    : m_rpcId(rpcId),
+      m_success(success),
+      m_failure(failure)
+  {}
+
+  /**
+   * Returns the unique identifier of the RPC call we are responding to.
+   */
+  RpcId rpcId() const
+  {
+    return m_rpcId;
+  }
+
+  /**
+   * Finish the response successfully.
+   */
+  void success() const
+  {
+    success(ResponseType(), typename Channel::options_type());
+  }
+
+  /**
+   * Finish the response successfully.
+   *
+   * @param rsp Response descriptor
+   */
+  void success(const RpcResponse<Channel, ResponseType> &rsp) const
+  {
+    success(rsp.response, rsp.channelOptions);
+  }
+
+  /**
+   * Finish the response successfully.
+   *
+   * @param rsp Protocol response message
+   * @param opts Channel-specific options
+   */
+  void success(ResponseType rsp, const typename Channel::options_type &opts) const
+  {
+    Protocol::RpcResponse response;
+    response.set_rpc_id(m_rpcId);
+    response.set_error(false);
+    
+    // Serialize response message into the payload
+    std::vector<char> buffer(rsp.ByteSize());
+    rsp.SerializeToArray(&buffer[0], buffer.size());
+    response.set_data(&buffer[0], buffer.size());
+    m_success(response, opts);
+  }
+
+  /**
+   * Finish the response with an error message.
+   *
+   * @param error An RPC exception
+   */
+  void failure(const RpcException &error) const
+  {
+    m_failure(error.code(), error.message());
+  }
+
+  /**
+   * Finish the response with an error message.
+   *
+   * @param code RPC error code
+   * @param msg Error message
+   */
+  void failure(RpcErrorCode code, const std::string &msg = "") const
+  {
+    m_failure(code, msg);
+  }
+private:
+  /// Unique identifier for the RPC call we are responding to
+  RpcId m_rpcId;
+  /// RPC success handler
+  RpcResponseSuccess<Channel> m_success;
+  /// RPC failure handler
+  RpcResponseFailure m_failure;
+};
+
 }
 
 #endif

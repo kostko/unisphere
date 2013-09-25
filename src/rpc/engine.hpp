@@ -196,6 +196,25 @@ public:
     RecursiveUniqueLock lock(m_mutex);
     m_methods[method] = createBasicMethodHandler<RequestType, ResponseType>(method, impl);
   }
+
+  /**
+   * Registers a new RPC method call.
+   *
+   * @param method Method name
+   * @param impl Method implementation
+   */
+  template<typename RequestType, typename ResponseType>
+  void registerDeferredMethod(const std::string &method,
+                              std::function<void(
+                                const RequestType&,
+                                const typename Channel::message_type&,
+                                RpcId,
+                                const RpcDeferredResponse<Channel, ResponseType>&
+                              )> impl)
+  {
+    RecursiveUniqueLock lock(m_mutex);
+    m_methods[method] = createDeferredMethodHandler<RequestType, ResponseType>(method, impl);
+  }
   
   /**
    * Registers a new RPC method call that doesn't send back a response.
@@ -292,22 +311,50 @@ protected:
                   const Protocol::RpcRequest &request,
                   RpcResponseSuccess<Channel> success,
                   RpcResponseFailure failure) {
+      RpcDeferredResponse<Channel, ResponseType> response(request.rpc_id(), success, failure);
       try {
         // Deserialize the message and call method implementation
-        RpcResponse<Channel, ResponseType> rsp = impl(message_cast<RequestType>(request.data()), msg, request.rpc_id());
-        Protocol::RpcResponse response;
-        response.set_rpc_id(request.rpc_id());
-        response.set_error(false);
-        
-        // Serialize response message into the payload
-        std::vector<char> buffer(rsp.response.ByteSize());
-        rsp.response.SerializeToArray(&buffer[0], buffer.size());
-        response.set_data(&buffer[0], buffer.size());
-        success(response, rsp.channelOptions);
+        RpcResponse<Channel, ResponseType> rsp = impl(
+          message_cast<RequestType>(request.data()),
+          msg,
+          request.rpc_id()
+        );
+        response.success(rsp);
       } catch (RpcException &error) {
         // Handle failures by invoking the failure handler
-        failure(error.code(), error.message());
+        response.failure(error);
       }
+    };
+  }
+
+  /**
+   * Creates a new deferred RPC method handler.
+   *
+   * @param method Method name
+   * @param impl Method implementation
+   */
+  template<typename RequestType, typename ResponseType>
+  RpcHandler<Channel> createDeferredMethodHandler(const std::string &method,
+                                                  std::function<void(
+                                                    const RequestType&,
+                                                    const typename Channel::message_type&,
+                                                    RpcId,
+                                                    const RpcDeferredResponse<Channel, ResponseType>&
+                                                  )> impl)
+  {
+    // Wrap the implementation with proper serializers/deserializers depending on
+    // specified request and response types
+    return [impl](const typename Channel::message_type &msg,
+                  const Protocol::RpcRequest &request,
+                  RpcResponseSuccess<Channel> success,
+                  RpcResponseFailure failure) {
+      RpcDeferredResponse<Channel, ResponseType> response(request.rpc_id(), success, failure);
+      impl(
+        message_cast<RequestType>(request.data()),
+        msg,
+        request.rpc_id(),
+        response
+      );
     };
   }
   
