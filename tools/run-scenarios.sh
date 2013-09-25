@@ -57,7 +57,7 @@ cluster_slave_start()
 
 trap_handler()
 {
-  local pgid=$(ps -p $$ -o pgid="")
+  local pgid=$(ps -p $$ -o pgid="" | tr -d ' ')
   kill -- -${pgid}
   exit
 }
