@@ -254,7 +254,29 @@ protected:
    * @param name Argument name
    * @return Argument value or an invalid value when the argument is not set
    */
-  boost::any argument(const std::string &name) const;
+  boost::any argumentAny(const std::string &name) const;
+
+  /**
+   * Returns the specified test case argument. This method is only available
+   * on the controller -- on slaves, there will be no test-case arguments.
+   *
+   * @param name Argument name
+   * @param def Optional default value to return when argument doesn't exist
+   * @return Argument value 
+   */
+  std::string argument(const std::string &name, const std::string &def = std::string()) const
+  {
+    boost::any arg = argumentAny(name);
+    if (arg.empty())
+      return def;
+
+    try {
+      return boost::any_cast<std::string>(arg);
+    } catch (const boost::bad_any_cast&) {
+      // Automatically convert const char* to std::string
+      return std::string(boost::any_cast<const char*>(arg));
+    }
+  }
 
   /**
    * Returns the specified test case argument. This method is only available
@@ -267,19 +289,11 @@ protected:
   template <typename T>
   T argument(const std::string &name, const T &def = T()) const
   {
-    boost::any arg = argument(name);
+    boost::any arg = argumentAny(name);
     if (arg.empty())
       return def;
 
-    try {
-      return boost::any_cast<T>(arg);
-    } catch (const boost::bad_any_cast&) {
-      // Automatically convert const char* to std::string
-      if (typeid(T) == typeid(std::string))
-        return std::string(boost::any_cast<const char*>(arg));
-      else
-        throw;
-    }
+    return boost::any_cast<T>(arg);
   }
 private:
   UNISPHERE_DECLARE_PRIVATE(TestCase)

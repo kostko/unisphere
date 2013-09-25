@@ -208,7 +208,7 @@ Logger &TestCase::logger()
   return d->m_logger;
 }
 
-boost::any TestCase::argument(const std::string &name) const
+boost::any TestCase::argumentAny(const std::string &name) const
 {
   RecursiveUniqueLock lock(d->m_mutex);
   auto it = d->m_arguments.find(name);
