@@ -124,7 +124,7 @@ public:
    * Returns a vector of node partitions. This method is only available on
    * the controller.
    */
-  virtual const std::vector<Partition> &getPartitions()
+  virtual PartitionRange getPartitions()
   {
     throw IllegalApiCall();
   }

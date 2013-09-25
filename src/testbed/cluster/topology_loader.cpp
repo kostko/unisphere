@@ -227,7 +227,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves)
     std::string name = boost::get(boost::vertex_name, topology, *vp.first);
     NodeIdentifier nodeId = d->getNodeId(name);
     Partition &part = partitions[d->assignNodeToPartition(name, nodeId, partitions.size())];
-    Partition::Node node{ name, d->assignContact(part, nodeId) };
+    Partition::Node node{ part.index, name, d->assignContact(part, nodeId) };
     for (const auto &map : d->m_properties) {
       try {
         const auto &v = map.second->get(*vp.first);

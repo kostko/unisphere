@@ -25,6 +25,7 @@
 #include <list>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_map/dynamic_property_map.hpp>
+#include <boost/range/any_range.hpp>
 
 namespace UniSphere {
 
@@ -35,6 +36,8 @@ namespace TestBed {
  */
 struct Partition {
   struct Node {
+    /// Partition index
+    size_t partition;
     /// Node name (from original topology file)
     std::string name;
     /// Assigned contact
@@ -57,6 +60,14 @@ struct Partition {
     }
   };
 
+  /// Type for specifying traversible ranges of node descriptors
+  typedef boost::any_range<
+    Node,
+    boost::single_pass_traversal_tag,
+    Node,
+    std::ptrdiff_t
+  > NodeRange;
+
   /// Partition index
   size_t index;
   /// Slave that will own this partition
@@ -70,6 +81,14 @@ struct Partition {
   /// A list of nodes assigned to this partition
   std::list<Node> nodes;
 };
+
+/// Type for specifying traversible ranges of partition descriptors
+typedef boost::any_range<
+  Partition,
+  boost::random_access_traversal_tag,
+  Partition,
+  std::ptrdiff_t
+> PartitionRange;
 
 /**
  * A partition selected for test case run.

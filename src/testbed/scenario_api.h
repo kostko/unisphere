@@ -88,23 +88,18 @@ public:
   /**
    * Returns a vector of node partitions.
    */
-  virtual const std::vector<Partition> &getPartitions() const = 0;
+  virtual PartitionRange getPartitions() const = 0;
 
   /**
    * Returns a list of nodes.
    */
-  virtual const std::vector<Partition::Node> &getNodes() const = 0;
+  virtual Partition::NodeRange getNodes() const = 0;
 
   /**
    * Requests specific nodes to start.
    *
-   * @param nodes A list of nodes
-   * @param offset Offset into the list
-   * @param len Number of nodes to start
-   */
-  virtual void startNodes(const std::vector<Partition::Node> &nodes,
-                          size_t offset,
-                          size_t len) = 0;
+   * @param nodes A list of nodes   */
+  virtual void startNodes(const Partition::NodeRange &nodes) = 0;
 
   /**
    * Request specific nodes to start in batches of specific size and
@@ -114,13 +109,29 @@ public:
    * @param batchSize Maximum size of each batch
    * @param delay Delay between batches (in seconds)
    */
-  void startNodesBatch(const std::vector<Partition::Node> &nodes,
+  void startNodesBatch(const Partition::NodeRange &nodes,
                        size_t batchSize,
                        time_t delay)
   {
-    for (int i = 0; i <= nodes.size() / batchSize; i++) {
-      startNodes(nodes, i*batchSize, batchSize);
-      wait(delay);
+    if (!batchSize)
+      return;
+
+    auto start = nodes.begin();
+    auto end = nodes.begin();
+    size_t count = 0;
+    for (;;) {
+      count++;
+
+      if (++end == nodes.end() || count == batchSize) {
+        startNodes(Partition::NodeRange(start, end));
+        wait(delay);
+
+        if (end == nodes.end())
+          break;
+
+        start = end;
+        count = 0;
+      }
     }
   }
 

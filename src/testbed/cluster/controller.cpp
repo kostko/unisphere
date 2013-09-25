@@ -79,7 +79,7 @@ public:
                                 const std::string &extension,
                                 const std::string &marker);
 
-  const std::vector<Partition> &getPartitions();
+  PartitionRange getPartitions();
 
   std::mt19937 &rng();
 
@@ -132,13 +132,11 @@ public:
   void signal(TestCasePtr test,
               const std::string &signal);
 
-  const std::vector<Partition> &getPartitions() const;
+  PartitionRange getPartitions() const;
 
-  const std::vector<Partition::Node> &getNodes() const;
+  Partition::NodeRange getNodes() const;
 
-  void startNodes(const std::vector<Partition::Node> &nodes,
-                  size_t offset,
-                  size_t len);
+  void startNodes(const Partition::NodeRange &nodes);
 
   void startNode(const NodeIdentifier &nodeId);
 
@@ -188,10 +186,8 @@ public:
   TopologyLoader::IdGenerationType m_idGenType;
   /// Generated network partitions
   std::vector<Partition> m_partitions;
-  /// Generated network nodes
-  std::vector<Partition::Node> m_nodes;
   /// Mapping of nodes to partitions
-  std::unordered_map<NodeIdentifier, size_t> m_partitionMap;
+  std::unordered_map<NodeIdentifier, Partition::Node> m_nodeMap;
   /// Number of partitions pending assignment
   size_t m_unassignedPartitions;
   /// Seed value
@@ -245,7 +241,7 @@ std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
   ).str();
 }
 
-const std::vector<Partition> &ControllerTestCaseApi::getPartitions()
+PartitionRange ControllerTestCaseApi::getPartitions()
 {
   return m_controller.m_partitions;
 }
@@ -374,29 +370,25 @@ void ControllerScenarioApi::signal(TestCasePtr test,
   scenario->suspend();
 }
 
-const std::vector<Partition> &ControllerScenarioApi::getPartitions() const
+PartitionRange ControllerScenarioApi::getPartitions() const
 {
   return m_controller.m_partitions;
 }
 
-const std::vector<Partition::Node> &ControllerScenarioApi::getNodes() const
+Partition::NodeRange ControllerScenarioApi::getNodes() const
 {
-  return m_controller.m_nodes;
+  return m_controller.m_nodeMap | boost::adaptors::map_values;
 }
 
-void ControllerScenarioApi::startNodes(const std::vector<Partition::Node> &nodes,
-                                       size_t offset,
-                                       size_t len)
+void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
 {
   ScenarioPtr scenario = m_controller.m_scenario;
   std::vector<std::list<NodeIdentifier>> partitions;
   partitions.resize(m_controller.m_partitions.size());
   size_t nodeCount = 0;
 
-  for (int i = offset; i - offset < len && i < nodes.size(); i++) {
-    const Partition::Node &node = nodes.at(i);
-    size_t partitionId = m_controller.m_partitionMap.at(node.contact.nodeId());
-    partitions[partitionId].push_back(node.contact.nodeId());
+  for (const Partition::Node &node : nodes) {
+    partitions[node.partition].push_back(node.contact.nodeId());
     nodeCount++;
   }
 
@@ -862,8 +854,7 @@ void Controller::run()
             *n->add_peers() = contact.toMessage();
           }
 
-          d->m_nodes.push_back(node);
-          d->m_partitionMap.insert({{ node.contact.nodeId(), part.index }});
+          d->m_nodeMap.insert({{ node.contact.nodeId(), node }});
         }
         
         NodeIdentifier slaveId = part.slave.nodeId();
