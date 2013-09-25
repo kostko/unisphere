@@ -63,9 +63,6 @@ UNISPHERE_SCENARIO(StandardTests)
   // Start collecting performance data
   TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
 
-  // Configure Sybil nodes
-  api.test("roles/setup_sybil_nodes");
-
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
@@ -94,5 +91,30 @@ UNISPHERE_SCENARIO(StandardTests)
   api.signal(perfCollector, "finish");
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
+
+UNISPHERE_SCENARIO(SybilNodes)
+{
+  // Start collecting performance data
+  TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
+
+  // Configure Sybil nodes to be malicious
+  TestCasePtr sybils = api.testInBackground("roles/setup_sybil_nodes");
+  api.signal(sybils, "evil");
+
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
+
+  api.wait(30);
+  // Perform some sanity checks
+  api.test("sanity/check_consistent_ndb");
+  
+  api.wait(300);
+
+  // Stop collecting performance data
+  api.signal(perfCollector, "finish");
+  // Stop sybil behaviour
+  api.signal(sybils, "finish");
+}
+UNISPHERE_SCENARIO_END_REGISTER(SybilNodes)
 
 }

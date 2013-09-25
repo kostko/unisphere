@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "core/operators.h"
 #include "testbed/test_bed.h"
 #include "testbed/dataset/graphs.hpp"
 #include "testbed/dataset/csv.hpp"
@@ -820,16 +821,49 @@ UNISPHERE_REGISTER_TEST_CASE(CollectLinkCongestion, "stats/collect_link_congesti
 class SetupSybilNodes : public TestCase
 {
 public:
+  /// A set of known Sybil nodes for faster lookup
+  std::unordered_set<NodeIdentifier> sybils;
+  /// Evilness switch (off by default)
+  bool evil = false;
+  /// Signal subscriptions
+  std::list<boost::signals2::connection> subscriptions;
+
   using TestCase::TestCase;
+
+  void preSelection(TestCaseApi &api)
+  {
+    // Prepare a list of all Sybil nodes so they will be able to collude
+    boost::property_tree::ptree args;
+    for (const Partition &p : api.getPartitions()) {
+      for (const Partition::Node &n : p.nodes) {
+        if (n.property<int>("sybil"))
+          args.add("sybils.node", n.contact.nodeId().hex());
+      }
+    }
+
+    // Use global arguments to avoid sending the same list once for each node
+    api.setGlobalArguments(args);
+  }
 
   SelectedPartition::Node selectNode(const Partition &partition,
                                      const Partition::Node &node,
                                      TestCaseApi &api)
   {
+    // Only run this test case on nodes marked as Sybil
     if (!node.property<int>("sybil"))
       return SelectedPartition::Node();
 
     return SelectedPartition::Node{ node.contact.nodeId() };
+  }
+
+  void preRunNodes(TestCaseApi &api,
+                   const boost::property_tree::ptree &args)
+  {
+    for (const auto &p : args.get_child("sybils", boost::property_tree::ptree())) {
+      sybils.insert(NodeIdentifier(p.second.data(), NodeIdentifier::Format::Hex));
+    }
+
+    BOOST_LOG(logger()) << "I know of " << sybils.size() << " Sybil nodes.";
   }
 
   /**
@@ -839,8 +873,35 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    BOOST_LOG(logger()) << "I am a Sybil node: " << node->name;
-    finish(api);
+    BOOST_LOG(logger()) << "I am an evil Sybil node: " << node->name;
+
+    subscriptions << node->router->nameDb().signalImportRecord.connect(
+      [this](NameRecordPtr record) -> bool {
+        // Drop any record that doesn't belong to another Sybil node
+        return evil ? sybils.count(record->nodeId) != 0 : true;
+      }
+    );
+  }
+
+  void signalReceived(TestCaseApi &api,
+                      const std::string &signal)
+  {
+    if (signal == "finish") {
+      // Finish the test case
+      for (auto &c : subscriptions)
+        c.disconnect();
+      subscriptions.clear();
+
+      finish(api);
+    } else if (signal == "evil") {
+      // Instruct Sybil nodes to become evil
+      BOOST_LOG(logger()) << "Sybil nodes becoming evil.";
+      evil = true;
+    } else if (signal == "nice") {
+      // Instruct Sybil nodes to become nice
+      BOOST_LOG(logger()) << "Sybil nodes becoming nice.";
+      evil = false;
+    }
   }
 };
 
