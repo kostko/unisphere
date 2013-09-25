@@ -346,24 +346,23 @@ void ControllerScenarioApi::signal(TestCasePtr test,
     return;
 
   ScenarioPtr scenario = m_controller.m_scenario;
-  test->signalFinished.connect(boost::bind(&Scenario::resume, scenario));
-
   BOOST_LOG(m_controller.m_logger) << "Sending signal '" << signal << "' to test '" << test->getName() << "'.";
 
   Protocol::SignalTestRequest request;
   request.set_test_id(test->getId());
   request.set_signal(signal);
 
+  auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
   for (const Partition &partition : m_controller.m_partitions) {
     NodeIdentifier slaveId = partition.slave.nodeId();
-    m_controller.q.rpc().call<Protocol::SignalTestRequest, Protocol::SignalTestResponse>(
+    group->call<Protocol::SignalTestRequest, Protocol::SignalTestResponse>(
       partition.slave.nodeId(),
       "Testbed.Simulation.SignalTest",
       request,
       nullptr,
       nullptr,
       m_controller.q.rpc().options()
-                          .setTimeout(5)
+                          .setTimeout(30)
                           .setChannelOptions(
                             MessageOptions().setContact(partition.slave)
                           )
@@ -827,8 +826,24 @@ void Controller::run()
         BOOST_LOG_SEV(d->m_logger, log::normal) << "Partitions assigned. Starting scenario '" << d->m_scenario->name() << "'.";
         d->m_simulationStartTime = boost::posix_time::microsec_clock::universal_time();
         d->m_scenario->signalFinished.connect([this]() {
-          BOOST_LOG(d->m_logger) << "Scenario completed.";
-          finishSimulation();
+          RecursiveUniqueLock lock(d->m_mutex);
+          if (d->m_scenarioApi->m_runningCases.empty()) {
+            BOOST_LOG(d->m_logger) << "Scenario completed.";
+            finishSimulation();
+          } else {
+            BOOST_LOG(d->m_logger) << "Scenario completed, waiting for remaining test cases.";
+
+            // Wait for all test cases to complete
+            for (const auto &p : d->m_scenarioApi->m_runningCases) {
+              p.second.testCase->signalFinished.connect([this]() {
+                RecursiveUniqueLock lock(d->m_mutex);
+                if (d->m_scenarioApi->m_runningCases.empty()) {
+                  BOOST_LOG(d->m_logger) << "Remaining tests completed.";
+                  finishSimulation();
+                }
+              });
+            }
+          }
         });
         d->m_scenario->start(*d->m_scenarioApi);
       });
