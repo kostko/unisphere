@@ -104,11 +104,12 @@ UNISPHERE_SCENARIO(SybilNodes)
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
-  api.wait(30);
+  api.wait(60);
+
   // Perform some sanity checks
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
   
-  api.wait(300);
+  api.wait(60);
 
   // Stop collecting performance data
   api.signal(perfCollector, "finish");
