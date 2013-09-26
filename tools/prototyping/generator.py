@@ -23,5 +23,5 @@ for size in (16, 32, 48, 64, 80, 96, 112, 128, 144, 160):
     dict(src="honest", dst="foreign", count=int(math.log(n))**2),
   ]
 
-  G = topologies.generate_topology(communities, connections, 0.0, 0.0)
+  G = topologies.generate_topology(communities, connections, 0.0, 0.0, simulation=False)
   nx.write_graphml(G, "sybil%d.graphml" % size)

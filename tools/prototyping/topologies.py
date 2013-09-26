@@ -3,7 +3,7 @@ import random
 import hashlib
 import networkx as nx
 
-def generate_topology(communities, connections, n_err, Psl):
+def generate_topology(communities, connections, n_err, Psl, simulation=True):
   trust_topology = nx.Graph()
 
   # number of all nodes
@@ -46,24 +46,25 @@ def generate_topology(communities, connections, n_err, Psl):
 
     data['sybil'] = int(data.get('sybil', False))
     data['label'] = str(node)
-    data['name'] = nid
-    data['group'] = group
-    data['group_bits'] = len(group)
-    data['vicinity_size'] = int(math.sqrt(n_hat * math.log(n_hat)))
-    data['sg_degree'] = int(math.log(n_hat))
-    data['cn_size'] = int(math.log(n_hat))
+    if simulation:
+      data['name'] = nid
+      data['group'] = group
+      data['group_bits'] = len(group)
+      data['vicinity_size'] = int(math.sqrt(n_hat * math.log(n_hat)))
+      data['sg_degree'] = int(math.log(n_hat))
+      data['cn_size'] = int(math.log(n_hat))
 
-    is_landmark = False
-    if data['sybil']:
-      is_landmark = random.random() < Psl
-    else:
-      is_landmark = random.random() < math.sqrt(math.log(n_hat) / n_hat)
+      is_landmark = False
+      if data['sybil']:
+        is_landmark = random.random() < Psl
+      else:
+        is_landmark = random.random() < math.sqrt(math.log(n_hat) / n_hat)
 
-    if is_landmark:
-      data['landmark'] = 1
-      landmarks.append(node)
-    else:
-      data['landmark'] = 0
+      if is_landmark:
+        data['landmark'] = 1
+        landmarks.append(node)
+      else:
+        data['landmark'] = 0
 
     trust_topology.add_node(node, data)
 
