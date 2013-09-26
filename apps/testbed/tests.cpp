@@ -143,6 +143,9 @@ public:
     properties.property("group", boost::get(Tags::NodeGroup(), graph.graph()));
     properties.property("is_foreign", boost::get(Tags::LinkIsForeign(), graph.graph()));
     properties.property("is_reverse", boost::get(Tags::LinkIsReverse(), graph.graph()));
+
+    // Include all node metadata from input topology in the output graph
+    mergeInputNodeMetadata<Graph, Tags::NodeName>(api, graph, properties);
     
     outputGraphDataset(graph, properties, api.getOutputFilename("sg-topo", "graphml"));
   }
@@ -195,6 +198,9 @@ public:
     properties.property("is_landmark", boost::get(Tags::NodeIsLandmark(), graph.graph()));
     properties.property("state", boost::get(Tags::NodeStateSize(), graph.graph()));
     properties.property("vport", boost::get(Tags::LinkVportId(), graph.graph()));
+
+    // Include all node metadata from input topology in the output graph
+    mergeInputNodeMetadata<Graph, Tags::NodeName>(api, graph, properties);
     
     outputGraphDataset(graph, properties, api.getOutputFilename("rt-topo", "graphml"));
   }
