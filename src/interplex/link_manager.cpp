@@ -200,6 +200,10 @@ void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet
   LinkPtr link = get(linklet->peerContact());
+  if (!link) {
+    linklet->close();
+    return;
+  }
   
   try {
     link->addLinklet(linklet);
