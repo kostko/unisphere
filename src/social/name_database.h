@@ -131,6 +131,8 @@ public:
     size_t recordUpdates = 0;
     /// Number of record expirations
     size_t recordExpirations = 0;
+    /// Number of dropped records
+    size_t recordDrops = 0;
     /// Number of local refreshes
     size_t localRefreshes = 0;
   };

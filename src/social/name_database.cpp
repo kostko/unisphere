@@ -209,19 +209,25 @@ void NameDatabasePrivate::store(NameRecordPtr record)
   BOOST_ASSERT(record->type == NameRecord::Type::SloppyGroup);
 
   // Prevent storage of null node identifiers or null L-R addresses
-  if (record->nodeId.isNull() || record->addresses.empty())
+  if (record->nodeId.isNull() || record->addresses.empty()) {
+    m_statistics.recordDrops++;
     return;
+  }
 
   // Ignore foreign-originated records for local node
-  if (record->nodeId == m_localId)
+  if (record->nodeId == m_localId) {
+    m_statistics.recordDrops++;
     return;
+  }
 
   // Set last update timestamp
   record->lastUpdate = boost::posix_time::microsec_clock::universal_time();
 
   // Call hooks that can filter the record
-  if (!q.signalImportRecord(record))
+  if (!q.signalImportRecord(record)) {
+    m_statistics.recordDrops++;
     return;
+  }
 
   RecursiveUniqueLock lock(m_mutex);
   auto it = m_nameDb.find(boost::make_tuple(record->nodeId, NameRecord::Type::SloppyGroup));

@@ -68,6 +68,8 @@ public:
   struct Statistics {
     /// Number of transmitted records
     size_t recordXmits = 0;
+    /// Number of received records
+    size_t recordRcvd = 0;
   };
 
   /**

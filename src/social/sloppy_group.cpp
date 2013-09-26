@@ -466,17 +466,19 @@ void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const Node
     // Export record to the whole peer view
     // TODO: Should we unify this?
     for (const SloppyPeer &peer : getLocalPeerView()) {
-      if (record->receivedPeerId != peer.nodeId)
+      if (record->receivedPeerId != peer.nodeId && record->nodeId != peer.nodeId)
         nibExportQueueRecord(peer, announce);
     }
     for (const SloppyPeer &peer : m_peerViewForeign) {
-      if (record->receivedPeerId != peer.nodeId)
+      if (record->receivedPeerId != peer.nodeId && record->nodeId != peer.nodeId)
         nibExportQueueRecord(peer, announce);
     }
     for (const SloppyPeer &peer : m_peerViewReverse) {
-      if (record->receivedPeerId != peer.nodeId)
+      if (record->receivedPeerId != peer.nodeId && record->nodeId != peer.nodeId)
         nibExportQueueRecord(peer, announce);
     }
+  } else if (record->nodeId == peerId) {
+    return;
   } else {
     SloppyPeer peer(peerId, LandmarkAddress(), 0);
     auto it = m_peerViewForeign.find(peerId);
@@ -510,11 +512,18 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
       PeerView localPeerView = getLocalPeerView();
       if (localPeerView.find(msg.sourceNodeId()) == localPeerView.end()) {
         if (m_peerViewReverse.find(msg.sourceNodeId()) == m_peerViewReverse.end()) {
-          // TODO
+          // TODO: Only accept a limited number of peers
+          // TODO: Expire obsolete reverse links (reverse links are ignored in update times)
+          m_peerViewReverse.insert(SloppyPeer(msg.sourceNodeId(), msg.sourceAddress(), msg.hopDistance()));
+
+          BOOST_LOG_SEV(m_logger, log::debug) << "Triggering reverse-directed full NDB update to " << msg.sourceNodeId().hex() << ".";
+          m_nameDb.fullUpdate(msg.sourceNodeId());
         }
       }
 
       Protocol::AggregateNameAnnounce announces = message_cast<Protocol::AggregateNameAnnounce>(msg);
+      m_statistics.recordRcvd += announces.announces_size();
+
       for (int i = 0; i < announces.announces_size(); i++) {
         const Protocol::NameAnnounce &announce = announces.announces(i);
 
@@ -522,7 +531,7 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
         NodeIdentifier originId(announce.origin_id(), NodeIdentifier::Format::Raw);
         if (originId.prefix(m_groupPrefixLength) != m_groupPrefix) {
           BOOST_LOG_SEV(m_logger, log::warning) << "Dropping name record (origin not in our SG).";
-          return;
+          continue;
         }
 
         NameRecordPtr record = boost::make_shared<NameRecord>(m_router.context(),

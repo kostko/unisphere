@@ -551,6 +551,7 @@ public:
     bool sybilMode = argument<bool>("sybil_mode", false);
     bool consistent = true;
     size_t checkedRecords = 0;
+    size_t inconsistentRecords = 0;
     for (const auto &record : ds_groups) {
       std::string nodeStringId = boost::get<std::string>(record.at("node_id"));
       NodeIdentifier nodeId(nodeStringId, NodeIdentifier::Format::Hex);
@@ -581,6 +582,7 @@ public:
             << siblingStringId << " (" << siblingNode.name << ") misses record for "
             << nodeStringId << " (" << node.name << ").";
           consistent = false;
+          inconsistentRecords++;
         }
       }
     }
@@ -589,6 +591,20 @@ public:
       BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent after checking " << checkedRecords << " records.";
     else
       BOOST_LOG(logger()) << "NDB consistent after checking " << checkedRecords << " records.";
+
+    // Save the fraction of inconsistent records
+    DataSet<> ds_report;
+    ds_report.add({
+      { "checked",  checkedRecords },
+      { "failed",   inconsistentRecords },
+      { "ratio",    static_cast<double>(checkedRecords - inconsistentRecords) / checkedRecords }
+    });
+
+    outputCsvDataset(
+      ds_report,
+      { "checked", "failed", "ratio" },
+      api.getOutputFilename("report", "csv")
+    );
   }
 };
 
@@ -625,8 +641,10 @@ public:
       { "ndb_inserts",  statsNdb.recordInsertions },
       { "ndb_updates",  statsNdb.recordUpdates },
       { "ndb_exp",      statsNdb.recordExpirations },
+      { "ndb_drops",    statsNdb.recordDrops },
       { "ndb_refresh",  statsNdb.localRefreshes },
       { "sg_msgs",      statsSg.recordXmits },
+      { "sg_msgs_r",    statsSg.recordRcvd },
       { "lm_sent",      statsLink.global.msgXmits },
       { "lm_rcvd",      statsLink.global.msgRcvd },
       // Local state complexity
@@ -666,8 +684,8 @@ public:
       {
         "ts", "node_id",
         "rt_msgs", "rt_updates", "rt_exp",
-        "ndb_inserts", "ndb_updates", "ndb_exp", "ndb_refresh",
-        "sg_msgs",
+        "ndb_inserts", "ndb_updates", "ndb_exp", "ndb_drops", "ndb_refresh",
+        "sg_msgs", "sg_msgs_r",
         "rt_s_all", "rt_s_act", "rt_s_vic",
         "ndb_s_all", "ndb_s_act", "ndb_s_cac"
       },
