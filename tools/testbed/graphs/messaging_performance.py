@@ -101,6 +101,6 @@ class MessagingPerformance(base.PlotterBase):
     ax.set_xlim(0, min_max_ts)
     ax.grid()
 
-    legend = ax.legend(loc='upper right', fontsize='small', fancybox=True)
+    legend = ax.legend(loc='upper right', fontsize='small')
     legend.get_frame().set_alpha(0.8)
     fig.savefig(self.get_figure_filename())

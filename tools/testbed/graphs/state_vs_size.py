@@ -18,6 +18,50 @@
 #
 
 from . import base
+from .. import exceptions
+
+import matplotlib.pyplot as plt
+import numpy
+import scipy.optimize
 
 class StateVsSize(base.PlotterBase):
-  pass
+  def plot(self):
+    fig, ax = plt.subplots()
+
+    values = {}
+    for run in self.runs:
+      # Load dataset
+      data = run.get_dataset("stats-performance-raw-*.csv")
+
+      # Extract values
+      try:
+        data = data[self.graph.settings['state']]
+      except KeyError:
+        raise exceptions.ImproperlyConfigured("State vs. size plot requires the 'state' tag to be set!")
+
+      try:
+        values[run.orig.settings['size']] = (numpy.average(data), numpy.std(data))
+      except KeyError:
+        raise exceptions.ImproperlyConfigured("State vs. size plot requires the 'size' tag to be set!")
+
+    X = sorted(values.keys())
+    Y = [values[x][0] for x in X]
+    Yerr = [values[x][1] for x in X]
+
+    ax.errorbar(X, Y, Yerr, label='Measurements')
+
+    # Fit a function over the measurements
+    fit_function = self.graph.settings.get('fit', None)
+    if fit_function is not None:
+      popt, pcov = scipy.optimize.curve_fit(fit_function, X, Y)
+      Fx = numpy.linspace(min(X), max(X) + 2*(X[-1] - X[-2]), 100)
+      Fy = [fit_function(x, *popt) for x in Fx]
+      ax.plot(Fx, Fy, linestyle='--', color='black', label=self.graph.settings.get('fit_label', 'Fit'))
+
+    ax.set_xlabel('Topology size [nodes]')
+    ax.set_ylabel('State')
+    ax.grid()
+
+    legend = ax.legend(loc='lower right')
+    legend.get_frame().set_alpha(0.8)
+    fig.savefig(self.get_figure_filename())
