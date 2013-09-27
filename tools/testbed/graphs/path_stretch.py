@@ -17,8 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .link_congestion import *
-from .messaging_performance import *
-from .path_stretch import *
-from .state_distribution import *
-from .state_vs_size import *
+from . import base
+
+class PathStretch(base.PlotterBase):
+  pass

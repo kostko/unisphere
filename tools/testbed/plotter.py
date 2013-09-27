@@ -74,6 +74,8 @@ class Plotter(object):
           continue
 
         logger.info("Plotting graph '%s' from %d runs..." % (graph.name, len(graph.runs)))
+        for key, value in graph.settings.items():
+          logger.info("  [%s] = %s" % (key, value))
         try:
           graph.plot(run_id, catalog.get_run_descriptors(graph.runs), settings)
         except KeyboardInterrupt:

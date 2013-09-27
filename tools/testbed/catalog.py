@@ -26,14 +26,13 @@ import logging
 logger = logging.getLogger('testbed.catalog')
 
 class RunDescriptor(object):
-  def __init__(self, name, settings):
+  def __init__(self, settings):
     """
     Class constructor.
 
-    :param name: Run name
     :param settings: A dictionary of run settings
     """
-    self.name = name
+    self.name = settings['name']
     self.settings = settings.copy()
     del self.settings['name']
 
@@ -59,17 +58,19 @@ class RunDescriptor(object):
       raise
 
 class GraphDescriptor(object):
-  def __init__(self, name, plotter, runs):
+  def __init__(self, settings):
     """
     Class constructor.
 
-    :param name: Run name
-    :param plotter: A valid plotter class
-    :param runs: Run dependencies
+    :param settings: A dictionary of graph settings
     """
-    self.name = name
-    self.plotter = plotter
-    self.runs = set(runs)
+    self.name = settings['name']
+    self.plotter = settings['plotter']
+    self.runs = set(settings['runs'])
+    self.settings = settings.copy()
+    del self.settings['name']
+    del self.settings['plotter']
+    del self.settings['runs']
 
   def plot(self, run_id, runs, settings):
     """
@@ -108,7 +109,7 @@ class Catalog(object):
     """
     # Iterate over configured runs
     for run in settings.RUNS:
-      self._runs[run['name']] = RunDescriptor(run['name'], run)
+      self._runs[run['name']] = RunDescriptor(run)
 
     # Iterate over configured graphs
     for graph in settings.GRAPHS:
@@ -116,7 +117,7 @@ class Catalog(object):
         raise exceptions.ImproperlyConfigured("Graph plotter for '%s' is not a testbed.graphs.base.PlotterBase subclass!" %
           (graph['name']))
 
-      self._graphs[graph['name']] = GraphDescriptor(graph['name'], graph['plotter'], graph['runs'])
+      self._graphs[graph['name']] = GraphDescriptor(graph)
 
     logger.info("Loaded %d run and %d graph descriptors." % (len(self._runs), len(self._graphs)))
 
