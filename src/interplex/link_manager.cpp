@@ -32,10 +32,6 @@ LinkManager::LinkManager(Context &context, const NodeIdentifier &nodeId)
     m_logger(logging::keywords::channel = "link_manager"),
     m_nodeId(nodeId),
     m_linkletFactory(*this)
-#ifdef UNISPHERE_DEBUG
-    ,
-    m_measure(nodeId.as(NodeIdentifier::Format::Hex))
-#endif
 {
 }
 

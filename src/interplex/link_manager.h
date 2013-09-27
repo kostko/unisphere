@@ -25,10 +25,6 @@
 #include "interplex/linklet_factory.h"
 #include "interplex/message.h"
 
-#ifdef UNISPHERE_DEBUG
-#include "measure/measure.h"
-#endif
-
 #include <unordered_map>
 #include <boost/signals2/signal.hpp>
 
@@ -146,13 +142,6 @@ public:
    * Returns the local address.
    */
   inline const Address &getLocalAddress() const { return m_localAddress; }
-  
-#ifdef UNISPHERE_DEBUG
-  /**
-   * Returns the measure instance that can be used for storing measurements.
-   */
-  inline Measure &getMeasure() { return m_measure; }
-#endif
 
   /**
    * Invokes registered peer verification hooks (signalVerifyPeer) and
@@ -230,26 +219,10 @@ private:
   /// Local outgoing address
   Address m_localAddress;
 
-#ifdef UNISPHERE_DEBUG
-  /// Measurement instance
-  Measure m_measure;
-#endif
-
   /// Statistics
   Statistics m_statistics;
 };
   
 }
-
-// Logging and measurement macros
-#ifdef UNISPHERE_DEBUG
-#define UNISPHERE_MEASURE_ADD(manager, metric, value) (manager).getMeasure().add(metric, value)
-#define UNISPHERE_MEASURE_INC(manager, metric) (manager).getMeasure().increment(metric)
-#define UNISPHERE_MEASURE_SET(manager, metric, value) (manager).getMeasure().set(metric, value)
-#else
-#define UNISPHERE_MEASURE_ADD(manager, metric, value)
-#define UNISPHERE_MEASURE_INC(manager, metric)
-#define UNISPHERE_MEASURE_SET(manager, metric, value)
-#endif
 
 #endif
