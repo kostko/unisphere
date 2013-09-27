@@ -24,11 +24,11 @@ import pandas
 class RunOutputDescriptor(object):
   def __init__(self, run_id, run, settings):
     self.run_id = run_id
-    self.run = run
+    self.orig = run
     self.settings = settings
 
   def get_dataset(self, ds_expression):
-    ds_path = os.path.join(self.settings.OUTPUT_DIRECTORY, self.run_id, self.run.name, ds_expression)
+    ds_path = os.path.join(self.settings.OUTPUT_DIRECTORY, self.run_id, self.orig.name, ds_expression)
     candidates = []
     for ds in glob.glob(ds_path):
       if not os.path.isfile(ds):
@@ -39,8 +39,22 @@ class RunOutputDescriptor(object):
     return pandas.read_csv(sorted(candidates, reverse=True)[0], sep=None, engine='python')
 
 class PlotterBase(object):
-  def __init__(self, run_id, runs, settings):
+  def __init__(self, graph, run_id, runs, settings):
+    self.graph = graph
+    self.run_id = run_id
     self.runs = [RunOutputDescriptor(run_id, run, settings) for run in runs]
+    self.settings = settings
+
+  def get_figure_filename(self, suffix=None):
+    fname = self.graph.name
+    if suffix is not None:
+      fname = "%s-%s" % (fname, suffix)
+
+    return os.path.join(
+      self.settings.OUTPUT_DIRECTORY,
+      self.run_id,
+      "graph-%s.%s" % (fname, self.settings.OUTPUT_GRAPH_FORMAT)
+    )
 
   def plot(self):
     raise NotImplementedError

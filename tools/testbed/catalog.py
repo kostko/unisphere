@@ -81,7 +81,7 @@ class GraphDescriptor(object):
     """
     try:
       # Create a new plotter instance
-      plotter = self.plotter(run_id, runs, settings)
+      plotter = self.plotter(self, run_id, runs, settings)
 
       # Plot the graph
       plotter.plot()
