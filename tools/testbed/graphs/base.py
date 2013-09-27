@@ -17,19 +17,30 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-class RunOutputDescriptor(object):
-  def __init__(self, run):
-    pass
+import glob
+import os
+import pandas
 
-  def exists(self):
-    pass
+class RunOutputDescriptor(object):
+  def __init__(self, run_id, run, settings):
+    self.run_id = run_id
+    self.run = run
+    self.settings = settings
 
   def get_dataset(self, ds_expression):
-    pass
+    ds_path = os.path.join(self.settings.OUTPUT_DIRECTORY, self.run_id, self.run.name, ds_expression)
+    candidates = []
+    for ds in glob.glob(ds_path):
+      if not os.path.isfile(ds):
+        continue
+
+      candidates.append(ds)
+
+    return pandas.read_csv(sorted(candidates, reverse=True)[0], sep=None, engine='python')
 
 class PlotterBase(object):
-  def __init__(self, runs):
-    self.runs = runs
+  def __init__(self, run_id, runs, settings):
+    self.runs = [RunOutputDescriptor(run_id, run, settings) for run in runs]
 
   def plot(self):
-    pass
+    raise NotImplementedError

@@ -25,10 +25,10 @@ class ClusterRunnerBase(object):
     self.cluster_cfg = cluster_cfg
     self.settings = settings
 
-  def setup(self, run):
+  def setup(self, run, run_id):
     raise NotImplementedError
 
-  def run_scenario(self, run):
+  def run_scenario(self, run, run_id):
     raise NotImplementedError
 
   def shutdown(self):

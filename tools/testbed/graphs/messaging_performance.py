@@ -20,4 +20,7 @@
 from . import base
 
 class MessagingPerformance(base.PlotterBase):
-  pass
+  def plot(self):
+    for run in self.runs:
+      ds = run.get_dataset("stats-collect_performance-raw-*.csv")
+      # TODO: Transfer graph drawing implementation from the old draw-graph.py

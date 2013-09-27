@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-class ConfigurationError(Exception):
+class ImproperlyConfigured(Exception):
   pass
 
 class ScenarioRunFailed(Exception):

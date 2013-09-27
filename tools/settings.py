@@ -29,8 +29,8 @@ RUNS = [
 # Configure graph generation
 GRAPHS = [
   # use outputs from runs run2 and run3 to draw graphs.MessagingPerformance graph
-  dict(name="messaging_performance", plotter=graphs.MessagingPerformance, runs=["run2", "run3"]),
-  dict(name="link_congestion", plotter=graphs.LinkCongestion, runs=["run2", "run3"]),
+  dict(name="messaging_performance", plotter=graphs.MessagingPerformance, runs=["run1", "run2"]),
+  dict(name="link_congestion", plotter=graphs.LinkCongestion, runs=["run1", "run2"]),
 ]
 
 # Configure logging

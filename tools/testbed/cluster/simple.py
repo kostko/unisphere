@@ -24,6 +24,7 @@ import hashlib
 import logging
 import os
 import resource
+import shutil
 import subprocess
 import time
 
@@ -44,21 +45,28 @@ class SimpleCluster(base.ClusterRunnerBase):
     # Enable the production of core dumps
     resource.setrlimit(resource.RLIMIT_CORE, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
 
-  def setup(self, run):
+  def setup(self, run, run_id):
     try:
       # Generate identifier for the cluster master
       self.master_id = hashlib.sha1(os.urandom(32)).hexdigest()
 
+      # Prepare output directory
+      out_dir = os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name)
+      if os.path.exists(out_dir):
+        logger.warning("Removing previous output directory '%s'..." % run.name)
+        shutil.rmtree(out_dir)
+
+      os.makedirs(out_dir)
+
+      # Store run identifier
+      with open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "version"), 'w') as f:
+        f.write("%s\n" % run_id)
+
       # Open files for logging execution
       logger.info("Opening log files to monitor scenario execution...")
-      self.log_slave = open(os.path.join(self.settings.OUTPUT_DIRECTORY, "tb_%s_slave.log" % run.name), 'w')
-      self.log_master = open(os.path.join(self.settings.OUTPUT_DIRECTORY, "tb_%s_master.log" % run.name), 'w')
-      self.log_controller = open(os.path.join(self.settings.OUTPUT_DIRECTORY, "tb_%s_controller.log" % run.name), 'w')
-
-      # Prepare output directory
-      out_dir = os.path.join(self.settings.OUTPUT_DIRECTORY, run.name)
-      if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+      self.log_slave = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_slave.log"), 'w')
+      self.log_master = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_master.log"), 'w')
+      self.log_controller = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_controller.log"), 'w')
 
       # Start cluster master process
       logger.info("Starting master node...")
@@ -109,7 +117,7 @@ class SimpleCluster(base.ClusterRunnerBase):
       logger.error("Error while setting up cluster, aborting!")
       raise
 
-  def run_scenario(self, run):
+  def run_scenario(self, run, run_id):
     if self.master is None or self.slave is None:
       logger.error("Cluster not ready, aborting scenario run.")
       raise exceptions.ScenarioRunFailed
@@ -124,7 +132,7 @@ class SimpleCluster(base.ClusterRunnerBase):
         "--cluster-master-id", self.master_id,
         "--topology", os.path.join(self.settings.DATA_DIRECTORY, run.settings['topology']),
         "--scenario", run.settings['scenario'],
-        "--out-dir", os.path.join(self.settings.OUTPUT_DIRECTORY, run.name),
+        "--out-dir", os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name),
         "--id-gen", run.settings.get('id_gen', 'consistent'),
         "--seed", str(run.settings.get('seed', 1))
       ],
@@ -146,6 +154,9 @@ class SimpleCluster(base.ClusterRunnerBase):
 
     # Terminate everything
     for process in (self.controller, self.slave, self.master):
+      if process is None:
+        continue
+
       try:
         process.kill()
         process.wait()

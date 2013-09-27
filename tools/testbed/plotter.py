@@ -16,3 +16,78 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+from .catalog import catalog
+from . import exceptions
+
+import argparse
+import hashlib
+import importlib
+import logging
+import logging.config
+import os
+import sys
+import traceback
+
+logger = logging.getLogger('testbed.plotter')
+
+class Plotter(object):
+  def run(self, settings):
+    """
+    Scenario runner entry point.
+    """
+    main_parser = argparse.ArgumentParser("plotter")
+    main_parser.add_argument('run_groups', metavar='run_id', type=str, nargs='+',
+                             help='unique run identifier')
+    args = main_parser.parse_args()
+
+    # Setup logging to stderr
+    logging.config.dictConfig(settings.LOGGING)
+    logger.info("Testbed root: %s" % settings.TESTBED_ROOT)
+
+    logger.info("Loading run catalog...")
+    catalog.load(settings)
+
+    logger.info("Processing %d run groups..." % len(args.run_groups))
+    for run_id in args.run_groups:
+      logger.info("Processing run group '%s'..." % run_id)
+
+      # Check if the specified run group output exists
+      out_dir = os.path.join(settings.OUTPUT_DIRECTORY, run_id)
+      if not os.path.exists(out_dir):
+        logger.warning("Skipping run group '%s' as no output has been found!" % run_id)
+        continue
+
+      # Find out which runs exist for this run group and process all graphs
+      # with dependencies among these runs
+      runs = set()
+      for run_descriptor in catalog.runs():
+        if not os.path.isdir(os.path.join(out_dir, run_descriptor.name)):
+          logger.warning("Run '%s' is missing from run group '%s'." % (run_descriptor.name, run_id))
+          continue
+
+        runs.add(run_descriptor.name)
+
+      for graph in catalog.graphs():
+        if graph.runs.intersection(runs) != graph.runs:
+          logger.warning("Skipping graph '%s' because of unsatisfied run dependencies." % graph.name)
+          continue
+
+        logger.info("Plotting graph '%s' from %d runs..." % (graph.name, len(graph.runs)))
+        try:
+          graph.plot(run_id, catalog.get_run_descriptors(graph.runs), settings)
+        except KeyboardInterrupt:
+          logger.info("Abort requested by user.")
+          return
+        except NotImplementedError:
+          logger.warning("Skipping non-implemented graph plotter '%s.%s'." % 
+            (graph.plotter.__module__, graph.plotter.__name__))
+          continue
+        except:
+          logger.error("Aborting due to error.")
+          logger.error(traceback.format_exc())
+          return
+
+        logger.info("Graph '%s' done." % graph.name)
+
+      logger.info("Run group '%s' done." % run_id)

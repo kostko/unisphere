@@ -21,10 +21,13 @@ from .catalog import catalog
 from . import exceptions
 
 import argparse
+import hashlib
 import importlib
 import logging
 import logging.config
+import os
 import sys
+import traceback
 
 logger = logging.getLogger('testbed.runner')
 
@@ -51,24 +54,31 @@ class Runner(object):
       module = importlib.import_module(module)
       cluster = getattr(module, attr)(cluster_cfg, settings)
     except (ImportError, AttributeError):
-      raise exceptions.ConfigurationError("Error importing cluster runner '%s'!" % cluster_module)
+      raise exceptions.ImproperlyConfigured("Error importing cluster runner '%s'!" % cluster_module)
 
     logger.info("Loading run catalog...")
     catalog.load(settings)
 
-    logger.info("Executing all runs...")
-    for descriptor in catalog:
+    # Generate unique run identifier so that we can be sure that all runs have the same version
+    run_id = hashlib.md5(os.urandom(32)).hexdigest()[:5]
+
+    logger.info("Executing all runs (run_id=%s)..." % run_id)
+    for descriptor in catalog.runs():
       logger.info("Starting run '%s'" % descriptor.name)
       for key, value in descriptor.settings.items():
         logger.info("  [%s] = %s" % (key, value))
 
       try:
-        descriptor.run(cluster)
+        descriptor.run(cluster, run_id)
       except KeyboardInterrupt:
         logger.info("Abort requested by user.")
         return
+      except exceptions.ScenarioRunFailed:
+        logger.error("Aborting due to scenario run error.")
+        return
       except:
-        logger.info("Aborting due to error.")
+        logger.error("Aborting due to error.")
+        logger.error(traceback.format_exc())
         return
 
       logger.info("Run '%s' completed." % descriptor.name)
