@@ -25,7 +25,13 @@ import numpy
 import scipy.optimize
 
 class StateVsSize(base.PlotterBase):
+  """
+  Draws state growth in relation to topology size.
+  """
   def plot(self):
+    """
+    Plots the state growth.
+    """
     fig, ax = plt.subplots()
 
     values = {}
@@ -50,7 +56,7 @@ class StateVsSize(base.PlotterBase):
 
     ax.errorbar(X, Y, Yerr, label='Measurements')
 
-    # Fit a function over the measurements
+    # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
     if fit_function is not None:
       popt, pcov = scipy.optimize.curve_fit(fit_function, X, Y)

@@ -25,7 +25,14 @@ import numpy
 import pandas
 
 class MessagingPerformance(base.PlotterBase):
+  """
+  Draws messaging performance of the USphere protocol.
+  """
   def pre_process(self, data):
+    """
+    Performs pre-processing of the data so that the timeseries is grouped
+    by timestamps and nodes in order to be processed correctly later on.
+    """
     ts_base = min(data['ts'])
     groups = set(data['node_id'].unique())
     data.sort('ts', inplace=True)
@@ -53,6 +60,9 @@ class MessagingPerformance(base.PlotterBase):
     return timestamps, grouped_data
 
   def plot_variable(self, ax, timestamps, grouped_data, variable, color, label):
+    """
+    Plots a timeseries for a variable.
+    """
     # Extract variable from the grouped dataset
     Y = [numpy.average([y[variable] for y in grouped_data[x].values()]) for x in timestamps]
 
@@ -76,6 +86,9 @@ class MessagingPerformance(base.PlotterBase):
     ax.plot(X, Ymean[w:], label=label, color=color, zorder=1)
 
   def plot(self):
+    """
+    Plots the messaging performance.
+    """
     fig, ax = plt.subplots()
 
     min_max_ts = None
