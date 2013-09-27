@@ -17,9 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from .. import exceptions
+
 import glob
+import logging
 import os
 import pandas
+
+logger = logging.getLogger('testbed.graphs.base')
 
 class RunOutputDescriptor(object):
   def __init__(self, run_id, run, settings):
@@ -36,7 +41,13 @@ class RunOutputDescriptor(object):
 
       candidates.append(ds)
 
-    return pandas.read_csv(sorted(candidates, reverse=True)[0], sep=None, engine='python')
+    try:
+      return pandas.read_csv(sorted(candidates, reverse=True)[0], sep=None, engine='python')
+    except IndexError:
+      # Dataset does not exist
+      logger.warning("Dataset matching '%s' does not exist for run '%s'!" %
+        (ds_expression, self.orig.name))
+      raise exceptions.MissingDatasetError
 
 class PlotterBase(object):
   def __init__(self, graph, run_id, runs, settings):

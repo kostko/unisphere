@@ -22,3 +22,6 @@ class ImproperlyConfigured(Exception):
 
 class ScenarioRunFailed(Exception):
   pass
+
+class MissingDatasetError(Exception):
+  pass

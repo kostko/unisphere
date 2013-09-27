@@ -83,6 +83,9 @@ class Plotter(object):
           logger.warning("Skipping non-implemented graph plotter '%s.%s'." % 
             (graph.plotter.__module__, graph.plotter.__name__))
           continue
+        except exceptions.MissingDatasetError:
+          logger.warning("Skipping graph '%s' due to missing dataset." % graph.name)
+          continue
         except:
           logger.error("Aborting due to error.")
           logger.error(traceback.format_exc())
