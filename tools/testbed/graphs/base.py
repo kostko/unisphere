@@ -67,5 +67,28 @@ class PlotterBase(object):
       "graph-%s.%s" % (fname, self.settings.OUTPUT_GRAPH_FORMAT)
     )
 
+  def convert_axes_to_bw(self, ax):
+    """
+    Take each Line2D in the axes, ax, and convert the line style to be 
+    suitable for black and white viewing.
+    """
+    MARKERSIZE = 3
+    COLORMAP = {
+      'b': {'marker': None, 'dash': (None,None)},
+      'g': {'marker': None, 'dash': [5,5]},
+      'r': {'marker': None, 'dash': [5,3,1,3]},
+      'c': {'marker': None, 'dash': [1,3]},
+      'm': {'marker': None, 'dash': [5,2,5,2,5,10]},
+      'y': {'marker': None, 'dash': [5,3,1,2,1,10]},
+      'k': {'marker': 'o', 'dash': (None,None)} #[1,2,1,10]}
+    }
+
+    for line in ax.get_lines():
+      color = line.get_color()
+      line.set_color('black')
+      line.set_dashes(COLORMAP[color]['dash'])
+      line.set_marker(COLORMAP[color]['marker'])
+      line.set_markersize(MARKERSIZE)
+
   def plot(self):
     raise NotImplementedError
