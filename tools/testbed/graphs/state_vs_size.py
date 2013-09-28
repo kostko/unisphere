@@ -64,7 +64,7 @@ class StateVsSize(base.PlotterBase):
       Fy = [fit_function(x, *popt) for x in Fx]
       ax.plot(Fx, Fy, linestyle='--', color='black', label=self.graph.settings.get('fit_label', 'Fit'))
 
-    ax.set_xlabel('Topology size [nodes]')
+    ax.set_xlabel('Topology Size [nodes]')
     ax.set_ylabel('State')
     ax.grid()
 

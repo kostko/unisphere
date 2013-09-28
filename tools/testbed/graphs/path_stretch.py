@@ -45,7 +45,7 @@ class PathStretch(base.PlotterBase):
       ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2,
         label="n = %d" % run.orig.settings.get('size', 0))
 
-    ax.set_xlabel('Path stretch')
+    ax.set_xlabel('Path Stretch')
     ax.set_ylabel('Cummulative Probability')
     ax.grid()
     ax.axis((0.5, None, 0, 1.01))

@@ -50,7 +50,7 @@ class LinkCongestion(base.PlotterBase):
       ax.plot(ecdf_sp.x, ecdf_sp.y, drawstyle='steps', linewidth=2,
         label="SP (n = %d)" % run.orig.settings.get('size', 0))
 
-    ax.set_xlabel('Link congestion')
+    ax.set_xlabel('Link Congestion')
     ax.set_ylabel('Cummulative Probability')
     ax.grid()
     ax.axis((0.5, None, 0, 1.01))
