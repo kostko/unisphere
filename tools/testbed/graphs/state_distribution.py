@@ -19,5 +19,38 @@
 
 from . import base
 
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
 class StateDistribution(base.PlotterBase):
-  pass
+  """
+  Draws routing state distribution over nodes
+  """
+  def plot(self):
+    """
+    Plots the CDF of path stretch.
+    """
+    fig, ax = plt.subplots()
+
+    for run in self.runs:
+      # Load dataset
+      data = run.get_dataset("stats-performance-raw-*.csv")
+
+      # Extract state size information
+      data = data['rt_s_act'] + data['ndb_s_act']
+
+      # Compute ECDF and plot it
+      ecdf = sm.distributions.ECDF(data)
+
+      ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2,
+        label="n = %d" % run.orig.settings.get('size', 0))
+
+    ax.set_xlabel('Node state')
+    ax.set_ylabel('Cummulative Probability')
+    ax.grid()
+    ax.axis((0.5, None, 0, 1.01))
+    self.convert_axes_to_bw(ax)
+
+    legend = ax.legend(loc='lower right')
+    legend.get_frame().set_alpha(0.8)
+    fig.savefig(self.get_figure_filename())

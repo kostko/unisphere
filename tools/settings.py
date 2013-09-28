@@ -32,6 +32,7 @@ GRAPHS = [
   dict(name="messaging_performance", plotter=graphs.MessagingPerformance, runs=["run1", "run2"]),
   dict(name="link_congestion", plotter=graphs.LinkCongestion, runs=["run1", "run2"]),
   dict(name="path_stretch", plotter=graphs.PathStretch, runs=["run1", "run2"]),
+  dict(name="state_distribution", plotter=graphs.StateDistribution, runs=["run1", "run2"]),
   dict(name="ndb_state_vs_size", plotter=graphs.StateVsSize, runs=["run1", "run2"], state="ndb_s_act",
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
   dict(name="rt_state_vs_size", plotter=graphs.StateVsSize, runs=["run1", "run2"], state="rt_s_act",
