@@ -19,5 +19,43 @@
 
 from . import base
 
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
 class LinkCongestion(base.PlotterBase):
-  pass
+  """
+  Draws link load distribution over paths.
+  """
+  def plot(self):
+    """
+    Plots the CDF of link load.
+    """
+    fig, ax = plt.subplots()
+
+    for run in self.runs:
+      # Load datasets
+      data_measure = run.get_dataset("stats-collect_link_congestion-raw-*.csv")
+      data_sp = run.get_dataset("stats-collect_link_congestion-sp-*.csv")
+
+      # Extract link congestion information
+      data_measure = data_measure['msgs']
+      data_sp = data_sp['msgs']
+
+      # Compute ECDF and plot it
+      ecdf_measure = sm.distributions.ECDF(data_measure)
+      ecdf_sp = sm.distributions.ECDF(data_sp)
+
+      ax.plot(ecdf_measure.x, ecdf_measure.y, drawstyle='steps', linewidth=2,
+        label="UP (n = %d)" % run.orig.settings.get('size', 0))
+      ax.plot(ecdf_sp.x, ecdf_sp.y, drawstyle='steps', linewidth=2,
+        label="SP (n = %d)" % run.orig.settings.get('size', 0))
+
+    ax.set_xlabel('Link congestion')
+    ax.set_ylabel('Cummulative Probability')
+    ax.grid()
+    ax.axis((0.5, None, 0, 1.01))
+    self.convert_axes_to_bw(ax)
+
+    legend = ax.legend(loc='lower right')
+    legend.get_frame().set_alpha(0.8)
+    fig.savefig(self.get_figure_filename())
