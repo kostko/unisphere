@@ -26,10 +26,14 @@ def generate_topology(communities, connections, n_err, Psl, simulation=True):
     dst = community_graphs[connection['dst']]
 
     for i in xrange(connection['count']):
-      # select random node in src
-      snode = random.choice(src.nodes())
-      # select random node in dst
-      dnode = random.choice(dst.nodes())
+      while True:
+        # select random node in src
+        snode = random.choice(src.nodes())
+        # select random node in dst
+        dnode = random.choice(dst.nodes())
+        if not trust_topology.has_edge(snode, dnode):
+          break
+
       # create an edge between them in trust topology
       trust_topology.add_edge(snode, dnode)
 
