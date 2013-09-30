@@ -21,6 +21,7 @@ from .catalog import catalog
 from . import exceptions
 
 import argparse
+import fnmatch
 import hashlib
 import importlib
 import logging
@@ -37,7 +38,8 @@ class Runner(object):
     Scenario runner entry point.
     """
     main_parser = argparse.ArgumentParser("runner")
-    # TODO: Command line arguments for selecting runs
+    main_parser.add_argument('--runs', metavar='name', type=str, nargs='+',
+                             help='limit to specific runs')
     args = main_parser.parse_args()
 
     # Setup logging to stderr
@@ -64,6 +66,14 @@ class Runner(object):
 
     logger.info("Executing all runs (run_id=%s)..." % run_id)
     for descriptor in catalog.runs():
+      if args.runs:
+        for pattern in args.runs:
+          if fnmatch.fnmatch(descriptor.name, pattern):
+            break
+        else:
+          logger.info("Skipping run '%s'." % descriptor.name)
+          continue
+
       logger.info("Starting run '%s'" % descriptor.name)
       for key, value in descriptor.settings.items():
         logger.info("  [%s] = %s" % (key, value))
