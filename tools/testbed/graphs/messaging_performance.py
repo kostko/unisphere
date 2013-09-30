@@ -91,6 +91,9 @@ class MessagingPerformance(base.PlotterBase):
     """
     fig, ax = plt.subplots()
 
+    # Determine the label attribute name
+    label_attribute = self.graph.settings.get('label_attribute', 'size')
+
     min_max_ts = None
     for i, run in enumerate(self.runs):
       # Load dataset
@@ -101,9 +104,9 @@ class MessagingPerformance(base.PlotterBase):
 
       # Plot variables
       self.plot_variable(ax, timestamps, grouped_data, 'sg_msgs', mpl.cm.winter(float(i) / len(self.runs)),
-        'SG msgs (n = %d)' % run.orig.settings.get('size', 0))
+        'SG msgs (%s = %d)' % (label_attribute, run.orig.settings.get(label_attribute, 0)))
       self.plot_variable(ax, timestamps, grouped_data, 'rt_msgs', mpl.cm.autumn(float(i) / len(self.runs)),
-        'RT msgs (n = %d)' % run.orig.settings.get('size', 0))
+        'RT msgs (%s = %d)' % (label_attribute, run.orig.settings.get(label_attribute, 0)))
 
       # Compute the minimum of all maximum timestamps
       if min_max_ts is None or timestamps[-1] < min_max_ts:
@@ -114,6 +117,8 @@ class MessagingPerformance(base.PlotterBase):
     ax.set_xlim(0, min_max_ts)
     ax.grid()
 
-    legend = ax.legend(loc='upper right', fontsize='small')
-    legend.get_frame().set_alpha(0.8)
+    if self.graph.settings.get('legend', True):
+      legend = ax.legend(loc='upper right', fontsize='small')
+      legend.get_frame().set_alpha(0.8)
+
     fig.savefig(self.get_figure_filename())
