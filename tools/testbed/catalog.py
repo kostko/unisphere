@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .graphs import base as graphs_base
 from .topologies import generator
 from . import exceptions
 
@@ -176,10 +175,6 @@ class Catalog(object):
         graph['plotter'] = getattr(module, attr)
       except (ImportError, AttributeError):
         raise exceptions.ImproperlyConfigured("Error importing plotter module '%s'!" % plotter_module)
-
-      if not issubclass(graph['plotter'], graphs_base.PlotterBase):
-        raise exceptions.ImproperlyConfigured("Graph plotter for '%s' is not a testbed.graphs.base.PlotterBase subclass!" %
-          (graph['name']))
 
       self._graphs[graph['name']] = GraphDescriptor(graph)
 
