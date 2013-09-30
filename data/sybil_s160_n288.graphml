@@ -1,0 +1,2148 @@
+<?xml version="1.0" encoding="utf-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key attr.name="label" attr.type="string" for="node" id="d2" />
+  <key attr.name="community" attr.type="string" for="node" id="d1" />
+  <key attr.name="sybil" attr.type="int" for="node" id="d0" />
+  <graph edgedefault="undirected">
+    <node id="sybil37">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil37</data>
+    </node>
+    <node id="sybil36">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil36</data>
+    </node>
+    <node id="sybil35">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil35</data>
+    </node>
+    <node id="sybil34">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil34</data>
+    </node>
+    <node id="sybil33">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil33</data>
+    </node>
+    <node id="sybil32">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil32</data>
+    </node>
+    <node id="sybil31">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil31</data>
+    </node>
+    <node id="sybil30">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil30</data>
+    </node>
+    <node id="sybil39">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil39</data>
+    </node>
+    <node id="sybil38">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil38</data>
+    </node>
+    <node id="sybil5">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil5</data>
+    </node>
+    <node id="sybil4">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil4</data>
+    </node>
+    <node id="sybil7">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil7</data>
+    </node>
+    <node id="sybil6">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil6</data>
+    </node>
+    <node id="sybil1">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil1</data>
+    </node>
+    <node id="sybil0">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil0</data>
+    </node>
+    <node id="sybil3">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil3</data>
+    </node>
+    <node id="sybil2">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil2</data>
+    </node>
+    <node id="sybil9">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil9</data>
+    </node>
+    <node id="sybil8">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil8</data>
+    </node>
+    <node id="honest41">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest41</data>
+    </node>
+    <node id="foreign27">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign27</data>
+    </node>
+    <node id="foreign26">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign26</data>
+    </node>
+    <node id="foreign25">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign25</data>
+    </node>
+    <node id="foreign24">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign24</data>
+    </node>
+    <node id="foreign23">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign23</data>
+    </node>
+    <node id="foreign22">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign22</data>
+    </node>
+    <node id="foreign21">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign21</data>
+    </node>
+    <node id="foreign20">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign20</data>
+    </node>
+    <node id="foreign29">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign29</data>
+    </node>
+    <node id="foreign28">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign28</data>
+    </node>
+    <node id="sybil42">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil42</data>
+    </node>
+    <node id="sybil43">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil43</data>
+    </node>
+    <node id="sybil40">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil40</data>
+    </node>
+    <node id="sybil41">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil41</data>
+    </node>
+    <node id="sybil46">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil46</data>
+    </node>
+    <node id="sybil47">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil47</data>
+    </node>
+    <node id="sybil148">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil148</data>
+    </node>
+    <node id="sybil149">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil149</data>
+    </node>
+    <node id="sybil146">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil146</data>
+    </node>
+    <node id="sybil147">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil147</data>
+    </node>
+    <node id="sybil144">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil144</data>
+    </node>
+    <node id="sybil145">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil145</data>
+    </node>
+    <node id="sybil142">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil142</data>
+    </node>
+    <node id="sybil143">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil143</data>
+    </node>
+    <node id="sybil140">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil140</data>
+    </node>
+    <node id="sybil141">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil141</data>
+    </node>
+    <node id="sybil24">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil24</data>
+    </node>
+    <node id="sybil25">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil25</data>
+    </node>
+    <node id="sybil26">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil26</data>
+    </node>
+    <node id="sybil27">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil27</data>
+    </node>
+    <node id="sybil20">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil20</data>
+    </node>
+    <node id="sybil21">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil21</data>
+    </node>
+    <node id="sybil22">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil22</data>
+    </node>
+    <node id="sybil23">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil23</data>
+    </node>
+    <node id="sybil28">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil28</data>
+    </node>
+    <node id="sybil29">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil29</data>
+    </node>
+    <node id="foreign38">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign38</data>
+    </node>
+    <node id="foreign39">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign39</data>
+    </node>
+    <node id="foreign30">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign30</data>
+    </node>
+    <node id="foreign31">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign31</data>
+    </node>
+    <node id="foreign32">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign32</data>
+    </node>
+    <node id="foreign33">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign33</data>
+    </node>
+    <node id="foreign34">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign34</data>
+    </node>
+    <node id="foreign35">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign35</data>
+    </node>
+    <node id="foreign36">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign36</data>
+    </node>
+    <node id="foreign37">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign37</data>
+    </node>
+    <node id="honest30">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest30</data>
+    </node>
+    <node id="honest45">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest45</data>
+    </node>
+    <node id="honest32">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest32</data>
+    </node>
+    <node id="honest33">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest33</data>
+    </node>
+    <node id="honest34">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest34</data>
+    </node>
+    <node id="honest35">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest35</data>
+    </node>
+    <node id="honest36">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest36</data>
+    </node>
+    <node id="honest44">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest44</data>
+    </node>
+    <node id="honest38">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest38</data>
+    </node>
+    <node id="honest39">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest39</data>
+    </node>
+    <node id="honest37">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest37</data>
+    </node>
+    <node id="honest47">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest47</data>
+    </node>
+    <node id="sybil151">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil151</data>
+    </node>
+    <node id="sybil150">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil150</data>
+    </node>
+    <node id="sybil153">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil153</data>
+    </node>
+    <node id="sybil152">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil152</data>
+    </node>
+    <node id="sybil155">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil155</data>
+    </node>
+    <node id="sybil154">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil154</data>
+    </node>
+    <node id="sybil157">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil157</data>
+    </node>
+    <node id="sybil156">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil156</data>
+    </node>
+    <node id="sybil159">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil159</data>
+    </node>
+    <node id="sybil158">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil158</data>
+    </node>
+    <node id="honest46">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest46</data>
+    </node>
+    <node id="foreign0">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign0</data>
+    </node>
+    <node id="foreign1">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign1</data>
+    </node>
+    <node id="foreign2">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign2</data>
+    </node>
+    <node id="foreign3">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign3</data>
+    </node>
+    <node id="foreign4">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign4</data>
+    </node>
+    <node id="foreign5">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign5</data>
+    </node>
+    <node id="foreign6">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign6</data>
+    </node>
+    <node id="foreign7">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign7</data>
+    </node>
+    <node id="foreign8">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign8</data>
+    </node>
+    <node id="foreign9">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign9</data>
+    </node>
+    <node id="honest42">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest42</data>
+    </node>
+    <node id="foreign49">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign49</data>
+    </node>
+    <node id="foreign48">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign48</data>
+    </node>
+    <node id="foreign45">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign45</data>
+    </node>
+    <node id="foreign44">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign44</data>
+    </node>
+    <node id="foreign47">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign47</data>
+    </node>
+    <node id="foreign46">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign46</data>
+    </node>
+    <node id="foreign41">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign41</data>
+    </node>
+    <node id="foreign40">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign40</data>
+    </node>
+    <node id="foreign43">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign43</data>
+    </node>
+    <node id="foreign42">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign42</data>
+    </node>
+    <node id="honest23">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest23</data>
+    </node>
+    <node id="honest22">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest22</data>
+    </node>
+    <node id="honest21">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest21</data>
+    </node>
+    <node id="honest20">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest20</data>
+    </node>
+    <node id="honest27">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest27</data>
+    </node>
+    <node id="honest26">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest26</data>
+    </node>
+    <node id="honest25">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest25</data>
+    </node>
+    <node id="honest31">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest31</data>
+    </node>
+    <node id="honest49">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest49</data>
+    </node>
+    <node id="honest29">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest29</data>
+    </node>
+    <node id="honest28">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest28</data>
+    </node>
+    <node id="honest3">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest3</data>
+    </node>
+    <node id="honest48">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest48</data>
+    </node>
+    <node id="sybil124">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil124</data>
+    </node>
+    <node id="sybil125">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil125</data>
+    </node>
+    <node id="sybil126">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil126</data>
+    </node>
+    <node id="sybil127">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil127</data>
+    </node>
+    <node id="sybil120">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil120</data>
+    </node>
+    <node id="sybil121">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil121</data>
+    </node>
+    <node id="sybil122">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil122</data>
+    </node>
+    <node id="sybil123">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil123</data>
+    </node>
+    <node id="sybil128">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil128</data>
+    </node>
+    <node id="sybil129">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil129</data>
+    </node>
+    <node id="honest8">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest8</data>
+    </node>
+    <node id="honest9">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest9</data>
+    </node>
+    <node id="sybil13">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil13</data>
+    </node>
+    <node id="honest5">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest5</data>
+    </node>
+    <node id="honest6">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest6</data>
+    </node>
+    <node id="honest7">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest7</data>
+    </node>
+    <node id="honest0">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest0</data>
+    </node>
+    <node id="sybil84">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil84</data>
+    </node>
+    <node id="honest2">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest2</data>
+    </node>
+    <node id="honest1">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest1</data>
+    </node>
+    <node id="sybil85">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil85</data>
+    </node>
+    <node id="foreign58">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign58</data>
+    </node>
+    <node id="foreign59">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign59</data>
+    </node>
+    <node id="foreign56">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign56</data>
+    </node>
+    <node id="foreign57">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign57</data>
+    </node>
+    <node id="foreign54">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign54</data>
+    </node>
+    <node id="foreign55">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign55</data>
+    </node>
+    <node id="foreign52">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign52</data>
+    </node>
+    <node id="foreign53">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign53</data>
+    </node>
+    <node id="foreign50">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign50</data>
+    </node>
+    <node id="foreign51">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign51</data>
+    </node>
+    <node id="honest16">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest16</data>
+    </node>
+    <node id="honest17">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest17</data>
+    </node>
+    <node id="honest14">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest14</data>
+    </node>
+    <node id="honest15">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest15</data>
+    </node>
+    <node id="honest12">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest12</data>
+    </node>
+    <node id="honest13">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest13</data>
+    </node>
+    <node id="honest10">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest10</data>
+    </node>
+    <node id="honest11">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest11</data>
+    </node>
+    <node id="honest24">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest24</data>
+    </node>
+    <node id="sybil17">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil17</data>
+    </node>
+    <node id="honest19">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest19</data>
+    </node>
+    <node id="sybil99">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil99</data>
+    </node>
+    <node id="sybil98">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil98</data>
+    </node>
+    <node id="sybil135">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil135</data>
+    </node>
+    <node id="sybil134">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil134</data>
+    </node>
+    <node id="sybil133">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil133</data>
+    </node>
+    <node id="sybil132">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil132</data>
+    </node>
+    <node id="sybil131">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil131</data>
+    </node>
+    <node id="sybil130">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil130</data>
+    </node>
+    <node id="sybil91">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil91</data>
+    </node>
+    <node id="sybil90">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil90</data>
+    </node>
+    <node id="sybil93">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil93</data>
+    </node>
+    <node id="sybil92">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil92</data>
+    </node>
+    <node id="sybil95">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil95</data>
+    </node>
+    <node id="sybil94">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil94</data>
+    </node>
+    <node id="sybil139">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil139</data>
+    </node>
+    <node id="sybil96">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil96</data>
+    </node>
+    <node id="sybil11">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil11</data>
+    </node>
+    <node id="sybil79">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil79</data>
+    </node>
+    <node id="sybil78">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil78</data>
+    </node>
+    <node id="sybil10">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil10</data>
+    </node>
+    <node id="sybil73">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil73</data>
+    </node>
+    <node id="sybil72">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil72</data>
+    </node>
+    <node id="sybil71">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil71</data>
+    </node>
+    <node id="sybil70">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil70</data>
+    </node>
+    <node id="sybil77">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil77</data>
+    </node>
+    <node id="sybil76">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil76</data>
+    </node>
+    <node id="sybil75">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil75</data>
+    </node>
+    <node id="sybil74">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil74</data>
+    </node>
+    <node id="foreign63">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign63</data>
+    </node>
+    <node id="foreign62">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign62</data>
+    </node>
+    <node id="foreign61">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign61</data>
+    </node>
+    <node id="foreign60">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign60</data>
+    </node>
+    <node id="sybil88">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil88</data>
+    </node>
+    <node id="sybil15">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil15</data>
+    </node>
+    <node id="sybil89">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil89</data>
+    </node>
+    <node id="sybil14">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil14</data>
+    </node>
+    <node id="sybil86">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil86</data>
+    </node>
+    <node id="sybil87">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil87</data>
+    </node>
+    <node id="sybil108">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil108</data>
+    </node>
+    <node id="sybil109">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil109</data>
+    </node>
+    <node id="sybil82">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil82</data>
+    </node>
+    <node id="sybil83">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil83</data>
+    </node>
+    <node id="sybil80">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil80</data>
+    </node>
+    <node id="sybil81">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil81</data>
+    </node>
+    <node id="sybil102">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil102</data>
+    </node>
+    <node id="sybil103">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil103</data>
+    </node>
+    <node id="sybil100">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil100</data>
+    </node>
+    <node id="sybil101">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil101</data>
+    </node>
+    <node id="sybil106">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil106</data>
+    </node>
+    <node id="sybil107">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil107</data>
+    </node>
+    <node id="sybil104">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil104</data>
+    </node>
+    <node id="sybil105">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil105</data>
+    </node>
+    <node id="sybil19">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil19</data>
+    </node>
+    <node id="sybil18">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil18</data>
+    </node>
+    <node id="sybil68">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil68</data>
+    </node>
+    <node id="sybil69">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil69</data>
+    </node>
+    <node id="sybil44">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil44</data>
+    </node>
+    <node id="sybil60">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil60</data>
+    </node>
+    <node id="sybil61">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil61</data>
+    </node>
+    <node id="sybil62">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil62</data>
+    </node>
+    <node id="sybil45">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil45</data>
+    </node>
+    <node id="sybil64">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil64</data>
+    </node>
+    <node id="sybil65">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil65</data>
+    </node>
+    <node id="sybil66">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil66</data>
+    </node>
+    <node id="sybil67">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil67</data>
+    </node>
+    <node id="sybil48">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil48</data>
+    </node>
+    <node id="sybil12">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil12</data>
+    </node>
+    <node id="sybil49">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil49</data>
+    </node>
+    <node id="sybil119">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil119</data>
+    </node>
+    <node id="sybil118">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil118</data>
+    </node>
+    <node id="sybil115">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil115</data>
+    </node>
+    <node id="sybil114">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil114</data>
+    </node>
+    <node id="sybil117">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil117</data>
+    </node>
+    <node id="sybil116">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil116</data>
+    </node>
+    <node id="sybil111">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil111</data>
+    </node>
+    <node id="sybil110">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil110</data>
+    </node>
+    <node id="sybil113">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil113</data>
+    </node>
+    <node id="sybil112">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil112</data>
+    </node>
+    <node id="honest18">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest18</data>
+    </node>
+    <node id="honest43">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest43</data>
+    </node>
+    <node id="honest63">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest63</data>
+    </node>
+    <node id="honest62">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest62</data>
+    </node>
+    <node id="honest61">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest61</data>
+    </node>
+    <node id="honest60">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest60</data>
+    </node>
+    <node id="sybil137">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil137</data>
+    </node>
+    <node id="sybil136">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil136</data>
+    </node>
+    <node id="honest40">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest40</data>
+    </node>
+    <node id="sybil16">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil16</data>
+    </node>
+    <node id="sybil50">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil50</data>
+    </node>
+    <node id="sybil63">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil63</data>
+    </node>
+    <node id="honest52">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest52</data>
+    </node>
+    <node id="honest53">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest53</data>
+    </node>
+    <node id="honest50">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest50</data>
+    </node>
+    <node id="honest51">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest51</data>
+    </node>
+    <node id="honest56">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest56</data>
+    </node>
+    <node id="honest57">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest57</data>
+    </node>
+    <node id="honest54">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest54</data>
+    </node>
+    <node id="honest55">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest55</data>
+    </node>
+    <node id="honest58">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest58</data>
+    </node>
+    <node id="honest59">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest59</data>
+    </node>
+    <node id="honest4">
+      <data key="d0">0</data>
+      <data key="d1">honest</data>
+      <data key="d2">honest4</data>
+    </node>
+    <node id="foreign12">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign12</data>
+    </node>
+    <node id="foreign13">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign13</data>
+    </node>
+    <node id="foreign10">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign10</data>
+    </node>
+    <node id="foreign11">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign11</data>
+    </node>
+    <node id="foreign16">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign16</data>
+    </node>
+    <node id="foreign17">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign17</data>
+    </node>
+    <node id="foreign14">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign14</data>
+    </node>
+    <node id="foreign15">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign15</data>
+    </node>
+    <node id="foreign18">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign18</data>
+    </node>
+    <node id="foreign19">
+      <data key="d0">0</data>
+      <data key="d1">foreign</data>
+      <data key="d2">foreign19</data>
+    </node>
+    <node id="sybil55">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil55</data>
+    </node>
+    <node id="sybil54">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil54</data>
+    </node>
+    <node id="sybil57">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil57</data>
+    </node>
+    <node id="sybil56">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil56</data>
+    </node>
+    <node id="sybil51">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil51</data>
+    </node>
+    <node id="sybil97">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil97</data>
+    </node>
+    <node id="sybil53">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil53</data>
+    </node>
+    <node id="sybil52">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil52</data>
+    </node>
+    <node id="sybil138">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil138</data>
+    </node>
+    <node id="sybil59">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil59</data>
+    </node>
+    <node id="sybil58">
+      <data key="d0">1</data>
+      <data key="d1">sybil</data>
+      <data key="d2">sybil58</data>
+    </node>
+    <edge source="sybil37" target="sybil36" />
+    <edge source="sybil37" target="sybil83" />
+    <edge source="sybil37" target="sybil114" />
+    <edge source="sybil37" target="sybil136" />
+    <edge source="sybil37" target="honest42" />
+    <edge source="sybil37" target="sybil96" />
+    <edge source="sybil36" target="sybil102" />
+    <edge source="sybil36" target="sybil70" />
+    <edge source="sybil36" target="sybil1" />
+    <edge source="sybil36" target="sybil132" />
+    <edge source="sybil36" target="sybil97" />
+    <edge source="sybil35" target="sybil24" />
+    <edge source="sybil35" target="sybil150" />
+    <edge source="sybil35" target="sybil153" />
+    <edge source="sybil35" target="foreign41" />
+    <edge source="sybil35" target="honest3" />
+    <edge source="sybil34" target="honest16" />
+    <edge source="sybil34" target="sybil10" />
+    <edge source="sybil34" target="sybil20" />
+    <edge source="sybil34" target="sybil106" />
+    <edge source="sybil34" target="sybil33" />
+    <edge source="sybil34" target="sybil137" />
+    <edge source="sybil34" target="sybil147" />
+    <edge source="sybil33" target="sybil133" />
+    <edge source="sybil33" target="sybil52" />
+    <edge source="sybil32" target="honest8" />
+    <edge source="sybil32" target="sybil80" />
+    <edge source="sybil32" target="sybil63" />
+    <edge source="sybil32" target="sybil123" />
+    <edge source="sybil32" target="sybil128" />
+    <edge source="sybil32" target="sybil94" />
+    <edge source="sybil31" target="foreign24" />
+    <edge source="sybil31" target="sybil19" />
+    <edge source="sybil31" target="sybil73" />
+    <edge source="sybil31" target="sybil122" />
+    <edge source="sybil31" target="sybil123" />
+    <edge source="sybil31" target="sybil115" />
+    <edge source="sybil30" target="sybil149" />
+    <edge source="sybil30" target="sybil47" />
+    <edge source="sybil30" target="sybil14" />
+    <edge source="sybil30" target="sybil29" />
+    <edge source="sybil30" target="sybil81" />
+    <edge source="sybil39" target="sybil99" />
+    <edge source="sybil39" target="foreign15" />
+    <edge source="sybil39" target="sybil104" />
+    <edge source="sybil39" target="sybil38" />
+    <edge source="sybil38" target="sybil60" />
+    <edge source="sybil38" target="sybil40" />
+    <edge source="sybil38" target="sybil141" />
+    <edge source="sybil5" target="sybil125" />
+    <edge source="sybil5" target="sybil7" />
+    <edge source="sybil5" target="sybil64" />
+    <edge source="sybil5" target="sybil104" />
+    <edge source="sybil4" target="sybil59" />
+    <edge source="sybil4" target="sybil46" />
+    <edge source="sybil4" target="sybil3" />
+    <edge source="sybil4" target="sybil66" />
+    <edge source="sybil7" target="honest10" />
+    <edge source="sybil7" target="sybil116" />
+    <edge source="sybil7" target="sybil29" />
+    <edge source="sybil7" target="sybil105" />
+    <edge source="sybil7" target="sybil98" />
+    <edge source="sybil7" target="sybil48" />
+    <edge source="sybil6" target="sybil13" />
+    <edge source="sybil6" target="sybil51" />
+    <edge source="sybil6" target="sybil50" />
+    <edge source="sybil6" target="foreign35" />
+    <edge source="sybil6" target="honest24" />
+    <edge source="sybil1" target="sybil142" />
+    <edge source="sybil1" target="sybil143" />
+    <edge source="sybil1" target="sybil132" />
+    <edge source="sybil0" target="sybil86" />
+    <edge source="sybil0" target="sybil40" />
+    <edge source="sybil0" target="sybil145" />
+    <edge source="sybil3" target="foreign30" />
+    <edge source="sybil3" target="sybil83" />
+    <edge source="sybil3" target="sybil52" />
+    <edge source="sybil2" target="sybil40" />
+    <edge source="sybil2" target="sybil8" />
+    <edge source="sybil2" target="sybil113" />
+    <edge source="sybil9" target="sybil147" />
+    <edge source="sybil9" target="honest51" />
+    <edge source="sybil9" target="sybil75" />
+    <edge source="sybil9" target="sybil156" />
+    <edge source="sybil8" target="sybil60" />
+    <edge source="sybil8" target="sybil145" />
+    <edge source="sybil8" target="sybil107" />
+    <edge source="sybil8" target="sybil121" />
+    <edge source="honest41" target="honest49" />
+    <edge source="honest41" target="honest56" />
+    <edge source="honest41" target="honest42" />
+    <edge source="foreign27" target="foreign59" />
+    <edge source="foreign27" target="foreign48" />
+    <edge source="foreign27" target="foreign29" />
+    <edge source="foreign27" target="foreign40" />
+    <edge source="foreign26" target="foreign24" />
+    <edge source="foreign26" target="sybil88" />
+    <edge source="foreign26" target="foreign29" />
+    <edge source="foreign26" target="foreign58" />
+    <edge source="foreign26" target="foreign41" />
+    <edge source="foreign26" target="foreign53" />
+    <edge source="foreign25" target="foreign23" />
+    <edge source="foreign25" target="foreign21" />
+    <edge source="foreign25" target="honest53" />
+    <edge source="foreign25" target="foreign53" />
+    <edge source="foreign25" target="foreign62" />
+    <edge source="foreign25" target="honest57" />
+    <edge source="foreign25" target="foreign46" />
+    <edge source="foreign25" target="honest49" />
+    <edge source="foreign25" target="foreign35" />
+    <edge source="foreign25" target="foreign51" />
+    <edge source="foreign24" target="foreign8" />
+    <edge source="foreign24" target="foreign1" />
+    <edge source="foreign24" target="honest1" />
+    <edge source="foreign23" target="foreign63" />
+    <edge source="foreign23" target="foreign61" />
+    <edge source="foreign23" target="foreign58" />
+    <edge source="foreign23" target="sybil129" />
+    <edge source="foreign22" target="foreign56" />
+    <edge source="foreign22" target="foreign6" />
+    <edge source="foreign21" target="foreign1" />
+    <edge source="foreign21" target="foreign20" />
+    <edge source="foreign21" target="sybil73" />
+    <edge source="foreign21" target="foreign48" />
+    <edge source="foreign21" target="foreign34" />
+    <edge source="foreign20" target="sybil102" />
+    <edge source="foreign20" target="sybil52" />
+    <edge source="foreign20" target="foreign41" />
+    <edge source="foreign20" target="foreign15" />
+    <edge source="foreign29" target="foreign31" />
+    <edge source="foreign29" target="foreign10" />
+    <edge source="foreign29" target="foreign55" />
+    <edge source="foreign28" target="foreign10" />
+    <edge source="foreign28" target="foreign15" />
+    <edge source="foreign28" target="sybil118" />
+    <edge source="foreign28" target="foreign59" />
+    <edge source="sybil42" target="foreign45" />
+    <edge source="sybil42" target="sybil43" />
+    <edge source="sybil42" target="sybil144" />
+    <edge source="sybil42" target="sybil128" />
+    <edge source="sybil42" target="sybil44" />
+    <edge source="sybil43" target="sybil78" />
+    <edge source="sybil43" target="sybil15" />
+    <edge source="sybil43" target="sybil153" />
+    <edge source="sybil43" target="sybil41" />
+    <edge source="sybil43" target="sybil128" />
+    <edge source="sybil40" target="sybil79" />
+    <edge source="sybil40" target="sybil22" />
+    <edge source="sybil40" target="sybil63" />
+    <edge source="sybil40" target="sybil57" />
+    <edge source="sybil40" target="sybil159" />
+    <edge source="sybil40" target="sybil144" />
+    <edge source="sybil41" target="sybil75" />
+    <edge source="sybil41" target="foreign37" />
+    <edge source="sybil46" target="sybil86" />
+    <edge source="sybil46" target="foreign1" />
+    <edge source="sybil46" target="foreign5" />
+    <edge source="sybil46" target="sybil45" />
+    <edge source="sybil46" target="sybil48" />
+    <edge source="sybil47" target="sybil45" />
+    <edge source="sybil47" target="sybil14" />
+    <edge source="sybil47" target="sybil104" />
+    <edge source="sybil148" target="sybil133" />
+    <edge source="sybil148" target="sybil134" />
+    <edge source="sybil148" target="sybil12" />
+    <edge source="sybil148" target="foreign55" />
+    <edge source="sybil148" target="sybil16" />
+    <edge source="sybil149" target="sybil85" />
+    <edge source="sybil149" target="sybil76" />
+    <edge source="sybil149" target="foreign38" />
+    <edge source="sybil149" target="sybil136" />
+    <edge source="sybil149" target="sybil138" />
+    <edge source="sybil146" target="sybil106" />
+    <edge source="sybil146" target="sybil128" />
+    <edge source="sybil146" target="sybil110" />
+    <edge source="sybil146" target="foreign6" />
+    <edge source="sybil146" target="sybil50" />
+    <edge source="sybil147" target="sybil111" />
+    <edge source="sybil147" target="sybil15" />
+    <edge source="sybil147" target="sybil152" />
+    <edge source="sybil144" target="sybil155" />
+    <edge source="sybil145" target="sybil82" />
+    <edge source="sybil142" target="sybil56" />
+    <edge source="sybil142" target="sybil83" />
+    <edge source="sybil143" target="sybil11" />
+    <edge source="sybil143" target="sybil15" />
+    <edge source="sybil143" target="sybil133" />
+    <edge source="sybil143" target="foreign42" />
+    <edge source="sybil140" target="foreign5" />
+    <edge source="sybil140" target="honest59" />
+    <edge source="sybil140" target="sybil118" />
+    <edge source="sybil140" target="sybil18" />
+    <edge source="sybil140" target="sybil67" />
+    <edge source="sybil140" target="sybil124" />
+    <edge source="sybil140" target="sybil141" />
+    <edge source="sybil140" target="foreign35" />
+    <edge source="sybil140" target="sybil138" />
+    <edge source="sybil141" target="sybil71" />
+    <edge source="sybil141" target="sybil66" />
+    <edge source="sybil141" target="sybil95" />
+    <edge source="sybil141" target="sybil139" />
+    <edge source="sybil24" target="sybil87" />
+    <edge source="sybil24" target="sybil22" />
+    <edge source="sybil24" target="honest38" />
+    <edge source="sybil24" target="sybil98" />
+    <edge source="sybil24" target="foreign32" />
+    <edge source="sybil25" target="sybil116" />
+    <edge source="sybil25" target="sybil154" />
+    <edge source="sybil25" target="sybil56" />
+    <edge source="sybil26" target="sybil15" />
+    <edge source="sybil26" target="sybil153" />
+    <edge source="sybil26" target="sybil27" />
+    <edge source="sybil26" target="sybil120" />
+    <edge source="sybil27" target="sybil102" />
+    <edge source="sybil27" target="sybil28" />
+    <edge source="sybil27" target="sybil130" />
+    <edge source="sybil20" target="sybil132" />
+    <edge source="sybil20" target="sybil21" />
+    <edge source="sybil21" target="honest38" />
+    <edge source="sybil21" target="sybil18" />
+    <edge source="sybil21" target="sybil22" />
+    <edge source="sybil21" target="sybil23" />
+    <edge source="sybil22" target="sybil68" />
+    <edge source="sybil22" target="sybil118" />
+    <edge source="sybil22" target="sybil81" />
+    <edge source="sybil22" target="sybil134" />
+    <edge source="sybil22" target="sybil132" />
+    <edge source="sybil23" target="sybil99" />
+    <edge source="sybil23" target="sybil90" />
+    <edge source="sybil23" target="sybil48" />
+    <edge source="sybil23" target="sybil66" />
+    <edge source="sybil28" target="foreign1" />
+    <edge source="sybil28" target="sybil98" />
+    <edge source="sybil28" target="sybil109" />
+    <edge source="sybil28" target="sybil155" />
+    <edge source="sybil28" target="sybil85" />
+    <edge source="sybil29" target="sybil138" />
+    <edge source="sybil29" target="sybil76" />
+    <edge source="sybil29" target="honest35" />
+    <edge source="foreign38" target="foreign2" />
+    <edge source="foreign38" target="honest13" />
+    <edge source="foreign38" target="foreign63" />
+    <edge source="foreign38" target="foreign62" />
+    <edge source="foreign38" target="honest49" />
+    <edge source="foreign39" target="foreign33" />
+    <edge source="foreign39" target="foreign40" />
+    <edge source="foreign39" target="foreign14" />
+    <edge source="foreign39" target="foreign42" />
+    <edge source="foreign30" target="foreign56" />
+    <edge source="foreign30" target="foreign13" />
+    <edge source="foreign30" target="foreign61" />
+    <edge source="foreign30" target="foreign55" />
+    <edge source="foreign31" target="foreign32" />
+    <edge source="foreign32" target="foreign55" />
+    <edge source="foreign32" target="foreign52" />
+    <edge source="foreign32" target="foreign53" />
+    <edge source="foreign33" target="foreign34" />
+    <edge source="foreign33" target="foreign9" />
+    <edge source="foreign34" target="foreign10" />
+    <edge source="foreign34" target="foreign14" />
+    <edge source="foreign34" target="foreign9" />
+    <edge source="foreign34" target="honest7" />
+    <edge source="foreign34" target="honest5" />
+    <edge source="foreign35" target="foreign17" />
+    <edge source="foreign35" target="foreign7" />
+    <edge source="foreign35" target="sybil57" />
+    <edge source="foreign35" target="foreign41" />
+    <edge source="foreign36" target="foreign56" />
+    <edge source="foreign36" target="sybil45" />
+    <edge source="foreign36" target="foreign37" />
+    <edge source="foreign37" target="foreign4" />
+    <edge source="foreign37" target="foreign58" />
+    <edge source="foreign37" target="foreign40" />
+    <edge source="honest30" target="foreign6" />
+    <edge source="honest30" target="honest24" />
+    <edge source="honest30" target="sybil73" />
+    <edge source="honest30" target="honest42" />
+    <edge source="honest30" target="honest3" />
+    <edge source="honest30" target="honest55" />
+    <edge source="honest30" target="sybil92" />
+    <edge source="honest30" target="foreign41" />
+    <edge source="honest45" target="sybil57" />
+    <edge source="honest45" target="honest21" />
+    <edge source="honest45" target="foreign55" />
+    <edge source="honest45" target="honest29" />
+    <edge source="honest32" target="honest33" />
+    <edge source="honest32" target="sybil107" />
+    <edge source="honest32" target="sybil104" />
+    <edge source="honest32" target="sybil110" />
+    <edge source="honest32" target="honest53" />
+    <edge source="honest32" target="honest51" />
+    <edge source="honest32" target="honest43" />
+    <edge source="honest32" target="foreign46" />
+    <edge source="honest33" target="sybil109" />
+    <edge source="honest33" target="honest34" />
+    <edge source="honest33" target="sybil17" />
+    <edge source="honest33" target="honest5" />
+    <edge source="honest33" target="sybil156" />
+    <edge source="honest34" target="honest14" />
+    <edge source="honest34" target="honest35" />
+    <edge source="honest34" target="honest36" />
+    <edge source="honest34" target="foreign11" />
+    <edge source="honest35" target="honest47" />
+    <edge source="honest35" target="honest48" />
+    <edge source="honest35" target="honest37" />
+    <edge source="honest36" target="honest38" />
+    <edge source="honest36" target="honest44" />
+    <edge source="honest36" target="foreign52" />
+    <edge source="honest36" target="honest17" />
+    <edge source="honest44" target="honest20" />
+    <edge source="honest44" target="honest18" />
+    <edge source="honest38" target="honest39" />
+    <edge source="honest38" target="honest6" />
+    <edge source="honest38" target="honest53" />
+    <edge source="honest38" target="honest46" />
+    <edge source="honest38" target="honest54" />
+    <edge source="honest38" target="honest49" />
+    <edge source="honest39" target="honest58" />
+    <edge source="honest39" target="honest63" />
+    <edge source="honest39" target="honest3" />
+    <edge source="honest37" target="honest55" />
+    <edge source="honest37" target="honest57" />
+    <edge source="honest47" target="sybil58" />
+    <edge source="honest47" target="honest28" />
+    <edge source="honest47" target="honest57" />
+    <edge source="sybil151" target="sybil153" />
+    <edge source="sybil151" target="sybil114" />
+    <edge source="sybil151" target="sybil108" />
+    <edge source="sybil151" target="sybil51" />
+    <edge source="sybil151" target="sybil65" />
+    <edge source="sybil150" target="sybil73" />
+    <edge source="sybil150" target="sybil128" />
+    <edge source="sybil150" target="sybil95" />
+    <edge source="sybil150" target="sybil131" />
+    <edge source="sybil153" target="sybil117" />
+    <edge source="sybil153" target="sybil123" />
+    <edge source="sybil152" target="sybil127" />
+    <edge source="sybil152" target="honest28" />
+    <edge source="sybil152" target="sybil118" />
+    <edge source="sybil152" target="sybil65" />
+    <edge source="sybil155" target="sybil154" />
+    <edge source="sybil155" target="sybil45" />
+    <edge source="sybil154" target="sybil126" />
+    <edge source="sybil154" target="sybil111" />
+    <edge source="sybil154" target="sybil17" />
+    <edge source="sybil157" target="sybil159" />
+    <edge source="sybil157" target="sybil158" />
+    <edge source="sybil157" target="sybil93" />
+    <edge source="sybil157" target="sybil121" />
+    <edge source="sybil156" target="sybil113" />
+    <edge source="sybil156" target="sybil122" />
+    <edge source="sybil159" target="sybil91" />
+    <edge source="sybil159" target="sybil110" />
+    <edge source="sybil158" target="foreign48" />
+    <edge source="sybil158" target="sybil44" />
+    <edge source="sybil158" target="sybil107" />
+    <edge source="sybil158" target="sybil65" />
+    <edge source="honest46" target="sybil51" />
+    <edge source="honest46" target="honest8" />
+    <edge source="honest46" target="honest40" />
+    <edge source="foreign0" target="foreign16" />
+    <edge source="foreign0" target="foreign61" />
+    <edge source="foreign0" target="foreign41" />
+    <edge source="foreign0" target="sybil107" />
+    <edge source="foreign0" target="sybil83" />
+    <edge source="foreign1" target="honest52" />
+    <edge source="foreign1" target="foreign63" />
+    <edge source="foreign2" target="foreign45" />
+    <edge source="foreign2" target="foreign3" />
+    <edge source="foreign2" target="foreign43" />
+    <edge source="foreign2" target="foreign42" />
+    <edge source="foreign3" target="foreign12" />
+    <edge source="foreign3" target="foreign4" />
+    <edge source="foreign3" target="foreign48" />
+    <edge source="foreign3" target="foreign15" />
+    <edge source="foreign4" target="honest17" />
+    <edge source="foreign4" target="foreign17" />
+    <edge source="foreign4" target="foreign15" />
+    <edge source="foreign4" target="foreign19" />
+    <edge source="foreign4" target="foreign11" />
+    <edge source="foreign5" target="sybil104" />
+    <edge source="foreign5" target="foreign14" />
+    <edge source="foreign5" target="foreign6" />
+    <edge source="foreign6" target="foreign61" />
+    <edge source="foreign6" target="sybil45" />
+    <edge source="foreign6" target="foreign46" />
+    <edge source="foreign7" target="foreign18" />
+    <edge source="foreign7" target="foreign16" />
+    <edge source="foreign7" target="foreign59" />
+    <edge source="foreign8" target="foreign9" />
+    <edge source="foreign8" target="foreign10" />
+    <edge source="foreign8" target="sybil12" />
+    <edge source="foreign9" target="foreign12" />
+    <edge source="foreign9" target="foreign53" />
+    <edge source="honest42" target="honest13" />
+    <edge source="honest42" target="honest18" />
+    <edge source="honest42" target="honest3" />
+    <edge source="honest42" target="foreign54" />
+    <edge source="foreign49" target="sybil138" />
+    <edge source="foreign49" target="foreign53" />
+    <edge source="foreign49" target="foreign51" />
+    <edge source="foreign48" target="honest12" />
+    <edge source="foreign48" target="foreign47" />
+    <edge source="foreign48" target="foreign46" />
+    <edge source="foreign45" target="sybil54" />
+    <edge source="foreign45" target="foreign62" />
+    <edge source="foreign45" target="foreign47" />
+    <edge source="foreign45" target="foreign46" />
+    <edge source="foreign44" target="sybil84" />
+    <edge source="foreign44" target="sybil71" />
+    <edge source="foreign44" target="foreign19" />
+    <edge source="foreign44" target="foreign60" />
+    <edge source="foreign44" target="foreign53" />
+    <edge source="foreign44" target="foreign43" />
+    <edge source="foreign47" target="honest5" />
+    <edge source="foreign46" target="foreign59" />
+    <edge source="foreign41" target="honest7" />
+    <edge source="foreign41" target="foreign40" />
+    <edge source="foreign41" target="foreign51" />
+    <edge source="foreign40" target="sybil50" />
+    <edge source="foreign40" target="foreign58" />
+    <edge source="foreign40" target="foreign54" />
+    <edge source="foreign43" target="foreign19" />
+    <edge source="foreign43" target="sybil119" />
+    <edge source="foreign43" target="foreign42" />
+    <edge source="foreign42" target="honest5" />
+    <edge source="foreign42" target="foreign54" />
+    <edge source="honest23" target="honest31" />
+    <edge source="honest23" target="honest21" />
+    <edge source="honest23" target="honest5" />
+    <edge source="honest23" target="honest17" />
+    <edge source="honest22" target="honest2" />
+    <edge source="honest22" target="honest5" />
+    <edge source="honest22" target="honest20" />
+    <edge source="honest22" target="honest13" />
+    <edge source="honest22" target="honest18" />
+    <edge source="honest21" target="sybil109" />
+    <edge source="honest21" target="honest63" />
+    <edge source="honest21" target="honest57" />
+    <edge source="honest20" target="honest52" />
+    <edge source="honest20" target="honest57" />
+    <edge source="honest20" target="honest31" />
+    <edge source="honest27" target="honest29" />
+    <edge source="honest27" target="honest28" />
+    <edge source="honest27" target="honest26" />
+    <edge source="honest26" target="honest16" />
+    <edge source="honest26" target="honest52" />
+    <edge source="honest26" target="sybil132" />
+    <edge source="honest26" target="honest24" />
+    <edge source="honest25" target="honest29" />
+    <edge source="honest25" target="honest51" />
+    <edge source="honest25" target="sybil65" />
+    <edge source="honest31" target="honest4" />
+    <edge source="honest31" target="honest29" />
+    <edge source="honest31" target="sybil104" />
+    <edge source="honest31" target="sybil126" />
+    <edge source="honest31" target="honest63" />
+    <edge source="honest31" target="sybil117" />
+    <edge source="honest49" target="honest1" />
+    <edge source="honest49" target="sybil91" />
+    <edge source="honest49" target="honest61" />
+    <edge source="honest29" target="honest5" />
+    <edge source="honest29" target="honest28" />
+    <edge source="honest29" target="honest56" />
+    <edge source="honest29" target="foreign57" />
+    <edge source="honest29" target="sybil120" />
+    <edge source="honest29" target="sybil48" />
+    <edge source="honest29" target="honest48" />
+    <edge source="honest29" target="honest60" />
+    <edge source="honest28" target="honest9" />
+    <edge source="honest28" target="honest57" />
+    <edge source="honest3" target="honest0" />
+    <edge source="honest3" target="honest54" />
+    <edge source="honest48" target="honest2" />
+    <edge source="honest48" target="honest50" />
+    <edge source="honest48" target="honest57" />
+    <edge source="honest48" target="honest55" />
+    <edge source="sybil124" target="sybil72" />
+    <edge source="sybil124" target="sybil125" />
+    <edge source="sybil125" target="sybil49" />
+    <edge source="sybil125" target="sybil117" />
+    <edge source="sybil125" target="sybil89" />
+    <edge source="sybil125" target="honest40" />
+    <edge source="sybil125" target="sybil123" />
+    <edge source="sybil125" target="sybil112" />
+    <edge source="sybil126" target="sybil17" />
+    <edge source="sybil127" target="sybil136" />
+    <edge source="sybil127" target="sybil93" />
+    <edge source="sybil127" target="honest40" />
+    <edge source="sybil127" target="foreign55" />
+    <edge source="sybil120" target="sybil119" />
+    <edge source="sybil120" target="sybil128" />
+    <edge source="sybil120" target="foreign58" />
+    <edge source="sybil121" target="sybil100" />
+    <edge source="sybil121" target="sybil123" />
+    <edge source="sybil122" target="sybil95" />
+    <edge source="sybil122" target="sybil77" />
+    <edge source="sybil123" target="sybil69" />
+    <edge source="sybil123" target="sybil91" />
+    <edge source="sybil128" target="sybil64" />
+    <edge source="sybil129" target="sybil13" />
+    <edge source="sybil129" target="sybil116" />
+    <edge source="sybil129" target="honest62" />
+    <edge source="sybil129" target="sybil17" />
+    <edge source="honest8" target="honest10" />
+    <edge source="honest8" target="honest7" />
+    <edge source="honest8" target="honest53" />
+    <edge source="honest8" target="honest54" />
+    <edge source="honest8" target="honest55" />
+    <edge source="honest9" target="honest14" />
+    <edge source="honest9" target="sybil94" />
+    <edge source="honest9" target="honest60" />
+    <edge source="sybil13" target="sybil18" />
+    <edge source="sybil13" target="sybil94" />
+    <edge source="honest5" target="sybil18" />
+    <edge source="honest5" target="honest6" />
+    <edge source="honest6" target="foreign12" />
+    <edge source="honest6" target="sybil118" />
+    <edge source="honest6" target="honest0" />
+    <edge source="honest6" target="sybil135" />
+    <edge source="honest6" target="honest59" />
+    <edge source="honest7" target="honest14" />
+    <edge source="honest7" target="foreign17" />
+    <edge source="honest0" target="honest16" />
+    <edge source="honest0" target="honest15" />
+    <edge source="honest0" target="honest4" />
+    <edge source="honest0" target="honest2" />
+    <edge source="honest0" target="honest62" />
+    <edge source="sybil84" target="sybil79" />
+    <edge source="sybil84" target="sybil82" />
+    <edge source="sybil84" target="sybil100" />
+    <edge source="sybil84" target="foreign10" />
+    <edge source="sybil84" target="sybil104" />
+    <edge source="honest2" target="honest13" />
+    <edge source="honest2" target="honest57" />
+    <edge source="honest2" target="honest40" />
+    <edge source="honest1" target="honest12" />
+    <edge source="honest1" target="honest13" />
+    <edge source="honest1" target="honest43" />
+    <edge source="sybil85" target="sybil87" />
+    <edge source="sybil85" target="honest63" />
+    <edge source="foreign58" target="foreign55" />
+    <edge source="foreign59" target="sybil68" />
+    <edge source="foreign59" target="foreign50" />
+    <edge source="foreign56" target="sybil87" />
+    <edge source="foreign56" target="foreign11" />
+    <edge source="foreign56" target="foreign57" />
+    <edge source="foreign56" target="foreign50" />
+    <edge source="foreign57" target="foreign55" />
+    <edge source="foreign57" target="foreign60" />
+    <edge source="foreign54" target="sybil79" />
+    <edge source="foreign54" target="sybil94" />
+    <edge source="foreign54" target="foreign60" />
+    <edge source="foreign55" target="foreign13" />
+    <edge source="foreign52" target="sybil78" />
+    <edge source="foreign52" target="foreign14" />
+    <edge source="foreign53" target="sybil70" />
+    <edge source="foreign50" target="foreign12" />
+    <edge source="foreign50" target="foreign13" />
+    <edge source="foreign50" target="honest15" />
+    <edge source="honest16" target="honest14" />
+    <edge source="honest16" target="honest15" />
+    <edge source="honest16" target="sybil89" />
+    <edge source="honest16" target="honest57" />
+    <edge source="honest16" target="honest59" />
+    <edge source="honest17" target="sybil12" />
+    <edge source="honest17" target="honest18" />
+    <edge source="honest17" target="honest19" />
+    <edge source="honest14" target="sybil91" />
+    <edge source="honest15" target="honest58" />
+    <edge source="honest12" target="sybil49" />
+    <edge source="honest12" target="honest19" />
+    <edge source="honest13" target="honest24" />
+    <edge source="honest13" target="sybil16" />
+    <edge source="honest10" target="honest59" />
+    <edge source="honest10" target="honest19" />
+    <edge source="honest11" target="honest56" />
+    <edge source="honest11" target="honest62" />
+    <edge source="honest24" target="sybil11" />
+    <edge source="honest24" target="honest19" />
+    <edge source="honest19" target="sybil117" />
+    <edge source="honest19" target="honest54" />
+    <edge source="honest19" target="honest61" />
+    <edge source="sybil99" target="sybil70" />
+    <edge source="sybil99" target="sybil101" />
+    <edge source="sybil98" target="sybil65" />
+    <edge source="sybil98" target="sybil97" />
+    <edge source="sybil135" target="sybil109" />
+    <edge source="sybil135" target="sybil66" />
+    <edge source="sybil135" target="sybil112" />
+    <edge source="sybil135" target="sybil134" />
+    <edge source="sybil135" target="sybil93" />
+    <edge source="sybil133" target="sybil55" />
+    <edge source="sybil133" target="sybil132" />
+    <edge source="sybil133" target="sybil131" />
+    <edge source="sybil132" target="sybil81" />
+    <edge source="sybil131" target="sybil97" />
+    <edge source="sybil130" target="sybil90" />
+    <edge source="sybil91" target="sybil108" />
+    <edge source="sybil91" target="sybil44" />
+    <edge source="sybil91" target="sybil92" />
+    <edge source="sybil90" target="sybil12" />
+    <edge source="sybil90" target="sybil82" />
+    <edge source="sybil90" target="sybil88" />
+    <edge source="sybil93" target="sybil62" />
+    <edge source="sybil93" target="sybil94" />
+    <edge source="sybil92" target="sybil101" />
+    <edge source="sybil92" target="sybil88" />
+    <edge source="sybil95" target="sybil68" />
+    <edge source="sybil95" target="sybil49" />
+    <edge source="sybil94" target="sybil81" />
+    <edge source="sybil139" target="sybil137" />
+    <edge source="sybil139" target="sybil52" />
+    <edge source="sybil96" target="sybil87" />
+    <edge source="sybil96" target="sybil71" />
+    <edge source="sybil11" target="sybil62" />
+    <edge source="sybil11" target="sybil12" />
+    <edge source="sybil79" target="sybil12" />
+    <edge source="sybil79" target="sybil81" />
+    <edge source="sybil78" target="sybil76" />
+    <edge source="sybil78" target="sybil69" />
+    <edge source="sybil10" target="sybil72" />
+    <edge source="sybil10" target="sybil111" />
+    <edge source="sybil73" target="sybil80" />
+    <edge source="sybil71" target="sybil69" />
+    <edge source="sybil71" target="sybil101" />
+    <edge source="sybil71" target="sybil70" />
+    <edge source="sybil70" target="sybil50" />
+    <edge source="sybil77" target="sybil111" />
+    <edge source="sybil77" target="sybil110" />
+    <edge source="sybil76" target="sybil107" />
+    <edge source="sybil75" target="sybil116" />
+    <edge source="sybil75" target="sybil103" />
+    <edge source="sybil74" target="sybil86" />
+    <edge source="sybil74" target="sybil106" />
+    <edge source="foreign63" target="foreign61" />
+    <edge source="foreign62" target="sybil81" />
+    <edge source="foreign60" target="foreign15" />
+    <edge source="sybil88" target="sybil87" />
+    <edge source="sybil88" target="sybil61" />
+    <edge source="sybil88" target="sybil52" />
+    <edge source="sybil15" target="sybil53" />
+    <edge source="sybil89" target="sybil86" />
+    <edge source="sybil89" target="sybil87" />
+    <edge source="sybil14" target="sybil68" />
+    <edge source="sybil14" target="foreign15" />
+    <edge source="sybil108" target="sybil19" />
+    <edge source="sybil109" target="sybil80" />
+    <edge source="sybil109" target="sybil12" />
+    <edge source="sybil82" target="sybil58" />
+    <edge source="sybil82" target="sybil105" />
+    <edge source="sybil83" target="sybil116" />
+    <edge source="sybil80" target="sybil81" />
+    <edge source="sybil102" target="sybil19" />
+    <edge source="sybil103" target="sybil69" />
+    <edge source="sybil103" target="sybil105" />
+    <edge source="sybil101" target="sybil44" />
+    <edge source="sybil106" target="sybil119" />
+    <edge source="sybil107" target="sybil59" />
+    <edge source="sybil19" target="sybil61" />
+    <edge source="sybil19" target="sybil112" />
+    <edge source="sybil19" target="honest4" />
+    <edge source="sybil19" target="honest60" />
+    <edge source="sybil69" target="sybil16" />
+    <edge source="sybil69" target="sybil116" />
+    <edge source="sybil69" target="sybil67" />
+    <edge source="sybil60" target="sybil59" />
+    <edge source="sybil61" target="sybil117" />
+    <edge source="sybil62" target="sybil54" />
+    <edge source="sybil62" target="sybil58" />
+    <edge source="sybil45" target="sybil54" />
+    <edge source="sybil64" target="foreign19" />
+    <edge source="sybil67" target="foreign19" />
+    <edge source="sybil48" target="sybil50" />
+    <edge source="sybil12" target="sybil57" />
+    <edge source="sybil12" target="sybil51" />
+    <edge source="sybil49" target="sybil114" />
+    <edge source="sybil49" target="sybil57" />
+    <edge source="sybil49" target="sybil52" />
+    <edge source="sybil115" target="sybil117" />
+    <edge source="sybil114" target="sybil116" />
+    <edge source="sybil117" target="sybil116" />
+    <edge source="sybil117" target="honest59" />
+    <edge source="sybil111" target="sybil113" />
+    <edge source="sybil113" target="sybil16" />
+    <edge source="honest43" target="honest63" />
+    <edge source="honest63" target="honest62" />
+    <edge source="sybil137" target="sybil138" />
+    <edge source="sybil136" target="sybil53" />
+    <edge source="honest52" target="honest50" />
+    <edge source="honest50" target="honest51" />
+    <edge source="honest51" target="honest56" />
+    <edge source="honest51" target="honest57" />
+    <edge source="foreign13" target="foreign10" />
+    <edge source="foreign11" target="foreign16" />
+    <edge source="foreign16" target="foreign19" />
+    <edge source="foreign17" target="foreign18" />
+    <edge source="foreign14" target="foreign15" />
+    <edge source="sybil55" target="sybil57" />
+    <edge source="sybil54" target="sybil56" />
+    <edge source="sybil54" target="sybil53" />
+  </graph>
+</graphml>
