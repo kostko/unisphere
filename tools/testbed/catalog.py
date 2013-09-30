@@ -22,6 +22,7 @@ from .topologies import generator
 from . import exceptions
 
 import collections
+import importlib
 import logging
 
 logger = logging.getLogger('testbed.catalog')
@@ -167,6 +168,15 @@ class Catalog(object):
 
     # Iterate over configured graphs
     for graph in settings.GRAPHS:
+      plotter_module = "testbed.%s" % graph['plotter']
+      i = plotter_module.rfind('.')
+      module, attr = plotter_module[:i], plotter_module[i + 1:]
+      try:
+        module = importlib.import_module(module)
+        graph['plotter'] = getattr(module, attr)
+      except (ImportError, AttributeError):
+        raise exceptions.ImproperlyConfigured("Error importing plotter module '%s'!" % plotter_module)
+
       if not issubclass(graph['plotter'], graphs_base.PlotterBase):
         raise exceptions.ImproperlyConfigured("Graph plotter for '%s' is not a testbed.graphs.base.PlotterBase subclass!" %
           (graph['name']))

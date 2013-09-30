@@ -1,4 +1,3 @@
-from testbed import graphs, topologies
 
 import math
 import numpy
@@ -127,16 +126,16 @@ RUNS = [
 
 # Configure graph generation
 GRAPHS = [
-  dict(name="messaging_performance", plotter=graphs.MessagingPerformance, runs=["pf-b1", "pf-b2"]),
-  dict(name="link_congestion", plotter=graphs.LinkCongestion, runs=["pf-b1", "pf-b2"]),
-  dict(name="path_stretch", plotter=graphs.PathStretch, runs=["pf-b1", "pf-b2"]),
-  dict(name="state_distribution", plotter=graphs.StateDistribution, runs=["pf-b1", "pf-b2"]),
-  dict(name="ndb_state_vs_size", plotter=graphs.StateVsSize, runs=["pf-b1", "pf-b2"], state="ndb_s_act",
+  dict(name="messaging_performance", plotter="graphs.MessagingPerformance", runs=["pf-b1", "pf-b2"]),
+  dict(name="link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b1", "pf-b2"]),
+  dict(name="path_stretch", plotter="graphs.PathStretch", runs=["pf-b1", "pf-b2"]),
+  dict(name="state_distribution", plotter="graphs.StateDistribution", runs=["pf-b1", "pf-b2"]),
+  dict(name="ndb_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b1", "pf-b2"], state="ndb_s_act",
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
-  dict(name="rt_state_vs_size", plotter=graphs.StateVsSize, runs=["pf-b1", "pf-b2"], state="rt_s_act",
+  dict(name="rt_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b1", "pf-b2"], state="rt_s_act",
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
 
-  dict(name="sybil_msg_perf", plotter=graphs.MessagingPerformance,
+  dict(name="sybil_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="attack_edges", legend=False,
     runs=["sy-e1", "sy-e2", "sy-e3", "sy-e4", "sy-e5", "sy-e6", "sy-e7"]),
 ]
