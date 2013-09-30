@@ -44,13 +44,14 @@ def generate(topology, arguments, filename):
 
   trust_topology = nx.Graph()
 
-  # number of all nodes
-  n = sum([evaluate_argument(c['n'], args) for c in topology.communities.values()])
+  # Number of all nodes
+  communities = evaluate_argument(topology.communities, args)
+  n = sum([evaluate_argument(c['n'], args) for c in communities.values()])
   args.nodes = n
 
   # Generate communities
   community_graphs = {}
-  for community, params in topology.communities.items():
+  for community, params in communities.items():
     graph = nx.connected_watts_strogatz_graph(
       evaluate_argument(params['n'], args),
       evaluate_argument(params['degree'], args),
@@ -65,7 +66,7 @@ def generate(topology, arguments, filename):
     community_graphs[community] = graph
 
   # Interconnect communities
-  for connection in topology.connections:
+  for connection in evaluate_argument(topology.connections, args):
     src = community_graphs[connection['src']]
     dst = community_graphs[connection['dst']]
 
