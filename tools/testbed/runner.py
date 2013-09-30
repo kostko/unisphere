@@ -59,7 +59,7 @@ class Runner(object):
       raise exceptions.ImproperlyConfigured("Error importing cluster runner '%s'!" % cluster_module)
 
     logger.info("Loading run catalog...")
-    catalog.load(settings)
+    catalog.load(settings, graphs=False)
 
     # Generate unique run identifier so that we can be sure that all runs have the same version
     run_id = hashlib.md5(os.urandom(32)).hexdigest()[:5]

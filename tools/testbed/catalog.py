@@ -144,11 +144,12 @@ class Catalog(object):
     self._runs = collections.OrderedDict()
     self._graphs = collections.OrderedDict()
 
-  def load(self, settings):
+  def load(self, settings, graphs=True):
     """
     Loads the topology, run and graph configuration from user settings.
 
     :param settings: User settings dictionary
+    :param graphs: Should we also load graphs
     """
     # Iterate over configured topologies
     for topology in settings.TOPOLOGIES:
@@ -166,17 +167,18 @@ class Catalog(object):
       self._runs[run['name']] = RunDescriptor(run)
 
     # Iterate over configured graphs
-    for graph in settings.GRAPHS:
-      plotter_module = "testbed.%s" % graph['plotter']
-      i = plotter_module.rfind('.')
-      module, attr = plotter_module[:i], plotter_module[i + 1:]
-      try:
-        module = importlib.import_module(module)
-        graph['plotter'] = getattr(module, attr)
-      except (ImportError, AttributeError):
-        raise exceptions.ImproperlyConfigured("Error importing plotter module '%s'!" % plotter_module)
+    if graphs:
+      for graph in settings.GRAPHS:
+        plotter_module = "testbed.%s" % graph['plotter']
+        i = plotter_module.rfind('.')
+        module, attr = plotter_module[:i], plotter_module[i + 1:]
+        try:
+          module = importlib.import_module(module)
+          graph['plotter'] = getattr(module, attr)
+        except (ImportError, AttributeError):
+          raise exceptions.ImproperlyConfigured("Error importing plotter module '%s'!" % plotter_module)
 
-      self._graphs[graph['name']] = GraphDescriptor(graph)
+        self._graphs[graph['name']] = GraphDescriptor(graph)
 
     logger.info("Loaded %d topology, %d run and %d graph descriptors." %
       (len(self._topologies), len(self._runs), len(self._graphs)))
