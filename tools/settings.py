@@ -52,7 +52,7 @@ TOPOLOGIES = [
     ],
   ),
 
-  # Varying number of attack edges, but number of all communities stay the same
+  # Varying number of attack edges, but size of all communities stays the same
   dict(
     name="sybil_edges",
     args=['attack_edges'],
