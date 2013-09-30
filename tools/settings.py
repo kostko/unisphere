@@ -33,6 +33,22 @@ TOPOLOGIES = [
     ),
   ),
 
+  # A fixed number of nodes, but multiple communities
+  dict(
+    name="basic_multi",
+    args=['size', 'communities', 'degree'],
+    communities=lambda a: dict([
+      ("c%d" % i, dict(n=a.size // a.communities, degree=a.degree, rewire=0.8))
+      for i in xrange(a.communities)
+    ]),
+    connections=lambda a: [
+      dict(src="c%d" % x, dst="c%d" % y, count=lambda a: int(math.log(a.nodes)))
+      for x in xrange(a.communities)
+      for y in xrange(a.communities)
+      if x != y
+    ],
+  ),
+
   # Varying number of Sybil nodes, but number of edges and sizes of honest/foreign
   # communities stay the same
   dict(
@@ -81,6 +97,16 @@ RUNS = [
   dict(name="pf-b5", topology="basic_single", size=256, scenario="StandardTests"),
   dict(name="pf-b6", topology="basic_single", size=512, scenario="StandardTests"),
   dict(name="pf-b7", topology="basic_single", size=1024, scenario="StandardTests"),
+
+  dict(name="pf-m1", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
+  dict(name="pf-m2", topology="basic_multi", size=256, communities=2, degree=4, scenario="StandardTests"),
+  dict(name="pf-m3", topology="basic_multi", size=256, communities=4, degree=4, scenario="StandardTests"),
+  dict(name="pf-m4", topology="basic_multi", size=256, communities=8, degree=4, scenario="StandardTests"),
+
+  dict(name="pf-e1", topology="basic_multi", size=256, communities=1, degree=2, scenario="StandardTests"),
+  dict(name="pf-e2", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
+  dict(name="pf-e3", topology="basic_multi", size=256, communities=1, degree=8, scenario="StandardTests"),
+  dict(name="pf-e4", topology="basic_multi", size=256, communities=1, degree=16, scenario="StandardTests"),
 
   # Sybil-tolerance measurement runs
   dict(name="sy-s1", topology="sybil_count", sybils=16, scenario="SybilNodes"),
