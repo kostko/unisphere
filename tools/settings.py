@@ -17,7 +17,6 @@ CLUSTER = {
     'slave_ip': '127.0.0.3',
     'slave_sim_ip': '127.0.1.1',
     'slave_sim_ports': (9000, 20000),
-    'slave_sim_threads': 5
   }
 }
 

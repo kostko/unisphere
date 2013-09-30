@@ -22,6 +22,7 @@ from .. import exceptions
 
 import hashlib
 import logging
+import multiprocessing
 import os
 import resource
 import shutil
@@ -98,7 +99,7 @@ class SimpleCluster(base.ClusterRunnerBase):
           "--sim-ip", self.cluster_cfg['slave_sim_ip'],
           "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
           "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
-          "--sim-threads", str(self.cluster_cfg['slave_sim_threads'])
+          "--sim-threads", str(multiprocessing.cpu_count() + 1)
         ],
         stdin=None,
         stderr=self.log_slave,
