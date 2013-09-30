@@ -66,7 +66,7 @@ class GraphDescriptor(object):
     """
     self.name = settings['name']
     self.plotter = settings['plotter']
-    self.runs = set(settings['runs'])
+    self.runs = settings['runs']
     self.settings = settings.copy()
     del self.settings['name']
     del self.settings['plotter']

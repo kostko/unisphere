@@ -69,7 +69,7 @@ class Plotter(object):
         runs.add(run_descriptor.name)
 
       for graph in catalog.graphs():
-        if graph.runs.intersection(runs) != graph.runs:
+        if runs.intersection(graph.runs) != set(graph.runs):
           logger.warning("Skipping graph '%s' because of unsatisfied run dependencies." % graph.name)
           continue
 
