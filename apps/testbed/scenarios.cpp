@@ -108,6 +108,8 @@ UNISPHERE_SCENARIO(SybilNodes)
 
   // Perform some sanity checks
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
+  // Dump topology information
+  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
   
   api.wait(60);
 
