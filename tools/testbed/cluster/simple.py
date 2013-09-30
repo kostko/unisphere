@@ -122,6 +122,10 @@ class SimpleCluster(base.ClusterRunnerBase):
       logger.error("Cluster not ready, aborting scenario run.")
       raise exceptions.ScenarioRunFailed
 
+    # Generate required topology
+    topology_path = os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, 'input-topology.graphml')
+    run.generate_topology(topology_path)
+
     # Run the scenario via the controller
     self.controller = subprocess.Popen(
       [
@@ -130,7 +134,7 @@ class SimpleCluster(base.ClusterRunnerBase):
         "--cluster-ip", self.cluster_cfg['controller_ip'],
         "--cluster-master-ip", self.cluster_cfg['master_ip'],
         "--cluster-master-id", self.master_id,
-        "--topology", os.path.join(self.settings.DATA_DIRECTORY, run.settings['topology']),
+        "--topology", topology_path,
         "--scenario", run.settings['scenario'],
         "--out-dir", os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name),
         "--id-gen", run.settings.get('id_gen', 'consistent'),

@@ -18,12 +18,40 @@
 #
 
 from .graphs import base as graphs_base
+from .topologies import generator
 from . import exceptions
 
 import collections
 import logging
 
 logger = logging.getLogger('testbed.catalog')
+
+class TopologyDescriptor(object):
+  def __init__(self, settings):
+    """
+    Class constructor.
+
+    :param settings: A dictionary of topology settings
+    """
+    self.name = settings['name']
+    self.args = settings['args']
+    self.communities = settings['communities']
+    self.connections = settings.get('connections', [])
+
+  def generate(self, run, filename):
+    """
+    Generates a topology.
+
+    :param run: Run descriptor
+    :param filename: Output graph filename
+    """
+    try:
+      # TODO: Support different generator classes?
+      logger.info("Generating topology '%s'..." % self.name)
+      generator.generate(self, run.settings, filename)
+    except:
+      logger.error("An error has ocurred while generating the topology!")
+      raise
 
 class RunDescriptor(object):
   def __init__(self, settings):
@@ -35,6 +63,14 @@ class RunDescriptor(object):
     self.name = settings['name']
     self.settings = settings.copy()
     del self.settings['name']
+
+  def generate_topology(self, filename):
+    """
+    Generates a topology for this run.
+
+    :param filename: Output graph filename
+    """
+    self.settings['topology'].generate(self, filename)
 
   def run(self, cluster, run_id):
     """
@@ -92,23 +128,35 @@ class GraphDescriptor(object):
 
 class Catalog(object):
   """
-  The catalog contains all run and graph configuration.
+  The catalog contains all topology, run and graph configuration.
   """
   def __init__(self):
     """
     Class constructor.
     """
+    self._topologies = collections.OrderedDict()
     self._runs = collections.OrderedDict()
     self._graphs = collections.OrderedDict()
 
   def load(self, settings):
     """
-    Loads the run and graph configuration from user settings.
+    Loads the topology, run and graph configuration from user settings.
 
     :param settings: User settings dictionary
     """
+    # Iterate over configured topologies
+    for topology in settings.TOPOLOGIES:
+      self._topologies[topology['name']] = TopologyDescriptor(topology)
+
     # Iterate over configured runs
     for run in settings.RUNS:
+      try:
+        topology = self._topologies[run['topology']]
+      except KeyError:
+        raise exceptions.ImproperlyConfigured("Topology generator named '%s' is not configured!" %
+          run['topology'])
+
+      run['topology'] = topology
       self._runs[run['name']] = RunDescriptor(run)
 
     # Iterate over configured graphs
@@ -119,7 +167,14 @@ class Catalog(object):
 
       self._graphs[graph['name']] = GraphDescriptor(graph)
 
-    logger.info("Loaded %d run and %d graph descriptors." % (len(self._runs), len(self._graphs)))
+    logger.info("Loaded %d topology, %d run and %d graph descriptors." %
+      (len(self._topologies), len(self._runs), len(self._graphs)))
+
+  def topologies(self):
+    """
+    Returns an iterator over the topologies collection.
+    """
+    return iter(self._topologies.values())
 
   def runs(self):
     """
