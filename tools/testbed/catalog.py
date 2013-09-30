@@ -53,6 +53,12 @@ class TopologyDescriptor(object):
       logger.error("An error has ocurred while generating the topology!")
       raise
 
+  def __str__(self):
+    """
+    Returns the topology name.
+    """
+    return self.name
+
 class RunDescriptor(object):
   def __init__(self, settings):
     """
