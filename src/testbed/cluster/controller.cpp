@@ -763,7 +763,7 @@ void Controller::finishSimulation()
     },
     [this](RpcErrorCode code, const std::string &msg) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to finish simulation: " << msg;
-      fail();
+      stop();
     }
   );
 }
