@@ -657,6 +657,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
         } else {
           // We are the landmark, enter delivery mode
           msg.setDeliveryMode(true);
+          m_statistics.msgsLandmarkRouted++;
         }
       }
 
