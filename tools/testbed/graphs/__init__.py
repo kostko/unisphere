@@ -22,3 +22,5 @@ from .messaging_performance import *
 from .path_stretch import *
 from .state_distribution import *
 from .state_vs_size import *
+from .degree_distribution import *
+from .degree_vs_variable import *

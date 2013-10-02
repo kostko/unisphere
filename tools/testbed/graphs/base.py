@@ -21,6 +21,7 @@ from .. import exceptions
 
 import glob
 import logging
+import networkx as nx
 import os
 import pandas
 
@@ -32,7 +33,7 @@ class RunOutputDescriptor(object):
     self.orig = run
     self.settings = settings
 
-  def get_dataset(self, ds_expression, **kwargs):
+  def get_file(self, ds_expression):
     ds_path = os.path.join(self.settings.OUTPUT_DIRECTORY, self.run_id, self.orig.name, ds_expression)
     candidates = []
     for ds in glob.glob(ds_path):
@@ -42,12 +43,18 @@ class RunOutputDescriptor(object):
       candidates.append(ds)
 
     try:
-      return pandas.read_csv(sorted(candidates, reverse=True)[0], sep='\t', **kwargs)
+      return sorted(candidates, reverse=True)[0]
     except IndexError:
       # Dataset does not exist
       logger.warning("Dataset matching '%s' does not exist for run '%s'!" %
         (ds_expression, self.orig.name))
       raise exceptions.MissingDatasetError
+
+  def get_graph(self, ds_expression, **kwargs):
+    return nx.read_graphml(self.get_file(ds_expression), **kwargs)
+
+  def get_dataset(self, ds_expression, **kwargs):
+    return pandas.read_csv(self.get_file(ds_expression), sep='\t', **kwargs)
 
 class PlotterBase(object):
   def __init__(self, graph, run_id, runs, settings):

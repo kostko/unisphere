@@ -40,10 +40,10 @@ TOPOLOGIES = [
       for i in xrange(a.communities)
     ]),
     connections=lambda a: [
-      dict(src="c%d" % x, dst="c%d" % y, count=lambda a: int(math.log(a.nodes)))
+      dict(src="c%d" % x, dst="c%d" % y, count=lambda a: max(1, int(math.log(a.nodes) / a.communities)))
       for x in xrange(a.communities)
       for y in xrange(a.communities)
-      if x != y
+      if x < y
     ],
   ),
 
@@ -105,6 +105,7 @@ RUNS = [
   dict(name="pf-e2", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
   dict(name="pf-e3", topology="basic_multi", size=256, communities=1, degree=8, scenario="StandardTests"),
   dict(name="pf-e4", topology="basic_multi", size=256, communities=1, degree=16, scenario="StandardTests"),
+  dict(name="pf-e5", topology="basic_multi", size=256, communities=1, degree=32, scenario="StandardTests"),
 
   # Sybil-tolerance measurement runs
   dict(name="sy-s1", topology="sybil_count", sybils=16, scenario="SybilNodes"),
@@ -125,15 +126,45 @@ RUNS = [
 
 # Configure graph generation
 GRAPHS = [
-  dict(name="messaging_performance", plotter="graphs.MessagingPerformance", runs=["pf-b*"]),
-  dict(name="link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b*"]),
-  dict(name="path_stretch", plotter="graphs.PathStretch", runs=["pf-b*"]),
-  dict(name="state_distribution", plotter="graphs.StateDistribution", runs=["pf-b*"]),
-  dict(name="ndb_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="ndb_s_act",
+  # Graphs relating to the effect of increasing sizes on protocol operation
+  dict(name="size_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-b*"]),
+  dict(name="size_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b*"]),
+  dict(name="size_path_stretch", plotter="graphs.PathStretch", runs=["pf-b*"]),
+  dict(name="size_state_distribution", plotter="graphs.StateDistribution", runs=["pf-b*"]),
+  dict(name="size_ndb_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="ndb_s_act",
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
-  dict(name="rt_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="rt_s_act",
+  dict(name="size_rt_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="rt_s_act",
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
+  dict(name="size_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="size",
+    graph="input-topology.graphml", runs=["pf-b*"]),
+  dict(name="size_sg_degree_dist", plotter="graphs.DegreeDistribution", variable="size",
+    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
+  dict(name="size_sg_degrees", plotter="graphs.DegreeVsVariable", variable="size",
+    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
 
+  # Graphs relating to the effect of community structure on protocol operation
+  dict(name="community_msg_perf", plotter="graphs.MessagingPerformance",
+    label_attribute="communities", legend=False, runs=["pf-m*"]),
+  dict(name="community_degrees", plotter="graphs.DegreeVsVariable", variable="communities",
+    graph="input-topology.graphml", runs=["pf-m*"]),
+  dict(name="community_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="communities",
+    graph="input-topology.graphml", runs=["pf-m*"]),
+  dict(name="community_sg_degree_dist", plotter="graphs.DegreeDistribution", variable="communities",
+    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-m*"]),
+  dict(name="community_sg_degrees", plotter="graphs.DegreeVsVariable", variable="communities",
+    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-m*"]),
+
+  # Graphs relating to the effect of mixing time on protocol operation
+  dict(name="mixing_msg_perf", plotter="graphs.MessagingPerformance",
+    label_attribute="degree", legend=False, runs=["pf-e*"]),
+  dict(name="mixing_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="degree",
+    graph="input-topology.graphml", runs=["pf-e*"]),
+  dict(name="mixing_sg_degree_dist", plotter="graphs.DegreeDistribution", variable="degree",
+    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-e*"]),
+  dict(name="mixing_sg_degrees", plotter="graphs.DegreeVsVariable", variable="degree",
+    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-e*"]),
+
+  # Graphs relating to the effect of Sybils on protocol operation
   dict(name="sybil_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="attack_edges", legend=False,
     runs=["sy-e1", "sy-e2", "sy-e3", "sy-e4", "sy-e5", "sy-e6", "sy-e7"]),
