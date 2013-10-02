@@ -21,6 +21,7 @@ from .catalog import catalog
 from . import exceptions
 
 import argparse
+import fnmatch
 import hashlib
 import importlib
 import logging
@@ -39,6 +40,8 @@ class Plotter(object):
     main_parser = argparse.ArgumentParser("plotter")
     main_parser.add_argument('run_groups', metavar='run_id', type=str, nargs='+',
                              help='unique run identifier')
+    main_parser.add_argument('--graphs', metavar='name', type=str, nargs='+',
+                             help='limit to specific graphs')
     args = main_parser.parse_args()
 
     # Setup logging to stderr
@@ -69,6 +72,14 @@ class Plotter(object):
         runs.add(run_descriptor.name)
 
       for graph in catalog.graphs():
+        if args.graphs:
+          for pattern in args.graphs:
+            if fnmatch.fnmatch(graph.name, pattern):
+              break
+          else:
+            logger.info("Skipping graph '%s'." % graph.name)
+            continue
+
         if runs.intersection(graph.runs) != set(graph.runs):
           logger.warning("Skipping graph '%s' because of unsatisfied run dependencies." % graph.name)
           continue
