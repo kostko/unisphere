@@ -21,6 +21,7 @@ from .topologies import generator
 from . import exceptions
 
 import collections
+import fnmatch
 import importlib
 import logging
 
@@ -177,6 +178,14 @@ class Catalog(object):
           graph['plotter'] = getattr(module, attr)
         except (ImportError, AttributeError):
           raise exceptions.ImproperlyConfigured("Error importing plotter module '%s'!" % plotter_module)
+
+        # Automatically resolve run names that represent glob expressions
+        runs = []
+        for run_name in graph['runs']:
+          for run in self.runs():
+            if fnmatch.fnmatch(run.name, run_name):
+              runs.append(run.name)
+        graph['runs'] = runs
 
         self._graphs[graph['name']] = GraphDescriptor(graph)
 
