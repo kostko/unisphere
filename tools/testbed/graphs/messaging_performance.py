@@ -28,32 +28,49 @@ class MessagingPerformance(base.PlotterBase):
   """
   Draws messaging performance of the USphere protocol.
   """
-  def pre_process(self, data):
+  def pre_process(self, run, variables):
     """
     Performs pre-processing of the data so that the timeseries is grouped
     by timestamps and nodes in order to be processed correctly later on.
     """
-    ts_base = min(data['ts'])
-    groups = set(data['node_id'].unique())
-    data.sort('ts', inplace=True)
-    
+    chunks = run.get_dataset("stats-collect_performance-raw-*.csv", chunksize=5000)
+    ts_base, groups = None, set()
+    for chunk in chunks:
+      if ts_base is None:
+        ts_base = min(chunk['ts'])
+      else:
+        ts_base = min(ts_base, min(chunk['ts']))
+
+      groups.update(chunk['node_id'].unique())
+
     grouped_data = {}
     prev_ts = None
     current_ts = 0
 
-    for _, element in data.iterrows():
-      element_ts = element['ts'] - ts_base
-      grouped_data.setdefault(element_ts, {})[element['node_id']] = element
-      if current_ts != element_ts:
-        # New timestamp, check if we have missed any nodes and include their previous
-        # values in this timestamp -- this is to ensure that there are no weird jumps
-        # when computing the rate of change
-        if len(grouped_data[current_ts]) != len(groups):
-          for group in groups.difference(grouped_data[current_ts].keys()):
-            grouped_data[current_ts][group] = grouped_data[prev_ts][group]
+    chunks = run.get_dataset("stats-collect_performance-raw-*.csv", chunksize=5000)
+    for chunk in chunks:
+      for _, element in chunk.iterrows():
+        element_ts = element['ts'] - ts_base
+        assert element_ts >= current_ts
+        grouped_data.setdefault(element_ts, {})[element['node_id']] = element
+        if current_ts != element_ts:
+          # New timestamp, check if we have missed any nodes and include their previous
+          # values in this timestamp -- this is to ensure that there are no weird jumps
+          # when computing the rate of change
+          if len(grouped_data[current_ts]) != len(groups):
+            for group in groups.difference(grouped_data[current_ts].keys()):
+              grouped_data[current_ts][group] = grouped_data[prev_ts][group]
 
-        prev_ts = current_ts
-        current_ts = element_ts
+          # Now that we have all data, compute averages for all values so we don't have
+          # to keep this much data in memory
+          if prev_ts is not None:
+            group_sum = {}
+            for v in variables:
+              group_sum[v] = numpy.average([x[v] for x in grouped_data[prev_ts].itervalues()])
+            grouped_data[prev_ts] = group_sum
+
+          prev_ts = current_ts
+          current_ts = element_ts
 
     timestamps = numpy.asarray(sorted(grouped_data.keys()))
 
@@ -64,11 +81,8 @@ class MessagingPerformance(base.PlotterBase):
     Plots a timeseries for a variable.
     """
     # Extract variable from the grouped dataset
-    Y = [numpy.average([y[variable] for y in grouped_data[x].values()]) for x in timestamps]
-
-    # Discard last 10 measurements
     X = timestamps[:-10]
-    Y = Y[:-10]
+    Y = [grouped_data[x][variable] for x in X]
 
     # Compute rate from absolute counter values
     Yrate = []
@@ -96,11 +110,8 @@ class MessagingPerformance(base.PlotterBase):
 
     min_max_ts = None
     for i, run in enumerate(self.runs):
-      # Load dataset
-      data = run.get_dataset("stats-collect_performance-raw-*.csv")
-
       # Pre-process dataset so it gets properly grouped by timestamp for each node
-      timestamps, grouped_data = self.pre_process(data)
+      timestamps, grouped_data = self.pre_process(run, ['sg_msgs', 'rt_msgs'])
 
       # Plot variables
       self.plot_variable(ax, timestamps, grouped_data, 'sg_msgs', mpl.cm.winter(float(i) / len(self.runs)),

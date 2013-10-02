@@ -32,7 +32,7 @@ class RunOutputDescriptor(object):
     self.orig = run
     self.settings = settings
 
-  def get_dataset(self, ds_expression):
+  def get_dataset(self, ds_expression, **kwargs):
     ds_path = os.path.join(self.settings.OUTPUT_DIRECTORY, self.run_id, self.orig.name, ds_expression)
     candidates = []
     for ds in glob.glob(ds_path):
@@ -42,7 +42,7 @@ class RunOutputDescriptor(object):
       candidates.append(ds)
 
     try:
-      return pandas.read_csv(sorted(candidates, reverse=True)[0], sep=None, engine='python')
+      return pandas.read_csv(sorted(candidates, reverse=True)[0], sep='\t', **kwargs)
     except IndexError:
       # Dataset does not exist
       logger.warning("Dataset matching '%s' does not exist for run '%s'!" %
