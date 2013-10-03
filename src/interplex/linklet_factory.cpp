@@ -19,6 +19,7 @@
 #include "interplex/linklet_factory.h"
 #include "interplex/link_manager.h"
 #include "interplex/ip_linklet.h"
+#include "interplex/local_linklet.h"
 
 namespace UniSphere {
 
@@ -32,8 +33,9 @@ LinkletPtr LinkletFactory::create(const Address& address) const
   LinkletPtr linklet;
   switch (address.type()) {
     // IPv4/v6 connection
-    case Address::Type::IP: linklet = LinkletPtr(new IPLinklet(m_manager)); break;
-    
+    case Address::Type::IP: linklet = boost::make_shared<IPLinklet>(m_manager); break;
+    // Local IPC connection
+    case Address::Type::Local: linklet = boost::make_shared<LocalLinklet>(m_manager); break;
     // This should not happen
     default: BOOST_ASSERT(false);
   }

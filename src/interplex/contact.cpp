@@ -48,6 +48,20 @@ Address::Address(const std::string &ip, unsigned short port)
 {
 }
 
+Address::Address(const boost::filesystem::path &path)
+  : m_type(Type::Local),
+    m_address(boost::asio::local::stream_protocol::endpoint(
+      path.string()
+    ))
+{
+}
+
+Address::Address(const boost::asio::local::stream_protocol::endpoint &endpoint)
+  : m_type(Type::Local),
+    m_address(endpoint)
+{
+}
+
 bool Address::operator==(const Address &other) const
 {
   if (m_type != other.m_type)
@@ -55,6 +69,7 @@ bool Address::operator==(const Address &other) const
   
   switch (m_type) {
     case Type::IP: return toIpEndpoint() == other.toIpEndpoint();
+    case Type::Local: return toLocalEndpoint() == other.toLocalEndpoint();
     default: return false;
   }
 }
@@ -66,6 +81,7 @@ bool Address::operator<(const Address &other) const
   
   switch (m_type) {
     case Type::IP: return toIpEndpoint() < other.toIpEndpoint();
+    case Type::Local: return toLocalEndpoint() < other.toLocalEndpoint();
     default: return false;
   }
 }
@@ -76,6 +92,14 @@ boost::asio::ip::tcp::endpoint Address::toIpEndpoint() const
     throw AddressTypeMismatch();
   
   return boost::any_cast<boost::asio::ip::tcp::endpoint>(m_address);
+}
+
+boost::asio::local::stream_protocol::endpoint Address::toLocalEndpoint() const
+{
+  if (m_type != Type::Local)
+    throw AddressTypeMismatch();
+  
+  return boost::any_cast<boost::asio::local::stream_protocol::endpoint>(m_address);
 }
 
 Contact::Contact()

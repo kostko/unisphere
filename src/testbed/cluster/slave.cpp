@@ -247,8 +247,11 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
     auto &node = request.nodes(i);
     Contact contact = Contact::fromMessage(node.contact());
     std::list<Contact> peers;
+    contact.addAddress(Address(boost::filesystem::temp_directory_path()/contact.nodeId().hex()), 1);
     for (int j = 0; j < node.peers_size(); j++) {
-      peers.push_back(Contact::fromMessage(node.peers(j)));
+      Contact peerContact = Contact::fromMessage(node.peers(j));
+      peerContact.addAddress(Address(boost::filesystem::temp_directory_path()/peerContact.nodeId().hex()), 1);
+      peers.push_back(peerContact);
     }
 
     simulation->createNode(node.name(), contact, peers);

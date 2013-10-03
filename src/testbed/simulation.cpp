@@ -152,7 +152,7 @@ void Simulation::createNode(const std::string &name,
                             const std::list<Contact> &peers)
 {
   RecursiveUniqueLock lock(d->m_mutex);
-  VirtualNodePtr node = VirtualNodePtr(new VirtualNode(d->m_context, d->m_sizeEstimator, name, contact));
+  VirtualNodePtr node = boost::make_shared<VirtualNode>(d->m_context, d->m_sizeEstimator, name, contact);
   for (const Contact &peer : peers) {
     node->identity->addPeer(peer);
   }

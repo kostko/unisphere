@@ -6,6 +6,7 @@ link.cpp
 linklet.cpp
 linklet_factory.cpp
 ip_linklet.cpp
+local_linklet.cpp
 message.cpp
 message_dispatcher.cpp
 host_introspector.cpp

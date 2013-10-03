@@ -25,6 +25,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/any.hpp>
+#include <boost/filesystem.hpp>
 #include <map>
 
 namespace UniSphere {
@@ -40,6 +41,7 @@ public:
   enum class Type {
     Null,
     IP,
+    Local,
   };
   
   /**
@@ -50,7 +52,7 @@ public:
   /**
    * Constructs an IP address.
    */
-  Address(const boost::asio::ip::tcp::endpoint &endpoint);
+  explicit Address(const boost::asio::ip::tcp::endpoint &endpoint);
   
   /**
    * Constructs an IP address.
@@ -61,6 +63,16 @@ public:
    * Constructs an IP address.
    */
   Address(const std::string &ip, unsigned short port);
+
+  /**
+   * Constructs a Local socket address.
+   */
+  explicit Address(const boost::filesystem::path &path);
+
+  /**
+   * Constructs a Local socket address.
+   */
+  explicit Address(const boost::asio::local::stream_protocol::endpoint &endpoint);
   
   /**
    * Returns true if this address is equal to another.
@@ -90,10 +102,18 @@ public:
    * @throws AddressTypeMismatch
    */
   boost::asio::ip::tcp::endpoint toIpEndpoint() const;
+
+  /**
+   * Returns the local path endpoint representation of this node
+   * address. It is an error to call this method when address type is not
+   * Local. An exception will be thrown in this case.
+   *
+   * @throws AddressTypeMismatch
+   */
+  boost::asio::local::stream_protocol::endpoint toLocalEndpoint() const;
 private:
   /// Address type
   Type m_type;
-  
   /// The actual address container
   boost::any m_address;
 };

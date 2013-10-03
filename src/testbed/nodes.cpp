@@ -22,6 +22,8 @@
 #include "social/compact_router.h"
 #include "social/social_identity.h"
 
+#include <boost/range/adaptors.hpp>
+
 namespace UniSphere {
   
 namespace TestBed {
@@ -36,8 +38,12 @@ VirtualNode::VirtualNode(Context &context,
     linkManager(new LinkManager(context, nodeId)),
     router(new CompactRouter(*identity, *linkManager, sizeEstimator))
 {
-  linkManager->setLocalAddress(contact.address());
-  linkManager->listen(contact.address());
+  for (const Address &address : contact.addresses() | boost::adaptors::map_values) {
+    if (address.type() == Address::Type::IP)
+      linkManager->setLocalAddress(address);
+
+    linkManager->listen(address);
+  }
 }
 
 VirtualNode::~VirtualNode()
