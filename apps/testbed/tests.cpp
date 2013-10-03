@@ -241,20 +241,44 @@ public:
                                      TestCaseApi &api)
   {
     boost::property_tree::ptree args;
+    auto nodes = api.getNodes();
+    int m = argument<int>("destinations_per_node", 1);
+    std::set<int> indices;
 
-    // Specify identifiers that should be paired with this node
-    for (const Partition &p : api.getPartitions()) {
-      for (const Partition::Node &n : p.nodes) {
-        if (n.contact.nodeId() == node.contact.nodeId())
+    // Discover the number of nodes (iterator doesn't support random access) and
+    // the index of ourselves, so that we can later exclude it
+    int n = 0;
+    int indexSelf = -1;
+    for (const Partition::Node &pnode : nodes) {
+      if (pnode.contact.nodeId() == node.contact.nodeId())
+        indexSelf = n;
+      n++;
+    }
+
+    // Ensure that the index range will be valid
+    if (m > n)
+      m = n;
+
+    // Draw m random indices to select which nodes to choose
+    std::uniform_int_distribution<int> sampler(0, n - 1);
+    for (int i = 0; i < m; i++) {
+      for (;;) {
+        int idx = sampler(api.rng());
+        if (idx == indexSelf)
           continue;
-
-        // Sample a subset of nodes
-        // TODO: Make this subset configurable per test case instance
-        if (sampler(api.rng()) < 0.9)
-          continue;
-
-        args.add("nodes.node", n.contact.nodeId().hex());
+        if (indices.insert(idx).second)
+          break;
       }
+    }
+
+    // Use selected indices to populate the argument list with destination ids
+    auto it = nodes.begin();
+    int offset = 0;
+    for (int idx : indices) {
+      std::advance(it, idx - offset);
+      offset = idx;
+      
+      args.add("nodes.node", it->contact.nodeId().hex());
     }
 
     return SelectedPartition::Node{ node.contact.nodeId(), args };

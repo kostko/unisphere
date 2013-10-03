@@ -82,7 +82,10 @@ UNISPHERE_SCENARIO(StandardTests)
 
   // Collect link congestion information while pinging
   auto linkCollector = api.testInBackground<Tests::CollectLinkCongestion>("stats/collect_link_congestion");
-  linkCollector->pairWisePing = api.test<Tests::PairWisePing>("routing/pair_wise_ping");
+  linkCollector->pairWisePing = api.test<Tests::PairWisePing>(
+    "routing/pair_wise_ping",
+    {{ "destinations_per_node", 2 }}
+  );
   api.signal(linkCollector, "finish");
   
   api.wait(600);
