@@ -32,6 +32,9 @@ class PathStretch(base.PlotterBase):
     """
     fig, ax = plt.subplots()
 
+    # Determine the label variable name
+    variable = self.graph.settings.get('variable', 'size')
+
     for run in self.runs:
       # Load dataset
       data = run.get_dataset("routing-pair_wise_ping-stretch-*.csv")
@@ -43,7 +46,7 @@ class PathStretch(base.PlotterBase):
       ecdf = sm.distributions.ECDF(data)
 
       ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2,
-        label="n = %d" % run.orig.settings.get('size', 0))
+        label="%s = %d" % (variable, run.orig.settings.get(variable, 0)))
 
     ax.set_xlabel('Path Stretch')
     ax.set_ylabel('Cummulative Probability')
