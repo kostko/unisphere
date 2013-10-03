@@ -37,24 +37,37 @@ class DegreeVsVariable(base.PlotterBase):
     # Determine the label variable name
     variable = self.graph.settings.get('variable', 'size')
 
-    values = {}
+    values = {
+      'degree': {},
+      'in-degree': {},
+      'out-degree': {},
+    }
     for run in self.runs:
       # Load graph
       graph = run.get_graph(self.graph.settings['graph'])
 
       # Extract degree distribution information
       degrees = graph.degree().values()
-      values[run.orig.settings[variable]] = (numpy.average(degrees), numpy.std(degrees))
+      in_degrees = graph.in_degree().values()
+      out_degrees = graph.out_degree().values()
 
-    X = sorted(values.keys())
-    Y = [values[x][0] for x in X]
-    Yerr = [values[x][1] for x in X]
+      values['degree'][run.orig.settings[variable]] = (numpy.average(degrees), numpy.std(degrees))
+      values['in-degree'][run.orig.settings[variable]] = (numpy.average(in_degrees), numpy.std(in_degrees))
+      values['out-degree'][run.orig.settings[variable]] = (numpy.average(out_degrees), numpy.std(out_degrees))
 
-    ax.errorbar(X, Y, Yerr, label='Measurements')
+    for typ in values:
+      X = sorted(values[typ].keys())
+      Y = [values[typ][x][0] for x in X]
+      Yerr = [values[typ][x][1] for x in X]
+
+      ax.errorbar(X, Y, Yerr, label=typ)
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
     if fit_function is not None:
+      X = sorted(values['degree'].keys())
+      Y = [values['degree'][x][0] for x in X]
+
       popt, pcov = scipy.optimize.curve_fit(fit_function, X, Y)
       Fx = numpy.linspace(min(X), max(X) + 2*(X[-1] - X[-2]), 100)
       Fy = [fit_function(x, *popt) for x in Fx]
@@ -64,6 +77,6 @@ class DegreeVsVariable(base.PlotterBase):
     ax.set_ylabel('Degree')
     ax.grid()
 
-    legend = ax.legend(loc='lower right')
+    legend = ax.legend(loc='upper left')
     legend.get_frame().set_alpha(0.8)
     fig.savefig(self.get_figure_filename())
