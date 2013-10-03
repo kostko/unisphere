@@ -130,6 +130,14 @@ public:
   }
 
   /**
+   * Returns a list of nodes. This method is only available on the controller.
+   */
+  virtual Partition::NodeRange getNodes() const
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
    * Returns a node descriptor for the given node. This method is only available
    * on the controller.
    *

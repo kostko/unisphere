@@ -81,6 +81,8 @@ public:
 
   PartitionRange getPartitions();
 
+  Partition::NodeRange getNodes() const;
+
   const Partition::Node &getNodeById(const NodeIdentifier &nodeId);
 
   std::mt19937 &rng();
@@ -246,6 +248,11 @@ std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
 PartitionRange ControllerTestCaseApi::getPartitions()
 {
   return m_controller.m_partitions;
+}
+
+Partition::NodeRange ControllerTestCaseApi::getNodes() const
+{
+  return m_controller.m_nodeMap | boost::adaptors::map_values;
 }
 
 const Partition::Node &ControllerTestCaseApi::getNodeById(const NodeIdentifier &nodeId)
