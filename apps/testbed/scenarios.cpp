@@ -95,32 +95,75 @@ UNISPHERE_SCENARIO(StandardTests)
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 
-UNISPHERE_SCENARIO(SybilNodes)
+UNISPHERE_SCENARIO(SybilNodesNames)
 {
   // Start collecting performance data
   TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
 
   // Configure Sybil nodes to be malicious
   TestCasePtr sybils = api.testInBackground("roles/setup_sybil_nodes");
-  api.signal(sybils, "evil");
+  api.signal(sybils, "evil_names");
 
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
-  api.wait(60);
+  api.wait(120);
 
   // Perform some sanity checks
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
   // Dump topology information
   api.test({ "state/sloppy_group_topology", "state/routing_topology" });
   
-  api.wait(60);
+  api.wait(10);
+
+  // Check pair-wise connectivity
+  api.test("routing/pair_wise_ping", {
+    { "sybil_mode", true },
+    { "community_limit", true },
+    { "destinations_per_node", 2 }
+  });
 
   // Stop collecting performance data
   api.signal(perfCollector, "finish");
   // Stop sybil behaviour
   api.signal(sybils, "finish");
 }
-UNISPHERE_SCENARIO_END_REGISTER(SybilNodes)
+UNISPHERE_SCENARIO_END_REGISTER(SybilNodesNames)
+
+UNISPHERE_SCENARIO(SybilNodesRouting)
+{
+  // Start collecting performance data
+  TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
+
+  // Configure Sybil nodes to be malicious
+  TestCasePtr sybils = api.testInBackground("roles/setup_sybil_nodes");
+  api.signal(sybils, "evil_names");
+  api.signal(sybils, "evil_routing");
+
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
+
+  api.wait(120);
+
+  // Perform some sanity checks
+  api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
+  // Dump topology information
+  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+  
+  api.wait(10);
+
+  // Check pair-wise connectivity
+  api.test("routing/pair_wise_ping", {
+    { "sybil_mode", true },
+    { "community_limit", true },
+    { "destinations_per_node", 2 }
+  });
+
+  // Stop collecting performance data
+  api.signal(perfCollector, "finish");
+  // Stop sybil behaviour
+  api.signal(sybils, "finish");
+}
+UNISPHERE_SCENARIO_END_REGISTER(SybilNodesRouting)
 
 }

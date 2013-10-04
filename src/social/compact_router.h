@@ -20,6 +20,7 @@
 #define UNISPHERE_SOCIAL_COMPACTROUTER_H
 
 #include "core/globals.h"
+#include "core/signal.h"
 #include "social/routed_message.h"
 
 #include <boost/signals2/signal.hpp>
@@ -85,6 +86,8 @@ public:
     size_t entryXmits = 0;
     /// Number of messages routed via a landmark node
     size_t msgsLandmarkRouted = 0;
+    /// Number of messages routed via a sloppy group member
+    size_t msgsSgRouted = 0;
   };
 
   /**
@@ -188,7 +191,7 @@ public:
   /// Signal for delivery of locally-bound messages
   boost::signals2::signal<void(const RoutedMessage&)> signalDeliverMessage;
   /// Signal for forwarding transit messages
-  boost::signals2::signal<void(const RoutedMessage&)> signalForwardMessage;
+  boost::signals2::signal<bool(const RoutedMessage&), AllTrueCombiner> signalForwardMessage;
 private:
   UNISPHERE_DECLARE_PRIVATE(CompactRouter)
 };

@@ -240,18 +240,34 @@ public:
                                      const Partition::Node &node,
                                      TestCaseApi &api)
   {
+    bool sybilMode = argument<bool>("sybil_mode", false);
+    bool communityLimit = argument<bool>("community_limit", false);
+    // In case sybil mode is enabled, we should not perform measurements from sybil nodes
+    if (sybilMode && node.property<int>("sybil"))
+      return SelectedPartition::Node();
+
     boost::property_tree::ptree args;
     auto nodes = api.getNodes();
     int m = argument<int>("destinations_per_node", 1);
     std::set<int> indices;
+    std::set<int> excluded;
 
     // Discover the number of nodes (iterator doesn't support random access) and
-    // the index of ourselves, so that we can later exclude it
+    // any nodes that should be excluded
     int n = 0;
     int indexSelf = -1;
     for (const Partition::Node &pnode : nodes) {
+      // In case sybil mode is enabled, we should not perform measurements to sybil nodes
+      if (sybilMode && pnode.property<int>("sybil"))
+        excluded.insert(n);
+      // In case community limit is enabled, we should not perform measurements to nodes
+      // that are in a different community that the selected node
+      if (communityLimit && pnode.property<std::string>("community") != node.property<std::string>("community"))
+        excluded.insert(n);
+      // Exclude ourselves as this would serve no purpuse
       if (pnode.contact.nodeId() == node.contact.nodeId())
-        indexSelf = n;
+        excluded.insert(n);
+
       n++;
     }
 
@@ -264,7 +280,7 @@ public:
     for (int i = 0; i < m; i++) {
       for (;;) {
         int idx = sampler(api.rng());
-        if (idx == indexSelf)
+        if (excluded.count(idx))
           continue;
         if (indices.insert(idx).second)
           break;
@@ -883,8 +899,10 @@ class SetupSybilNodes : public TestCase
 public:
   /// A set of known Sybil nodes for faster lookup
   std::unordered_set<NodeIdentifier> sybils;
-  /// Evilness switch (off by default)
-  bool evil = false;
+  /// Evilness switch for name records (off by default)
+  bool evilNames = false;
+  /// Evilness switch for data forwarding (off by default)
+  bool evilRouting = false;
   /// Signal subscriptions
   std::list<boost::signals2::connection> subscriptions;
 
@@ -938,7 +956,14 @@ public:
     subscriptions << node->router->nameDb().signalImportRecord.connect(
       [this](NameRecordPtr record) -> bool {
         // Drop any record that doesn't belong to another Sybil node
-        return evil ? sybils.count(record->nodeId) != 0 : true;
+        return evilNames ? sybils.count(record->nodeId) != 0 : true;
+      }
+    );
+
+    subscriptions << node->router->signalForwardMessage.connect(
+      [this](const RoutedMessage &msg) -> bool {
+        // Drop any message not sent by a Sybil node
+        return evilRouting ? sybils.count(msg.sourceNodeId()) != 0 : true;
       }
     );
   }
@@ -953,14 +978,22 @@ public:
       subscriptions.clear();
 
       finish(api);
-    } else if (signal == "evil") {
+    } else if (signal == "evil_names") {
       // Instruct Sybil nodes to become evil
-      BOOST_LOG(logger()) << "Sybil nodes becoming evil.";
-      evil = true;
-    } else if (signal == "nice") {
+      BOOST_LOG(logger()) << "Sybil nodes becoming evil (names).";
+      evilNames = true;
+    } else if (signal == "nice_names") {
       // Instruct Sybil nodes to become nice
-      BOOST_LOG(logger()) << "Sybil nodes becoming nice.";
-      evil = false;
+      BOOST_LOG(logger()) << "Sybil nodes becoming nice (names).";
+      evilNames = false;
+    } else if (signal == "evil_routing") {
+      // Instruct Sybil nodes to become evil
+      BOOST_LOG(logger()) << "Sybil nodes becoming evil (routing).";
+      evilRouting = true;
+    } else if (signal == "nice_routing") {
+      // Instruct Sybil nodes to become nice
+      BOOST_LOG(logger()) << "Sybil nodes becoming nice (routing).";
+      evilRouting = false;
     }
   }
 };

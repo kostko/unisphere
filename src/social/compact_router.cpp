@@ -689,6 +689,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
         auto match = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
         msg.setDestinationAddress(LandmarkAddress(match.nodeId));
         nextHop = m_identity.getPeerContact(match.nextHop);
+        m_statistics.msgsSgRouted++;
       }
     }
   }
@@ -703,8 +704,11 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
     return;
   }
 
+  // Invoke handlers and drop the message if any of them return false
+  if (!q.signalForwardMessage(msg))
+    return;
+
   // Route to next hop
-  q.signalForwardMessage(msg);
   Protocol::RoutedMessage pmsg;
   msg.serialize(pmsg);
   m_manager.send(nextHop, Message(Message::Type::Social_Routed, pmsg));

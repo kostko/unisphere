@@ -96,10 +96,11 @@ RUNS = [
   dict(name="pf-b6", topology="basic_single", size=512, scenario="StandardTests"),
   dict(name="pf-b7", topology="basic_single", size=1024, scenario="StandardTests"),
 
-  dict(name="pf-m1", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
-  dict(name="pf-m2", topology="basic_multi", size=256, communities=2, degree=4, scenario="StandardTests"),
-  dict(name="pf-m3", topology="basic_multi", size=256, communities=4, degree=4, scenario="StandardTests"),
-  dict(name="pf-m4", topology="basic_multi", size=256, communities=8, degree=4, scenario="StandardTests"),
+  dict(name="pf-m1", topology="basic_multi", size=512, communities=1, degree=4, scenario="StandardTests"),
+  dict(name="pf-m2", topology="basic_multi", size=512, communities=2, degree=4, scenario="StandardTests"),
+  dict(name="pf-m3", topology="basic_multi", size=512, communities=4, degree=4, scenario="StandardTests"),
+  dict(name="pf-m4", topology="basic_multi", size=512, communities=8, degree=4, scenario="StandardTests"),
+  dict(name="pf-m5", topology="basic_multi", size=512, communities=16, degree=4, scenario="StandardTests"),
 
   dict(name="pf-e1", topology="basic_multi", size=256, communities=1, degree=2, scenario="StandardTests"),
   dict(name="pf-e2", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
@@ -108,20 +109,35 @@ RUNS = [
   dict(name="pf-e5", topology="basic_multi", size=256, communities=1, degree=32, scenario="StandardTests"),
 
   # Sybil-tolerance measurement runs
-  dict(name="sy-s1", topology="sybil_count", sybils=16, scenario="SybilNodes"),
-  dict(name="sy-s2", topology="sybil_count", sybils=32, scenario="SybilNodes"),
-  dict(name="sy-s3", topology="sybil_count", sybils=48, scenario="SybilNodes"),
-  dict(name="sy-s4", topology="sybil_count", sybils=64, scenario="SybilNodes"),
-  dict(name="sy-s5", topology="sybil_count", sybils=80, scenario="SybilNodes"),
-  dict(name="sy-s6", topology="sybil_count", sybils=96, scenario="SybilNodes"),
+  dict(name="sy-ns1", topology="sybil_count", sybils=16, scenario="SybilNodesNames"),
+  dict(name="sy-ns2", topology="sybil_count", sybils=32, scenario="SybilNodesNames"),
+  dict(name="sy-ns3", topology="sybil_count", sybils=48, scenario="SybilNodesNames"),
+  dict(name="sy-ns4", topology="sybil_count", sybils=64, scenario="SybilNodesNames"),
+  dict(name="sy-ns5", topology="sybil_count", sybils=80, scenario="SybilNodesNames"),
+  dict(name="sy-ns6", topology="sybil_count", sybils=96, scenario="SybilNodesNames"),
 
-  dict(name="sy-e1", topology="sybil_edges", attack_edges=60, scenario="SybilNodes"),
-  dict(name="sy-e2", topology="sybil_edges", attack_edges=80, scenario="SybilNodes"),
-  dict(name="sy-e3", topology="sybil_edges", attack_edges=100, scenario="SybilNodes"),
-  dict(name="sy-e4", topology="sybil_edges", attack_edges=120, scenario="SybilNodes"),
-  dict(name="sy-e5", topology="sybil_edges", attack_edges=140, scenario="SybilNodes"),
-  dict(name="sy-e6", topology="sybil_edges", attack_edges=160, scenario="SybilNodes"),
-  dict(name="sy-e7", topology="sybil_edges", attack_edges=180, scenario="SybilNodes"),
+  dict(name="sy-ne1", topology="sybil_edges", attack_edges=60, scenario="SybilNodesNames"),
+  dict(name="sy-ne2", topology="sybil_edges", attack_edges=80, scenario="SybilNodesNames"),
+  dict(name="sy-ne3", topology="sybil_edges", attack_edges=100, scenario="SybilNodesNames"),
+  dict(name="sy-ne4", topology="sybil_edges", attack_edges=120, scenario="SybilNodesNames"),
+  dict(name="sy-ne5", topology="sybil_edges", attack_edges=140, scenario="SybilNodesNames"),
+  dict(name="sy-ne6", topology="sybil_edges", attack_edges=160, scenario="SybilNodesNames"),
+  dict(name="sy-ne7", topology="sybil_edges", attack_edges=180, scenario="SybilNodesNames"),
+
+  dict(name="sy-rs1", topology="sybil_count", sybils=16, scenario="SybilNodesRouting"),
+  dict(name="sy-rs2", topology="sybil_count", sybils=32, scenario="SybilNodesRouting"),
+  dict(name="sy-rs3", topology="sybil_count", sybils=48, scenario="SybilNodesRouting"),
+  dict(name="sy-rs4", topology="sybil_count", sybils=64, scenario="SybilNodesRouting"),
+  dict(name="sy-rs5", topology="sybil_count", sybils=80, scenario="SybilNodesRouting"),
+  dict(name="sy-rs6", topology="sybil_count", sybils=96, scenario="SybilNodesRouting"),
+
+  dict(name="sy-re1", topology="sybil_edges", attack_edges=60, scenario="SybilNodesRouting"),
+  dict(name="sy-re2", topology="sybil_edges", attack_edges=80, scenario="SybilNodesRouting"),
+  dict(name="sy-re3", topology="sybil_edges", attack_edges=100, scenario="SybilNodesRouting"),
+  dict(name="sy-re4", topology="sybil_edges", attack_edges=120, scenario="SybilNodesRouting"),
+  dict(name="sy-re5", topology="sybil_edges", attack_edges=140, scenario="SybilNodesRouting"),
+  dict(name="sy-re6", topology="sybil_edges", attack_edges=160, scenario="SybilNodesRouting"),
+  dict(name="sy-re7", topology="sybil_edges", attack_edges=180, scenario="SybilNodesRouting"),
 ]
 
 # Configure graph generation
@@ -129,7 +145,7 @@ GRAPHS = [
   # Graphs relating to the effect of increasing sizes on protocol operation
   dict(name="size_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-b*"]),
   dict(name="size_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b*"]),
-  dict(name="size_path_stretch", plotter="graphs.PathStretch", runs=["pf-b*"]),
+  dict(name="size_path_stretch", plotter="graphs.PathStretch", runs=["pf-b*"], variable="size"),
   dict(name="size_state_distribution", plotter="graphs.StateDistribution", runs=["pf-b*"]),
   dict(name="size_ndb_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="ndb_s_act",
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
@@ -145,6 +161,7 @@ GRAPHS = [
   # Graphs relating to the effect of community structure on protocol operation
   dict(name="community_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="communities", legend=False, runs=["pf-m*"]),
+  dict(name="community_path_stretch", plotter="graphs.PathStretch", runs=["pf-m*"], variable="communities"),
   dict(name="community_degrees", plotter="graphs.DegreeVsVariable", variable="communities",
     graph="input-topology.graphml", runs=["pf-m*"]),
   dict(name="community_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="communities",
@@ -157,6 +174,7 @@ GRAPHS = [
   # Graphs relating to the effect of mixing time on protocol operation
   dict(name="mixing_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="degree", legend=False, runs=["pf-e*"]),
+  dict(name="mixing_path_stretch", plotter="graphs.PathStretch", runs=["pf-e*"], variable="degree"),
   dict(name="mixing_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="degree",
     graph="input-topology.graphml", runs=["pf-e*"]),
   dict(name="mixing_sg_degree_dist", plotter="graphs.DegreeDistribution", variable="degree",
@@ -164,10 +182,13 @@ GRAPHS = [
   dict(name="mixing_sg_degrees", plotter="graphs.DegreeVsVariable", variable="degree",
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-e*"]),
 
-  # Graphs relating to the effect of Sybils on protocol operation
-  dict(name="sybil_msg_perf", plotter="graphs.MessagingPerformance",
-    label_attribute="attack_edges", legend=False,
-    runs=["sy-e1", "sy-e2", "sy-e3", "sy-e4", "sy-e5", "sy-e6", "sy-e7"]),
+  # Graphs relating to the effect of the number of Sybils on protocol operation
+  dict(name="sybilnum_msg_perf", plotter="graphs.MessagingPerformance",
+    label_attribute="attack_edges", legend=False, runs=["sy-ns*"]),
+
+  # Graphs relating to the effect of the number of attack edges on protocol operation
+  dict(name="sybiledg_msg_perf", plotter="graphs.MessagingPerformance",
+    label_attribute="attack_edges", legend=False, runs=["sy-ne*"]),
 ]
 
 # Configure logging

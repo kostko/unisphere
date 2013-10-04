@@ -28,7 +28,7 @@ class MessageSnifferPrivate {
 public:
   MessageSnifferPrivate(MessageSniffer &sniffer);
 
-  void handleMessage(CompactRouter &router, const RoutedMessage &msg);
+  bool handleMessage(CompactRouter &router, const RoutedMessage &msg);
 public:
   UNISPHERE_DECLARE_PUBLIC(MessageSniffer)
 
@@ -48,13 +48,15 @@ MessageSnifferPrivate::MessageSnifferPrivate(MessageSniffer &sniffer)
 {
 }
 
-void MessageSnifferPrivate::handleMessage(CompactRouter &router, const RoutedMessage &msg)
+bool MessageSnifferPrivate::handleMessage(CompactRouter &router, const RoutedMessage &msg)
 {
   if (!m_running)
-    return;
+    return true;
 
   if (!m_filter || m_filter(msg))
     q.signalMatchedMessage(router, msg);
+
+  return true;
 }
 
 MessageSniffer::MessageSniffer()
