@@ -24,3 +24,4 @@ from .state_distribution import *
 from .state_vs_size import *
 from .degree_distribution import *
 from .degree_vs_variable import *
+from .deliverability_vs_variable import *

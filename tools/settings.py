@@ -138,6 +138,9 @@ RUNS = [
   dict(name="sy-re5", topology="sybil_edges", attack_edges=35, scenario="SybilNodesRouting"),
   dict(name="sy-re6", topology="sybil_edges", attack_edges=40, scenario="SybilNodesRouting"),
   dict(name="sy-re7", topology="sybil_edges", attack_edges=45, scenario="SybilNodesRouting"),
+  dict(name="sy-re8", topology="sybil_edges", attack_edges=50, scenario="SybilNodesRouting"),
+  dict(name="sy-re9", topology="sybil_edges", attack_edges=55, scenario="SybilNodesRouting"),
+  dict(name="sy-re10", topology="sybil_edges", attack_edges=60, scenario="SybilNodesRouting"),
 ]
 
 # Configure graph generation
@@ -184,11 +187,19 @@ GRAPHS = [
 
   # Graphs relating to the effect of the number of Sybils on protocol operation
   dict(name="sybilnum_msg_perf", plotter="graphs.MessagingPerformance",
-    label_attribute="attack_edges", legend=False, runs=["sy-ns*"]),
+    label_attribute="sybils", legend=False, runs=["sy-ns*"]),
 
   # Graphs relating to the effect of the number of attack edges on protocol operation
   dict(name="sybiledg_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="attack_edges", legend=False, runs=["sy-ne*"]),
+
+  # Graphs relating to the effect of the number of Sybils on routing
+  dict(name="sybilnum_deliverability", plotter="graphs.DeliverabilityVsVariable", runs=["sy-rs*"],
+    variable="sybils"),
+
+  # Graphs relating to the effect of the number of attack edges on routing
+  dict(name="sybiledg_deliverability", plotter="graphs.DeliverabilityVsVariable", runs=["sy-re*"],
+    variable="attack_edges"),
 ]
 
 # Configure logging
