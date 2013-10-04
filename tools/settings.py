@@ -59,10 +59,10 @@ TOPOLOGIES = [
     ),
     connections=[
       # Attack edges
-      dict(src="sybil", dst="honest", count=lambda a: 10*int(math.log(a.nodes))),
-      dict(src="sybil", dst="foreign", count=lambda a: 10*int(math.log(a.nodes))),
+      dict(src="sybil", dst="honest", count=lambda a: int(math.log(a.nodes))),
+      dict(src="sybil", dst="foreign", count=lambda a: int(math.log(a.nodes))),
       # Edges to foreign community
-      dict(src="honest", dst="foreign", count=lambda a: int(math.log(a.nodes))**2),
+      dict(src="honest", dst="foreign", count=lambda a: int(math.log(a.nodes))),
     ],
   ),
 
@@ -72,7 +72,7 @@ TOPOLOGIES = [
     args=['attack_edges'],
     communities=dict(
       honest=dict(n=64, degree=4, rewire=0.8),
-      sybil=dict(n=80, degree=4, rewire=0.8),
+      sybil=dict(n=64, degree=4, rewire=0.8),
       foreign=dict(n=64, degree=4, rewire=0.8),
     ),
     connections=[
@@ -131,13 +131,13 @@ RUNS = [
   dict(name="sy-rs5", topology="sybil_count", sybils=80, scenario="SybilNodesRouting"),
   dict(name="sy-rs6", topology="sybil_count", sybils=96, scenario="SybilNodesRouting"),
 
-  dict(name="sy-re1", topology="sybil_edges", attack_edges=60, scenario="SybilNodesRouting"),
-  dict(name="sy-re2", topology="sybil_edges", attack_edges=80, scenario="SybilNodesRouting"),
-  dict(name="sy-re3", topology="sybil_edges", attack_edges=100, scenario="SybilNodesRouting"),
-  dict(name="sy-re4", topology="sybil_edges", attack_edges=120, scenario="SybilNodesRouting"),
-  dict(name="sy-re5", topology="sybil_edges", attack_edges=140, scenario="SybilNodesRouting"),
-  dict(name="sy-re6", topology="sybil_edges", attack_edges=160, scenario="SybilNodesRouting"),
-  dict(name="sy-re7", topology="sybil_edges", attack_edges=180, scenario="SybilNodesRouting"),
+  dict(name="sy-re1", topology="sybil_edges", attack_edges=5, scenario="SybilNodesRouting"),
+  dict(name="sy-re2", topology="sybil_edges", attack_edges=15, scenario="SybilNodesRouting"),
+  dict(name="sy-re3", topology="sybil_edges", attack_edges=25, scenario="SybilNodesRouting"),
+  dict(name="sy-re4", topology="sybil_edges", attack_edges=30, scenario="SybilNodesRouting"),
+  dict(name="sy-re5", topology="sybil_edges", attack_edges=35, scenario="SybilNodesRouting"),
+  dict(name="sy-re6", topology="sybil_edges", attack_edges=40, scenario="SybilNodesRouting"),
+  dict(name="sy-re7", topology="sybil_edges", attack_edges=45, scenario="SybilNodesRouting"),
 ]
 
 # Configure graph generation

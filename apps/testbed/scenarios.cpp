@@ -116,13 +116,6 @@ UNISPHERE_SCENARIO(SybilNodesNames)
   
   api.wait(10);
 
-  // Check pair-wise connectivity
-  api.test("routing/pair_wise_ping", {
-    { "sybil_mode", true },
-    { "community_limit", true },
-    { "destinations_per_node", 2 }
-  });
-
   // Stop collecting performance data
   api.signal(perfCollector, "finish");
   // Stop sybil behaviour
