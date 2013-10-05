@@ -198,8 +198,7 @@ GRAPHS = [
     variable="sybils"),
 
   # Graphs relating to the effect of the number of attack edges on routing
-  dict(name="sybiledg_deliverability", plotter="graphs.DeliverabilityVsVariable", runs=["sy-re*"],
-    variable="attack_edges"),
+  dict(name="sybiledg_deliverability", plotter="graphs.DeliverabilityVsAttackEdges", runs=["sy-re*"]),
 ]
 
 # Configure logging
