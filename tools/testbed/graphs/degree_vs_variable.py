@@ -48,19 +48,22 @@ class DegreeVsVariable(base.PlotterBase):
 
       # Extract degree distribution information
       degrees = graph.degree().values()
-      in_degrees = graph.in_degree().values()
-      out_degrees = graph.out_degree().values()
-
       values['degree'][run.orig.settings[variable]] = (numpy.average(degrees), numpy.std(degrees))
-      values['in-degree'][run.orig.settings[variable]] = (numpy.average(in_degrees), numpy.std(in_degrees))
-      values['out-degree'][run.orig.settings[variable]] = (numpy.average(out_degrees), numpy.std(out_degrees))
+
+      if hasattr(graph, 'in_degree'):
+        in_degrees = graph.in_degree().values()
+        out_degrees = graph.out_degree().values()
+
+        values['in-degree'][run.orig.settings[variable]] = (numpy.average(in_degrees), numpy.std(in_degrees))
+        values['out-degree'][run.orig.settings[variable]] = (numpy.average(out_degrees), numpy.std(out_degrees))
 
     for typ in values:
       X = sorted(values[typ].keys())
       Y = [values[typ][x][0] for x in X]
       Yerr = [values[typ][x][1] for x in X]
 
-      ax.errorbar(X, Y, Yerr, label=typ)
+      if X:
+        ax.errorbar(X, Y, Yerr, label=typ)
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
