@@ -52,8 +52,12 @@ def generate(topology, arguments, filename):
   # Generate communities
   community_graphs = {}
   for community, params in communities.items():
+    community_size = evaluate_argument(params['n'], args)
+    if community_size == 0:
+      continue
+
     graph = nx.connected_watts_strogatz_graph(
-      evaluate_argument(params['n'], args),
+      community_size,
       evaluate_argument(params['degree'], args),
       evaluate_argument(params['rewire'], args)
     )
@@ -67,8 +71,10 @@ def generate(topology, arguments, filename):
 
   # Interconnect communities
   for connection in evaluate_argument(topology.connections, args):
-    src = community_graphs[connection['src']]
-    dst = community_graphs[connection['dst']]
+    src = community_graphs.get(connection['src'], None)
+    dst = community_graphs.get(connection['dst'], None)
+    if src is None or dst is None:
+      continue
 
     for i in xrange(evaluate_argument(connection['count'], args)):
       while True:
