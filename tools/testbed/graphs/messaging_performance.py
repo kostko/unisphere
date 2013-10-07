@@ -46,6 +46,7 @@ class MessagingPerformance(base.PlotterBase):
     grouped_data = {}
     prev_ts = None
     current_ts = 0
+    missing_values = []
 
     chunks = run.get_dataset("stats-collect_performance-raw-*.csv", chunksize=5000)
     for chunk in chunks:
@@ -59,7 +60,20 @@ class MessagingPerformance(base.PlotterBase):
           # when computing the rate of change
           if len(grouped_data[current_ts]) != len(groups):
             for group in groups.difference(grouped_data[current_ts].keys()):
-              grouped_data[current_ts][group] = grouped_data[prev_ts][group]
+              if prev_ts is not None:
+                grouped_data[current_ts][group] = grouped_data[prev_ts][group]
+              else:
+                grouped_data[current_ts][group] = None
+
+              if grouped_data[current_ts][group] is None:
+                missing_values.append((current_ts, group))
+
+          # Check if there were any missing values and fill them in as soon as we get the value
+          # (to ensure that the rate of change is zero)
+          for ts, group in missing_values:
+            value = grouped_data[current_ts][group]
+            if value is not None:
+              grouped_data[ts][group] = value
 
           # Now that we have all data, compute averages for all values so we don't have
           # to keep this much data in memory
