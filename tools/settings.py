@@ -124,6 +124,7 @@ RUNS = [
   dict(name="sy-ne6", topology="sybil_edges", attack_edges=160, scenario="SybilNodesNames"),
   dict(name="sy-ne7", topology="sybil_edges", attack_edges=180, scenario="SybilNodesNames"),
 
+  dict(name="sy-rs0", topology="sybil_count", sybils=0, scenario="SybilNodesRouting"),
   dict(name="sy-rs1", topology="sybil_count", sybils=16, scenario="SybilNodesRouting"),
   dict(name="sy-rs2", topology="sybil_count", sybils=32, scenario="SybilNodesRouting"),
   dict(name="sy-rs3", topology="sybil_count", sybils=48, scenario="SybilNodesRouting"),
@@ -131,6 +132,7 @@ RUNS = [
   dict(name="sy-rs5", topology="sybil_count", sybils=80, scenario="SybilNodesRouting"),
   dict(name="sy-rs6", topology="sybil_count", sybils=96, scenario="SybilNodesRouting"),
 
+  dict(name="sy-re0", topology="sybil_edges", attack_edges=0, scenario="SybilNodesRouting"),
   dict(name="sy-re1", topology="sybil_edges", attack_edges=5, scenario="SybilNodesRouting"),
   dict(name="sy-re2", topology="sybil_edges", attack_edges=15, scenario="SybilNodesRouting"),
   dict(name="sy-re3", topology="sybil_edges", attack_edges=25, scenario="SybilNodesRouting"),
