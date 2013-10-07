@@ -193,11 +193,11 @@ public:
     boost::hash_mapS
   > TopologyDumpGraph;
 
-  /// A helper structure for returning longest prefix matches
-  struct LongestPrefixMatch {
-    /// Node identifier of the longest prefix match node in vicinity
+  /// A helper structure for returning sloppy group relays
+  struct SloppyGroupRelay {
+    /// Node identifier of the sloppy group relay node in vicinity
     NodeIdentifier nodeId;
-    /// Next hop in route towards the longest prefix match node
+    /// Next hop in route towards the sloppy group relay node
     NodeIdentifier nextHop;
   };
 
@@ -246,13 +246,13 @@ public:
   NodeIdentifier getActiveRoute(const NodeIdentifier &destination);
 
   /**
-   * Returns the routing entry with the longest prefix match in
-   * its node identifier.
+   * Returns the routing entry that can be used as a relay when
+   * the destination identifier can't be resolved locally.
    *
    * @param destination Destiantion address
-   * @return Descriptor for the longest prefix match
+   * @return Descriptor for the sloppy group relay
    */
-  LongestPrefixMatch getLongestPrefixMatch(const NodeIdentifier &destination);
+  SloppyGroupRelay getSloppyGroupRelay(const NodeIdentifier &destination);
 
   /**
    * Returns a vport identifier corresponding to the given neighbor

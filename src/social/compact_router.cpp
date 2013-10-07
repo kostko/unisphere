@@ -686,7 +686,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
 
       if (nextHop.isNull()) {
         // Route via best sloppy group member in the vicinity (use sloppy group member as "landmark")
-        auto match = m_routes.getLongestPrefixMatch(msg.destinationNodeId());
+        auto match = m_routes.getSloppyGroupRelay(msg.destinationNodeId());
         msg.setDestinationAddress(LandmarkAddress(match.nodeId));
         nextHop = m_identity.getPeerContact(match.nextHop);
         m_statistics.msgsSgRouted++;

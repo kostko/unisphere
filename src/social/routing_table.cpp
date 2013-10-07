@@ -187,13 +187,13 @@ public:
   NodeIdentifier getActiveRoute(const NodeIdentifier &destination);
 
   /**
-   * Returns the routing entry with the longest prefix match in
-   * its node identifier.
+   * Returns the routing entry that can be used as a relay when
+   * the destination identifier can't be resolved locally.
    *
    * @param destination Destiantion address
-   * @return Descriptor for the longest prefix match
+   * @return Descriptor for the sloppy group relay
    */
-  CompactRoutingTable::LongestPrefixMatch getLongestPrefixMatch(const NodeIdentifier &destination);
+  CompactRoutingTable::SloppyGroupRelay getSloppyGroupRelay(const NodeIdentifier &destination);
 
   /**
    * Returns a vport identifier corresponding to the given neighbor
@@ -927,13 +927,13 @@ NodeIdentifier CompactRoutingTablePrivate::getActiveRoute(const NodeIdentifier &
   return getNeighborForVport((*entry)->originVport());
 }
 
-CompactRoutingTable::LongestPrefixMatch CompactRoutingTablePrivate::getLongestPrefixMatch(const NodeIdentifier &destination)
+CompactRoutingTable::SloppyGroupRelay CompactRoutingTablePrivate::getSloppyGroupRelay(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   // If the RIB is empty, return a null entry
   if (m_rib.empty())
-    return CompactRoutingTable::LongestPrefixMatch();
+    return CompactRoutingTable::SloppyGroupRelay();
 
   // Find the entry with longest common prefix
   auto &ribVicinity = m_rib.get<RIBTags::VicinityAny>();
@@ -949,7 +949,7 @@ CompactRoutingTable::LongestPrefixMatch CompactRoutingTablePrivate::getLongestPr
       it = pit;
   }
 
-  return CompactRoutingTable::LongestPrefixMatch{
+  return CompactRoutingTable::SloppyGroupRelay{
     (*it)->destination,
     getNeighborForVport((*it)->originVport())
   };
@@ -1178,9 +1178,9 @@ NodeIdentifier CompactRoutingTable::getActiveRoute(const NodeIdentifier &destina
   return d->getActiveRoute(destination);
 }
 
-CompactRoutingTable::LongestPrefixMatch CompactRoutingTable::getLongestPrefixMatch(const NodeIdentifier &destination)
+CompactRoutingTable::SloppyGroupRelay CompactRoutingTable::getSloppyGroupRelay(const NodeIdentifier &destination)
 {
-  return d->getLongestPrefixMatch(destination);
+  return d->getSloppyGroupRelay(destination);
 }
 
 Vport CompactRoutingTable::getVportForNeighbor(const NodeIdentifier &neighbor)
