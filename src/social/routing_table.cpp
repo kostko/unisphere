@@ -935,23 +935,31 @@ CompactRoutingTable::SloppyGroupRelay CompactRoutingTablePrivate::getSloppyGroup
   if (m_rib.empty())
     return CompactRoutingTable::SloppyGroupRelay();
 
-  // Find the entry with longest common prefix
+  NodeIdentifier groupStart = destination.prefix(m_sloppyGroup.getGroupPrefixLength());
+  NodeIdentifier groupEnd = destination.prefix(m_sloppyGroup.getGroupPrefixLength(), 0xFF);
+
   auto &ribVicinity = m_rib.get<RIBTags::VicinityAny>();
-  auto entries = ribVicinity.equal_range(boost::make_tuple(true));
-  auto it = ribVicinity.upper_bound(boost::make_tuple(true, destination));
-  if (it == entries.second) {
-    --it;
-  } else if (it != entries.first) {
-    // Check if previous entry has longer common prefix
-    auto pit = it;
-    if ((*(--pit))->destination.longestCommonPrefix(destination) >
-        (*it)->destination.longestCommonPrefix(destination))
-      it = pit;
+  auto begin = ribVicinity.lower_bound(boost::make_tuple(true, groupStart));
+  auto end = ribVicinity.upper_bound(boost::make_tuple(true, groupEnd));
+  RoutingEntryPtr bestEntry;
+  size_t bestHops = -1;
+
+  // TODO: We could also cache the best entry for a given sloppy group, so we don't need
+  //       to query the RIB on each such decision?
+  for (auto it = begin; it != end; ++it) {
+    RoutingEntryPtr entry = *it;
+    if (!entry->active)
+      continue;
+
+    if (entry->hops() < bestHops) {
+      bestEntry = entry;
+      bestHops = entry->hops();
+    }
   }
 
   return CompactRoutingTable::SloppyGroupRelay{
-    (*it)->destination,
-    getNeighborForVport((*it)->originVport())
+    bestEntry->destination,
+    getNeighborForVport(bestEntry->originVport())
   };
 }
 
