@@ -957,6 +957,10 @@ CompactRoutingTable::SloppyGroupRelay CompactRoutingTablePrivate::getSloppyGroup
     }
   }
 
+  // If there is no suitable entry, we return an empty value
+  if (!bestEntry)
+    return CompactRoutingTable::SloppyGroupRelay();
+
   return CompactRoutingTable::SloppyGroupRelay{
     bestEntry->destination,
     getNeighborForVport(bestEntry->originVport())
