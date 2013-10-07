@@ -55,5 +55,6 @@ class DeliverabilityVsVariable(base.PlotterBase):
     ax.set_xlabel(variable.capitalize().replace('_', ' '))
     ax.set_ylabel('Deliverability')
     ax.grid()
+    ax.axis((0.0, None, 0, 1.01))
 
     fig.savefig(self.get_figure_filename())
