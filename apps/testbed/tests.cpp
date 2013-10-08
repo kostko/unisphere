@@ -37,6 +37,7 @@
 #include "src/social/core_methods.pb.h"
 
 #include <atomic>
+#include <unordered_set>
 #include <boost/range/adaptors.hpp>
 #include <boost/format.hpp>
 #include <boost/algorithm/string/replace.hpp>
