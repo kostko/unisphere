@@ -99,9 +99,13 @@ public:
 
   const NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
+  std::list<NodeIdentifier> diff(const std::unordered_map<NodeIdentifier, NameRecordPtr> &source) const;
+
   void refreshLocalRecord();
 
   void fullUpdate(const NodeIdentifier &peer);
+
+  void diffUpdate(const std::list<NodeIdentifier> &diff, const NodeIdentifier &peer) const;
 
   void dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const;
 public:
@@ -321,7 +325,7 @@ void NameDatabasePrivate::store(const NodeIdentifier &nodeId,
 
   // Local sloppy group entry should be exported to sloppy group peers
   if (nodeId == m_localId)
-    q.signalExportRecord(record, NodeIdentifier::INVALID);
+    m_refreshSignal();
 }
 
 void NameDatabasePrivate::remove(const NodeIdentifier &nodeId, NameRecord::Type type)
@@ -349,6 +353,17 @@ void NameDatabasePrivate::fullUpdate(const NodeIdentifier &peer)
   }
 }
 
+void NameDatabasePrivate::diffUpdate(const std::list<NodeIdentifier> &diff, const NodeIdentifier &peer) const
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  for (const NodeIdentifier &nodeId : diff) {
+    auto it = m_nameDb.find(nodeId);
+    if (it != m_nameDb.end())
+      q.signalExportRecord(*it, peer);
+  }
+}
+
 const NameRecordPtr NameDatabasePrivate::lookup(const NodeIdentifier &nodeId) const
 {
   RecursiveUniqueLock lock(m_mutex);
@@ -357,6 +372,20 @@ const NameRecordPtr NameDatabasePrivate::lookup(const NodeIdentifier &nodeId) co
     return NameRecordPtr();
 
   return *it;
+}
+
+std::list<NodeIdentifier> NameDatabasePrivate::diff(const std::unordered_map<NodeIdentifier, NameRecordPtr> &source) const
+{
+  RecursiveUniqueLock lock(m_mutex);
+  std::list<NodeIdentifier> result;
+  auto records = m_nameDb.get<NIBTags::TypeDestination>().equal_range(NameRecord::Type::SloppyGroup);
+  for (auto it = records.first; it != records.second; ++it) {
+    auto jt = source.find((*it)->nodeId);
+    if (jt == source.end() || (*it)->isMoreFresh(jt->second))
+      result.push_back((*it)->nodeId);
+  }
+
+  return result;
 }
 
 void NameDatabasePrivate::entryTimerExpired(const boost::system::error_code &error, NameRecordWeakPtr record)
@@ -471,9 +500,19 @@ void NameDatabase::fullUpdate(const NodeIdentifier &peer)
   d->fullUpdate(peer);
 }
 
+void NameDatabase::diffUpdate(const std::list<NodeIdentifier> &diff, const NodeIdentifier &peer) const
+{
+  d->diffUpdate(diff, peer);
+}
+
 const NameRecordPtr NameDatabase::lookup(const NodeIdentifier &nodeId) const
 {
   return d->lookup(nodeId);
+}
+
+std::list<NodeIdentifier> NameDatabase::diff(const std::unordered_map<NodeIdentifier, NameRecordPtr> &source) const
+{
+  return d->diff(source);
 }
 
 void NameDatabase::dump(std::ostream &stream, std::function<std::string(const NodeIdentifier&)> resolve) const

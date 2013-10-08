@@ -19,8 +19,7 @@
 #ifndef UNISPHERE_SOCIAL_NAMEDATABASE_H
 #define UNISPHERE_SOCIAL_NAMEDATABASE_H
 
-#include <set>
-#include <unordered_set>
+#include <unordered_map>
 
 #include <boost/asio.hpp>
 
@@ -203,11 +202,27 @@ public:
   const NameRecordPtr lookup(const NodeIdentifier &nodeId) const;
 
   /**
+   * Compute difference to another's peer name records.
+   *
+   * @param source Source peer's name records
+   * @return A list of identifiers of records that differ
+   */
+  std::list<NodeIdentifier> diff(const std::unordered_map<NodeIdentifier, NameRecordPtr> &source) const;
+
+  /**
    * Exports the full name database to the selected peer.
    *
-   * @param peer Peer to export the routing table to
+   * @param peer Peer to export the name database to
    */
   void fullUpdate(const NodeIdentifier &peer = NodeIdentifier::INVALID);
+
+  /**
+   * Exports a partial name database to the selected peer.
+   *
+   * @param diff Diff obtained by running the diff method
+   * @param peer Peer to export the name database to
+   */
+  void diffUpdate(const std::list<NodeIdentifier> &diff, const NodeIdentifier &peer) const;
 
   /**
    * Returns the number of name records stored in the name database.

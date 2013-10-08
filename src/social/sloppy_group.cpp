@@ -186,6 +186,8 @@ public:
 
   void networkSizeEstimateChanged(std::uint64_t size);
 
+  void ribVicinityLearned(const CompactRoutingTable::VicinityDescriptor &vicinity);
+
   /**
    * Returns the local peer view (generated from extended vicinity).
    */
@@ -304,15 +306,7 @@ void SloppyGroupManagerPrivate::initialize()
     << m_router.signalDeliverMessage.connect(boost::bind(&SloppyGroupManagerPrivate::messageDelivery, this, _1))
     << m_announceSignal.connect(boost::bind(&SloppyGroupManagerPrivate::announceFullRecords, this))
     << m_maintenanceSignal.connect(boost::bind(&SloppyGroupManagerPrivate::refreshForeignPeerView, this))
-    << m_router.routingTable().signalVicinityLearned.connect(
-        [this](const CompactRoutingTable::VicinityDescriptor &vicinity) {
-          // TODO: Move this to a method
-          // TODO: Use per-destination damping (LRU cache) to avoid flooding the destination
-          if (vicinity.nodeId.prefix(m_groupPrefixLength) == m_groupPrefix) {
-            BOOST_LOG_SEV(m_logger, log::debug) << "Triggering vicinity-directed full NDB update to " << vicinity.nodeId.hex() << ".";
-            m_nameDb.fullUpdate(vicinity.nodeId);
-          }
-        })
+    << m_router.routingTable().signalVicinityLearned.connect(boost::bind(&SloppyGroupManagerPrivate::ribVicinityLearned, this, _1))
   ;
 
   // Initialize sloppy group prefix length
@@ -358,6 +352,27 @@ void SloppyGroupManagerPrivate::networkSizeEstimateChanged(std::uint64_t size)
 
   // Preempt peer view maintenance when the group prefix length has been changed
   m_maintenanceSignal();
+}
+
+void SloppyGroupManagerPrivate::ribVicinityLearned(const CompactRoutingTable::VicinityDescriptor &vicinity)
+{
+  if (vicinity.nodeId.prefix(m_groupPrefixLength) != m_groupPrefix)
+    return;
+
+  // If this node is currently in a reverse view, it should be removed from it
+  // and also no full update should be sent as the node has already been updated
+  // by the peer view update method
+  RecursiveUniqueLock lock(m_mutex);
+  auto it = m_peerViewReverse.find(vicinity.nodeId);
+  if (it != m_peerViewReverse.end()) {
+    m_peerViewReverse.erase(it);
+  } else {
+    BOOST_LOG_SEV(m_logger, log::debug) << "Triggering vicinity-directed full NDB update to " << vicinity.nodeId.hex() << ".";
+    m_router.context().schedule(
+      m_router.context().roughly(15),
+      boost::bind(&NameDatabase::fullUpdate, &m_nameDb, vicinity.nodeId)
+    );
+  }
 }
 
 void SloppyGroupManagerPrivate::refreshForeignPeerView()
@@ -450,6 +465,8 @@ PeerView SloppyGroupManagerPrivate::getLocalPeerView() const
 
 void SloppyGroupManagerPrivate::nibExportRecord(NameRecordPtr record, const NodeIdentifier &peerId)
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   // Prepare announcement message
   Protocol::NameAnnounce announce;
   announce.set_origin_id(record->nodeId.raw());
@@ -508,21 +525,9 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
       if (!msg.hopDistance())
         return;
 
-      // Establish backlinks when necessary
-      PeerView localPeerView = getLocalPeerView();
-      if (localPeerView.find(msg.sourceNodeId()) == localPeerView.end()) {
-        if (m_peerViewReverse.find(msg.sourceNodeId()) == m_peerViewReverse.end()) {
-          // TODO: Only accept a limited number of peers
-          // TODO: Expire obsolete reverse links (reverse links are ignored in update times)
-          m_peerViewReverse.insert(SloppyPeer(msg.sourceNodeId(), msg.sourceAddress(), msg.hopDistance()));
-
-          BOOST_LOG_SEV(m_logger, log::debug) << "Triggering reverse-directed full NDB update to " << msg.sourceNodeId().hex() << ".";
-          m_nameDb.fullUpdate(msg.sourceNodeId());
-        }
-      }
-
       Protocol::AggregateNameAnnounce announces = message_cast<Protocol::AggregateNameAnnounce>(msg);
       m_statistics.recordRcvd += announces.announces_size();
+      std::unordered_map<NodeIdentifier, NameRecordPtr> sourceSummary;
 
       for (int i = 0; i < announces.announces_size(); i++) {
         const Protocol::NameAnnounce &announce = announces.announces(i);
@@ -539,6 +544,7 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
         record->receivedPeerId = msg.sourceNodeId();
         record->timestamp = announce.timestamp();
         record->seqno = announce.seqno();
+        sourceSummary.insert({{ originId, record }});
 
         for (int j = 0; j < announce.addresses_size(); j++) {
           const Protocol::LandmarkAddress &laddr = announce.addresses(j);
@@ -550,6 +556,50 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
 
         // Store record into the name database
         m_nameDb.store(record);
+      }
+
+      // Establish backlinks when necessary
+      bool accept = false;
+      {
+        RecursiveUniqueLock lock(m_mutex);
+        PeerView localPeerView = getLocalPeerView();
+        if (localPeerView.find(msg.sourceNodeId()) == localPeerView.end()) {
+          if (m_peerViewReverse.find(msg.sourceNodeId()) == m_peerViewReverse.end()) {
+            // TODO: Expire obsolete reverse links (reverse links are ignored in update times)
+
+            // Only accept a limited number of peers
+            if (m_peerViewReverse.size() >= m_maxPeerViewSize) {
+              auto &peerHops = m_peerViewReverse.get<PVTags::HopCount>();
+              auto it = --peerHops.end();
+              if (msg.hopDistance() < it->hops) {
+                peerHops.erase(it);
+                accept = true;
+              }
+            } else {
+              accept = true;
+            }
+
+            if (accept) {
+              m_peerViewReverse.insert(SloppyPeer(msg.sourceNodeId(), msg.sourceAddress(), msg.hopDistance()));
+            }
+          }
+        }
+      }
+
+      // Check if we need to send an update to the just added peer
+      if (accept) {
+        // Compute record diff to see if we actually need to send any records to the destination
+        auto recordIds = m_nameDb.diff(sourceSummary);
+
+        if (recordIds.size() > 0) {
+          BOOST_LOG_SEV(m_logger, log::debug) << "Triggering reverse-directed diff (" << recordIds.size() << "/" << m_nameDb.sizeActive() << ") NDB update to " << msg.sourceNodeId().hex() << ".";
+          // This call must be deferred so that we don't acquire the NDB lock while we are also
+          // holding the SG lock -- this could lead to a deadlock
+          m_router.context().schedule(
+            m_router.context().roughly(15),
+            boost::bind(&NameDatabase::diffUpdate, &m_nameDb, recordIds, msg.sourceNodeId())
+          );
+        }
       }
       break;
     }
