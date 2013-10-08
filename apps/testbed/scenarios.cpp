@@ -32,29 +32,15 @@ namespace Scenarios {
  */
 UNISPHERE_SCENARIO(IdleScenario)
 {
-  // Start collecting performance data
-  TestCasePtr testPerfCollector = api.testInBackground("stats/collect_performance");
-
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
-  auto standardTests = [&]() {
-    // Perform some sanity checks
-    api.test("sanity/check_consistent_ndb");
-    // Dump topology information
-    api.test({ "state/sloppy_group_topology", "state/routing_topology" });
-    // Retrieve performance statistics
-    api.test("stats/performance");
-  };
+  api.wait(3600);
 
-  api.wait(30);
-  standardTests();
-  api.wait(570);
-  standardTests();
-  api.wait(600);
-
-  // Stop collecting performance data
-  api.signal(testPerfCollector, "finish");
+  // Perform some sanity checks
+  api.test("sanity/check_consistent_ndb");
+  // Retrieve performance statistics
+  api.test("stats/performance");
 }
 UNISPHERE_SCENARIO_END_REGISTER(IdleScenario)
 
