@@ -82,6 +82,14 @@ public:
   void schedule(int timeout, std::function<void()> operation);
 
   /**
+   * Schedules an operation to be executed after a timeout.
+   * 
+   * @param timeout Number of seconds to wait before executing
+   * @param operation Operation to be executed
+   */
+  void schedule(boost::posix_time::seconds timeout, std::function<void()> operation);
+
+  /**
    * Returns a value in seconds with added random jitter.
    *
    * @param value Number of seconds
