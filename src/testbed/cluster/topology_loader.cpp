@@ -22,6 +22,7 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphml.hpp>
+#include <boost/graph/breadth_first_search.hpp>
 #include <boost/range/adaptors.hpp>
 #include <botan/botan.h>
 
@@ -32,7 +33,7 @@ namespace TestBed {
 /// Graph representation type
 typedef boost::adjacency_list<
   boost::listS,
-  boost::listS,
+  boost::vecS,
   boost::undirectedS,
   boost::property<boost::vertex_name_t, std::string>,
   boost::property<boost::edge_weight_t, double>
@@ -43,7 +44,7 @@ typedef typename boost::graph_traits<Topology>::vertex_descriptor TopologyVertex
 
 class TopologyLoaderPrivate {
 public:
-  TopologyLoaderPrivate(TopologyLoader::IdGenerationType idGenType);
+  TopologyLoaderPrivate();
 
   boost::shared_ptr<boost::dynamic_property_map> generateMap(const std::string &pmap,
                                                              const boost::any &key,
@@ -71,6 +72,10 @@ public:
   std::unordered_map<std::string, NodeIdentifier> m_names;
   /// Mapping of nodes to contacts
   std::unordered_map<NodeIdentifier, Contact> m_contacts;
+  /// Mapping of nodes to descriptors
+  std::unordered_map<NodeIdentifier, Partition::Node> m_nodes;
+  /// Nodes in BFS traversal order
+  boost::shared_ptr<std::list<Partition::Node>> m_nodesBfs;
 };
 
 /**
@@ -133,10 +138,10 @@ boost::shared_ptr<boost::dynamic_property_map> TopologyLoaderPrivate::generateMa
   );
 }
 
-TopologyLoaderPrivate::TopologyLoaderPrivate(TopologyLoader::IdGenerationType idGenType)
+TopologyLoaderPrivate::TopologyLoaderPrivate()
   : m_topology(0),
     m_properties(boost::bind(&TopologyLoaderPrivate::generateMap, this, _1, _2, _3)),
-    m_idGenType(idGenType)
+    m_idGenType(TopologyLoader::IdGenerationType::Random)
 {
 }
 
@@ -186,8 +191,8 @@ Contact TopologyLoaderPrivate::assignContact(Partition &part, const NodeIdentifi
   return contact;
 }
 
-TopologyLoader::TopologyLoader(IdGenerationType idGenType)
-  : d(new TopologyLoaderPrivate(idGenType))
+TopologyLoader::TopologyLoader()
+  : d(new TopologyLoaderPrivate)
 {
 }
 
@@ -210,10 +215,11 @@ void TopologyLoader::load(const std::string &filename)
   }
 }
 
-void TopologyLoader::partition(const SlaveDescriptorMap &slaves)
+void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationType idGenType)
 {
   Topology &topology = d->m_topology;
   std::vector<Partition> &partitions = d->m_partitions;
+  d->m_idGenType = idGenType;
 
   // Create one partition per slave
   size_t index = 0;
@@ -249,7 +255,26 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves)
     }
 
     part.nodes.push_back(node);
+    d->m_nodes.insert({{ node.contact.nodeId(), node }});
   }
+
+  // Prepare a list of nodes in BFS traversal order
+  struct visitor : public boost::default_bfs_visitor {
+    boost::shared_ptr<TopologyLoaderPrivate> d;
+
+    visitor(boost::shared_ptr<TopologyLoaderPrivate> d)
+      : d(d)
+    {}
+
+    void discover_vertex(TopologyVertex &vertex, const Topology &topology)
+    {
+      std::string name = boost::get(boost::vertex_name, topology, vertex);
+      d->m_nodesBfs->push_back(d->m_nodes.at(d->getNodeId(name)));
+    }
+  } vis(d);
+
+  d->m_nodesBfs = boost::make_shared<std::list<Partition::Node>>();
+  boost::breadth_first_search(topology, *boost::vertices(topology).first, boost::visitor(vis));
 }
 
 size_t TopologyLoader::getTopologySize() const
@@ -260,6 +285,25 @@ size_t TopologyLoader::getTopologySize() const
 const std::vector<Partition> &TopologyLoader::getPartitions() const
 {
   return d->m_partitions;
+}
+
+Partition::NodeRange TopologyLoader::getNodes(TopologyLoader::TraversalOrder traversal) const
+{
+  switch (traversal) {
+    case TopologyLoader::TraversalOrder::BFS: {
+      return *d->m_nodesBfs;
+    }
+
+    default:
+    case TopologyLoader::TraversalOrder::Unordered: {
+      return d->m_nodes | boost::adaptors::map_values;
+    }
+  }
+}
+
+const Partition::Node &TopologyLoader::getNodeById(const NodeIdentifier &nodeId) const
+{
+  return d->m_nodes.at(nodeId);
 }
 
 }

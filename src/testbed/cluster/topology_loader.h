@@ -46,11 +46,19 @@ public:
   };
 
   /**
-   * Class constructor.
-   *
-   * @param idGenType Type of identifier generation
+   * Node traversal order.
    */
-  TopologyLoader(IdGenerationType idGenType);
+  enum class TraversalOrder {
+    /// Nodes are traversed in no specific order
+    Unordered,
+    /// Nodes are traversed in BFS order from a random node
+    BFS
+  };
+
+  /**
+   * Class constructor.
+   */
+  TopologyLoader();
 
   /**
    * Loads topology from a GraphML file.
@@ -63,8 +71,9 @@ public:
    * Partitions the topology into multiple parts, one for each slave.
    *
    * @param slaves A map of slaves
+   * @param idGenType Type of identifier generation
    */
-  void partition(const SlaveDescriptorMap &slaves);
+  void partition(const SlaveDescriptorMap &slaves, IdGenerationType idGenType);
 
   /**
    * Returns the number of vertices in the loaded topology.
@@ -75,6 +84,22 @@ public:
    * Returns the generated partitions.
    */
   const std::vector<Partition> &getPartitions() const;
+
+  /**
+   * Returns the nodes in a specific order.
+   *
+   * @param traversal Node traversal order
+   * @return A range of nodes
+   */
+  Partition::NodeRange getNodes(TraversalOrder traversal) const;
+
+  /**
+   * Returns the node descriptor.
+   *
+   * @param nodeId Node identifier
+   * @return Partition node descriptor
+   */
+  const Partition::Node &getNodeById(const NodeIdentifier &nodeId) const;
 private:
   UNISPHERE_DECLARE_PRIVATE(TopologyLoader)
 };

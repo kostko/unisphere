@@ -188,10 +188,8 @@ public:
   std::string m_inputTopology;
   /// Identifier generation type
   TopologyLoader::IdGenerationType m_idGenType;
-  /// Generated network partitions
-  std::vector<Partition> m_partitions;
-  /// Mapping of nodes to partitions
-  std::unordered_map<NodeIdentifier, Partition::Node> m_nodeMap;
+  /// Topology loader
+  TopologyLoader m_topology;
   /// Number of partitions pending assignment
   size_t m_unassignedPartitions;
   /// Seed value
@@ -247,17 +245,17 @@ std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
 
 PartitionRange ControllerTestCaseApi::getPartitions()
 {
-  return m_controller.m_partitions;
+  return m_controller.m_topology.getPartitions();
 }
 
 Partition::NodeRange ControllerTestCaseApi::getNodes() const
 {
-  return m_controller.m_nodeMap | boost::adaptors::map_values;
+  return m_controller.m_topology.getNodes(TopologyLoader::TraversalOrder::Unordered);
 }
 
 const Partition::Node &ControllerTestCaseApi::getNodeById(const NodeIdentifier &nodeId)
 {
-  return m_controller.m_nodeMap.at(nodeId);
+  return m_controller.m_topology.getNodeById(nodeId);
 }
 
 std::mt19937 &ControllerTestCaseApi::rng()
@@ -363,7 +361,7 @@ void ControllerScenarioApi::signal(TestCasePtr test,
   request.set_signal(signal);
 
   auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
-  for (const Partition &partition : m_controller.m_partitions) {
+  for (const Partition &partition : m_controller.m_topology.getPartitions()) {
     NodeIdentifier slaveId = partition.slave.nodeId();
     group->call<Protocol::SignalTestRequest, Protocol::SignalTestResponse>(
       partition.slave.nodeId(),
@@ -386,19 +384,19 @@ void ControllerScenarioApi::signal(TestCasePtr test,
 
 PartitionRange ControllerScenarioApi::getPartitions() const
 {
-  return m_controller.m_partitions;
+  return m_controller.m_topology.getPartitions();
 }
 
 Partition::NodeRange ControllerScenarioApi::getNodes() const
 {
-  return m_controller.m_nodeMap | boost::adaptors::map_values;
+  return m_controller.m_topology.getNodes(TopologyLoader::TraversalOrder::BFS);
 }
 
 void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
 {
   ScenarioPtr scenario = m_controller.m_scenario;
   std::vector<std::list<NodeIdentifier>> partitions;
-  partitions.resize(m_controller.m_partitions.size());
+  partitions.resize(m_controller.m_topology.getPartitions().size());
   size_t nodeCount = 0;
 
   for (const Partition::Node &node : nodes) {
@@ -415,7 +413,7 @@ void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
   auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
   for (int i = 0; i < partitions.size(); i++) {
     std::list<NodeIdentifier> &nodes = partitions.at(i);
-    const Partition &partition = m_controller.m_partitions.at(i);
+    const Partition &partition = m_controller.m_topology.getPartitions().at(i);
     Protocol::StartNodesRequest request;
 
     for (const NodeIdentifier &nodeId : nodes) {
@@ -493,12 +491,13 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
   test->preSelection(*api);
 
   // First obtain a list of virtual nodes that we should run the test on
+  const auto &partitions = m_controller.m_topology.getPartitions();
   std::vector<SelectedPartition> selectedNodes;
-  for (const Partition &partition : m_controller.m_partitions) {
+  for (const Partition &partition : partitions) {
     selectedNodes.push_back(SelectedPartition{ partition.index });
   }
 
-  for (const Partition &partition : m_controller.m_partitions) {
+  for (const Partition &partition : partitions) {
     for (const Partition::Node &node : partition.nodes) {
       SelectedPartition::Node selected = test->selectNode(partition, node, *api);
       if (!selected.nodeId.isNull())
@@ -526,7 +525,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
   });
 
   for (SelectedPartition &selected : selectedNodes) {
-    Partition &partition = m_controller.m_partitions[selected.index];
+    const Partition &partition = partitions[selected.index];
     Protocol::RunTestRequest request;
     request.set_test_name(test->getName());
     request.set_test_id(test->getId());
@@ -807,11 +806,10 @@ void Controller::run()
       BOOST_LOG_SEV(d->m_logger, log::normal) << "Initialized simulation with " << slaves.size() << " slaves.";
 
       // Load topology and assign partitions to slaves
-      TopologyLoader loader(d->m_idGenType);
+      auto &loader = d->m_topology;
       loader.load(d->m_inputTopology);
-      loader.partition(slaves);
+      loader.partition(slaves, d->m_idGenType);
       const auto &partitions = loader.getPartitions();
-      d->m_partitions = partitions;
       d->m_unassignedPartitions = partitions.size();
 
       int i = 0;
@@ -867,8 +865,6 @@ void Controller::run()
           for (const Contact &contact : node.peers) {
             *n->add_peers() = contact.toMessage();
           }
-
-          d->m_nodeMap.insert({{ node.contact.nodeId(), node }});
         }
         
         NodeIdentifier slaveId = part.slave.nodeId();
