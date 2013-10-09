@@ -121,6 +121,8 @@ public:
   std::tuple<unsigned short, unsigned short> m_simulationPortRange;
   /// Simulation thread count
   size_t m_simulationThreads;
+  /// Should the slave exit when simulation finishes
+  bool m_simulationExit;
   /// Heartbeat timer
   boost::asio::deadline_timer m_heartbeatTimer;
   /// Master heartbeat timeout counter
@@ -289,7 +291,11 @@ Response<Protocol::AbortResponse> SlavePrivate::rpcAbort(const Protocol::AbortRe
     RecursiveUniqueLock lock(m_mutex);
     BOOST_LOG_SEV(m_logger, log::normal) << "Simulation stopped.";
     m_simulation.reset();
-    q.rejoinCluster();
+
+    if (m_simulationExit)
+      q.stop();
+    else
+      q.rejoinCluster();
   });
   m_simulation->stop();
 
@@ -450,6 +456,7 @@ void Slave::setupOptions(int argc,
       ("sim-port-start", po::value<unsigned short>(), "start of simulation port range")
       ("sim-port-end", po::value<unsigned short>(), "end of simulation port range")
       ("sim-threads", po::value<size_t>(), "number of simulation threads")
+      ("exit-on-finish", "should the slave exit on simulation finish")
     ;
     options.add(simulation);
     return;
@@ -505,6 +512,7 @@ void Slave::setupOptions(int argc,
     variables["sim-port-end"].as<unsigned short>()
   );
   d->m_simulationThreads = variables["sim-threads"].as<size_t>();
+  d->m_simulationExit = static_cast<bool>(variables.count("exit-on-finish"));
 
   if (std::get<0>(d->m_simulationPortRange) > std::get<1>(d->m_simulationPortRange)) {
     throw ArgumentError("Invalid port range specified!");

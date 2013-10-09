@@ -99,7 +99,8 @@ class SimpleCluster(base.ClusterRunnerBase):
           "--sim-ip", self.cluster_cfg['slave_sim_ip'],
           "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
           "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
-          "--sim-threads", str(multiprocessing.cpu_count() + 1)
+          "--sim-threads", str(multiprocessing.cpu_count() + 1),
+          "--exit-on-finish"
         ],
         stdin=None,
         stderr=self.log_slave,
@@ -153,6 +154,8 @@ class SimpleCluster(base.ClusterRunnerBase):
     # Wait for the scenario to complete
     if self.controller.wait() != 0:
       raise exceptions.ScenarioRunFailed
+
+    time.sleep(5)
 
   def shutdown(self):
     logger.info("Shutting down cluster...")
