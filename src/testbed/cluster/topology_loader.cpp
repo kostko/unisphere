@@ -19,6 +19,7 @@
 #include "testbed/cluster/topology_loader.h"
 #include "testbed/exceptions.h"
 
+#include <unordered_set>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphml.hpp>
@@ -229,6 +230,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
   }
 
   // Iterate through all vertices and put them into appropriate partitions
+  std::unordered_set<TopologyVertex> nodes;
   for (auto vp = boost::vertices(topology); vp.first != vp.second; ++vp.first) {
     std::string name = boost::get(boost::vertex_name, topology, *vp.first);
     NodeIdentifier nodeId = d->getNodeId(name);
@@ -255,26 +257,33 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
     }
 
     part.nodes.push_back(node);
+    nodes.insert(*vp.first);
     d->m_nodes.insert({{ node.contact.nodeId(), node }});
   }
 
   // Prepare a list of nodes in BFS traversal order
   struct visitor : public boost::default_bfs_visitor {
     boost::shared_ptr<TopologyLoaderPrivate> d;
+    std::unordered_set<TopologyVertex> &nodes;
 
-    visitor(boost::shared_ptr<TopologyLoaderPrivate> d)
-      : d(d)
+    visitor(boost::shared_ptr<TopologyLoaderPrivate> d,
+            std::unordered_set<TopologyVertex> &nodes)
+      : d(d),
+        nodes(nodes)
     {}
 
     void discover_vertex(TopologyVertex &vertex, const Topology &topology)
     {
       std::string name = boost::get(boost::vertex_name, topology, vertex);
       d->m_nodesBfs->push_back(d->m_nodes.at(d->getNodeId(name)));
+      nodes.erase(vertex);
     }
-  } vis(d);
+  } vis(d, nodes);
 
   d->m_nodesBfs = boost::make_shared<std::list<Partition::Node>>();
-  boost::breadth_first_search(topology, *boost::vertices(topology).first, boost::visitor(vis));
+  while (!nodes.empty()) {
+    boost::breadth_first_search(topology, *nodes.begin(), boost::visitor(vis));
+  }
 }
 
 size_t TopologyLoader::getTopologySize() const
