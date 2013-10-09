@@ -109,7 +109,7 @@ class SimpleCluster(base.ClusterRunnerBase):
             "--sim-ip", self.cluster_cfg['slave_sim_ip'] % slave_id,
             "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
             "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
-            "--sim-threads", self.cluster_cfg.get('threads_per_slave', 4),
+            "--sim-threads", str(self.cluster_cfg.get('threads_per_slave', 4)),
             "--exit-on-finish"
           ],
           stdin=None,
