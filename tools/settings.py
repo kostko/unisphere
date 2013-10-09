@@ -14,8 +14,8 @@ CLUSTER = {
   'testbed.cluster.simple.SimpleCluster': {
     'master_ip': '127.0.0.1',
     'controller_ip': '127.0.0.2',
-    'slave_ip': '127.0.0.3',
-    'slave_sim_ip': '127.0.1.1',
+    'slave_ip': '127.0.1.%d',
+    'slave_sim_ip': '127.0.2.%d',
     'slave_sim_ports': (9000, 20000),
   }
 }

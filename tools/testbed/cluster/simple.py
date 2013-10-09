@@ -22,6 +22,7 @@ from .. import exceptions
 
 import hashlib
 import logging
+import math
 import multiprocessing
 import os
 import resource
@@ -35,10 +36,9 @@ class SimpleCluster(base.ClusterRunnerBase):
   master_id = None
 
   master = None
-  slave = None
+  slaves = None
   controller = None
 
-  log_slave = None
   log_master = None
   log_controller = None
 
@@ -65,7 +65,6 @@ class SimpleCluster(base.ClusterRunnerBase):
 
       # Open files for logging execution
       logger.info("Opening log files to monitor scenario execution...")
-      self.log_slave = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_slave.log"), 'w')
       self.log_master = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_master.log"), 'w')
       self.log_controller = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_controller.log"), 'w')
 
@@ -87,31 +86,43 @@ class SimpleCluster(base.ClusterRunnerBase):
         preexec_fn=self._setup_limits
       )
 
-      # Start cluster slave process
-      logger.info("Starting slave node...")
-      self.slave = subprocess.Popen(
-        [
-          self.settings.TESTBED_BINARY,
-          "--cluster-role", "slave",
-          "--cluster-ip", self.cluster_cfg['slave_ip'],
-          "--cluster-master-ip", self.cluster_cfg['master_ip'],
-          "--cluster-master-id", self.master_id,
-          "--sim-ip", self.cluster_cfg['slave_sim_ip'],
-          "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
-          "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
-          "--sim-threads", str(multiprocessing.cpu_count() + 1),
-          "--exit-on-finish"
-        ],
-        stdin=None,
-        stderr=self.log_slave,
-        stdout=self.log_slave,
-        # Ensure proper working directory
-        cwd=self.settings.TESTBED_ROOT,
-        # Ensure that resource limits are configured correctly before starting
-        preexec_fn=self._setup_limits
-      )
+      # Compute how we will distribute the slaves around; if there are more than 4 cores
+      # then we use multiple slaves with 4 threads each; this is because with too many
+      # threads, Boost.ASIO queue lock contention becomes too big
+      required_slaves = int(math.ceil(
+        float(multiprocessing.cpu_count()) / self.cluster_cfg.get('threads_per_slave', 4)
+      ))
 
-      # Wait for the slave to register itself
+      # Start cluster slave process(es)
+      logger.info("Starting %d slave node(s)..." % required_slaves)
+      self.slaves = []
+      for slave_id in xrange(1, required_slaves + 1):
+        logger.info("  * Starting slave %d." % slave_id)
+        log_slave = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_slave%d.log" % slave_id), 'w')
+        slave = subprocess.Popen(
+          [
+            self.settings.TESTBED_BINARY,
+            "--cluster-role", "slave",
+            "--cluster-ip", self.cluster_cfg['slave_ip'] % slave_id,
+            "--cluster-master-ip", self.cluster_cfg['master_ip'],
+            "--cluster-master-id", self.master_id,
+            "--sim-ip", self.cluster_cfg['slave_sim_ip'] % slave_id,
+            "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
+            "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
+            "--sim-threads", self.cluster_cfg.get('threads_per_slave', 4),
+            "--exit-on-finish"
+          ],
+          stdin=None,
+          stderr=log_slave,
+          stdout=log_slave,
+          # Ensure proper working directory
+          cwd=self.settings.TESTBED_ROOT,
+          # Ensure that resource limits are configured correctly before starting
+          preexec_fn=self._setup_limits
+        )
+        self.slaves.append(dict(slave=slave, log=log_slave))
+
+      # Wait for the slaves to register themselves
       time.sleep(5)
       
       logger.info("Simple cluster ready.")
@@ -120,7 +131,7 @@ class SimpleCluster(base.ClusterRunnerBase):
       raise
 
   def run_scenario(self, run, run_id):
-    if self.master is None or self.slave is None:
+    if self.master is None or not self.slaves:
       logger.error("Cluster not ready, aborting scenario run.")
       raise exceptions.ScenarioRunFailed
 
@@ -161,7 +172,7 @@ class SimpleCluster(base.ClusterRunnerBase):
     logger.info("Shutting down cluster...")
 
     # Terminate everything
-    for process in (self.controller, self.slave, self.master):
+    for process in (self.controller, self.master):
       if process is None:
         continue
 
@@ -171,12 +182,20 @@ class SimpleCluster(base.ClusterRunnerBase):
       except OSError:
         pass
 
+    for slave in (self.slaves or []):
+      try:
+        slave['slave'].kill()
+        slave['slave'].wait()
+      except OSError:
+        pass
+
+      slave['log'].close()
+
     # Reset
     self.controller = None
-    self.slave = None
+    self.slaves = None
     self.master = None
     self.master_id = None
 
-    self.log_slave.close()
     self.log_master.close()
     self.log_controller.close()
