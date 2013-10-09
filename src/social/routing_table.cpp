@@ -795,6 +795,7 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
     return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
 
   // Finds the first feasible route with minimum cost
+  bool unfeasibleRoute = false;
   for (auto it = entries.first; it != entries.second; ++it) {
     RoutingEntryPtr e = *it;
     if (e->active)
@@ -808,16 +809,21 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
         break;
     }
 
-    if (!e->isFeasible())
+    if (!e->isFeasible()) {
+      unfeasibleRoute = true;
       continue;
+    }
 
     newBest = it;
   }
 
   // If there are no feasible routes, return early
   if (newBest == ribDestination.end()) {
-    // TODO: Request a new sequence number from route originator
-    BOOST_LOG_SEV(m_logger, log::warning) << "No feasible routes towards " << destination.hex() << ".";
+    if (unfeasibleRoute) {
+      // TODO: Request a new sequence number from route originator
+      BOOST_LOG_SEV(m_logger, log::warning) << "No feasible routes towards " << destination.hex() << ".";
+    }
+    
     return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
   }
 
