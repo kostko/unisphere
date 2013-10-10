@@ -49,7 +49,7 @@ class LRLengthDistribution(base.PlotterBase):
     ax.set_xlabel('L-R Address Length')
     ax.set_ylabel('Cummulative Probability')
     ax.grid()
-    ax.axis((0.5, None, 0, 1.01))
+    ax.axis((0.0, None, 0, 1.01))
     self.convert_axes_to_bw(ax)
 
     legend = ax.legend(loc='lower right')
