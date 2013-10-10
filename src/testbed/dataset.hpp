@@ -20,16 +20,21 @@
 #define UNISPHERE_TESTBED_DATASET_H
 
 #include "core/globals.h"
+#include "core/serialize_tuple.h"
 
 #include <map>
 #include <list>
+#include <boost/iterator/transform_iterator.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/list.hpp>
+#include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/variant.hpp>
 #include <boost/variant.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/posix_time/time_serialize.hpp>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 
 namespace UniSphere {
 
@@ -69,15 +74,98 @@ public:
     ValueType value;
   };
 
-  /// A single data record contains multiple key-value pairs
-  typedef std::map<std::string, ValueType> Record;
+  /// A field that maps a value to a column
+  typedef std::tuple<std::uint8_t, ValueType> TypedValueField;
+  /// Fields in internal record should always be ordered by column id for faster lookup
+  typedef std::vector<TypedValueField> InternalRecord;
   /// A list of records
-  typedef std::list<Record> RecordList;
+  typedef std::list<InternalRecord> InternalRecordList;
+  /// A map of columns to/from identifiers
+  typedef boost::bimap<
+    boost::bimaps::unordered_set_of<std::string>,
+    boost::bimaps::unordered_set_of<std::uint8_t>
+  > InternalColumnMap;
+
+  /**
+   * A wrapper class for representing the internal vector-based record
+   * as a map-based record.
+   */
+  class Record {
+  public:
+    /**
+     * Constructs a record wrapper.
+     *
+     * @param columns Internal column map
+     * @param record Internal record to wrap
+     */
+    Record(const InternalColumnMap &columns, const InternalRecord &record)
+      : m_columns(columns),
+        m_record(record)
+    {
+    }
+
+    /**
+     * A wrapper for find that emulates map-like traversal by column name.
+     *
+     * @param column Column name
+     */
+    typename InternalRecord::const_iterator find(const std::string &column) const
+    {
+      auto it = m_columns.left.find(column);
+      if (it == m_columns.left.end())
+        return m_record.end();
+
+      return std::equal_range(
+        m_record.begin(),
+        m_record.end(),
+        std::make_tuple(it->second, ValueType(false)),
+        [](const TypedValueField &a, const TypedValueField &b) -> bool {
+          return std::get<0>(a) < std::get<0>(b);
+        }
+      ).first;
+    }
+
+    /**
+     * Returns an iterator pointing past all the columns.
+     */
+    typename InternalRecord::const_iterator end() const
+    {
+      return m_record.end();
+    }
+
+    /**
+     * A wrapper for at that emulates map-like access by column name. If the
+     * column has not value set, this method throws std::out_of_range.
+     *
+     * @param column Column name
+     * @return Value of that column
+     */
+    const ValueType &at(const std::string &column) const
+    {
+      auto it = find(column);
+      if (it == end())
+        throw std::out_of_range(column);
+      
+      return std::get<1>(*it);
+    }
+  private:
+    /// Reference to internal column map
+    const InternalColumnMap &m_columns;
+    /// Reference to the wrapped record
+    const InternalRecord &m_record;
+  };
+
+  /// Iterator type that wraps all internal records into records
+  typedef boost::transform_iterator<
+    std::function<Record(const InternalRecord&)>,
+    typename InternalRecordList::const_iterator
+  > const_iterator;
 
   /**
    * Constructs an empty dataset.
    */
   DataSet()
+    : m_nextColumnId(0)
   {}
 
   /**
@@ -86,7 +174,8 @@ public:
    * @paran name Dataset name
    */
   DataSet(const std::string &name)
-    : m_name(name)
+    : m_name(name),
+      m_nextColumnId(0)
   {
   }
 
@@ -116,21 +205,15 @@ public:
   void add(std::initializer_list<Element> elements)
   {
     RecursiveUniqueLock lock(m_mutex);
-    Record record;
-    for (const Element &element : elements)
-      record.insert({{ element.key, element.value }});
+    InternalRecord record;
+    for (const Element &element : elements) {
+      record.push_back(std::make_tuple(getColumnKey(element.key), element.value));
+    }
 
-    m_records.push_back(record);
-  }
-
-  /**
-   * Adds a single new record to the data set.
-   *
-   * @param record Record to add
-   */
-  void add(const Record &record)
-  {
-    RecursiveUniqueLock lock(m_mutex);
+    std::sort(record.begin(), record.end(),
+      [](const TypedValueField &a, const TypedValueField &b) -> bool {
+        return std::get<0>(a) < std::get<0>(b);
+      });
     m_records.push_back(record);
   }
 
@@ -145,8 +228,8 @@ public:
     RecursiveUniqueLock lock(m_mutex);
     RecursiveUniqueLock lock2(dataset.m_mutex);
 
-    for (const Record &record : dataset.m_records)
-      m_records.push_back(record);
+    for (const InternalRecord &record : dataset.m_records)
+      m_records.push_back(remapColumns(dataset.m_columns, record));
   }
 
   /**
@@ -160,8 +243,8 @@ public:
     RecursiveUniqueLock lock(m_mutex);
     RecursiveUniqueLock lock2(dataset.m_mutex);
 
-    for (Record &record : dataset.m_records)
-      m_records.push_back(std::move(record));
+    for (InternalRecord &record : dataset.m_records)
+      m_records.push_back(remapColumns(dataset.m_columns, record, true));
   }
 
   /**
@@ -184,19 +267,66 @@ public:
   /**
    * Returns an iterator to the beginning of the record list.
    */
-  typename RecordList::const_iterator begin() const
+  const_iterator begin() const
   {
-    return m_records.begin();
+    return const_iterator(m_records.begin(), [this](const InternalRecord &record) -> Record {
+      return Record(m_columns, record);
+    });
   }
 
   /**
    * Returns an iterator past the end of the record list.
    */
-  typename RecordList::const_iterator end() const
+  const_iterator end() const
   {
-    return m_records.end();
+    return const_iterator(m_records.end(), [this](const InternalRecord &record) -> Record {
+      return Record(m_columns, record);
+    });
   }
 private:
+  /**
+   * Determines or assigns a column key.
+   *
+   * @param column Column name
+   * @return Column key
+   */
+  std::uint8_t getColumnKey(const std::string &column)
+  {
+    RecursiveUniqueLock lock(m_mutex);
+    auto it = m_columns.left.find(column);
+    if (it == m_columns.left.end()) {
+      std::uint8_t columnKey = m_nextColumnId++;
+      m_columns.left.insert({ column, columnKey });
+      return columnKey;
+    } else {
+      return it->second;
+    }
+  }
+
+  /**
+   * Remaps column identifiers from another dataset so they become
+   * compatible with this dataset.
+   *
+   * @param columns Internal column map of the other dataset
+   * @param record Record to remap
+   * @param move Should the values be moved instead of copied
+   * @return Internal record with remapped columns
+   */
+  InternalRecord remapColumns(InternalColumnMap &columns,
+                              InternalRecord &record,
+                              bool move = false)
+  {
+    InternalRecord result;
+    for (auto &p : record) {
+      std::uint8_t mappedKey = getColumnKey(columns.right.at(std::get<0>(p)));
+      if (mappedKey != std::get<0>(p))
+        result.push_back(std::make_tuple(mappedKey, move ? std::move(std::get<1>(p)) : std::get<1>(p)));
+      else
+        result.push_back(move ? std::move(p) : p);
+    }
+    return result;
+  }
+
   /**
    * Serialization support.
    */
@@ -204,6 +334,8 @@ private:
   void serialize(Archive &ar, const unsigned int)
   {
     RecursiveUniqueLock lock(m_mutex);
+    ar & m_nextColumnId;
+    ar & m_columns;
     ar & m_records;
   }
 private:
@@ -211,8 +343,12 @@ private:
   mutable std::recursive_mutex m_mutex;
   /// Dataset name
   std::string m_name;
+  /// Next column mapping
+  std::uint8_t m_nextColumnId;
+  /// Column name to identifier mappings
+  InternalColumnMap m_columns;
   /// A list of data records
-  RecordList m_records;
+  InternalRecordList m_records;
 };
 
 }
