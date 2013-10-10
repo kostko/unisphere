@@ -47,9 +47,20 @@ template <typename Channel>
 class UNISPHERE_EXPORT RpcCallGroup : public boost::enable_shared_from_this<RpcCallGroup<Channel>> {
 public:
   friend class RpcEngine<Channel>;
+
+  /**
+   * Invoke all queued calls.
+   */
+  void start()
+  {
+    for (auto &call : m_queue) {
+      call();
+    }
+    m_queue.clear();
+  }
   
   /**
-   * Calls a remote procedure.
+   * Queues a calls to a remote procedure.
    *
    * @param destination Destination key
    * @param method Method name
@@ -71,22 +82,24 @@ public:
     auto self = this->shared_from_this();
 
     m_calls++;
-    m_engine.call<RequestType, ResponseType>(
-      destination,
-      method,
-      request,
-      m_strand.wrap([self, success](const ResponseType &rsp, const typename Channel::message_type &msg) {
-        if (success)
-          success(rsp, msg);
-        self->checkCompletion();
-      }),
-      m_strand.wrap([self, failure](RpcErrorCode code, const std::string &msg) {
-        if (failure)
-          failure(code, msg);
-        self->checkCompletion();
-      }),
-      opts
-    );
+    m_queue.push_back([=]() {
+      m_engine.call<RequestType, ResponseType>(
+        destination,
+        method,
+        request,
+        m_strand.wrap([self, success](const ResponseType &rsp, const typename Channel::message_type &msg) {
+          if (success)
+            success(rsp, msg);
+          self->checkCompletion();
+        }),
+        m_strand.wrap([self, failure](RpcErrorCode code, const std::string &msg) {
+          if (failure)
+            failure(code, msg);
+          self->checkCompletion();
+        }),
+        opts
+      );
+    });
   }
 
   /**
@@ -100,7 +113,7 @@ public:
     RpcCallGroupPtr<Channel> self = this->shared_from_this();
 
     m_calls++;
-    return RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(
+    auto group = RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(
       m_engine,
       m_strand.wrap([self, complete]() {
         if (complete)
@@ -108,6 +121,9 @@ public:
         self->checkCompletion();
       })
     ));
+    m_queue.push_back([group]() { group->start(); });
+
+    return group;
   }
 protected:
   /**
@@ -137,6 +153,8 @@ private:
   RpcEngine<Channel> &m_engine;
   /// Completion handler
   RpcGroupCompletionHandler m_handler;
+  /// Queued calls
+  std::list<std::function<void()>> m_queue;
   /// Number of pending calls
   int m_calls;
   /// Strand to ensure that all handlers in a group are executed serially

@@ -376,6 +376,7 @@ void ControllerScenarioApi::signal(TestCasePtr test,
                           )
     );
   }
+  group->start();
 
   // Unlock the mutex before suspending, otherwise we will not be able to resume
   lock.unlock();
@@ -434,6 +435,7 @@ void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
                           )
     );
   }
+  group->start();
 
   scenario->suspend();
 }
@@ -566,6 +568,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
                           )
     );
   }
+  group->start();
 
   return test;
 }
@@ -886,6 +889,7 @@ void Controller::run()
                )
         );
       }
+      group->start();
     },
     [this](RpcErrorCode code, const std::string &msg) {
       BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to start simulation: " << msg;

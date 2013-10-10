@@ -236,6 +236,7 @@ Response<Protocol::AbortResponse> MasterPrivate::rpcAbort(const Protocol::AbortR
       }
     );
   }
+  group->start();
 
   return Protocol::AbortResponse();
 }
