@@ -360,12 +360,13 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
   }
 
   // Setup a completion handler
-  section->signalFinished.connect([this, test, api]() {
+  int nodes = request.nodes_size();
+  section->signalFinished.connect([this, test, api, nodes]() {
     test->localNodesRunning(*api);
 
     // If test case is not yet finished, we transition it to running state; otherwise
     // process local test results and finish it immediately
-    if (!test->isFinished()) {
+    if (!test->isFinished() && nodes > 0) {
       test->setState(TestCase::State::Running);
     } else {
       test->processLocalResults(*api);
