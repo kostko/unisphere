@@ -499,21 +499,25 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
     selectedNodes.push_back(SelectedPartition{ partition.index });
   }
 
+  size_t selectedPartitions = 0;
   for (const Partition &partition : partitions) {
     for (const Partition::Node &node : partition.nodes) {
       SelectedPartition::Node selected = test->selectNode(partition, node, *api);
       if (!selected.nodeId.isNull())
         selectedNodes[partition.index].nodes.push_back(selected);
     }
+
+    if (selectedNodes[partition.index].nodes.size() > 0)
+      selectedPartitions++;
   }
 
   // Register the test case under running test cases
   BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
-  m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedNodes.size() };
+  m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedPartitions };
 
   // Request slaves to run local portions of test cases and report back
   boost::shared_ptr<std::atomic<unsigned int>> pendingConfirms =
-    boost::make_shared<std::atomic<unsigned int>>(selectedNodes.size());
+    boost::make_shared<std::atomic<unsigned int>>(selectedPartitions);
 
   auto group = m_controller.q.rpc().group([this, pendingConfirms, test]() {
     if (*pendingConfirms != 0) {
@@ -527,6 +531,9 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
   });
 
   for (SelectedPartition &selected : selectedNodes) {
+    if (!selected.nodes.size())
+      continue;
+
     const Partition &partition = partitions[selected.index];
     Protocol::RunTestRequest request;
     request.set_test_name(test->getName());
