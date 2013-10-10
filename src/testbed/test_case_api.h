@@ -65,6 +65,9 @@ public:
   template <typename DataSetType>
   void send(const DataSetType &dataset)
   {
+    if (!dataset.size())
+      return;
+    
     std::stringstream buffer;
     {
       boost::iostreams::filtering_ostream f;
