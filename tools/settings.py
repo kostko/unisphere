@@ -163,6 +163,7 @@ GRAPHS = [
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
   dict(name="size_sg_degrees", plotter="graphs.DegreeVsVariable", variable="size",
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
+  dict(name="size_lr_lengths", plotter="graphs.LRLengthDistribution", runs=["pf-b*"]),
 
   # Graphs relating to the effect of community structure on protocol operation
   dict(name="community_msg_perf", plotter="graphs.MessagingPerformance",

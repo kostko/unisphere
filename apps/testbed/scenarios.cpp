@@ -59,6 +59,8 @@ UNISPHERE_SCENARIO(StandardTests)
     api.test({ "state/sloppy_group_topology", "state/routing_topology" });
     // Retrieve performance statistics
     api.test("stats/performance");
+    // Retrieve L-R address length distribution
+    api.test("stats/lr_address_lengths");
   };
 
   api.wait(30);

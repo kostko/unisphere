@@ -26,3 +26,4 @@ from .degree_distribution import *
 from .degree_vs_variable import *
 from .deliverability_vs_variable import *
 from .deliverability_vs_attack_edges import *
+from .lr_length_distribution import *

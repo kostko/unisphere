@@ -895,6 +895,53 @@ public:
 
 UNISPHERE_REGISTER_TEST_CASE(CollectLinkCongestion, "stats/collect_link_congestion")
 
+class GetLRAddressLengths : public TestCase
+{
+public:
+  /// Primary address length dataset
+  DataSet<> ds_primary{"ds_primary"};
+  /// Secondary address length dataset
+  DataSet<> ds_secondary{"ds_secondary"};
+
+  using TestCase::TestCase;
+
+  /**
+   * Gather some statistics.
+   */
+  void runNode(TestCaseApi &api,
+               VirtualNodePtr node,
+               const boost::property_tree::ptree &args)
+  {
+    bool primary = true;
+    for (const LandmarkAddress &address : node->router->routingTable().getLocalAddresses()) {
+      auto &ds = primary ? ds_primary : ds_secondary;
+      primary = false;
+      ds.add({
+        { "node_id",  node->nodeId.hex() },
+        { "length",   address.size() }
+      });
+    }
+    finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.send(ds_primary);
+    api.send(ds_secondary);
+  }
+
+  void processGlobalResults(TestCaseApi &api)
+  {
+    api.receive(ds_primary);
+    api.receive(ds_secondary);
+
+    outputCsvDataset(ds_primary, { "node_id", "length" }, api.getOutputFilename("primary", "csv"));
+    outputCsvDataset(ds_secondary, { "node_id", "length" }, api.getOutputFilename("secondary", "csv"));
+  }
+};
+
+UNISPHERE_REGISTER_TEST_CASE(GetLRAddressLengths, "stats/lr_address_lengths")
+
 class SetupSybilNodes : public TestCase
 {
 public:
