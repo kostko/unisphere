@@ -533,7 +533,7 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
         const Protocol::NameAnnounce &announce = announces.announces(i);
 
         // Accept announces only for peers in the same sloppy group
-        NodeIdentifier originId(announce.origin_id(), NodeIdentifier::Format::Raw);
+        NodeIdentifier originId(announce.origin_id());
         if (originId.prefix(m_groupPrefixLength) != m_groupPrefix) {
           BOOST_LOG_SEV(m_logger, log::warning) << "Dropping name record (origin not in our SG).";
           continue;
@@ -549,7 +549,7 @@ void SloppyGroupManagerPrivate::messageDelivery(const RoutedMessage &msg)
         for (int j = 0; j < announce.addresses_size(); j++) {
           const Protocol::LandmarkAddress &laddr = announce.addresses(j);
           record->addresses.push_back(LandmarkAddress(
-            NodeIdentifier(laddr.landmarkid(), NodeIdentifier::Format::Raw),
+            NodeIdentifier(laddr.landmarkid()),
             laddr.address()
           ));
         }

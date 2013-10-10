@@ -42,7 +42,7 @@ TEST_CASE("identity/identifiers", "verify that node identifiers work")
   
   SECTION("s2", "invalid identifier")
   {
-    NodeIdentifier n3("invalid");
+    NodeIdentifier n3("invalid", NodeIdentifier::Format::Hex);
     
     REQUIRE(n3.isNull());
     REQUIRE(!n3.isValid());

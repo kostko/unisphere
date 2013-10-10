@@ -348,7 +348,7 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
     try {
       // Schedule executions within the simulation
       section->execute(
-        NodeIdentifier(node.id(), NodeIdentifier::Format::Raw),
+        NodeIdentifier(node.id()),
         [this, test, api, args](VirtualNodePtr vnode) {
           test->runNode(*api, vnode, args);
         }
@@ -419,7 +419,7 @@ Response<Protocol::StartNodesResponse> SlavePrivate::rpcStartNodes(const Protoco
 
   SimulationSectionPtr section = m_simulation->section();
   for (int i = 0; i < request.node_ids_size(); i++) {
-    section->execute(NodeIdentifier(request.node_ids(i), NodeIdentifier::Format::Raw),
+    section->execute(NodeIdentifier(request.node_ids(i)),
       [](VirtualNodePtr vnode) { vnode->initialize(); });
   }
   section->run();

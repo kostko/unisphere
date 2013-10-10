@@ -158,7 +158,7 @@ NodeIdentifier TopologyLoaderPrivate::getNodeId(const std::string &name)
     case TopologyLoader::IdGenerationType::Consistent: {
       Botan::Pipe pipe(new Botan::Hash_Filter("SHA-1"));
       pipe.process_msg(name);
-      nodeId = NodeIdentifier(pipe.read_all_as_string(0), NodeIdentifier::Format::Raw);
+      nodeId = NodeIdentifier(pipe.read_all_as_string(0));
       break;
     }
     default:

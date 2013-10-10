@@ -539,13 +539,13 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
     case Message::Type::Social_Retract: {
       Protocol::PathRetract prt = message_cast<Protocol::PathRetract>(msg);
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
-      m_routes.retract(vport, NodeIdentifier(prt.destination_id(), NodeIdentifier::Format::Raw));
+      m_routes.retract(vport, NodeIdentifier(prt.destination_id()));
       break;
     }
 
     case Message::Type::Social_Refresh: {
       Protocol::PathRefresh prf = message_cast<Protocol::PathRefresh>(msg);
-      NodeIdentifier destinationId = NodeIdentifier(prf.destination_id(), NodeIdentifier::Format::Raw);
+      NodeIdentifier destinationId(prf.destination_id());
       if (destinationId.isNull()) {
         m_routes.fullUpdate(msg.originator());
       } else {

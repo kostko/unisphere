@@ -24,20 +24,20 @@ RoutedMessage::RoutedMessage(const Message &msg)
 {
   Protocol::RoutedMessage pmsg = message_cast<Protocol::RoutedMessage>(msg);
   m_sourceAddress = LandmarkAddress(
-    NodeIdentifier(pmsg.source_landmark(), NodeIdentifier::Format::Raw),
+    NodeIdentifier(pmsg.source_landmark()),
     pmsg.source_address()
   );
-  m_sourceNodeId = NodeIdentifier(pmsg.source_node(), NodeIdentifier::Format::Raw);
+  m_sourceNodeId = NodeIdentifier(pmsg.source_node());
   m_sourceCompId = pmsg.source_comp();
 
   if (pmsg.has_destination_landmark()) {
     m_destinationAddress = LandmarkAddress(
-      NodeIdentifier(pmsg.destination_landmark(), NodeIdentifier::Format::Raw),
+      NodeIdentifier(pmsg.destination_landmark()),
       pmsg.destination_address()
     );
   }
   
-  m_destinationNodeId = NodeIdentifier(pmsg.destination_node(), NodeIdentifier::Format::Raw);
+  m_destinationNodeId = NodeIdentifier(pmsg.destination_node());
   m_destinationCompId = pmsg.destination_comp();
   m_hopLimit = pmsg.hop_limit();
   m_hopDistance = pmsg.has_hop_distance() ? pmsg.hop_distance() : 0;

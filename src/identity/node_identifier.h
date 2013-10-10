@@ -50,7 +50,17 @@ public:
   /**
    * Constructs an invalid null identifier.
    */
-  NodeIdentifier();
+  NodeIdentifier()
+  {}
+
+  /**
+   * Constructs an identifier from raw bytes.
+   *
+   * @param bytes Raw bytes representing the identifier
+   */
+  explicit NodeIdentifier(const std::string &identifier)
+    : m_identifier(identifier)
+  {}
   
   /**
    * Class constructor.
@@ -58,12 +68,7 @@ public:
    * @param identifier Identifier data
    * @param format Format of identifier data
    */
-  explicit NodeIdentifier(const std::string &identifier, Format format = Format::Hex);
-  
-  /**
-   * Copy constructor.
-   */
-  NodeIdentifier(const NodeIdentifier &other);
+  NodeIdentifier(const std::string &identifier, Format format);
 
   /**
    * Generates a random node identifier.
@@ -73,14 +78,14 @@ public:
   /**
    * Returns true when the identifier is an empty one.
    */
-  bool isNull() const;
+  inline bool isNull() const { return m_identifier.empty(); }
   
   /**
    * Returns true when the identifier is valid. For the identifier to be
    * considered valid it must be exactly @ref length bytes long in its
    * raw form. Empty (null) identifiers are therefore invalid.
    */
-  bool isValid() const;
+  inline bool isValid() const { return m_identifier.size() == NodeIdentifier::length; }
   
   /**
    * Returns the identifier representation in the desired format.
@@ -104,41 +109,6 @@ public:
    * Convenience alias for as(Format::Bin).
    */
   inline std::string bin() const { return as(Format::Bin); }
-  
-  /**
-   * Comparison operator.
-   */
-  bool operator==(const NodeIdentifier &other) const;
-  
-  /**
-   * Comparison operator.
-   */
-  bool operator!=(const NodeIdentifier &other) const;
-  
-  /**
-   * Comparison operator.
-   */
-  bool operator<(const NodeIdentifier &other) const;
-  
-  /**
-   * Comparison operator.
-   */
-  bool operator>(const NodeIdentifier &other) const;
-  
-  /**
-   * Comparison operator.
-   */
-  bool operator<=(const NodeIdentifier &other) const;
-  
-  /**
-   * Comparison operator.
-   */
-  bool operator>=(const NodeIdentifier &other) const;
-  
-  /**
-   * Assignment operator.
-   */
-  NodeIdentifier &operator=(const NodeIdentifier &other);
 
   /**
    * Increment operator.
@@ -188,8 +158,14 @@ public:
     return hasher(identifier.m_identifier);
   }
   
-  // Ensure that our hash function is also our friend
+  // Friend declarations
   friend class std::hash<NodeIdentifier>;
+  friend bool operator==(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
+  friend bool operator!=(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
+  friend bool operator<(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
+  friend bool operator>(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
+  friend bool operator<=(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
+  friend bool operator>=(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
 protected:
   /**
    * A helper method for setting up this identifier from differently formatted
@@ -203,6 +179,36 @@ private:
   /// The actual identifier in raw form
   std::string m_identifier;
 };
+
+inline bool operator==(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
+{
+  return lhs.m_identifier == rhs.m_identifier;
+}
+
+inline bool operator!=(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
+{
+  return lhs.m_identifier != rhs.m_identifier;
+}
+
+inline bool operator<(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
+{
+  return lhs.m_identifier < rhs.m_identifier;
+}
+
+inline bool operator>(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
+{
+  return lhs.m_identifier > rhs.m_identifier;
+}
+
+inline bool operator<=(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
+{
+  return lhs.m_identifier <= rhs.m_identifier;
+}
+
+inline bool operator>=(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
+{
+  return lhs.m_identifier >= rhs.m_identifier;
+}
   
 }
 

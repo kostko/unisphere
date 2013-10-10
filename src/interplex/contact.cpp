@@ -173,7 +173,7 @@ Protocol::Contact Contact::toMessage() const
 
 Contact Contact::fromMessage(const Protocol::Contact &msg)
 {
-  Contact result(NodeIdentifier(msg.node_id(), NodeIdentifier::Format::Raw));
+  Contact result(NodeIdentifier(msg.node_id()));
   for (const Protocol::Address &addr : msg.addresses()) {
     result.addAddress(Address(addr.address(), addr.port()));
   }

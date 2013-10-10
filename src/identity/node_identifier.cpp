@@ -28,18 +28,9 @@ namespace UniSphere {
 // returning references to invalid identifiers
 const NodeIdentifier NodeIdentifier::INVALID = NodeIdentifier();
 
-NodeIdentifier::NodeIdentifier()
-{
-}
-
 NodeIdentifier::NodeIdentifier(const std::string &identifier, Format format)
 {
   setIdentifier(identifier, format);
-}
-  
-NodeIdentifier::NodeIdentifier(const NodeIdentifier &other)
-{
-  m_identifier = other.m_identifier;
 }
 
 NodeIdentifier NodeIdentifier::random()
@@ -47,18 +38,7 @@ NodeIdentifier NodeIdentifier::random()
   Botan::AutoSeeded_RNG rng;
   char nodeId[NodeIdentifier::length];
   rng.randomize((Botan::byte*) &nodeId, sizeof(nodeId));
-  return NodeIdentifier(std::string(nodeId, sizeof(nodeId)), NodeIdentifier::Format::Raw);
-}
-
-NodeIdentifier &NodeIdentifier::operator=(const NodeIdentifier &other)
-{
-  m_identifier = other.m_identifier;
-  return *this;
-}
-
-bool NodeIdentifier::isNull() const
-{
-  return m_identifier.size() == 0;
+  return NodeIdentifier(std::string(nodeId, sizeof(nodeId)));
 }
 
 void NodeIdentifier::setIdentifier(const std::string &identifier, Format format)
@@ -95,11 +75,6 @@ void NodeIdentifier::setIdentifier(const std::string &identifier, Format format)
     m_identifier.clear();
 }
 
-bool NodeIdentifier::isValid() const
-{
-  return m_identifier.size() == NodeIdentifier::length;
-}
-
 std::string NodeIdentifier::as(Format format) const
 {
   if (!isValid())
@@ -129,36 +104,6 @@ std::string NodeIdentifier::as(Format format) const
   }
   
   return "";
-}
-
-bool NodeIdentifier::operator==(const NodeIdentifier &other) const
-{
-  return m_identifier == other.m_identifier;
-}
-
-bool NodeIdentifier::operator!=(const NodeIdentifier &other) const
-{
-  return m_identifier != other.m_identifier;
-}
-
-bool NodeIdentifier::operator<(const NodeIdentifier &other) const
-{
-  return m_identifier < other.m_identifier;
-}
-
-bool NodeIdentifier::operator>(const NodeIdentifier &other) const
-{
-  return m_identifier > other.m_identifier;
-}
-
-bool NodeIdentifier::operator<=(const NodeIdentifier &other) const
-{
-  return m_identifier <= other.m_identifier;
-}
-
-bool NodeIdentifier::operator>=(const NodeIdentifier &other) const
-{
-  return m_identifier >= other.m_identifier;
 }
 
 const NodeIdentifier NodeIdentifier::operator^(const NodeIdentifier &other) const
