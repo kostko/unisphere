@@ -117,11 +117,6 @@ public:
    * Returns the age of this routing entry.
    */
   boost::posix_time::time_duration age() const;
-
-  /**
-   * Comparison operator.
-   */
-  bool operator==(const RoutingEntry &other) const;
 public:
   /// Route originator descriptor
   RouteOriginatorPtr originator;
@@ -150,6 +145,12 @@ public:
 };
 
 UNISPHERE_SHARED_POINTER(RoutingEntry)
+
+inline bool operator==(const RoutingEntry &lhs, const RoutingEntry &rhs)
+{
+  return lhs.destination == rhs.destination && lhs.landmark == rhs.landmark && lhs.seqno == rhs.seqno &&
+         lhs.cost == rhs.cost && lhs.forwardPath == rhs.forwardPath && lhs.reversePath == rhs.reversePath;
+}
 
 class SloppyGroupManager;
 

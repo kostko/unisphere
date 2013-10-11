@@ -40,7 +40,6 @@ namespace RIBTags {
   class DestinationId;
   class ActiveRoutes;
   class LandmarkCost;
-  class LandmarkDestination;
   class Vicinity;
   class VicinityAny;
   class VportDestination;
@@ -78,25 +77,15 @@ typedef boost::multi_index_container<
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, std::uint16_t, cost)
       >
     >,
-    
-    // Index by landmark status and destination
-    midx::ordered_non_unique<
-      midx::tag<RIBTags::LandmarkDestination>,
-      midx::composite_key<
-        RoutingEntry,
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, landmark),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination)
-      >
-    >,
 
     // Index by vicinity and extended vicinity
     midx::ordered_non_unique<
       midx::tag<RIBTags::Vicinity>,
       midx::composite_key<
         RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, active),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, vicinity),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, extendedVicinity),
-        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
         midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::hops>
       >
     >,
@@ -106,6 +95,7 @@ typedef boost::multi_index_container<
       midx::tag<RIBTags::VicinityAny>,
       midx::composite_key<
         RoutingEntry,
+        BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, active),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, bool, vicinity),
         BOOST_MULTI_INDEX_MEMBER(RoutingEntry, NodeIdentifier, destination),
         midx::const_mem_fun<RoutingEntry, size_t, &RoutingEntry::hops>
@@ -322,11 +312,6 @@ public:
   SloppyGroupBucket getSloppyGroupBucket(const NodeIdentifier &nodeId) const;
 
   /**
-   * Returns the number of landmarks in the routing table.
-   */
-  size_t getLandmarkCount() const;
-
-  /**
    * Called when the freshness timer expires on a direct routing entry.
    *
    * @param error Boost error code (in case timer was interrupted)
@@ -450,12 +435,6 @@ boost::posix_time::time_duration RoutingEntry::age() const
   return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
 }
 
-bool RoutingEntry::operator==(const RoutingEntry &other) const
-{
-  return destination == other.destination && landmark == other.landmark && seqno == other.seqno &&
-    cost == other.cost && forwardPath == other.forwardPath && reversePath == other.reversePath;
-}
-
 CompactRoutingTablePrivate::CompactRoutingTablePrivate(Context &context,
                                                        const NodeIdentifier &localId,
                                                        NetworkSizeEstimator &sizeEstimator,
@@ -513,22 +492,12 @@ size_t CompactRoutingTablePrivate::getMaximumBucketSize() const
 CompactRoutingTablePrivate::CurrentVicinity CompactRoutingTablePrivate::getCurrentVicinity() const
 {
   RecursiveUniqueLock lock(m_mutex);
-  auto entries = m_rib.get<RIBTags::Vicinity>().equal_range(boost::make_tuple(true, false));
-  NodeIdentifier lastDestination;
+  auto entries = m_rib.get<RIBTags::Vicinity>().equal_range(boost::make_tuple(true, true, false));
   CurrentVicinity vicinity;
-  vicinity.size = 0;
-
-  // Count the number of unique destinations in the vicinity
-  for (auto it = entries.first; it != entries.second; ++it) {
-    if ((*it)->destination != lastDestination) {
-      vicinity.size++;
-      if (!vicinity.maxHopEntry || (*it)->hops() >= vicinity.maxHopEntry->hops()) {
-        vicinity.maxHopEntry = *it;
-        vicinity.maxHopIterator = it;
-      }
-    }
-
-    lastDestination = (*it)->destination;
+  vicinity.size = std::distance(entries.first, entries.second);
+  if (vicinity.size > 0) {
+    vicinity.maxHopIterator = --entries.second;
+    vicinity.maxHopEntry = *vicinity.maxHopIterator;
   }
 
   return vicinity;
@@ -541,45 +510,23 @@ CompactRoutingTablePrivate::SloppyGroupBucket CompactRoutingTablePrivate::getSlo
   NodeIdentifier groupEnd = nodeId.prefix(m_sloppyGroup.getGroupPrefixLength(), 0xFF);
 
   auto &ribVicinity = m_rib.get<RIBTags::VicinityAny>();
-  auto begin = ribVicinity.lower_bound(boost::make_tuple(true, groupStart));
-  auto end = ribVicinity.upper_bound(boost::make_tuple(true, groupEnd));
-  NodeIdentifier lastDestination;
+  auto begin = ribVicinity.lower_bound(boost::make_tuple(true, true, groupStart));
+  auto end = ribVicinity.upper_bound(boost::make_tuple(true, true, groupEnd));
   SloppyGroupBucket bucket;
   bucket.size = 0;
 
   for (auto it = begin; it != end; ++it) {
-    if ((*it)->destination != lastDestination) {
-      bucket.size++;
-      // Only consider entries in extended vicinity for removal
-      if ((*it)->extendedVicinity && 
-          (!bucket.maxHopEntry || (*it)->hops() >= bucket.maxHopEntry->hops())) {
-        bucket.maxHopEntry = *it;
-        bucket.maxHopIterator = it;
-      }
-    }
+    bucket.size++;
 
-    lastDestination = (*it)->destination;
+    // Only consider entries in extended vicinity for removal
+    if ((*it)->extendedVicinity && 
+        (!bucket.maxHopEntry || (*it)->hops() >= bucket.maxHopEntry->hops())) {
+      bucket.maxHopEntry = *it;
+      bucket.maxHopIterator = it;
+    }
   }
 
   return bucket;
-}
-
-size_t CompactRoutingTablePrivate::getLandmarkCount() const
-{
-  RecursiveUniqueLock lock(m_mutex);
-  auto entries = m_rib.get<RIBTags::LandmarkDestination>().equal_range(true);
-  NodeIdentifier lastDestination;
-  size_t landmarkCount = 0;
-
-  // Count the number of unique destinations in the landmark set
-  for (auto it = entries.first; it != entries.second; ++it) {
-    if ((*it)->destination != lastDestination)
-      landmarkCount++;
-
-    lastDestination = (*it)->destination;
-  }
-
-  return landmarkCount;
 }
 
 void CompactRoutingTablePrivate::entryTimerExpired(const boost::system::error_code &error,
@@ -945,8 +892,8 @@ CompactRoutingTable::SloppyGroupRelay CompactRoutingTablePrivate::getSloppyGroup
   NodeIdentifier groupEnd = destination.prefix(m_sloppyGroup.getGroupPrefixLength(), 0xFF);
 
   auto &ribVicinity = m_rib.get<RIBTags::VicinityAny>();
-  auto begin = ribVicinity.lower_bound(boost::make_tuple(true, groupStart));
-  auto end = ribVicinity.upper_bound(boost::make_tuple(true, groupEnd));
+  auto begin = ribVicinity.lower_bound(boost::make_tuple(true, true, groupStart));
+  auto end = ribVicinity.upper_bound(boost::make_tuple(true, true, groupEnd));
   RoutingEntryPtr bestEntry;
   size_t bestHops = -1;
 
@@ -954,9 +901,6 @@ CompactRoutingTable::SloppyGroupRelay CompactRoutingTablePrivate::getSloppyGroup
   //       to query the RIB on each such decision?
   for (auto it = begin; it != end; ++it) {
     RoutingEntryPtr entry = *it;
-    if (!entry->active)
-      continue;
-
     if (entry->hops() < bestHops) {
       bestEntry = entry;
       bestHops = entry->hops();
@@ -1130,13 +1074,6 @@ void CompactRoutingTablePrivate::dump(std::ostream &stream, std::function<std::s
   stream << "*** Vicinity:" << std::endl;
   stream << "Current size: " << getCurrentVicinity().size << std::endl;
   stream << "Maximum size: " << getMaximumVicinitySize() << std::endl;
-
-  // Dump number of landmarks
-  stream << "*** Landmarks:" << std::endl;
-  stream << "Count: " << getLandmarkCount();
-  if (m_landmark)
-    stream << " (+1 current node)";
-  stream << std::endl;
 }
 
 void CompactRoutingTablePrivate::dumpTopology(CompactRoutingTable::TopologyDumpGraph &graph,
@@ -1251,7 +1188,7 @@ std::list<CompactRoutingTable::VicinityDescriptor> CompactRoutingTable::getVicin
 {
   RecursiveUniqueLock lock(d->m_mutex);
   std::list<VicinityDescriptor> vicinity;
-  auto entries = d->m_rib.get<RIBTags::VicinityAny>().equal_range(true);
+  auto entries = d->m_rib.get<RIBTags::VicinityAny>().equal_range(boost::make_tuple(true, true));
   for (auto it = entries.first; it != entries.second; ++it) {
     vicinity.push_back(VicinityDescriptor{ (*it)->destination, (*it)->hops() });
   }

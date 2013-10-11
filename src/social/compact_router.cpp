@@ -55,8 +55,8 @@ struct AggregationBuffer {
 
   /// Contact we are agregating for
   Contact contact;
-  /// Aggregated path announcement
-  Protocol::AggregatePathAnnounce aggregate;
+  /// Path announcements
+  std::unordered_map<std::string, Protocol::PathAnnounce> announces;
   /// Timer to transmit the buffered announcement
   boost::asio::deadline_timer timer;
   /// Buffering indicator
@@ -361,6 +361,22 @@ void CompactRouterPrivate::requestFullRoutes()
 
 void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
 {
+  // Prepare the announce message
+  Protocol::PathAnnounce announce;
+  announce.set_destination_id(entry->destination.as(NodeIdentifier::Format::Raw));
+  announce.set_landmark(entry->landmark);
+  announce.set_seqno(entry->seqno);
+
+  for (Vport v : entry->forwardPath) {
+    announce.add_forward_path(v);
+  }
+
+  for (Vport v : entry->reversePath) {
+    announce.add_reverse_path(v);
+  }
+  // Prepare an empty slot for the reverse path that will be filled in for each peer
+  announce.add_reverse_path(0);
+
   auto exportEntry = [&](const Contact &contact) {
     if (contact.isNull()) {
       BOOST_LOG_SEV(m_logger, log::error) << "Attempted export for null contact!";
@@ -372,20 +388,7 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
     if (vport == entry->originVport())
       return;
 
-    // Prepare the announce message
-    Protocol::PathAnnounce announce;
-    announce.set_destination_id(entry->destination.as(NodeIdentifier::Format::Raw));
-    announce.set_landmark(entry->landmark);
-    announce.set_seqno(entry->seqno);
-
-    for (Vport v : entry->forwardPath) {
-      announce.add_forward_path(v);
-    }
-
-    for (Vport v : entry->reversePath) {
-      announce.add_reverse_path(v);
-    }
-    announce.add_reverse_path(vport);
+    announce.set_reverse_path(announce.reverse_path_size() - 1, vport);
     ribExportQueueAnnounce(contact, announce);
   };
 
@@ -415,20 +418,8 @@ void CompactRouterPrivate::ribExportQueueAnnounce(const Contact &contact,
     buffer = it->second;
   }
 
-  // TODO: Also take retractions into account when aggregating
-  Protocol::PathAnnounce *ar = nullptr;
-  for (int i = 0; i < buffer->aggregate.announces_size(); i++) {
-    Protocol::PathAnnounce *a = buffer->aggregate.mutable_announces(i);
-    // Replace existing announces with new ones, so only the lastest are transmitted
-    if (a->destination_id() == announce.destination_id()) {
-      ar = a;
-      break;
-    }
-  }
-
-  if (!ar)
-    ar = buffer->aggregate.add_announces();
-  *ar = announce;
+  // Replace existing announces with new ones, so only the lastest are transmitted
+  buffer->announces[announce.destination_id()] = announce;
 
   // Buffer further messages for another 5 seconds, then transmit all of them
   if (!buffer->buffering) {
@@ -445,16 +436,21 @@ void CompactRouterPrivate::ribExportTransmitBuffer(const boost::system::error_co
     return;
 
   RecursiveUniqueLock lock(m_mutex);
+  Protocol::AggregatePathAnnounce aggregate;
+  for (const auto &pa : buffer->announces) {
+    *aggregate.add_announces() = pa.second;
+  }
+
   m_manager.send(
     buffer->contact,
-    Message(Message::Type::Social_Announce, buffer->aggregate)
+    Message(Message::Type::Social_Announce, aggregate)
   );
 
-  m_statistics.entryXmits += buffer->aggregate.announces_size();
+  m_statistics.entryXmits += buffer->announces.size();
 
   // Clear the buffer after transmission
   buffer->buffering = false;
-  buffer->aggregate.Clear();
+  buffer->announces.clear();
 }
 
 void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)

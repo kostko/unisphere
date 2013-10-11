@@ -111,8 +111,8 @@ struct NameAggregationBuffer {
 
   /// Peer we are agregating for
   SloppyPeer peer;
-  /// Aggregated name announcement
-  Protocol::AggregateNameAnnounce aggregate;
+  /// Name announcements
+  std::unordered_map<std::string, Protocol::NameAnnounce> announces;
   /// Timer to transmit the buffered announcement
   boost::asio::deadline_timer timer;
   /// Buffering indicator
@@ -404,19 +404,8 @@ void SloppyGroupManagerPrivate::nibExportQueueRecord(const SloppyPeer &peer,
     buffer = it->second;
   }
 
-  Protocol::NameAnnounce *ar = nullptr;
-  for (int i = 0; i < buffer->aggregate.announces_size(); i++) {
-    Protocol::NameAnnounce *a = buffer->aggregate.mutable_announces(i);
-    // Replace existing announces with new ones, so only the lastest are transmitted
-    if (a->origin_id() == announce.origin_id()) {
-      ar = a;
-      break;
-    }
-  }
-
-  if (!ar)
-    ar = buffer->aggregate.add_announces();
-  *ar = announce;
+  // Replace existing announces with new ones, so only the lastest are transmitted
+  buffer->announces[announce.origin_id()] = announce;
 
   // Buffer further messages for another 15 seconds, then transmit all of them
   if (!buffer->buffering) {
@@ -433,21 +422,26 @@ void SloppyGroupManagerPrivate::nibExportTransmitBuffer(const boost::system::err
     return;
 
   RecursiveUniqueLock lock(m_mutex);
+  Protocol::AggregateNameAnnounce aggregate;
+  for (const auto &pa : buffer->announces) {
+    *aggregate.add_announces() = pa.second;
+  }
+
   m_router.route(
     static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
     buffer->peer.nodeId,
     buffer->peer.landmarkAddress(),
     static_cast<std::uint32_t>(CompactRouter::Component::SloppyGroup),
     static_cast<std::uint32_t>(SloppyGroupManagerPrivate::MessageType::NameAnnounce),
-    buffer->aggregate,
+    aggregate,
     RoutingOptions().setTrackHopDistance(true)
   );
 
-  m_statistics.recordXmits += buffer->aggregate.announces_size();
+  m_statistics.recordXmits += buffer->announces.size();
 
   // Clear the buffer after transmission
   buffer->buffering = false;
-  buffer->aggregate.Clear();
+  buffer->announces.clear();
 }
 
 PeerView SloppyGroupManagerPrivate::getLocalPeerView() const
