@@ -86,11 +86,11 @@ class SimpleCluster(base.ClusterRunnerBase):
         preexec_fn=self._setup_limits
       )
 
-      # Compute how we will distribute the slaves around; if there are more than 4 cores
-      # then we use multiple slaves with 4 threads each; this is because with too many
+      # Compute how we will distribute the slaves around; if there are more than 2 cores
+      # then we use multiple slaves with 2 threads each; this is because with too many
       # threads, Boost.ASIO queue lock contention becomes too big
       required_slaves = int(math.ceil(
-        float(multiprocessing.cpu_count()) / self.cluster_cfg.get('threads_per_slave', 4)
+        float(multiprocessing.cpu_count()) / self.cluster_cfg.get('threads_per_slave', 2)
       ))
 
       # Start cluster slave process(es)
@@ -109,7 +109,7 @@ class SimpleCluster(base.ClusterRunnerBase):
             "--sim-ip", self.cluster_cfg['slave_sim_ip'] % slave_id,
             "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
             "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
-            "--sim-threads", str(self.cluster_cfg.get('threads_per_slave', 4)),
+            "--sim-threads", str(self.cluster_cfg.get('threads_per_slave', 2)),
             "--exit-on-finish"
           ],
           stdin=None,
