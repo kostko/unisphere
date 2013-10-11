@@ -96,6 +96,7 @@ RUNS = [
   dict(name="pf-b6", topology="basic_single", size=512, scenario="StandardTests"),
   dict(name="pf-b7", topology="basic_single", size=1024, scenario="StandardTests"),
   dict(name="pf-b8", topology="basic_single", size=2048, scenario="StandardTests"),
+  dict(name="pf-b9", topology="basic_single", size=4096, scenario="StandardTests"),
 
   dict(name="pf-m1", topology="basic_multi", size=512, communities=1, degree=4, scenario="StandardTests"),
   dict(name="pf-m2", topology="basic_multi", size=512, communities=2, degree=4, scenario="StandardTests"),
