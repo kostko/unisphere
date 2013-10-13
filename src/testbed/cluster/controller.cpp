@@ -416,6 +416,8 @@ void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
     std::list<NodeIdentifier> &nodes = partitions.at(i);
     const Partition &partition = m_controller.m_topology.getPartitions().at(i);
     Protocol::StartNodesRequest request;
+    if (nodes.empty())
+      continue;
 
     for (const NodeIdentifier &nodeId : nodes) {
       request.add_node_ids(nodeId.raw());
