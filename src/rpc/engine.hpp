@@ -349,12 +349,17 @@ protected:
                   RpcResponseSuccess<Channel> success,
                   RpcResponseFailure failure) {
       RpcDeferredResponse<Channel, ResponseType> response(request.rpc_id(), success, failure);
-      impl(
-        message_cast<RequestType>(request.data()),
-        msg,
-        request.rpc_id(),
-        response
-      );
+      try {
+        impl(
+          message_cast<RequestType>(request.data()),
+          msg,
+          request.rpc_id(),
+          response
+        );
+      } catch (RpcException &error) {
+        // Immediately invoke the failure handler
+        response.failure(error);
+      }
     };
   }
   
