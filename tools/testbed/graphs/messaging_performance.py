@@ -90,9 +90,9 @@ class MessagingPerformance(base.PlotterBase):
 
     return timestamps, grouped_data
 
-  def plot_variable(self, ax, timestamps, grouped_data, variable, color, label):
+  def compute_rate(self, timestamps, grouped_data, variable):
     """
-    Plots a timeseries for a variable.
+    Computes the rate of a variable.
     """
     # Extract variable from the grouped dataset
     X = timestamps[:-10]
@@ -103,8 +103,19 @@ class MessagingPerformance(base.PlotterBase):
     for x1, x2, y1, y2 in zip(X, X[1:], Y, Y[1:]):
       Yrate += [(y2 - y1) / (x2 - x1)]
     
-    X = X[1:]
+    return X[1:], Yrate
 
+  def compute_average(self, X, Y, x_min):
+    """
+    Computes average and standard deviation.
+    """
+    Yf = [y for x, y in zip(X, Y) if x >= x_min]
+    return numpy.average(Yf), numpy.std(Yf)
+
+  def plot_variable(self, ax, X, Yrate, color, label):
+    """
+    Plots a timeseries for a variable.
+    """
     # Plot rate
     ax.plot(X, Yrate, color=color, alpha=0.4, zorder=0)
 
@@ -123,15 +134,30 @@ class MessagingPerformance(base.PlotterBase):
     label_attribute = self.graph.settings.get('label_attribute', 'size')
 
     min_max_ts = None
+    averages = {
+      'sg_msgs': {},
+      'rt_msgs': {},
+    }
     for i, run in enumerate(self.runs):
+      run_attribute = run.orig.settings.get(label_attribute, 0)
+
       # Pre-process dataset so it gets properly grouped by timestamp for each node
       timestamps, grouped_data = self.pre_process(run, ['sg_msgs', 'rt_msgs'])
 
+      # Compute rates
+      sX, sYrate = self.compute_rate(timestamps, grouped_data, 'sg_msgs')
+      rX, rYrate = self.compute_rate(timestamps, grouped_data, 'rt_msgs')
+
       # Plot variables
-      self.plot_variable(ax, timestamps, grouped_data, 'sg_msgs', mpl.cm.winter(float(i) / len(self.runs)),
-        'SG msgs (%s = %d)' % (label_attribute, run.orig.settings.get(label_attribute, 0)))
-      self.plot_variable(ax, timestamps, grouped_data, 'rt_msgs', mpl.cm.autumn(float(i) / len(self.runs)),
-        'RT msgs (%s = %d)' % (label_attribute, run.orig.settings.get(label_attribute, 0)))
+      self.plot_variable(ax, sX, sYrate, mpl.cm.winter(float(i) / len(self.runs)),
+        'SG msgs (%s = %d)' % (label_attribute, run_attribute))
+      self.plot_variable(ax, rX, rYrate, mpl.cm.autumn(float(i) / len(self.runs)),
+        'RT msgs (%s = %d)' % (label_attribute, run_attribute))
+
+      # Retrieve the moment in time when all nodes are considered up and compute average rates
+      nodes_up_ts = run.get_marker("all_nodes_up")
+      averages['sg_msgs'][run_attribute] = self.compute_average(sX, sYrate, nodes_up_ts)
+      averages['rt_msgs'][run_attribute] = self.compute_average(rX, rYrate, nodes_up_ts)
 
       # Compute the minimum of all maximum timestamps
       if min_max_ts is None or timestamps[-1] < min_max_ts:
@@ -147,3 +173,23 @@ class MessagingPerformance(base.PlotterBase):
       legend.get_frame().set_alpha(0.8)
 
     fig.savefig(self.get_figure_filename())
+
+    # If there are multiple runs, plot the average records/s in relation to the variable
+    if len(self.runs) > 1:
+      ax.clear()
+
+      for typ in averages:
+        X = sorted(averages[typ].keys())
+        Y = [averages[typ][x][0] for x in X]
+        Yerr = [averages[typ][x][1] for x in X]
+        ax.errorbar(X, Y, Yerr, marker='x', label=typ)
+
+      ax.set_xlabel(label_attribute)
+      ax.set_ylabel('records/s')
+      ax.grid()
+
+      legend = ax.legend(loc='upper right', fontsize='small')
+      legend.get_frame().set_alpha(0.8)
+
+      fig.savefig(self.get_figure_filename("avgs"))
+
