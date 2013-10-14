@@ -35,7 +35,10 @@ UNISPHERE_SCENARIO(IdleScenario)
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
-  api.wait(3600);
+  api.wait(30);
+  api.mark("all_nodes_up");
+
+  api.wait(3570);
 
   // Perform some sanity checks
   api.test("sanity/check_consistent_ndb");
@@ -64,6 +67,8 @@ UNISPHERE_SCENARIO(StandardTests)
   };
 
   api.wait(30);
+  api.mark("all_nodes_up");
+
   standardTests();
   api.wait(570);
   standardTests();
@@ -95,7 +100,10 @@ UNISPHERE_SCENARIO(SybilNodesNames)
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
-  api.wait(120);
+  api.wait(30);
+  api.mark("all_nodes_up");
+
+  api.wait(90);
 
   // Perform some sanity checks
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
@@ -124,7 +132,10 @@ UNISPHERE_SCENARIO(SybilNodesRouting)
   // Start nodes in batches
   api.startNodesBatch(api.getNodes(), 10, 5);
 
-  api.wait(120);
+  api.wait(30);
+  api.mark("all_nodes_up");
+
+  api.wait(90);
 
   // Perform some sanity checks
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});

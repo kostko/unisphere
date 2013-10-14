@@ -146,6 +146,8 @@ public:
 
   void stopNode(const NodeIdentifier &nodeId);
 
+  void mark(const std::string &marker);
+
   std::string getOutputFilename(const std::string &prefix,
                                 const std::string &extension,
                                 const std::string &marker);
@@ -463,14 +465,22 @@ std::string ControllerScenarioApi::getOutputFilename(const std::string &prefix,
     return std::string();
 
   return (
-    boost::format("%s/%s-%s%s-%05i.%s")
+    boost::format("%s/%s%s-%05i.%s")
       % m_controller.m_outputDirectory
-      % boost::algorithm::replace_all_copy(m_controller.m_scenario->name(), "/", "-")
       % boost::algorithm::replace_all_copy(prefix, "/", "-")
       % (marker.empty() ? "" : "-" + marker)
       % (boost::posix_time::microsec_clock::universal_time() - m_controller.m_simulationStartTime).total_seconds()
       % extension
   ).str();
+}
+
+void ControllerScenarioApi::mark(const std::string &marker)
+{
+  std::ofstream file;
+  file.open(getOutputFilename("marker", "csv", marker));
+  file << "ts\n";
+  file << (boost::posix_time::microsec_clock::universal_time() - m_controller.m_simulationStartTime).total_seconds();
+  file << "\n";
 }
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,

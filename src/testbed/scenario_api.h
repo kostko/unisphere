@@ -150,6 +150,15 @@ public:
   virtual void stopNode(const NodeIdentifier &nodeId) = 0;
 
   /**
+   * Outputs a marker file that will contain the timestamp when the marker
+   * ocurred. The file will be in standard CSV format with a single column
+   * named 'ts'.
+   *
+   * @param marker Marker name
+   */
+  virtual void mark(const std::string &marker) = 0;
+
+  /**
    * Returns a filename appropriate for output.
    *
    * @param prefix Filename prefix

@@ -115,6 +115,9 @@ class RunOutputDescriptor(object):
   def get_sorted_dataset(self, ds_expression, column, **kwargs):
     return pandas.read_csv(self.sort_dataset(ds_expression, column), sep='\t', **kwargs)
 
+  def get_marker(self, marker):
+    return self.get_dataset("marker-%s-*.csv" % marker)['ts'][0]
+
 class PlotterBase(object):
   def __init__(self, graph, run_id, runs, settings):
     self.graph = graph
