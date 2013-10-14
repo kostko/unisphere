@@ -151,6 +151,13 @@ RUNS = [
 GRAPHS = [
   # Graphs relating to the effect of increasing sizes on protocol operation
   dict(name="size_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-b*"]),
+  dict(name="size_msg_perf_s64", plotter="graphs.MessagingPerformance", runs=["pf-b3"]),
+  dict(name="size_msg_perf_s128", plotter="graphs.MessagingPerformance", runs=["pf-b4"]),
+  dict(name="size_msg_perf_s256", plotter="graphs.MessagingPerformance", runs=["pf-b5"]),
+  dict(name="size_msg_perf_s512", plotter="graphs.MessagingPerformance", runs=["pf-b6"]),
+  dict(name="size_msg_perf_s1024", plotter="graphs.MessagingPerformance", runs=["pf-b7"]),
+  dict(name="size_msg_perf_s2048", plotter="graphs.MessagingPerformance", runs=["pf-b8"]),
+  dict(name="size_msg_perf_s4096", plotter="graphs.MessagingPerformance", runs=["pf-b9"]),
   dict(name="size_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b*"]),
   dict(name="size_path_stretch", plotter="graphs.PathStretch", runs=["pf-b*"], variable="size"),
   dict(name="size_state_distribution", plotter="graphs.StateDistribution", runs=["pf-b*"]),
@@ -160,11 +167,14 @@ GRAPHS = [
     fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
   dict(name="size_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="size",
     graph="input-topology.graphml", runs=["pf-b*"]),
+  dict(name="size_degrees", plotter="graphs.DegreeVsVariable", variable="size", scale="log",
+    graph="input-topology.graphml", runs=["pf-b*"]),
   dict(name="size_sg_degree_dist", plotter="graphs.DegreeDistribution", variable="size",
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
-  dict(name="size_sg_degrees", plotter="graphs.DegreeVsVariable", variable="size",
+  dict(name="size_sg_degrees", plotter="graphs.DegreeVsVariable", variable="size", scale="log",
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
-  dict(name="size_lr_lengths", plotter="graphs.LRLengthDistribution", runs=["pf-b*"]),
+  dict(name="size_lr_length_dist", plotter="graphs.LRLengthDistribution", runs=["pf-b*"]),
+  dict(name="size_lr_lengths", plotter="graphs.LRLengthVsVariable", runs=["pf-b*"], scale="log"),
 
   # Graphs relating to the effect of community structure on protocol operation
   dict(name="community_msg_perf", plotter="graphs.MessagingPerformance",

@@ -51,7 +51,7 @@ class Plotter(object):
     logger.info("Loading run catalog...")
     catalog.load(settings)
 
-    logger.info("Processing %d run groups..." % len(args.run_groups))
+    logger.info("Processing %d run group(s)..." % len(args.run_groups))
     for run_id in args.run_groups:
       logger.info("Processing run group '%s'..." % run_id)
 
