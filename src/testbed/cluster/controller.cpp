@@ -362,6 +362,9 @@ void ControllerScenarioApi::signal(TestCasePtr test,
 
   auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
   for (const Partition &partition : m_controller.m_topology.getPartitions()) {
+    if (partition.nodes.empty())
+      continue;
+    
     NodeIdentifier slaveId = partition.slave.nodeId();
     group->call<Protocol::SignalTestRequest, Protocol::SignalTestResponse>(
       partition.slave.nodeId(),
