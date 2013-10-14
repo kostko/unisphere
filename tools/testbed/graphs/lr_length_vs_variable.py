@@ -57,7 +57,7 @@ class LRLengthVsVariable(base.PlotterBase):
       X = sorted(values[typ].keys())
       Y = [values[typ][x][0] for x in X]
       Yerr = [values[typ][x][1] for x in X]
-      ax.errorbar(X, Y, Yerr, label=typ)
+      ax.errorbar(X, Y, Yerr, marker='x', label=typ)
 
     ax.set_xlabel(variable.capitalize().replace('_', ' '))
     ax.set_ylabel('L-R Address Length')

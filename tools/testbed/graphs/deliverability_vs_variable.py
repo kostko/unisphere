@@ -51,7 +51,7 @@ class DeliverabilityVsVariable(base.PlotterBase):
     X = sorted(values.keys())
     Y = [values[x] for x in X]
 
-    ax.errorbar(X, Y)
+    ax.errorbar(X, Y, marker='x')
     ax.set_xlabel(variable.capitalize().replace('_', ' '))
     ax.set_ylabel('Deliverability')
     ax.grid()

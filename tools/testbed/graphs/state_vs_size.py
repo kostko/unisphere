@@ -54,7 +54,7 @@ class StateVsSize(base.PlotterBase):
     Y = [values[x][0] for x in X]
     Yerr = [values[x][1] for x in X]
 
-    ax.errorbar(X, Y, Yerr, label='Measurements')
+    ax.errorbar(X, Y, Yerr, marker='x', label='Measurements')
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)

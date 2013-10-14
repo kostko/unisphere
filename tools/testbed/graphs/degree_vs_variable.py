@@ -63,7 +63,7 @@ class DegreeVsVariable(base.PlotterBase):
       Yerr = [values[typ][x][1] for x in X]
 
       if X:
-        ax.errorbar(X, Y, Yerr, label=typ)
+        ax.errorbar(X, Y, Yerr, marker='x', label=typ)
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
