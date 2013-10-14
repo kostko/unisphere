@@ -48,7 +48,7 @@ class MessagingPerformance(base.PlotterBase):
     current_ts = 0
     missing_values = []
 
-    chunks = run.get_dataset("stats-collect_performance-raw-*.csv", chunksize=5000)
+    chunks = run.get_sorted_dataset("stats-collect_performance-raw-*.csv", "ts", chunksize=5000)
     for chunk in chunks:
       for _, element in chunk.iterrows():
         element_ts = element['ts'] - ts_base
