@@ -20,40 +20,42 @@
 from . import base
 
 import matplotlib.pyplot as plt
+import numpy
 import statsmodels.api as sm
 
-class PathStretch(base.PlotterBase):
+class PathStretchVsVariable(base.PlotterBase):
   """
-  Draws path stretch distribution over paths.
+  Draws path stretch growth in relation to a variable.
   """
   def plot(self):
     """
-    Plots the CDF of path stretch.
+    Plots the path stretch growth.
     """
     fig, ax = plt.subplots()
 
     # Determine the label variable name
     variable = self.graph.settings.get('variable', 'size')
 
+    averages = {}
     for run in self.runs:
       # Load dataset
       data = run.get_dataset("routing-pair_wise_ping-stretch-*.csv")
 
       # Extract stretch information
       data = data['stretch'].dropna()
+      averages[run.orig.settings.get(variable, 0)] = (numpy.average(data), numpy.std(data))
 
-      # Compute ECDF and plot it
-      ecdf = sm.distributions.ECDF(data)
+    X = sorted(averages.keys())
+    Y = [averages[x][0] for x in X]
+    Yerr = [averages[x][1] for x in X]
+    ax.errorbar(X, Y, Yerr, color='black', linestyle='-', marker='x')
 
-      ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2,
-        label="%s = %d" % (variable, run.orig.settings.get(variable, 0)))
-
-    ax.set_xlabel('Path Stretch')
-    ax.set_ylabel('Cummulative Probability')
+    ax.set_xlabel(variable.capitalize())
+    ax.set_ylabel('Path Stretch')
+    ax.set_ylim(0, None)
     ax.grid()
-    ax.axis((0.5, None, 0, 1.01))
-    self.convert_axes_to_bw(ax)
 
-    legend = ax.legend(loc='lower right')
-    legend.get_frame().set_alpha(0.8)
+    if self.graph.settings.get('scale'):
+      ax.set_xscale(self.graph.settings.get('scale'))
+
     fig.savefig(self.get_figure_filename())

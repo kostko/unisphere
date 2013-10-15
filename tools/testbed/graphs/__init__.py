@@ -19,7 +19,8 @@
 
 from .link_congestion import *
 from .messaging_performance import *
-from .path_stretch import *
+from .path_stretch_distribution import *
+from .path_stretch_vs_variable import *
 from .state_distribution import *
 from .state_vs_size import *
 from .degree_distribution import *
