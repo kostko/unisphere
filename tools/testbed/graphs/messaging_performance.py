@@ -188,6 +188,9 @@ class MessagingPerformance(base.PlotterBase):
       ax.set_ylabel('records/s')
       ax.grid()
 
+      if self.graph.settings.get('avg_scale'):
+        ax.set_xscale(self.graph.settings.get('avg_scale'))
+
       legend = ax.legend(loc='upper right', fontsize='small')
       legend.get_frame().set_alpha(0.8)
 
