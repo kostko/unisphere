@@ -19,6 +19,7 @@
 
 from . import base
 
+import itertools
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy
@@ -178,11 +179,11 @@ class MessagingPerformance(base.PlotterBase):
     if len(self.runs) > 1:
       ax.clear()
 
-      for typ in averages:
+      for typ, ls in zip(averages, itertools.cycle(['-', '--'])):
         X = sorted(averages[typ].keys())
         Y = [averages[typ][x][0] for x in X]
         Yerr = [averages[typ][x][1] for x in X]
-        ax.errorbar(X, Y, Yerr, marker='x', label=typ)
+        ax.errorbar(X, Y, Yerr, color='black', linestyle=ls, marker='x', label=typ)
 
       ax.set_xlabel(label_attribute)
       ax.set_ylabel('records/s')
