@@ -526,6 +526,13 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
       selectedPartitions++;
   }
 
+  // If the test case is not scheduled to run on any partition, finish it immediately
+  if (!selectedPartitions) {
+    BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Test case '" << test->getName() << "' not scheduled to run on any nodes.";
+    test->tryComplete(*api);
+    return test;
+  }
+
   // Register the test case under running test cases
   BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
   m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedPartitions };
