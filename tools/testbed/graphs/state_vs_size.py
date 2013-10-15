@@ -65,7 +65,7 @@ class StateVsSize(base.PlotterBase):
       ax.plot(Fx, Fy, linestyle='--', color='black', label=self.graph.settings.get('fit_label', 'Fit'))
 
     ax.set_xlabel('Topology Size [nodes]')
-    ax.set_ylabel('State')
+    ax.set_ylabel('State at a Node [entries]')
     ax.grid()
 
     legend = ax.legend(loc='lower right')
