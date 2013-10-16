@@ -49,12 +49,13 @@ class DeliverabilityVsAttackEdges(base.PlotterBase):
       attack_edges = run.orig.settings['attack_edges']
       edge_fraction = round(attack_edges / float(graph.number_of_edges()), 2)
 
-      values[edge_fraction] = delivered / float(pairs)
+      values.setdefault(edge_fraction, []).append(delivered / float(pairs))
 
     X = sorted(values.keys())
-    Y = [values[x] for x in X]
+    Y = [numpy.average(values[x]) for x in X]
+    Yerr = [numpy.std(values[x]) for x in X]
 
-    ax.errorbar(X, Y, marker='x')
+    ax.errorbar(X, Y, Yerr, marker='x')
     ax.set_xlabel('Percentage of attack edges')
     ax.set_ylabel('Deliverability')
     ax.grid()
