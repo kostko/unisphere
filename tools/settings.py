@@ -134,6 +134,9 @@ RUNS = [
   dict(name="sy-rs5", topology="sybil_count", sybils=80, scenario="SybilNodesRouting"),
   dict(name="sy-rs6", topology="sybil_count", sybils=96, scenario="SybilNodesRouting"),
 
+  # Repeat all attack edge routing runs 10 times
+  dict(apply_to=["sy-re*"], repeats=10),
+
   dict(name="sy-re0", topology="sybil_edges", attack_edges=0, scenario="SybilNodesRouting"),
   dict(name="sy-re1", topology="sybil_edges", attack_edges=5, scenario="SybilNodesRouting"),
   dict(name="sy-re2", topology="sybil_edges", attack_edges=15, scenario="SybilNodesRouting"),

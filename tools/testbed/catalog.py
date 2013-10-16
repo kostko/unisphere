@@ -157,15 +157,41 @@ class Catalog(object):
       self._topologies[topology['name']] = TopologyDescriptor(topology)
 
     # Iterate over configured runs
-    for run in settings.RUNS:
-      try:
-        topology = self._topologies[run['topology']]
-      except KeyError:
-        raise exceptions.ImproperlyConfigured("Topology generator named '%s' is not configured!" %
-          run['topology'])
+    apply_cfg = {}
+    for run_cfg in settings.RUNS:
+      # Check if the run configuration is actually an apply_to directive
+      if run_cfg.get('apply_to', None) is not None:
+        run = run_cfg.copy()
+        del run['apply_to']
+        for pattern in run_cfg['apply_to']:
+          apply_cfg.setdefault(pattern, []).append(run)
+        continue
+      else:
+        # Check if any apply directives match this run
+        for pattern, cfgs in apply_cfg.iteritems():
+          if fnmatch.fnmatch(run_cfg['name'], pattern):
+            for cfg in cfgs:
+              run_cfg.update(cfg)
 
-      run['topology'] = topology
-      self._runs[run['name']] = RunDescriptor(run)
+      # Check if we need to create multiple repeats of the same run (but with a changed name)
+      repeats = []
+      if run_cfg.get('repeats', None) is not None:
+        for i in xrange(1, run_cfg['repeats'] + 1):
+          run = run_cfg.copy()
+          run['name'] = "%s.%d" % (run['name'], i)
+          repeats.append(run)
+      else:
+        repeats.append(run_cfg)
+
+      for run in repeats:
+        try:
+          topology = self._topologies[run['topology']]
+        except KeyError:
+          raise exceptions.ImproperlyConfigured("Topology generator named '%s' is not configured!" %
+            run['topology'])
+
+        run['topology'] = topology
+        self._runs[run['name']] = RunDescriptor(run)
 
     # Iterate over configured graphs
     if graphs:
