@@ -53,16 +53,21 @@ class LRLengthVsVariable(base.PlotterBase):
       values['primary'][run.orig.settings[variable]] = (numpy.average(primary), numpy.std(primary))
       values['secondary'][run.orig.settings[variable]] = (numpy.average(secondary), numpy.std(secondary))
 
+    dash = {
+      'primary': (None, None),
+      'secondary': (5, 5),
+    }
+
     for typ in values:
       X = sorted(values[typ].keys())
       Y = [values[typ][x][0] for x in X]
       Yerr = [values[typ][x][1] for x in X]
-      ax.errorbar(X, Y, Yerr, marker='x', label=typ)
+      ax.errorbar(X, Y, Yerr, marker='x', color='black', dashes=dash[typ], label=typ)
 
     ax.set_xlabel(variable.capitalize().replace('_', ' '))
     ax.set_ylabel('L-R Address Length')
     ax.grid()
-    
+
     if self.graph.settings.get('scale'):
       ax.set_xscale(self.graph.settings.get('scale'))
 

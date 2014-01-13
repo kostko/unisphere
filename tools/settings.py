@@ -161,7 +161,7 @@ GRAPHS = [
   dict(name="size_msg_perf_s1024", plotter="graphs.MessagingPerformance", runs=["pf-b7"]),
   dict(name="size_msg_perf_s2048", plotter="graphs.MessagingPerformance", runs=["pf-b8"]),
   dict(name="size_msg_perf_s4096", plotter="graphs.MessagingPerformance", runs=["pf-b9"]),
-  dict(name="size_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b*"]),
+  dict(name="size_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b8"]),
   dict(name="size_path_stretch_dist", plotter="graphs.PathStretchDistribution", runs=["pf-b*"], variable="size"),
   dict(name="size_path_stretches", plotter="graphs.PathStretchVsVariable", runs=["pf-b*"],
     variable="size", scale="log"),
@@ -214,6 +214,8 @@ GRAPHS = [
   # Graphs relating to the effect of the number of attack edges on protocol operation
   dict(name="sybiledg_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="attack_edges", legend=False, runs=["sy-ne*"]),
+  dict(name="sybiledg_resolvability", plotter="graphs.ResolvabilityVsAttackEdges", runs=["sy-re*"]),
+  dict(name="sybiledg_availability", plotter="graphs.AvailabilityVsAttackEdges", runs=["sy-re*"]),
 
   # Graphs relating to the effect of the number of Sybils on routing
   dict(name="sybilnum_deliverability", plotter="graphs.DeliverabilityVsVariable", runs=["sy-rs*"],

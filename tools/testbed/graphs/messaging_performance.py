@@ -103,7 +103,7 @@ class MessagingPerformance(base.PlotterBase):
     Yrate = []
     for x1, x2, y1, y2 in zip(X, X[1:], Y, Y[1:]):
       Yrate += [(y2 - y1) / (x2 - x1)]
-    
+
     return X[1:], Yrate
 
   def compute_average(self, X, Y, x_min):
@@ -133,6 +133,7 @@ class MessagingPerformance(base.PlotterBase):
 
     # Determine the label attribute name
     label_attribute = self.graph.settings.get('label_attribute', 'size')
+    label_attribute_dsc = self.graph.settings.get('label_attribute_dsc', 'Topology Size [nodes]')
 
     min_max_ts = None
     averages = {
@@ -151,9 +152,9 @@ class MessagingPerformance(base.PlotterBase):
 
       # Plot variables
       self.plot_variable(ax, sX, sYrate, mpl.cm.winter(float(i) / len(self.runs)),
-        'SG msgs (%s = %d)' % (label_attribute, run_attribute))
+        'SG records (%s = %d)' % (label_attribute, run_attribute))
       self.plot_variable(ax, rX, rYrate, mpl.cm.autumn(float(i) / len(self.runs)),
-        'RT msgs (%s = %d)' % (label_attribute, run_attribute))
+        'RT records (%s = %d)' % (label_attribute, run_attribute))
 
       # Retrieve the moment in time when all nodes are considered up and compute average rates
       nodes_up_ts = run.get_marker("all_nodes_up")
@@ -164,8 +165,8 @@ class MessagingPerformance(base.PlotterBase):
       if min_max_ts is None or timestamps[-1] < min_max_ts:
         min_max_ts = timestamps[-1]
 
-    ax.set_xlabel('time [s]')
-    ax.set_ylabel('records/s')
+    ax.set_xlabel('Time [s]')
+    ax.set_ylabel('Records/s')
     ax.set_xlim(0, min_max_ts)
     ax.grid()
 
@@ -179,15 +180,21 @@ class MessagingPerformance(base.PlotterBase):
     if len(self.runs) > 1:
       ax.clear()
 
+      descriptions = {
+        'sg_msgs': 'SG records',
+        'rt_msgs': 'RT records',
+      }
+
       for typ, ls in zip(averages, itertools.cycle(['-', '--'])):
         X = sorted(averages[typ].keys())
         Y = [averages[typ][x][0] for x in X]
         Yerr = [averages[typ][x][1] for x in X]
-        ax.errorbar(X, Y, Yerr, color='black', linestyle=ls, marker='x', label=typ)
+        ax.errorbar(X, Y, Yerr, color='black', linestyle=ls, marker='x', label=descriptions[typ])
 
       ax.set_xlabel(label_attribute)
-      ax.set_ylabel('records/s')
+      ax.set_ylabel('Records/s')
       ax.grid()
+      ax.set_ylim(0, None)
 
       if self.graph.settings.get('avg_scale'):
         ax.set_xscale(self.graph.settings.get('avg_scale'))

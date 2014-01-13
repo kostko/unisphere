@@ -54,7 +54,7 @@ class StateVsSize(base.PlotterBase):
     Y = [values[x][0] for x in X]
     Yerr = [values[x][1] for x in X]
 
-    ax.errorbar(X, Y, Yerr, marker='x', label='Measurements')
+    ax.errorbar(X, Y, Yerr, marker='x', color='black', label='Measurements')
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
@@ -67,6 +67,7 @@ class StateVsSize(base.PlotterBase):
     ax.set_xlabel('Topology Size [nodes]')
     ax.set_ylabel('State at a Node [entries]')
     ax.grid()
+    ax.set_ylim(0, None)
 
     legend = ax.legend(loc='lower right')
     legend.get_frame().set_alpha(0.8)
