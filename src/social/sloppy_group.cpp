@@ -31,6 +31,7 @@
 
 #include "src/social/messages.pb.h"
 
+#include <boost/make_shared.hpp>
 #include <boost/asio.hpp>
 #include <boost/log/attributes/constant.hpp>
 #include <boost/multi_index_container.hpp>

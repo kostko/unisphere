@@ -21,6 +21,8 @@
 #include "interplex/ip_linklet.h"
 #include "interplex/local_linklet.h"
 
+#include <boost/make_shared.hpp>
+
 namespace UniSphere {
 
 LinkletFactory::LinkletFactory(LinkManager &manager)

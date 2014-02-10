@@ -23,7 +23,6 @@
 #include "core/program_options.h"
 #include "testbed/scenario_api.h"
 
-#include <boost/coroutine/all.hpp>
 #include <boost/signals2/signal.hpp>
 
 namespace UniSphere {

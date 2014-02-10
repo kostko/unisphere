@@ -22,6 +22,7 @@
 #include "social/size_estimator.h"
 #include "social/social_identity.h"
 
+#include <boost/make_shared.hpp>
 #include <boost/range/adaptors.hpp>
 
 namespace UniSphere {

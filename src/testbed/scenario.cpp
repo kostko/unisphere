@@ -21,13 +21,16 @@
 #include "testbed/exceptions.h"
 
 #include <boost/thread.hpp>
+#include <boost/coroutine/all.hpp>
 
 namespace UniSphere {
 
 namespace TestBed {
 
-/// Scenario coroutine type
-typedef boost::coroutines::coroutine<void()> ScenarioCoroutine;
+/// Scenario coroutine type (pull)
+typedef boost::coroutines::coroutine<void>::pull_type ScenarioCoroutinePull;
+/// Scenario coroutine type (push)
+typedef boost::coroutines::coroutine<void>::push_type ScenarioCoroutinePush;
 
 class ScenarioPrivate {
 public:
@@ -43,10 +46,10 @@ public:
   boost::asio::io_service m_io;
   /// Work to keep the event loop busy
   boost::asio::io_service::work m_work;
-  /// Scenario coroutine
-  ScenarioCoroutine m_coroutine;
-  /// Coroutine caller
-  ScenarioCoroutine::caller_type *m_coroutineCaller;
+  /// Scenario coroutine (pull)
+  ScenarioCoroutinePull m_coroutine;
+  /// Scenario corouting (push)
+  ScenarioCoroutinePush *m_coroutineCaller;
 };
 
 ScenarioPrivate::ScenarioPrivate(const std::string &name)
@@ -91,7 +94,7 @@ void Scenario::start(ScenarioApi &api)
 {
   d->m_thread = std::move(boost::thread([this, &api]() {
     // Initialize and enter the scenario coroutine
-    d->m_coroutine = std::move(ScenarioCoroutine([this, &api](ScenarioCoroutine::caller_type &ca) {
+    d->m_coroutine = std::move(ScenarioCoroutinePull([this, &api](ScenarioCoroutinePush &ca) {
       d->m_coroutineCaller = &ca;
       run(api, d->m_options);
       d->m_coroutineCaller = nullptr;

@@ -25,6 +25,7 @@
 #include "rpc/engine.hpp"
 #include "src/social/core_methods.pb.h"
 
+#include <boost/make_shared.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/ordered_index.hpp>

@@ -34,6 +34,7 @@
 #include "src/social/messages.pb.h"
 #include "src/social/core_methods.pb.h"
 
+#include <boost/make_shared.hpp>
 #include <boost/log/attributes/constant.hpp>
 
 namespace UniSphere {
