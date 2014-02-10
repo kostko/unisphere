@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ void NodeIdentifier::setIdentifier(const std::string &identifier, Format format)
   switch (format) {
     // Raw format does not need any conversion
     case Format::Raw: m_identifier = identifier; break;
-    
+
     // We need to convert from hexadecimal format to binary format
     case Format::Hex: {
       try {
@@ -70,7 +70,7 @@ void NodeIdentifier::setIdentifier(const std::string &identifier, Format format)
       break;
     }
   }
-  
+
   if (!isValid())
     m_identifier.clear();
 }
@@ -79,11 +79,11 @@ std::string NodeIdentifier::as(Format format) const
 {
   if (!isValid())
     return "";
-  
+
   switch (format) {
     // Raw format does not need any conversion
     case Format::Raw: return m_identifier;
-    
+
     // We need to convert to hexadecimal format
     case Format::Hex: {
       Botan::Pipe pipe(new Botan::Hex_Encoder(Botan::Hex_Encoder::Lowercase));
@@ -102,30 +102,30 @@ std::string NodeIdentifier::as(Format format) const
       return result;
     }
   }
-  
+
   return "";
 }
 
 const NodeIdentifier NodeIdentifier::operator^(const NodeIdentifier &other) const
 {
   NodeIdentifier result;
-  
+
   // In case of invalid identifiers return an invalid null identifier
   if (!isValid() || !other.isValid()) {
     return result;
   } else {
     result.m_identifier.resize(NodeIdentifier::length);
   }
-  
+
   std::string::const_iterator it = m_identifier.begin();
   std::string::const_iterator otherIt = other.m_identifier.begin();
   std::string::iterator resultIt = result.m_identifier.begin();
-  
+
   // Compute XOR function byte by byte
   for (; it != m_identifier.end(); ++it, ++otherIt, ++resultIt) {
     *resultIt = *it ^ *otherIt;
   }
-  
+
   return result;
 }
 
@@ -183,12 +183,12 @@ size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
   // In case of invalid identifiers return zero
   if (!isValid() || !other.isValid())
     return 0;
-  
+
   size_t lcp = 0;
   bool found_diff = false;
   std::string::const_iterator it = m_identifier.begin();
   std::string::const_iterator otherIt = other.m_identifier.begin();
-  
+
   // Find the first 1 bit in XOR between identifiers
   for (; it != m_identifier.end() && !found_diff; ++it, ++otherIt) {
     std::bitset<8> xored(static_cast<std::uint8_t>(*it ^ *otherIt));
@@ -197,11 +197,11 @@ size_t NodeIdentifier::longestCommonPrefix(const NodeIdentifier &other) const
         found_diff = true;
         break;
       }
-      
+
       lcp++;
     }
   }
-  
+
   return lcp;
 }
 

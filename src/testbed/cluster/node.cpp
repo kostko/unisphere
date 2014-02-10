@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@ void ClusterNodePrivate::formatProfilingLogRecord(const logging::record_view &re
       auto it = m_profilingBuffer.find(std::make_tuple(id.get(), name.get()));
       if (it == m_profilingBuffer.end())
         return;
-      
+
       buf = it->second;
       m_profilingBuffer.erase(it);
     }
@@ -150,7 +150,7 @@ void ClusterNodePrivate::formatProfilingLogRecord(const logging::record_view &re
 
     stream << logging::extract<std::string>("Channel", rec) << "\t";
     stream << name.get() << "\t";
-    
+
     for (const std::string &tag : buf.tags) {
       stream << tag << ":";
     }
@@ -204,7 +204,7 @@ Context &ClusterNode::context()
 {
   return d->m_context;
 }
-  
+
 LinkManager &ClusterNode::linkManager()
 {
   return *d->m_linkManager;

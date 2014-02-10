@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,89 +55,89 @@ public:
     /// Per-link statistics
     std::unordered_map<NodeIdentifier, LinkStatistics> links;
   };
-  
+
   /**
    * Constructs a new link manager instance.
-   * 
+   *
    * @param context UNISPHERE context
    * @param nodeId Node identifier of the local node
    */
   LinkManager(Context &context, const NodeIdentifier &nodeId);
-  
+
   LinkManager(const LinkManager&) = delete;
   LinkManager &operator=(const LinkManager&) = delete;
-  
+
   /**
    * Returns the UNISPHERE context this manager belongs to.
    */
   inline Context &context() const { return m_context; }
-  
+
   /**
    * Sends a message to the given contact address.
-   * 
+   *
    * @param contact Destination node's contact information
    * @param msg Message to send
    */
   void send(const Contact &contact, const Message &msg);
-  
+
   /**
    * Sends a message to the given peer. If there is no existing link
    * for the specified peer, message will not be delivered.
-   * 
+   *
    * @param nodeId Destination node's identifier
    * @param msg Message to send
    */
   void send(const NodeIdentifier &nodeId, const Message &msg);
-  
+
   /**
    * Opens a listening linklet.
-   * 
+   *
    * @param address Local address to listen on
    * @return True if listen was successful
    */
   bool listen(const Address &address);
-  
+
   /**
    * Closes all existing links and stops listening for any new ones.
    */
   void close();
-  
+
   /**
    * Returns the contact for a given link identifier.
-   * 
+   *
    * @param linkId Link identifier
    * @return Contact for the specified link
    */
   Contact getLinkContact(const NodeIdentifier &linkId);
-  
+
   /**
    * Returns a list of node identifiers to links that we have established.
    */
   std::list<NodeIdentifier> getLinkIds();
-  
+
   /**
    * Returns the linklet factory instance.
    */
   inline const LinkletFactory &getLinkletFactory() const { return m_linkletFactory; }
-  
+
   /**
    * Returns the local contact information.
    */
   Contact getLocalContact() const;
-  
+
   /**
    * Returns the local node identifier.
    */
   inline const NodeIdentifier &getLocalNodeId() const { return m_nodeId; }
-  
+
   /**
    * Sets a local address for all outgoing connections. This will cause all
    * outgoing sockets to bind to this address.
-   * 
+   *
    * @param address Local outgoing address
    */
   void setLocalAddress(const Address &address);
-  
+
   /**
    * Returns the local address.
    */
@@ -164,13 +164,13 @@ public:
 protected:
   /**
    * Returns a link suitable for communication with the specified contact.
-   * 
+   *
    * @param contact Contact information
    * @param create Should a new link be created if none is found
    * @return A valid link instance or null
    */
   LinkPtr get(const Contact &contact, bool create = true);
-  
+
   /**
    * Removes a specific link.
    *
@@ -185,10 +185,10 @@ protected:
    * @param linklet New linklet for this connection
    */
   void linkletAcceptedConnection(LinkletPtr linklet);
-  
+
   /**
    * Called by a @ref Link when a new message is received.
-   * 
+   *
    * @param msg Received message
    */
   void linkMessageReceived(const Message &msg);
@@ -199,30 +199,30 @@ private:
   Context& m_context;
   /// Logger instance
   Logger m_logger;
-  
+
   /// Local node identifier
   NodeIdentifier m_nodeId;
-  
+
   /// Linklet factory for producing new linklets
   LinkletFactory m_linkletFactory;
-  
+
   /// Mapping of all managed links by their identifiers
   std::unordered_map<NodeIdentifier, LinkPtr> m_links;
   /// Mutex protecting the link mapping
   std::recursive_mutex m_linksMutex;
-  
+
   /// A list of all listening linklets
   std::list<LinkletPtr> m_listeners;
   /// Mutex protecting the listening linklet list
   std::mutex m_listenersMutex;
-  
+
   /// Local outgoing address
   Address m_localAddress;
 
   /// Statistics
   Statistics m_statistics;
 };
-  
+
 }
 
 #endif

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ bool Address::operator==(const Address &other) const
 {
   if (m_type != other.m_type)
     return false;
-  
+
   switch (m_type) {
     case Type::IP: return toIpEndpoint() == other.toIpEndpoint();
     case Type::Local: return toLocalEndpoint() == other.toLocalEndpoint();
@@ -78,7 +78,7 @@ bool Address::operator<(const Address &other) const
 {
   if (m_type != other.m_type)
     return false;
-  
+
   switch (m_type) {
     case Type::IP: return toIpEndpoint() < other.toIpEndpoint();
     case Type::Local: return toLocalEndpoint() < other.toLocalEndpoint();
@@ -90,7 +90,7 @@ boost::asio::ip::tcp::endpoint Address::toIpEndpoint() const
 {
   if (m_type != Type::IP)
     throw AddressTypeMismatch();
-  
+
   return boost::any_cast<boost::asio::ip::tcp::endpoint>(m_address);
 }
 
@@ -98,7 +98,7 @@ boost::asio::local::stream_protocol::endpoint Address::toLocalEndpoint() const
 {
   if (m_type != Type::Local)
     throw AddressTypeMismatch();
-  
+
   return boost::any_cast<boost::asio::local::stream_protocol::endpoint>(m_address);
 }
 
@@ -141,7 +141,7 @@ const Address &Contact::address() const
 {
   return m_addresses.begin()->second;
 }
-  
+
 void Contact::addAddress(const Address &address, int priority)
 {
   m_addresses.insert(std::pair<int, Address>(priority, address));
@@ -158,7 +158,7 @@ Protocol::Contact Contact::toMessage() const
 {
   Protocol::Contact result;
   result.set_node_id(m_nodeId.as(NodeIdentifier::Format::Raw));
-  
+
   for (const auto &p : m_addresses) {
     // Only addresses of type 'IP' can be represented as protocol messages
     if (p.second.type() == Address::Type::IP) {
@@ -167,7 +167,7 @@ Protocol::Contact Contact::toMessage() const
       addr->set_port(p.second.toIpEndpoint().port());
     }
   }
-  
+
   return result;
 }
 
@@ -177,7 +177,7 @@ Contact Contact::fromMessage(const Protocol::Contact &msg)
   for (const Protocol::Address &addr : msg.addresses()) {
     result.addAddress(Address(addr.address(), addr.port()));
   }
-  
+
   return result;
 }
 

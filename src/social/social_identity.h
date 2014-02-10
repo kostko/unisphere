@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,15 +34,15 @@ public:
   SocialIdentity(const SocialIdentity &identity);
 
   explicit SocialIdentity(const NodeIdentifier &localId);
-  
+
   inline NodeIdentifier localId() const { return m_localId; }
-  
+
   inline std::unordered_map<NodeIdentifier, Contact> peers() const { return m_peers; }
 
   bool isPeer(const Contact &contact) const;
-  
+
   void addPeer(const Contact &peer);
-  
+
   void removePeer(const NodeIdentifier &nodeId);
 
   Contact getPeerContact(const NodeIdentifier &nodeId) const;
@@ -61,7 +61,7 @@ private:
   /// Social peers with contact information
   std::unordered_map<NodeIdentifier, Contact> m_peers;
 };
-  
+
 }
 
 #endif

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ class UNISPHERE_EXPORT Message {
 public:
   /// UNISPHERE message header size in octets
   static const size_t header_size = 5;
-  
+
   /**
    * Message types.
    */
@@ -58,9 +58,9 @@ public:
     Social_Retract          = 0x08,
     Social_Refresh          = 0x09,
     Social_Routed           = 0x0A,
-    
+
     /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
-    
+
     /* 0xF0 - 0xFF USER-DEFINED MESSAGES */
     UserMsg1            = 0xF0,
     UserMsg2            = 0xF1,
@@ -79,13 +79,13 @@ public:
     UserMsg15           = 0xFE,
     UserMsg16           = 0xFF,
   };
-  
+
   /**
    * Constructs an empty message of Null_Protocol type with
    * buffer space for the header.
    */
   Message();
-  
+
   /**
    * Constructs a new UNISPHERE message from a Protocol Buffers
    * message.
@@ -94,39 +94,39 @@ public:
    * @param msg Protocol Buffers message
    */
   Message(Type type, const google::protobuf::Message& msg);
-  
+
   /**
    * Returns the message protocol type.
    */
   Type type() const;
-  
+
   /**
    * Returns a reference to the underlying message buffer.
    */
   std::vector<char> &buffer();
-  
+
   /**
    * Returns a reference to the underlying message buffer.
    */
   std::vector<char> &buffer() const;
-  
+
   /**
    * Releases ownership of the buffer and allocates a new empty buffer.
    */
   void detach();
-  
+
   /**
    * Sets up the originator identifier for this message.
    *
    * @param nodeId Originator identifier
    */
   void setOriginator(const NodeIdentifier &nodeId);
-  
+
   /**
    * Returns the originator link identifier.
    */
   inline NodeIdentifier originator() const { return m_originator; }
-  
+
   /**
    * Parses message header contained in the message buffer and returns
    * the payload size. This will also set message protocol type and resize
@@ -136,10 +136,10 @@ public:
 private:
   /// Message protocol type
   Type m_type;
-  
+
   /// Buffer that holds the payload
   boost::shared_ptr<std::vector<char> > m_buffer;
-  
+
   /// Identifier of the message originator
   NodeIdentifier m_originator;
 };

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ TEST_CASE("core/context", "verify that context operations work")
   Context ctx;
   // Seed the random number generator to get predictable results
   ctx.basicRng().seed(42);
-  
+
   SECTION("s1", "adding jitter to timers")
   {
     int timing[] = { 937, 1149, 1226, 841, 1116, 1140 };

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,10 +39,10 @@ Message::Message(Type type, const google::protobuf::Message &msg)
   // Prepare buffer for header and payload
   size_t size = msg.ByteSize();
   m_buffer->resize(size + Message::header_size);
-  
+
   // Serialize Protocol Buffers message into the payload
   msg.SerializeToArray(&buffer()[Message::header_size], size);
-  
+
   // Populate the header
   char *hdr = (char*) &buffer()[0];
   *((std::uint8_t*) hdr) = static_cast<std::uint8_t>(m_type);

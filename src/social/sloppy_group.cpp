@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -221,7 +221,7 @@ public:
   PeerView m_peerViewForeign;
   /// Reverse peer view of O((log n)^2) entries
   PeerView m_peerViewReverse;
-  
+
   /// Signal for announcing own records (periodic announce every 600 seconds)
   PeriodicRateDelayedSignal<5, 15, 30, 600> m_announceSignal;
   /// Signal for maintaining the sloppy group topology (periodic refresh every 600 seconds)
@@ -641,7 +641,7 @@ void SloppyGroupManagerPrivate::dumpTopology(SloppyGroupManager::TopologyDumpGra
   boost::put(boost::get(Tags::NodeName(), graph.graph()), self, name);
   boost::put(boost::get(Tags::NodeGroup(), graph.graph()), self,
     m_groupPrefix.bin().substr(0, m_groupPrefixLength));
-  
+
   auto addEdge = [&](const NodeIdentifier &id, bool foreign = false, bool reverse = false) {
     auto vertex = graph.add_vertex(resolve(id));
     boost::put(boost::get(Tags::NodeName(), graph.graph()), vertex, resolve(id));

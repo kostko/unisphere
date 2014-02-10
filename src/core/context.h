@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ public:
    * Class constructor.
    */
   LibraryInitializer();
-  
+
   LibraryInitializer(const LibraryInitializer&) = delete;
   LibraryInitializer &operator=(const LibraryInitializer&) = delete;
 private:
@@ -57,10 +57,10 @@ public:
    * Constructs a UNISPHERE context.
    */
   Context();
-  
+
   Context(const Context&) = delete;
   Context &operator=(const Context&) = delete;
-  
+
   /**
    * Class destructor.
    */
@@ -72,10 +72,10 @@ public:
    * @param operation Operation to be executed
    */
   void defer(std::function<void()> operation);
-  
+
   /**
    * Schedules an operation to be executed after a timeout.
-   * 
+   *
    * @param timeout Number of seconds to wait before executing
    * @param operation Operation to be executed
    */
@@ -83,7 +83,7 @@ public:
 
   /**
    * Schedules an operation to be executed after a timeout.
-   * 
+   *
    * @param timeout Number of seconds to wait before executing
    * @param operation Operation to be executed
    */
@@ -121,7 +121,7 @@ public:
    * the number of seconds since the UNISPHERE epoch.
    */
   std::uint32_t getCurrentTimestamp() const;
-  
+
   /**
    * Returns the ASIO I/O service for this UNISPHERE context. This service
    * may be used for all I/O operations by context-dependent APIs.
@@ -146,7 +146,7 @@ public:
    * @param initializer Initializer function
    */
   void setThreadInitializer(std::function<void()> initializer);
-  
+
   /**
    * Enters the main event loop. Passing a thread pool size of greater than
    * one will use multiple threads for UNISPHERE processing.
@@ -154,7 +154,7 @@ public:
    * @param threads Size of the thread pool
    */
   void run(size_t threads = 1);
-  
+
   /**
    * Stop the event loop interrupting all operations. Before subsequent
    * run method can be invoked, one must first call reset.

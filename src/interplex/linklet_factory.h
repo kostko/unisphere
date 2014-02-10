@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,17 +34,17 @@ class UNISPHERE_NO_EXPORT LinkletFactory {
 public:
   /**
    * Class constructor.
-   * 
+   *
    * @param manager Link manager instance
    */
   explicit LinkletFactory(LinkManager &manager);
-  
+
   LinkletFactory(const LinkletFactory&) = delete;
   LinkletFactory &operator=(const LinkletFactory&) = delete;
-  
+
   /**
    * Creates a new linklet suitable for handling the given address.
-   * 
+   *
    * @param address Address
    * @return A new linklet
    */
@@ -53,7 +53,7 @@ private:
   /// Link manager associated with this linklet factory
   LinkManager &m_manager;
 };
-  
+
 }
 
 #endif

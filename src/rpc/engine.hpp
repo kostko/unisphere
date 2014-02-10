@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,10 +46,10 @@ class UNISPHERE_EXPORT RpcEngine {
 public:
   /// Recent RPC call list size
   static const size_t recent_size = 20;
-  
+
   /**
    * Class constructor.
-   * 
+   *
    * @param channel Channel instance
    */
   explicit RpcEngine(Channel &channel)
@@ -69,7 +69,7 @@ public:
    * Returns the context instance.
    */
   Context &context() const { return m_context; }
-  
+
   /**
    * Returns the channel instance associated with this RPC engine.
    */
@@ -107,7 +107,7 @@ public:
    * Returns a new RPC call options instance.
    */
   RpcCallOptions<Channel> options() { return RpcCallOptions<Channel>(); }
-  
+
   /**
    * Calls a remote procedure.
    *
@@ -129,7 +129,7 @@ public:
     // Serialize Protocol Buffers message into the payload
     std::vector<char> buffer(request.ByteSize());
     request.SerializeToArray(&buffer[0], buffer.size());
-    
+
     createCall(destination, method, buffer,
       [success](const Protocol::RpcResponse &rsp, const typename Channel::message_type &msg) {
         if (success)
@@ -139,7 +139,7 @@ public:
       opts
     );
   }
-  
+
   /**
    * Calls a remote procedure without confirmation.
    *
@@ -157,15 +157,15 @@ public:
     // Serialize Protocol Buffers message into the payload
     std::vector<char> buffer(request.ByteSize());
     request.SerializeToArray(&buffer[0], buffer.size());
-    
+
     // Create the call and immediately cancel it as we don't need a confirmation
     RpcCallPtr<Channel> call = createCall(destination, method, buffer, nullptr, nullptr, opts);
     call->cancel();
   }
-  
+
   /**
    * Cancels a given pending RPC call.
-   * 
+   *
    * @param rpcId Call's unique identifier
    */
   void cancel(RpcId rpcId)
@@ -173,7 +173,7 @@ public:
     RecursiveUniqueLock lock(m_mutex);
     m_pendingCalls.erase(rpcId);
   }
-  
+
   /**
    * Verifies that the specific RPC call was an actual recent outgoing call performed
    * by this node.
@@ -182,7 +182,7 @@ public:
   {
     return m_recentCalls.get<1>().find(rpcId) != m_recentCalls.get<1>().end();
   }
-  
+
   /**
    * Registers a new RPC method call.
    *
@@ -215,7 +215,7 @@ public:
     RecursiveUniqueLock lock(m_mutex);
     m_methods[method] = createDeferredMethodHandler<RequestType, ResponseType>(method, impl);
   }
-  
+
   /**
    * Registers a new RPC method call that doesn't send back a response.
    *
@@ -250,11 +250,11 @@ protected:
     m_channel.context().rng().randomize((Botan::byte*) &rpcId, sizeof(rpcId));
     return rpcId;
   }
-  
+
   /**
    * Creates a new pending RPC call descriptor and submits the message via
    * the router.
-   * 
+   *
    * @param destination Destination key
    * @param method Method name
    * @param payload Request payload
@@ -279,18 +279,18 @@ protected:
         m_recentCalls.pop_back();
     }
     call->start();
-    
+
     // Prepare the request message
     Protocol::RpcRequest msg;
     msg.set_rpc_id(call->rpcId());
     msg.set_method(method);
     msg.set_data(&payload[0], payload.size());
-    
+
     // Send the RPC message
     m_channel.request(destination, msg, opts.channelOptions);
     return call;
   }
-  
+
   /**
    * Creates a new RPC method handler.
    *
@@ -362,7 +362,7 @@ protected:
       }
     };
   }
-  
+
   /**
    * Creates a new RPC method handler.
    *
@@ -392,10 +392,10 @@ protected:
       }
     };
   }
-  
+
   /**
    * Generates an error response for an RPC call.
-   * 
+   *
    * @param rpcId RPC call identifier
    * @param code Error code
    * @param message Error message
@@ -408,15 +408,15 @@ protected:
     Protocol::RpcError error;
     error.set_code(static_cast<std::uint32_t>(code));
     error.set_message(message);
-    
+
     Protocol::RpcResponse response;
     response.set_rpc_id(rpcId);
     response.set_error(true);
-    
+
     std::vector<char> buffer(error.ByteSize());
     error.SerializeToArray(&buffer[0], buffer.size());
     response.set_data(&buffer[0], buffer.size());
-    
+
     return response;
   }
 protected:
@@ -433,10 +433,10 @@ protected:
     RpcId rpcId = request.rpc_id();
     if (m_methods.find(request.method()) == m_methods.end())
       return m_channel.respond(msg, getErrorResponse(rpcId, RpcErrorCode::MethodNotFound, "Method not found."));
-    
+
     auto handler = m_methods[request.method()];
     lock.unlock();
-    
+
     // Call the registered method handler
     handler(
       msg, request,
@@ -466,10 +466,10 @@ protected:
       BOOST_LOG_SEV(m_logger, log::warning) << "Got RPC response for an unknown call " << rpcId << "!";
       return;
     }
-    
+
     m_pendingCalls[rpcId]->done(response, msg);
   }
-private:  
+private:
   /// UNISPHERE context
   Context &m_context;
   /// Logger instance

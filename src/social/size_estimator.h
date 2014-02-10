@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include <boost/signals2/signal.hpp>
 
 namespace UniSphere {
-  
+
 /**
  * An interface for network size estimators.
  */
@@ -45,11 +45,11 @@ class OracleNetworkSizeEstimator : public NetworkSizeEstimator {
 public:
   /**
    * Class constructor.
-   * 
+   *
    * @param size Network size
    */
   OracleNetworkSizeEstimator(std::uint64_t size) : m_size(size) {}
-  
+
   /**
    * Returns the network size estimation.
    */
@@ -58,7 +58,7 @@ private:
   /// Known network size
   std::uint64_t m_size;
 };
-  
+
 }
 
 #endif

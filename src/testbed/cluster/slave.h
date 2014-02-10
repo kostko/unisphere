@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ private:
   void joinCluster();
 
   void rejoinCluster();
-  
+
   void heartbeat(const boost::system::error_code &error = boost::system::error_code());
 private:
   UNISPHERE_DECLARE_PRIVATE(Slave)

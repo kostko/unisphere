@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -216,7 +216,7 @@ ControllerTestCaseApi::ControllerTestCaseApi(ControllerPrivate &controller,
 DataSetBuffer &ControllerTestCaseApi::receive_(const std::string &dsName)
 {
   RecursiveUniqueLock lock(m_controller.m_mutex);
-  
+
   // Check if a given dataset has been received
   auto it = m_datasets.find(dsName);
   if (it == m_datasets.end()) {
@@ -316,7 +316,7 @@ std::list<TestCasePtr> ControllerScenarioApi::test(std::initializer_list<std::st
   std::list<TestCasePtr> tests;
   boost::shared_ptr<std::atomic<unsigned int>> pendingTests =
     boost::make_shared<std::atomic<unsigned int>>(names.size());
-  
+
   auto testCompletionHandler = [scenario, pendingTests]() {
     (*pendingTests)--;
     if (*pendingTests == 0)
@@ -366,7 +366,7 @@ void ControllerScenarioApi::signal(TestCasePtr test,
   for (const Partition &partition : m_controller.m_topology.getPartitions()) {
     if (partition.nodes.empty())
       continue;
-    
+
     NodeIdentifier slaveId = partition.slave.nodeId();
     group->call<Protocol::SignalTestRequest, Protocol::SignalTestResponse>(
       partition.slave.nodeId(),
@@ -637,7 +637,7 @@ Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protoc
                                                                     RpcId rpcId)
 {
   RecursiveUniqueLock lock(m_mutex);
-  
+
   // Obtain the running test
   auto &runningCases = m_scenarioApi->m_runningCases;
   auto it = runningCases.find(request.test_id());
@@ -668,7 +668,7 @@ void Controller::setupOptions(int argc,
                               po::variables_map &variables)
 {
   TestBed &testbed = TestBed::getGlobalTestbed();
-  
+
   if (variables.empty()) {
     ClusterNode::setupOptions(argc, argv, options, variables);
 
@@ -898,7 +898,7 @@ void Controller::run()
             *n->add_peers() = contact.toMessage();
           }
         }
-        
+
         NodeIdentifier slaveId = part.slave.nodeId();
         group->call<Protocol::AssignPartitionRequest, Protocol::AssignPartitionResponse>(
           part.slave.nodeId(),

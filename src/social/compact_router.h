@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -164,14 +164,14 @@ public:
 
   /**
    * Routes the specified message via the overlay.
-   * 
+   *
    * @param msg A valid message to be routed
    */
   void route(RoutedMessage &msg);
-  
+
   /**
    * Generates a new message and routes it via the overlay.
-   * 
+   *
    * @param sourceCompId Source component identifier
    * @param destination Destination node identifier
    * @param destinationAddress Destination L-R address (if known)
@@ -195,7 +195,7 @@ public:
 private:
   UNISPHERE_DECLARE_PRIVATE(CompactRouter)
 };
-  
+
 }
 
 #endif

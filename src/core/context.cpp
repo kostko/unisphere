@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -132,7 +132,7 @@ void Context::schedule(boost::posix_time::seconds timeout, std::function<void()>
 boost::posix_time::seconds Context::roughly(int value)
 {
   std::uniform_int_distribution<int> jitter(0, value / 2);
-  
+
   if (value <= 1)
     return boost::posix_time::seconds(value);
   else
@@ -167,7 +167,7 @@ void Context::run(size_t threads)
 {
   {
     RecursiveUniqueLock lock(d->m_mutex);
-    
+
     // Create as many threads as specified and let them run the I/O service
     for (int i = 0; i < threads; i++) {
       d->m_pool.create_thread([this]() {
@@ -187,7 +187,7 @@ void Context::run(size_t threads)
       });
     }
   }
-  
+
   for (;;) {
     try {
       // Wait for the I/O threads to finish execution

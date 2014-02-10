@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ public:
   RpcCallOptions()
     : timeout(15)
   {}
-  
+
   /**
    * Sets up channel-specific options for this RPC call.
    */
@@ -44,7 +44,7 @@ public:
     channelOptions = opts;
     return *this;
   }
-  
+
   /**
    * Sets this call's timeout in seconds.
    */

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ void Scenario::suspend()
   // Ensure that suspend can only be called from the scenario thread/coroutine
   if (boost::this_thread::get_id() != d->m_thread.get_id())
     throw IllegalApiCall();
-  
+
   // Suspend current coroutine
   (*d->m_coroutineCaller)();
 }
@@ -113,7 +113,7 @@ void Scenario::setupOptions(int argc,
 {
   boost::program_options::options_description local("Scenario " + d->m_name);
   setupOptions(local, variables);
-  
+
   if (variables.empty())
     options.add(local);
   else

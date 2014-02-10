@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -235,7 +235,7 @@ public:
 
   CompactRoutingTable(const CompactRoutingTable&) = delete;
   CompactRoutingTable &operator=(const CompactRoutingTable&) = delete;
-  
+
   /**
    * Returns the currently active route to the given destination
    * based only on local information. If there is no known direct
@@ -409,7 +409,7 @@ public:
 private:
   UNISPHERE_DECLARE_PRIVATE(CompactRoutingTable)
 };
-  
+
 }
 
 #endif

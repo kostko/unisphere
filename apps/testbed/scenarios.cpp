@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ UNISPHERE_SCENARIO(StandardTests)
     {{ "destinations_per_node", 2 }}
   );
   api.signal(linkCollector, "finish");
-  
+
   api.wait(600);
 
   // Stop collecting performance data
@@ -109,7 +109,7 @@ UNISPHERE_SCENARIO(SybilNodesNames)
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
   // Dump topology information
   api.test({ "state/sloppy_group_topology", "state/routing_topology" });
-  
+
   api.wait(10);
 
   // Stop collecting performance data
@@ -141,7 +141,7 @@ UNISPHERE_SCENARIO(SybilNodesRouting)
   api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
   // Dump topology information
   api.test({ "state/sloppy_group_topology", "state/routing_topology" });
-  
+
   api.wait(10);
 
   // Check pair-wise connectivity

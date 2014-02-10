@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ RoutedMessage::RoutedMessage(const Message &msg)
       pmsg.destination_address()
     );
   }
-  
+
   m_destinationNodeId = NodeIdentifier(pmsg.destination_node());
   m_destinationCompId = pmsg.destination_comp();
   m_hopLimit = pmsg.hop_limit();
@@ -113,5 +113,5 @@ void RoutedMessage::serialize(Protocol::RoutedMessage &pmsg) const
   pmsg.set_type(m_payloadType);
   pmsg.set_payload(m_payload);
 }
-  
+
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ public:
 
     // Include all node metadata from input topology in the output graph
     mergeInputNodeMetadata<Graph, Tags::NodeName>(api, graph, properties);
-    
+
     outputGraphDataset(graph, properties, api.getOutputFilename("sg-topo", "graphml"));
   }
 };
@@ -202,7 +202,7 @@ public:
 
     // Include all node metadata from input topology in the output graph
     mergeInputNodeMetadata<Graph, Tags::NodeName>(api, graph, properties);
-    
+
     outputGraphDataset(graph, properties, api.getOutputFilename("rt-topo", "graphml"));
   }
 };
@@ -294,7 +294,7 @@ public:
     for (int idx : indices) {
       std::advance(it, idx - offset);
       offset = idx;
-      
+
       args.add("nodes.node", it->contact.nodeId().hex());
     }
 
@@ -397,7 +397,7 @@ public:
     typedef boost::iterator_property_map<int*, IndexMap, int, int&> DistanceMap;
     std::vector<Vertex> predecessors(boost::num_vertices(topology.graph()));
     std::vector<int> distances(boost::num_vertices(topology.graph()));
-    
+
     IndexMap indexMap = boost::get(boost::vertex_index, topology.graph());
     PredecessorMap predecessorMap(&predecessors[0], indexMap);
     DistanceMap distanceMap(&distances[0], indexMap);
@@ -625,7 +625,7 @@ public:
           if (sybilMode && (sybilRecord || sybilNode))
             continue;
 
-          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node " 
+          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node "
             << siblingStringId << " (" << siblingNode.name << ") misses record for "
             << nodeStringId << " (" << node.name << ").";
           consistent = false;

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -173,7 +173,7 @@ void SlaveTestCaseApi::send_(const std::string &dsName,
                              std::istream &dsData)
 {
   RecursiveUniqueLock lock(m_slave.m_mutex);
-  
+
   Protocol::DatasetRequest request;
   request.set_test_id(m_testCase->getId());
   request.set_ds_name(dsName);

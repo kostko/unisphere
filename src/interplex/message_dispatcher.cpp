@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,11 +42,11 @@ void RoundRobinMessageDispatcher::send(const Message &msg)
   do {
     if (m_lastLinklet == m_linklets.end())
       m_lastLinklet = m_linklets.begin();
-    
+
     // No linklets to send to
     if (m_lastLinklet == m_linklets.end())
       return;
-    
+
     // Only use connected linklets to send messages and abort when a
     // connected linklet is found or we have cycled around
     if ((*m_lastLinklet)->state() != Linklet::State::Connected) {
@@ -55,7 +55,7 @@ void RoundRobinMessageDispatcher::send(const Message &msg)
       break;
     }
   } while (m_lastLinklet != startLinklet);
-  
+
   LinkletPtr linklet = *m_lastLinklet;
   linklet->send(msg);
   m_lastLinklet++;

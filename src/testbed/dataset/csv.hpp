@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ void outputCsvDataset(const DataSet &dataset,
         boost::apply_visitor(detail::OutputCsvVisitor(file), record.at(field));
       else
         file << "-";
-      
+
       file << "\t";
     }
     file << "\n";

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ class UNISPHERE_EXPORT RpcCall : public boost::enable_shared_from_this<RpcCall<C
 public:
   /**
    * Constructs an RPC call.
-   * 
+   *
    * @param rpc RPC engine that created this call
    * @param rpcId Call's unique identifier
    * @param destination Destination key identifier
@@ -92,20 +92,20 @@ public:
       m_timeout(timeout)
   {
   }
-  
+
   RpcCall(const RpcCall&) = delete;
   RpcCall &operator=(const RpcCall&) = delete;
-  
+
   /**
    * Returns the unique identifier of this RPC call.
    */
   RpcId rpcId() const { return m_rpcId; }
-  
+
   /**
    * Returns the destination key for this RPC call.
    */
   NodeIdentifier destination() const { return m_destination; }
-  
+
   /**
    * Dispatches the RPC request and starts the timeout timer.
    */
@@ -126,17 +126,17 @@ public:
       }
     }));
   }
-  
+
   /**
    * Signals the successful receipt of an RPC response.
-   * 
+   *
    * @param response RPC response
    * @param msg Channel-specific lower-layer message
    */
   void done(const Protocol::RpcResponse &response, const typename Channel::message_type &msg)
   {
     RpcCallWeakPtr<Channel> me(this->shared_from_this());
-    
+
     // Response must be copied as a reference will go away after the method completes
     m_strand.post([me, response, msg]() {
       if (RpcCallPtr<Channel> self = me.lock()) {
@@ -156,7 +156,7 @@ public:
       }
     });
   }
-  
+
   /**
    * Cancels this call and doesn't call the failure handler.
    */
@@ -174,16 +174,16 @@ private:
   NodeIdentifier m_destination;
   /// Status of this call
   bool m_finished;
-  
+
   /// Strand to ensure that success and failure handlers are
   /// always executed serially
   boost::asio::strand m_strand;
-  
+
   /// Timer for detecting lost messages
   boost::asio::deadline_timer m_timer;
   /// Timeout
   boost::posix_time::time_duration m_timeout;
-  
+
   /// RPC success handler
   RpcCallSuccess<Channel> m_success;
   /// RPC failure handler
@@ -199,16 +199,16 @@ public:
   /**
    * Constructor for implicitly converting from response types without
    * specifying any options.
-   * 
+   *
    * @param response Response message
    */
   RpcResponse(ResponseType rsp)
     : response(rsp)
   {}
-  
+
   /**
    * Constructor for defining routing options.
-   * 
+   *
    * @param response Response message
    * @param opts Channel-specific options
    */
@@ -278,7 +278,7 @@ public:
     Protocol::RpcResponse response;
     response.set_rpc_id(m_rpcId);
     response.set_error(false);
-    
+
     // Serialize response message into the payload
     std::vector<char> buffer(rsp.ByteSize());
     rsp.SerializeToArray(&buffer[0], buffer.size());

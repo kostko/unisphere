@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,22 +41,22 @@ class UNISPHERE_EXPORT RpcException : public Exception {
 public:
   /**
    * Constructs an RPC exception.
-   * 
+   *
    * @param code Error code
    * @param msg Error message
    */
   RpcException(RpcErrorCode code, const std::string &msg = "");
-  
+
   /**
    * Class desctructor.
    */
   ~RpcException() noexcept {};
-  
+
   /**
    * Returns the error code.
    */
   inline RpcErrorCode code() const { return m_code; }
-  
+
   /**
    * Returns the error message.
    */

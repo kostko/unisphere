@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ public:
   static const size_t bit_length = length * 8;
   /// An invalid (default-constructed) node identifier
   static const NodeIdentifier INVALID;
-  
+
   /**
    * Format specifications for dealing with identifiers.
    */
@@ -46,7 +46,7 @@ public:
     Hex,
     Bin
   };
-  
+
   /**
    * Constructs an invalid null identifier.
    */
@@ -61,7 +61,7 @@ public:
   explicit NodeIdentifier(const std::string &identifier)
     : m_identifier(identifier)
   {}
-  
+
   /**
    * Class constructor.
    *
@@ -74,19 +74,19 @@ public:
    * Generates a random node identifier.
    */
   static NodeIdentifier random();
-  
+
   /**
    * Returns true when the identifier is an empty one.
    */
   inline bool isNull() const { return m_identifier.empty(); }
-  
+
   /**
    * Returns true when the identifier is valid. For the identifier to be
    * considered valid it must be exactly @ref length bytes long in its
    * raw form. Empty (null) identifiers are therefore invalid.
    */
   inline bool isValid() const { return m_identifier.size() == NodeIdentifier::length; }
-  
+
   /**
    * Returns the identifier representation in the desired format.
    *
@@ -114,7 +114,7 @@ public:
    * Increment operator.
    */
   NodeIdentifier &operator+=(double x);
-  
+
   /**
    * Computes XOR function between two node identifiers.
    */
@@ -130,14 +130,14 @@ public:
    * method returns an inexact result, for an exact result use distanceTo.
    */
   double distanceToAsDouble(const NodeIdentifier &other) const;
-  
+
   /**
    * Returns the length of the longest common prefix (in bits) between two
    * identifiers.
    *
    * @param other The other identifier
    * @return Longest common prefix length (in bits)
-   */ 
+   */
   size_t longestCommonPrefix(const NodeIdentifier &other) const;
 
   /**
@@ -148,7 +148,7 @@ public:
    * @return Identifier representing a prefix
    */
   NodeIdentifier prefix(size_t bits, unsigned char fill = 0x00) const;
-  
+
   /**
    * Hasher implementation for node identifiers.
    */
@@ -157,7 +157,7 @@ public:
     boost::hash<std::string> hasher;
     return hasher(identifier.m_identifier);
   }
-  
+
   // Friend declarations
   friend class std::hash<NodeIdentifier>;
   friend bool operator==(const NodeIdentifier &lhs, const NodeIdentifier &rhs);
@@ -173,7 +173,7 @@ protected:
    *
    * @param identifier Identifier data
    * @param format Format of identifier data
-   */ 
+   */
   void setIdentifier(const std::string &identifier, Format format);
 private:
   /// The actual identifier in raw form
@@ -209,7 +209,7 @@ inline bool operator>=(const NodeIdentifier &lhs, const NodeIdentifier &rhs)
 {
   return lhs.m_identifier >= rhs.m_identifier;
 }
-  
+
 }
 
 namespace std {

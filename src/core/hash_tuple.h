@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ namespace std {
     {
       seed ^= hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
-    
+
     // Recursive template code derived from Matthieu M.
     template <class Tuple, size_t Index = std::tuple_size<Tuple>::value - 1>
     struct HashValueImpl
@@ -44,7 +44,7 @@ namespace std {
         hash_combine(seed, get<Index>(tuple));
       }
     };
-    
+
     template <class Tuple>
     struct HashValueImpl<Tuple, 0>
     {
@@ -54,9 +54,9 @@ namespace std {
       }
     };
   }
-  
+
   template <typename ... TT>
-  struct hash<std::tuple<TT...>> 
+  struct hash<std::tuple<TT...>>
   {
     size_t operator()(const std::tuple<TT...> &tt) const
     {

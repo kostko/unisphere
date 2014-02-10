@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -165,7 +165,7 @@ public:
                              NetworkSizeEstimator &sizeEstimator,
                              SloppyGroupManager &sloppyGroup,
                              CompactRoutingTable &rt);
-  
+
   /**
    * Returns the currently active route to the given destination
    * based only on local information. If there is no known direct
@@ -519,7 +519,7 @@ CompactRoutingTablePrivate::SloppyGroupBucket CompactRoutingTablePrivate::getSlo
     bucket.size++;
 
     // Only consider entries in extended vicinity for removal
-    if ((*it)->extendedVicinity && 
+    if ((*it)->extendedVicinity &&
         (!bucket.maxHopEntry || (*it)->hops() >= bucket.maxHopEntry->hops())) {
       bucket.maxHopEntry = *it;
       bucket.maxHopIterator = it;
@@ -660,7 +660,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
           if (bucket.maxHopEntry && bucket.maxHopEntry->hops() > entry->hops()) {
             isVicinity = true;
             isExtendedVicinity = true;
-            
+
             // Retract the entry to make room for new one
             if (bucket.maxHopEntry->landmark) {
               // Landmark entries should never be removed, so they are moved from vicinity
@@ -770,7 +770,7 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
       // TODO: Request a new sequence number from route originator
       BOOST_LOG_SEV(m_logger, log::warning) << "No feasible routes towards " << destination.hex() << ".";
     }
-    
+
     return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
   }
 
@@ -834,7 +834,7 @@ bool CompactRoutingTablePrivate::selectLocalAddress()
       q.signalAddressChanged.defer(m_localAddress);
       return true;
     }
-    
+
     return false;
   }
 
@@ -862,7 +862,7 @@ bool CompactRoutingTablePrivate::selectLocalAddress()
 
     ++ait;
   }
-  
+
   if (changed)
     q.signalAddressChanged.defer(m_localAddress);
   return changed;
@@ -1015,7 +1015,7 @@ void CompactRoutingTablePrivate::setLandmark(bool landmark)
 
   bool changed = (landmark != m_landmark);
   m_landmark = landmark;
-  
+
   if (changed) {
     // Perform local address selection
     selectLocalAddress();

@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,7 +133,7 @@ boost::shared_ptr<boost::dynamic_property_map> TopologyLoaderPrivate::generateMa
     // Ignore non-vertex properties
     return boost::shared_ptr<boost::dynamic_property_map>();
   }
-  
+
   return boost::static_pointer_cast<boost::dynamic_property_map>(
     boost::make_shared<TopologyPropertyMap>(m_mapStorage[pmap])
   );

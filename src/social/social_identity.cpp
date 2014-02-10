@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ Contact SocialIdentity::getPeerContact(const NodeIdentifier &nodeId) const
 {
   if (!nodeId.isValid())
     return Contact();
-  
+
   auto it = m_peers.find(nodeId);
   if (it == m_peers.end())
     return Contact();

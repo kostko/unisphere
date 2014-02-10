@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,17 +30,17 @@ HostIntrospector::HostIntrospector()
 Contact HostIntrospector::localContact(unsigned short port)
 {
   Contact contact;
-  
+
   // Fetch address information from the local interfaces
   struct ifaddrs *addresses = NULL;
   getifaddrs(&addresses);
   for (auto ifa = addresses; ifa != NULL; ifa = ifa->ifa_next) {
     int family = ifa->ifa_addr->sa_family;
-    
+
     // We are only interested in IPv4 and IPv6 addresses
     if (family == AF_INET || family == AF_INET6) {
       char host[NI_MAXHOST];
-      
+
       if (getnameinfo(ifa->ifa_addr, (family == AF_INET) ?
         sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6),
         host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) == 0) {
@@ -53,7 +53,7 @@ Contact HostIntrospector::localContact(unsigned short port)
     }
   }
   freeifaddrs(addresses);
-  
+
   return contact;
 }
 

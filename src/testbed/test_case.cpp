@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -138,7 +138,7 @@ void TestCase::tryComplete(TestCaseApi &api)
     RecursiveUniqueLock lock(d->m_mutex);
     processGlobalResults(api);
     BOOST_LOG_SEV(d->m_logger, log::normal) << "Test case '" << getName() << "' done.";
-    
+
     // Remove ourselves from running test cases and emit finished signal
     api.removeRunningTestCase();
     d->m_state = State::Finished;

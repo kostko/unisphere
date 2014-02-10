@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2013 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -457,7 +457,7 @@ std::list<NameRecordPtr> NameDatabase::getNames(NameRecord::Type type) const
 {
   RecursiveUniqueLock lock(d->m_mutex);
   std::list<NameRecordPtr> names;
-  
+
   auto records = d->m_nameDb.get<NIBTags::TypeDestination>().equal_range(type);
   for (auto it = records.first; it != records.second; ++it) {
     names.push_back(*it);

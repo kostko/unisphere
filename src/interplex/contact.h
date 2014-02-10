@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,22 +43,22 @@ public:
     IP,
     Local,
   };
-  
+
   /**
    * Constructs a null address.
    */
   Address();
-  
+
   /**
    * Constructs an IP address.
    */
   explicit Address(const boost::asio::ip::tcp::endpoint &endpoint);
-  
+
   /**
    * Constructs an IP address.
    */
   Address(const boost::asio::ip::address &ip, unsigned short port);
-  
+
   /**
    * Constructs an IP address.
    */
@@ -73,27 +73,27 @@ public:
    * Constructs a Local socket address.
    */
   explicit Address(const boost::asio::local::stream_protocol::endpoint &endpoint);
-  
+
   /**
    * Returns true if this address is equal to another.
    */
   bool operator==(const Address &other) const;
-  
+
   /**
    * Returns true if this address is less than another.
    */
   bool operator<(const Address &other) const;
-  
+
   /**
    * Returns true if the address is a null one.
    */
   inline bool isNull() const { return m_type == Type::Null; }
-  
+
   /**
    * Returns address type.
    */
   inline Type type() const { return m_type; }
-  
+
   /**
    * Returns an IP address representation of this node address. It
    * is an error to call this method when address type is not IP. An
@@ -131,34 +131,34 @@ public:
    * Constructs a null contact.
    */
   Contact();
-  
+
   /**
    * Constructs a new node contact.
    *
    * @param nodeId Node identifier
    */
   explicit Contact(const NodeIdentifier &nodeId);
-  
+
   /**
    * Returns true if this contact record is a null one.
    */
   bool isNull() const;
-  
+
   /**
    * Returns the node's identifier.
    */
   NodeIdentifier nodeId() const;
-  
+
   /**
    * Returns true when the contact contains some addresses.
    */
   bool hasAddresses() const;
-  
+
   /**
    * Returns the address list.
    */
   const AddressMap &addresses() const;
-  
+
   /**
    * Returns the address list.
    */
@@ -168,7 +168,7 @@ public:
    * Returns the first address.
    */
   const Address &address() const;
-  
+
   /**
    * Adds a new address to this contact record.
    *
@@ -176,7 +176,7 @@ public:
    * @param priority Optional priority (lower value means higher priority)
    */
   void addAddress(const Address &address, int priority = 10);
-  
+
   /**
    * Changes the priority of an existing contact address.
    *
@@ -184,13 +184,13 @@ public:
    * @param priority New priority
    */
   void setPriority(AddressMap::iterator address, int priority);
-  
+
   /**
    * Returns this contact as a protocol buffers message ready for
    * serialization.
    */
   Protocol::Contact toMessage() const;
-  
+
   /**
    * Returns a contact obtained from a protocol buffers message.
    *
@@ -198,12 +198,12 @@ public:
    * @return A valid contact
    */
   static Contact fromMessage(const Protocol::Contact &msg);
-  
+
   /**
    * Comparison operator, only compares node identifiers.
    */
   bool operator==(const Contact &other) const;
-  
+
   // Ensure that our hash function is also our friend
   friend class std::hash<Contact>;
 private:

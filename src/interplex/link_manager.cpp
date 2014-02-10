@@ -1,7 +1,7 @@
 /*
  * This file is part of UNISPHERE.
  *
- * Copyright (C) 2012 Jernej Kos <jernej@kos.mx>
+ * Copyright (C) 2014 Jernej Kos <jernej@kos.mx>
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,11 +44,11 @@ void LinkManager::send(const Contact &contact, const Message &msg)
 {
   RecursiveUniqueLock lock(m_linksMutex);
   BOOST_ASSERT(!contact.isNull());
-  
+
   // Ignore attempted deliveries to the local node
   if (contact.nodeId() == m_nodeId)
     return;
-  
+
   // Create a new link or retrieve an existing link if one exists
   LinkPtr link = get(contact);
   if (!link) {
@@ -57,7 +57,7 @@ void LinkManager::send(const Contact &contact, const Message &msg)
     BOOST_LOG_SEV(m_logger, log::warning) << "No link to destination, dropping message!";
     return;
   }
-  
+
   link->send(msg);
   m_statistics.global.msgXmits++;
   m_statistics.links[link->nodeId()].msgXmits++;
@@ -75,7 +75,7 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
   auto it = m_links.find(contact.nodeId());
   if (it != m_links.end()) {
     link = it->second;
-    
+
     // It can happen that link has switched to invalid and we really should not
     // queue messages to such a link as they will be lost
     if (!link->isValid()) {
@@ -83,7 +83,7 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
       link = LinkPtr();
     }
   }
-  
+
   if (!link) {
     if (contact.hasAddresses() && create) {
       link = LinkPtr(new Link(*this, contact.nodeId(), 600));
@@ -96,7 +96,7 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
       return LinkPtr();
     }
   }
-  
+
   return link;
 }
 
@@ -112,7 +112,7 @@ bool LinkManager::listen(const Address &address)
     // Failed to listen on specified address
     return false;
   }
-  
+
   return true;
 }
 
@@ -126,7 +126,7 @@ void LinkManager::close()
     }
     m_listeners.clear();
   }
-  
+
   // Then shut down all links
   {
     RecursiveUniqueLock lock(m_linksMutex);
@@ -143,7 +143,7 @@ Contact LinkManager::getLinkContact(const NodeIdentifier &linkId)
   RecursiveUniqueLock lock(m_linksMutex);
   if (m_links.find(linkId) == m_links.end())
     return Contact();
-  
+
   return m_links[linkId]->contact();
 }
 
@@ -153,7 +153,7 @@ void LinkManager::remove(LinkPtr link)
   if (m_links.find(link->nodeId()) == m_links.end() ||
       m_links[link->nodeId()] != link)
     return;
-  
+
   link->signalMessageReceived.disconnect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
   m_links.erase(link->nodeId());
 }
@@ -200,7 +200,7 @@ void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
     linklet->close();
     return;
   }
-  
+
   try {
     link->addLinklet(linklet);
   } catch (TooManyLinklets &e) {
@@ -218,7 +218,7 @@ Contact LinkManager::getLocalContact() const
     if (address.type() == Address::Type::IP) {
       auto endpoint = address.toIpEndpoint();
       auto ip = endpoint.address();
-      
+
       if ((ip.is_v4() && ip.to_v4() == boost::asio::ip::address_v4::any()) ||
         (ip.is_v6() && ip.to_v6() == boost::asio::ip::address_v6::any())) {
         // Listen on any interface, we need the introspector to discover all
@@ -236,7 +236,7 @@ Contact LinkManager::getLocalContact() const
       contact.addAddress(address);
     }
   }
-  
+
   return contact;
 }
 
