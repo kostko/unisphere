@@ -49,54 +49,54 @@ public:
     Connected,
     Listening
   };
-  
+
   /**
    * Class constructor.
    *
    * @param manager Link manager instance
    */
   Linklet(LinkManager &manager);
-  
+
   /**
    * Class destructor.
    */
   virtual ~Linklet();
-  
+
   /**
    * Returns the address this linklet is connected to. For listener linklets
    * this will be the bound address.
    */
   inline Address address() const { return m_connectAddress; }
-  
+
   /**
    * Returns the peer contact information.
    */
   inline Contact peerContact() const { return m_peerContact; }
-  
+
   /**
    * Returns the linklet's connection state.
    */
   inline State state() const { return m_state; }
-  
+
   /**
    * Starts listening for incoming connections on the given address.
    *
    * @param address Address to listen on
    */
   virtual void listen(const Address &address) = 0;
-  
+
   /**
    * Starts connecting to the given address.
    *
    * @param address Address to connect to
    */
   virtual void connect(const Address &address) = 0;
-  
+
   /**
    * Closes the link.
    */
   virtual void close() = 0;
-  
+
   /**
    * Sends a message via this link.
    *
@@ -112,22 +112,39 @@ public:
   boost::signals2::signal<void (LinkletPtr)> signalAcceptedConnection;
   boost::signals2::signal<void (LinkletPtr, const Message&)> signalMessageReceived;
 protected:
+  /// Logger instance
+  Logger m_logger;
   /// Link manager this linklet belongs to
   LinkManager &m_manager;
-  
   /// ASIO service
   boost::asio::io_service &m_service;
   /// ASIO strand
   boost::asio::strand m_strand;
-  
   /// Address this linklet is connected to
   Address m_connectAddress;
   /// Peer contact information received as part of the exchange
   Contact m_peerContact;
-  
   /// Linklet state
   State m_state;
-}; 
+protected:
+  /**
+   * This method must be called by linklet implementations when a message
+   * header has been parsed.
+   *
+   * @param msg Message with header set
+   * @return True if the linklet should be closed, false otherwise
+   */
+  bool headerParsed(Message &msg);
+
+  /**
+   * This method must be called by linklet implementations when a message
+   * body has been parsed.
+   *
+   * @param msg A complete message
+   * @return True if the linklet should be closed, false otherwise
+   */
+  bool messageParsed(Message &msg);
+};
 
 }
 
