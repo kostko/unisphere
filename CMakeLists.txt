@@ -7,7 +7,7 @@ set(Boost_USE_MULTITHREAD ON)
 set(Boost_USE_STATIC_LIBS OFF)
 
 find_package(Threads REQUIRED)
-find_package(Boost 1.54.0 COMPONENTS system filesystem thread program_options date_time graph log serialization coroutine iostreams REQUIRED)
+find_package(Boost 1.55.0 COMPONENTS system filesystem thread program_options date_time graph log serialization coroutine iostreams REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
@@ -28,7 +28,7 @@ include_directories(
   ${BOTAN_INCLUDE_DIR}
   ${GMP_INCLUDE_DIR}
   ${Tcmalloc_INCLUDE_DIR}
-  
+
   # Internal includes
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_BINARY_DIR}
