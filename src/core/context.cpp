@@ -18,6 +18,7 @@
  */
 #include "core/context.h"
 
+#include <sodium.h>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/thread/tss.hpp>
 #include <unordered_map>
@@ -50,6 +51,7 @@ public:
 LibraryInitializer::LibraryInitializer()
   : m_botan("thread_safe=true")
 {
+  sodium_init();
   logging::add_common_attributes();
   logging::core::get()->set_logging_enabled(false);
 }

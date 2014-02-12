@@ -20,8 +20,72 @@
 #include "catch.hpp"
 
 #include "identity/node_identifier.h"
+#include "identity/peer_key.h"
+#include "identity/exceptions.h"
 
 using namespace UniSphere;
+
+TEST_CASE("identity/peer_key", "verify that peer key works")
+{
+  LibraryInitializer init;
+
+  SECTION("s1", "random key")
+  {
+    PrivatePeerKey key;
+    // Generate a new private key
+    key.generate();
+    REQUIRE(!key.isNull());
+
+    // Check that node identifier is correctly derived
+    REQUIRE(key.nodeId().isValid());
+
+    // Sign a message with this key
+    std::string origMsg("Hello World!");
+    std::string signedMessage = key.sign(origMsg);
+    std::string msg = key.signOpen(signedMessage);
+    REQUIRE(msg == origMsg);
+  }
+
+  SECTION("s2", "invalid decode")
+  {
+    KeyData invalidPrivateKey((unsigned char*) "foo", 3);
+    PrivatePeerKey keyA("not-a-valid-key", invalidPrivateKey, PeerKey::Format::Raw);
+    PrivatePeerKey keyB("not-a-valid-key", invalidPrivateKey, PeerKey::Format::Base64);
+
+    // Check that keys are null
+    REQUIRE(keyA.isNull());
+    REQUIRE(keyB.isNull());
+
+    // Check that sign methods throw
+    REQUIRE_THROWS_AS(keyA.sign("foo"), NullPeerKey);
+    REQUIRE_THROWS_AS(keyA.signOpen("foo"), NullPeerKey);
+  }
+
+  SECTION("s2", "specific key")
+  {
+    PrivatePeerKey key(
+      "H2wZSxxqitirRMKrQRDv2uC8e1z3F2SlELYbwcgtsdM=",
+      KeyData(
+        (unsigned char*) "W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x0w==",
+        88
+      ),
+      PeerKey::Format::Base64
+    );
+
+    // Check that keys have been parsed
+    REQUIRE(!key.isNull());
+
+    // Check that node identifier is correctly derived
+    REQUIRE(key.nodeId().isValid());
+    REQUIRE(key.nodeId().hex() == "79e02eb463e43bc8969896f8d537b5a1cb56b016");
+
+    // Sign a message with this key
+    std::string origMsg("Hello World!");
+    std::string signedMessage = key.sign(origMsg);
+    std::string msg = key.signOpen(signedMessage);
+    REQUIRE(msg == origMsg);
+  }
+}
 
 TEST_CASE("identity/identifiers", "verify that node identifiers work")
 {

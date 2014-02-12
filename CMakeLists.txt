@@ -13,6 +13,7 @@ find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
 find_package(GMP REQUIRED)
 find_package(Tcmalloc REQUIRED)
+find_package(Sodium REQUIRED)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -std=c++0x")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK")
@@ -28,6 +29,7 @@ include_directories(
   ${BOTAN_INCLUDE_DIR}
   ${GMP_INCLUDE_DIR}
   ${Tcmalloc_INCLUDE_DIR}
+  ${SODIUM_INCLUDE_DIR}
 
   # Internal includes
   ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -43,6 +45,7 @@ set(unisphere_external_libraries
   ${BOTAN_LIBRARIES}
   ${GMP_LIBRARIES}
   ${GMPXX_LIBRARIES}
+  ${SODIUM_LIBRARY}
 )
 
 enable_testing()
