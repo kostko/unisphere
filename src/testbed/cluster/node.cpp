@@ -26,7 +26,6 @@
 #include <boost/log/attributes/current_thread_id.hpp>
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/empty_deleter.hpp>
 #include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/expressions.hpp>
