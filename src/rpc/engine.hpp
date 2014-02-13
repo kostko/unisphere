@@ -246,8 +246,9 @@ protected:
    */
   RpcId getNextRpcId() const
   {
+    Botan::AutoSeeded_RNG rng;
     RpcId rpcId;
-    m_channel.context().rng().randomize((Botan::byte*) &rpcId, sizeof(rpcId));
+    rng.randomize((Botan::byte*) &rpcId, sizeof(rpcId));
     return rpcId;
   }
 

@@ -129,11 +129,6 @@ public:
   boost::asio::io_service &service();
 
   /**
-   * Returns the cryptographically secure random number generator.
-   */
-  Botan::RandomNumberGenerator &rng();
-
-  /**
    * Returns a basic random number generator that should NOT be used for any
    * cryptographic operations.
    */

@@ -40,8 +40,6 @@ public:
   std::recursive_mutex m_mutex;
   /// Logger instance
   Logger m_logger;
-  /// Cryptographically secure random number generator (per-thread)
-  boost::thread_specific_ptr<Botan::AutoSeeded_RNG> m_rng;
   /// Basic random generator that should not be used for crypto ops (per-thread)
   boost::thread_specific_ptr<std::mt19937> m_basicRng;
   /// Worker thread initializer
@@ -78,17 +76,6 @@ boost::asio::io_service &Context::service()
   return d->m_io;
 }
 
-Botan::RandomNumberGenerator &Context::rng()
-{
-  Botan::AutoSeeded_RNG *rng = d->m_rng.get();
-  if (!rng) {
-    rng = new Botan::AutoSeeded_RNG();
-    d->m_rng.reset(rng);
-  }
-
-  return *rng;
-}
-
 std::mt19937 &Context::basicRng()
 {
   std::mt19937 *basicRng = d->m_basicRng.get();
@@ -97,8 +84,9 @@ std::mt19937 &Context::basicRng()
     d->m_basicRng.reset(basicRng);
 
     // Seed the basic RNG from the CSRNG
+    Botan::AutoSeeded_RNG rng;
     std::uint32_t seed;
-    rng().randomize((Botan::byte*) &seed, sizeof(seed));
+    rng.randomize((Botan::byte*) &seed, sizeof(seed));
     basicRng->seed(seed);
   }
 
@@ -184,7 +172,6 @@ void Context::run(size_t threads)
         d->m_io.run();
 
         // Destroy all per-thread RNGs
-        d->m_rng.reset();
         d->m_basicRng.reset();
       });
     }
