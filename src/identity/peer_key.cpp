@@ -114,6 +114,11 @@ std::string PeerKey::encrypt(const std::string &buffer) const
   return std::string();
 }
 
+bool PeerKey::operator==(const PeerKey &other) const
+{
+  return m_publicSign == other.m_publicSign;
+}
+
 PrivatePeerKey::PrivatePeerKey()
   : PeerKey(),
     m_privateSign(PrivatePeerKey::sign_private_key_length)
@@ -174,12 +179,6 @@ void PrivatePeerKey::generate()
   m_publicSign = std::string((char*) pubkey, sizeof(pubkey));
 }
 
-void PrivatePeerKey::importFile(const std::string &filename,
-                                const Botan::SecureVector<unsigned char> &password)
-{
-  // TODO
-}
-
 std::string PrivatePeerKey::sign(const std::string &buffer) const
 {
   if (isNull())
@@ -202,13 +201,45 @@ std::string PrivatePeerKey::boxOpen(const std::string &encryptedBuffer) const
   return std::string();
 }
 
-void PrivatePeerKey::exportFile(const std::string &filename,
-                                const Botan::SecureVector<unsigned char> &password) const
+bool PrivatePeerKey::operator==(const PrivatePeerKey &other) const
 {
-  if (isNull())
-    throw NullPeerKey("Attempted to export a null key!");
+  return m_privateSign == other.m_privateSign;
+}
 
-  // TODO
+std::ostream &operator<<(std::ostream &stream, const PrivatePeerKey &key)
+{
+  Botan::Pipe pipe(new Botan::Base64_Encoder());
+  pipe.start_msg();
+  pipe.write(key.signRaw());
+  pipe.write(key.signPrivateRaw());
+  pipe.end_msg();
+  stream << pipe;
+
+  return stream;
+}
+
+std::istream &operator>>(std::istream &stream, PrivatePeerKey &key)
+{
+  KeyData buffer(
+    ((PrivatePeerKey::sign_public_key_length + PrivatePeerKey::sign_private_key_length) * 4) / 3
+  );
+  stream.read((char*) &buffer[0], buffer.size());
+
+  Botan::Pipe pipe(new Botan::Base64_Decoder());
+  pipe.start_msg();
+  pipe.write(buffer);
+  pipe.end_msg();
+  buffer = pipe.read_all();
+
+  // Extract public key
+  std::string publicKey((char*) &buffer[0], PrivatePeerKey::sign_public_key_length);
+
+  // Extract private key
+  KeyData privateKey(PrivatePeerKey::sign_private_key_length);
+  privateKey.copy(&buffer[PrivatePeerKey::sign_public_key_length], PrivatePeerKey::sign_private_key_length);
+
+  key = PrivatePeerKey(publicKey, privateKey);
+  return stream;
 }
 
 }

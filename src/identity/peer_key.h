@@ -111,6 +111,11 @@ public:
    * @throws NullPeerKey When attempting to encrypt with a null key
    */
   std::string encrypt(const std::string &buffer) const;
+
+  /**
+   * Returns true if public peer keys are equal.
+   */
+  bool operator==(const PeerKey &other) const;
 protected:
   // Public signing key storage
   std::string m_publicSign;
@@ -180,16 +185,6 @@ public:
   inline PeerKey publicKey() const { return PeerKey(m_publicSign); }
 
   /**
-   * Imports a peer's private key from a file and overwrites the current
-   * key.
-   *
-   * @param filename Filename to load the private key from
-   * @param password Password to use for decryption
-   */
-  void importFile(const std::string &filename,
-                  const KeyData &password);
-
-  /**
    * Cryptographically signs the specified buffer.
    *
    * @param buffer Buffer to sign
@@ -209,18 +204,23 @@ public:
   std::string boxOpen(const std::string &encryptedBuffer) const;
 
   /**
-   * Exports the public and private keys into an encrypted file.
-   *
-   * @param filename Filename to export into
-   * @param password Password to use for encryption
-   * @throws NullPeerKey When attempting to export a null key
+   * Returns true if private peer keys are equal.
    */
-  void exportFile(const std::string &filename,
-                  const KeyData &password) const;
+  bool operator==(const PrivatePeerKey &other) const;
 private:
-  // Private signing key storage
+  /// Private signing key storage
   KeyData m_privateSign;
 };
+
+/**
+ * Operator for private key serialization.
+ */
+UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const PrivatePeerKey &key);
+
+/**
+ * Operator for private key deserialization.
+ */
+UNISPHERE_EXPORT std::istream &operator>>(std::istream &stream, PrivatePeerKey &key);
 
 }
 

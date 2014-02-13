@@ -84,6 +84,17 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
     std::string signedMessage = key.sign(origMsg);
     std::string msg = key.signOpen(signedMessage);
     REQUIRE(msg == origMsg);
+
+    // Import/export of key
+    std::ostringstream bufferOut;
+    bufferOut << key;
+    std::string serialized = bufferOut.str();
+    std::istringstream bufferIn(serialized);
+    PrivatePeerKey deserialized;
+    bufferIn >> deserialized;
+
+    REQUIRE(!deserialized.isNull());
+    REQUIRE(deserialized == key);
   }
 }
 
