@@ -1,5 +1,6 @@
 
 set(unisphere_social_src
+peer.cpp
 social_identity.cpp
 compact_router.cpp
 address.cpp
@@ -16,6 +17,7 @@ PROTOBUF_GENERATE_CPP(unisphere_social_proto_src unisphere_social_proto_hdr
 address.proto
 messages.proto
 core_methods.proto
+peer.proto
 )
 
 add_library(UnisphereSocial SHARED ${unisphere_social_src} ${unisphere_social_proto_src})

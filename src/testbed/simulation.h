@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_SIMULATION_H
 
 #include "interplex/contact.h"
+#include "social/peer.h"
 #include "testbed/nodes.h"
 
 #include <boost/signals2/signal.hpp>
@@ -132,11 +133,13 @@ public:
    *
    * @param name Virtual node name
    * @param contact Node contact information (bindable to local interface)
+   * @param key Private peer key
    * @param peers A list of peers in the social network
    */
   void createNode(const std::string &name,
                   const Contact &contact,
-                  const std::list<Contact> &peers);
+                  const PrivatePeerKey &key,
+                  const std::list<Peer> &peers);
 
   /**
    * Returns the current simulation state.

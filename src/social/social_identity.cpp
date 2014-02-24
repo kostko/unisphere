@@ -20,14 +20,9 @@
 
 namespace UniSphere {
 
-SocialIdentity::SocialIdentity(const SocialIdentity &identity)
-  : m_localId(identity.m_localId),
-    m_peers(identity.m_peers)
-{
-}
-
-SocialIdentity::SocialIdentity(const NodeIdentifier &localId)
-  : m_localId(localId)
+SocialIdentity::SocialIdentity(const PrivatePeerKey &key)
+  : m_localId(key.nodeId()),
+    m_localKey(key)
 {
 }
 
@@ -36,13 +31,18 @@ bool SocialIdentity::isPeer(const Contact &contact) const
   return m_peers.find(contact.nodeId()) != m_peers.end();
 }
 
-void SocialIdentity::addPeer(const Contact &peer)
+void SocialIdentity::addPeer(const Peer &peer)
 {
   if (peer.isNull())
     return;
 
   m_peers[peer.nodeId()] = peer;
   signalPeerAdded(peer);
+}
+
+void SocialIdentity::addPeer(const PeerKey &key, const Contact &contact)
+{
+  addPeer(Peer(key, contact));
 }
 
 void SocialIdentity::removePeer(const NodeIdentifier &nodeId)
@@ -60,7 +60,7 @@ Contact SocialIdentity::getPeerContact(const NodeIdentifier &nodeId) const
   if (it == m_peers.end())
     return Contact();
 
-  return it->second;
+  return it->second.contact();
 }
 
 }

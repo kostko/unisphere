@@ -5,6 +5,7 @@
 package UniSphere.TestBed.Protocol;
 
 import "src/interplex/contact.proto";
+import "src/social/peer.proto";
 
 message ClusterJoinRequest {
   // IP address available for simulation
@@ -50,8 +51,12 @@ message AssignPartitionRequest {
     required string name = 1;
     // Node contact
     required UniSphere.Protocol.Contact contact = 2;
+    // Node public key
+    required bytes public_key = 3;
+    // Node private key
+    required bytes private_key = 4;
     // Node peers
-    repeated UniSphere.Protocol.Contact peers = 3;
+    repeated UniSphere.Protocol.Peer peers = 5;
   };
 
   // A list of nodes in this partition

@@ -120,7 +120,7 @@ public:
   /**
    * Called when a new peer is added to the social identity.
    */
-  void peerAdded(const Contact &peer);
+  void peerAdded(const Peer &peer);
 
   /**
    * Called when a peer is removed from the social identity.
@@ -309,7 +309,7 @@ void CompactRouterPrivate::shutdown()
   m_routes.clear();
 }
 
-void CompactRouterPrivate::peerAdded(const Contact &peer)
+void CompactRouterPrivate::peerAdded(const Peer &peer)
 {
   // Export announces to new peer when it is added
   m_routes.fullUpdate(peer.nodeId());
@@ -327,7 +327,7 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
 
   // Announce ourselves to all neighbours and send them routing updates
   Protocol::PathAnnounce announce;
-  for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
+  for (const std::pair<NodeIdentifier, Peer> &peer : m_identity.peers()) {
     announce.Clear();
     announce.set_destination_id(m_identity.localId().as(NodeIdentifier::Format::Raw));
     announce.set_landmark(m_routes.isLandmark());
@@ -338,7 +338,7 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
     }
 
     announce.set_seqno(m_seqno);
-    ribExportQueueAnnounce(peer.second, announce);
+    ribExportQueueAnnounce(peer.second.contact(), announce);
 
     // Send full routing table to neighbor
     m_routes.fullUpdate(peer.first);
@@ -355,8 +355,8 @@ void CompactRouterPrivate::requestFullRoutes()
   Protocol::PathRefresh request;
   request.set_destination_id(NodeIdentifier().as(NodeIdentifier::Format::Raw));
 
-  for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
-    m_manager.send(peer.second, Message(Message::Type::Social_Refresh, request));
+  for (const std::pair<NodeIdentifier, Peer> &peer : m_identity.peers()) {
+    m_manager.send(peer.second.contact(), Message(Message::Type::Social_Refresh, request));
   }
 }
 
@@ -395,8 +395,8 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
 
   if (peer.isNull()) {
     // Export entry to all neighbors
-    for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
-      exportEntry(peer.second);
+    for (const std::pair<NodeIdentifier, Peer> &peer : m_identity.peers()) {
+      exportEntry(peer.second.contact());
     }
   } else {
     exportEntry(m_identity.getPeerContact(peer));
@@ -458,7 +458,7 @@ void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
 {
   // Send retraction message to all neighbors
   Protocol::PathRetract retract;
-  for (const std::pair<NodeIdentifier, Contact> &peer : m_identity.peers()) {
+  for (const std::pair<NodeIdentifier, Peer> &peer : m_identity.peers()) {
     // Retrieve vport for given peer and check that it is not the origin
     Vport vport = m_routes.getVportForNeighbor(peer.first);
     if (vport == entry->originVport())
@@ -469,7 +469,7 @@ void CompactRouterPrivate::ribRetractEntry(RoutingEntryPtr entry)
     retract.set_destination_id(entry->destination.as(NodeIdentifier::Format::Raw));
 
     // Send the announcement
-    m_manager.send(peer.second, Message(Message::Type::Social_Retract, retract));
+    m_manager.send(peer.second.contact(), Message(Message::Type::Social_Retract, retract));
   }
 
   // TODO: Think about compaction/aggregation of multiple entries (perhaps retractions should be

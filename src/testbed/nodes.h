@@ -23,6 +23,7 @@
 #include <boost/bimap.hpp>
 
 #include "identity/node_identifier.h"
+#include "identity/peer_key.h"
 #include "interplex/contact.h"
 
 namespace UniSphere {
@@ -47,11 +48,13 @@ public:
    * @param sizeEstimator Network size estimator
    * @param name Virtual node name from source topology file
    * @param contact Virtual contact
+   * @param key Private peer key
    */
   VirtualNode(Context &context,
               NetworkSizeEstimator &sizeEstimator,
               const std::string &name,
-              const Contact &contact);
+              const Contact &contact,
+              const PrivatePeerKey &key);
 
   /**
    * Class destructor.

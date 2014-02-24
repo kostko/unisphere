@@ -63,7 +63,7 @@ PeerKey::PeerKey(const std::string &publicSignKey, Format format)
     m_publicSign.clear();
 }
 
-const NodeIdentifier &PeerKey::nodeId()
+const NodeIdentifier &PeerKey::nodeId() const
 {
   if (isNull())
     return NodeIdentifier::INVALID;

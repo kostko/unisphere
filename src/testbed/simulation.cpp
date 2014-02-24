@@ -150,11 +150,12 @@ SimulationSectionPtr Simulation::section()
 
 void Simulation::createNode(const std::string &name,
                             const Contact &contact,
-                            const std::list<Contact> &peers)
+                            const PrivatePeerKey &key,
+                            const std::list<Peer> &peers)
 {
   RecursiveUniqueLock lock(d->m_mutex);
-  VirtualNodePtr node = boost::make_shared<VirtualNode>(d->m_context, d->m_sizeEstimator, name, contact);
-  for (const Contact &peer : peers) {
+  VirtualNodePtr node = boost::make_shared<VirtualNode>(d->m_context, d->m_sizeEstimator, name, contact, key);
+  for (const Peer &peer : peers) {
     node->identity->addPeer(peer);
   }
 

@@ -24,10 +24,44 @@
 #include "social/size_estimator.h"
 #include "social/name_database.h"
 #include "social/social_identity.h"
+#include "social/peer.h"
 
 #include <random>
 
 using namespace UniSphere;
+
+TEST_CASE("social/peer", "verify that peer operations work")
+{
+  // Library initializer
+  LibraryInitializer init;
+  // Framework context
+  Context ctx;
+
+  // Generate new private peer key
+  PrivatePeerKey key;
+  key.generate();
+  // Generate contact information
+  Contact contact(key.nodeId());
+
+  // Create new peer
+  Peer peer(key.publicKey(), contact);
+
+  // Test whether peer SAs work
+  auto pubSa = peer.addPeerSecurityAssociation(PeerSecurityAssociation{
+    key.publicKey(),
+    boost::posix_time::microsec_clock::universal_time() + boost::posix_time::minutes(5)
+  });
+  auto selectSa = peer.selectPeerSecurityAssociation(ctx);
+  REQUIRE(selectSa == pubSa);
+  peer.removePeerSecurityAssociation(key.signRaw());
+  selectSa = peer.selectPeerSecurityAssociation(ctx);
+  REQUIRE(!selectSa);
+
+  // Test whether private SAs work
+  auto privSa = peer.createPrivateSecurityAssociation(boost::posix_time::minutes(5));
+  auto checkSa = peer.getPrivateSecurityAssociation(privSa->signRaw());
+  REQUIRE(privSa == checkSa);
+}
 
 TEST_CASE("social", "verify that compact routing operations work")
 {
@@ -35,14 +69,15 @@ TEST_CASE("social", "verify that compact routing operations work")
   LibraryInitializer init;
   // Framework context
   Context ctx;
-  // Local node identifier
-  NodeIdentifier localId("83d4211788762ffc7edc1e39187978db49334426", NodeIdentifier::Format::Hex);
+  // Private key
+  PrivatePeerKey privateKey;
+  privateKey.generate();
   // Social identity
-  SocialIdentity identity(localId);
+  SocialIdentity identity(privateKey);
   // Network size estimator
   OracleNetworkSizeEstimator sizeEstimator(14);
   // Link manager
-  LinkManager linkManager(ctx, localId);
+  LinkManager linkManager(ctx, privateKey.nodeId());
   // Router
   CompactRouter router(identity, linkManager, sizeEstimator);
 

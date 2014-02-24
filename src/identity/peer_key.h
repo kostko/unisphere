@@ -90,7 +90,7 @@ public:
   /**
    * Returns a node identifier that identifies this peer key.
    */
-  const NodeIdentifier &nodeId();
+  const NodeIdentifier &nodeId() const;
 
   /**
    * Verifies the cryptographically signed buffer and returns the payload
@@ -120,7 +120,7 @@ protected:
   // Public signing key storage
   std::string m_publicSign;
   // Cached node identifier
-  NodeIdentifier m_nodeId;
+  mutable NodeIdentifier m_nodeId;
 };
 
 /**

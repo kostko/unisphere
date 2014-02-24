@@ -1,0 +1,14 @@
+//
+// Serialization of a peer.
+//
+
+package UniSphere.Protocol;
+
+import "src/interplex/contact.proto";
+
+message Peer {
+  // Peer contact information
+  required UniSphere.Protocol.Contact contact = 1;
+  // Peer public key
+  required bytes public_key = 2;
+};

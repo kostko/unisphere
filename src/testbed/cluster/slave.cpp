@@ -248,15 +248,19 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
   for (int i = 0; i < request.nodes_size(); i++) {
     auto &node = request.nodes(i);
     Contact contact = Contact::fromMessage(node.contact());
-    std::list<Contact> peers;
+    std::list<Peer> peers;
     contact.addAddress(Address(boost::filesystem::temp_directory_path()/contact.nodeId().hex()), 1);
     for (int j = 0; j < node.peers_size(); j++) {
-      Contact peerContact = Contact::fromMessage(node.peers(j));
+      auto &peer = node.peers(j);
+
+      Contact peerContact = Contact::fromMessage(peer.contact());
+      PeerKey peerKey(peer.public_key());
       peerContact.addAddress(Address(boost::filesystem::temp_directory_path()/peerContact.nodeId().hex()), 1);
-      peers.push_back(peerContact);
+      peers.push_back(Peer(peerKey, peerContact));
     }
 
-    simulation->createNode(node.name(), contact, peers);
+    PrivatePeerKey key(node.public_key(), KeyData((unsigned char*) node.private_key().data(), node.private_key().size()));
+    simulation->createNode(node.name(), contact, key, peers);
   }
 
   // Setup controller service

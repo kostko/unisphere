@@ -51,13 +51,13 @@ public:
                                                              const boost::any &key,
                                                              const boost::any &value);
 
-  NodeIdentifier getNodeId(const std::string &name);
-
   int assignNodeToPartition(const std::string &name,
                             const NodeIdentifier &nodeId,
                             size_t partitions);
 
   Contact assignContact(Partition &part, const NodeIdentifier &nodeId);
+
+  PrivatePeerKey assignPrivateKey(const std::string &name);
 public:
   /// Graph
   Topology m_topology;
@@ -69,10 +69,10 @@ public:
   std::vector<Partition> m_partitions;
   /// Identifier generation type
   TopologyLoader::IdGenerationType m_idGenType;
-  /// Mapping of node names to identifiers
-  std::unordered_map<std::string, NodeIdentifier> m_names;
   /// Mapping of nodes to contacts
   std::unordered_map<NodeIdentifier, Contact> m_contacts;
+  /// Mapping of nodes to private keys
+  std::unordered_map<std::string, PrivatePeerKey> m_privateKeys;
   /// Mapping of nodes to descriptors
   std::unordered_map<NodeIdentifier, Partition::Node> m_nodes;
   /// Nodes in BFS traversal order
@@ -146,32 +146,6 @@ TopologyLoaderPrivate::TopologyLoaderPrivate()
 {
 }
 
-NodeIdentifier TopologyLoaderPrivate::getNodeId(const std::string &name)
-{
-  auto it = m_names.find(name);
-  if (it != m_names.end())
-    return it->second;
-
-  // Generate new identifier accoording to the selected function
-  NodeIdentifier nodeId;
-  switch (m_idGenType) {
-    case TopologyLoader::IdGenerationType::Consistent: {
-      Botan::Pipe pipe(new Botan::Hash_Filter("SHA-1"));
-      pipe.process_msg(name);
-      nodeId = NodeIdentifier(pipe.read_all_as_string(0));
-      break;
-    }
-    default:
-    case TopologyLoader::IdGenerationType::Random: {
-      nodeId = NodeIdentifier::random();
-      break;
-    }
-  }
-  m_names.insert({{ name, nodeId }});
-
-  return nodeId;
-}
-
 int TopologyLoaderPrivate::assignNodeToPartition(const std::string &name,
                                                  const NodeIdentifier &nodeId,
                                                  size_t partitions)
@@ -190,6 +164,20 @@ Contact TopologyLoaderPrivate::assignContact(Partition &part, const NodeIdentifi
   // TODO: Handle situations when we are out of ports
   m_contacts.insert({{ nodeId, contact }});
   return contact;
+}
+
+PrivatePeerKey TopologyLoaderPrivate::assignPrivateKey(const std::string &name)
+{
+  auto it = m_privateKeys.find(name);
+  if (it != m_privateKeys.end())
+    return it->second;
+
+  // TODO: This currently ignores TopologyLoader::IdGenerationType
+
+  PrivatePeerKey key;
+  key.generate();
+  m_privateKeys.insert({{ name, key }});
+  return key;
 }
 
 TopologyLoader::TopologyLoader()
@@ -233,9 +221,11 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
   std::unordered_set<TopologyVertex> nodes;
   for (auto vp = boost::vertices(topology); vp.first != vp.second; ++vp.first) {
     std::string name = boost::get(boost::vertex_name, topology, *vp.first);
-    NodeIdentifier nodeId = d->getNodeId(name);
+    PrivatePeerKey privateKey = d->assignPrivateKey(name);
+    NodeIdentifier nodeId = privateKey.nodeId();
     Partition &part = partitions[d->assignNodeToPartition(name, nodeId, partitions.size())];
-    Partition::Node node{ part.index, name, d->assignContact(part, nodeId) };
+    Partition::Node node{ part.index, name, d->assignContact(part, nodeId), privateKey };
+
     for (const auto &map : d->m_properties) {
       try {
         const auto &v = map.second->get(*vp.first);
@@ -250,10 +240,12 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
     // Add peers
     for (auto np = boost::adjacent_vertices(*vp.first, topology); np.first != np.second; ++np.first) {
       std::string peerName = boost::get(boost::vertex_name, topology, *np.first);
-      NodeIdentifier peerId = d->getNodeId(peerName);
+      PrivatePeerKey privateKey = d->assignPrivateKey(peerName);
+      NodeIdentifier peerId = privateKey.nodeId();
       Partition &peerPart = partitions[d->assignNodeToPartition(peerName, peerId, partitions.size())];
+      Contact contact = d->assignContact(peerPart, peerId);
 
-      node.peers.push_back(d->assignContact(peerPart, peerId));
+      node.peers.push_back(Peer(privateKey.publicKey(), contact));
     }
 
     part.nodes.push_back(node);
@@ -275,7 +267,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
     void discover_vertex(TopologyVertex &vertex, const Topology &topology)
     {
       std::string name = boost::get(boost::vertex_name, topology, vertex);
-      d->m_nodesBfs->push_back(d->m_nodes.at(d->getNodeId(name)));
+      d->m_nodesBfs->push_back(d->m_nodes.at(d->assignPrivateKey(name).nodeId()));
       nodes.erase(vertex);
     }
   } vis(d, nodes);

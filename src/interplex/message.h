@@ -48,16 +48,16 @@ public:
   enum class Type : std::uint8_t {
     /* 0x00 - 0x1F RESERVED FOR SYSTEM PROTOCOLS */
     Null_Protocol           = 0x00,
-    Interplex_KeepAlive     = 0x01,
-    Interplex_Measure       = 0x02,
-    Interplex_Hello         = 0x03,
-    Interplex_RPC_Request   = 0x04,
-    Interplex_RPC_Response  = 0x05,
-    Plexus_Routed           = 0x06,
-    Social_Announce         = 0x07,
-    Social_Retract          = 0x08,
-    Social_Refresh          = 0x09,
-    Social_Routed           = 0x0A,
+    Interplex_Hello         = 0x01,
+    Interplex_RPC_Request   = 0x02,
+    Interplex_RPC_Response  = 0x03,
+    Plexus_Routed           = 0x04,
+    Social_Announce         = 0x05,
+    Social_Retract          = 0x06,
+    Social_Refresh          = 0x07,
+    Social_Routed           = 0x08,
+    Social_SA_Create        = 0x09,
+    Social_SA_Invalid       = 0x0A,
 
     /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
 

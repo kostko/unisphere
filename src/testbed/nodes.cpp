@@ -31,10 +31,11 @@ namespace TestBed {
 VirtualNode::VirtualNode(Context &context,
                          NetworkSizeEstimator &sizeEstimator,
                          const std::string &name,
-                         const Contact &contact)
+                         const Contact &contact,
+                         const PrivatePeerKey &key)
   : name(name),
-    nodeId(contact.nodeId()),
-    identity(new SocialIdentity(nodeId)),
+    nodeId(key.nodeId()),
+    identity(new SocialIdentity(key)),
     linkManager(new LinkManager(context, nodeId)),
     router(new CompactRouter(*identity, *linkManager, sizeEstimator))
 {

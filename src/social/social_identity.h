@@ -20,6 +20,8 @@
 #define UNISPHERE_SOCIAL_IDENTITY_H
 
 #include "interplex/contact.h"
+#include "identity/peer_key.h"
+#include "social/peer.h"
 
 #include <boost/signals2/signal.hpp>
 #include <unordered_map>
@@ -28,38 +30,35 @@ namespace UniSphere {
 
 class UNISPHERE_EXPORT SocialIdentity {
 public:
-  /**
-   * Copy constructor.
-   */
-  SocialIdentity(const SocialIdentity &identity);
+  explicit SocialIdentity(const PrivatePeerKey &key);
 
-  explicit SocialIdentity(const NodeIdentifier &localId);
+  inline const NodeIdentifier &localId() const { return m_localId; }
 
-  inline NodeIdentifier localId() const { return m_localId; }
+  inline const PrivatePeerKey &localKey() const { return m_localKey; }
 
-  inline std::unordered_map<NodeIdentifier, Contact> peers() const { return m_peers; }
+  inline std::unordered_map<NodeIdentifier, Peer> peers() const { return m_peers; }
 
   bool isPeer(const Contact &contact) const;
 
-  void addPeer(const Contact &peer);
+  void addPeer(const Peer &peer);
+
+  void addPeer(const PeerKey &key, const Contact &contact);
 
   void removePeer(const NodeIdentifier &nodeId);
 
   Contact getPeerContact(const NodeIdentifier &nodeId) const;
-
-  // TODO: Trust weights should be added to individual peers
-
-  // TODO: There should be a way to persist the social identity
 public:
   /// Signal that gets called after a new peer is added
-  boost::signals2::signal<void(const Contact&)> signalPeerAdded;
+  boost::signals2::signal<void(const Peer&)> signalPeerAdded;
   /// Signal that gets called after a peer is removed
   boost::signals2::signal<void(const NodeIdentifier&)> signalPeerRemoved;
 private:
   /// Local identifier
   NodeIdentifier m_localId;
+  /// Local private peer key
+  PrivatePeerKey m_localKey;
   /// Social peers with contact information
-  std::unordered_map<NodeIdentifier, Contact> m_peers;
+  std::unordered_map<NodeIdentifier, Peer> m_peers;
 };
 
 }

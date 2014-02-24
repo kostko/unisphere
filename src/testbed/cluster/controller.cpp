@@ -29,6 +29,7 @@
 #include "rpc/engine.hpp"
 #include "rpc/service.hpp"
 #include "src/testbed/cluster/messages.pb.h"
+#include "src/social/peer.pb.h"
 
 #include <unordered_map>
 #include <sstream>
@@ -893,9 +894,16 @@ void Controller::run()
           Protocol::AssignPartitionRequest::Node *n = request.add_nodes();
           n->set_name(node.name);
           *n->mutable_contact() = node.contact.toMessage();
+          n->set_public_key(node.privateKey.signRaw());
+          n->set_private_key(
+            node.privateKey.signPrivateRaw(),
+            node.privateKey.signPrivateRaw().size()
+          );
 
-          for (const Contact &contact : node.peers) {
-            *n->add_peers() = contact.toMessage();
+          for (const Peer &peer : node.peers) {
+            UniSphere::Protocol::Peer *p = n->add_peers();
+            p->set_public_key(peer.key().signRaw());
+            *p->mutable_contact() = peer.contact().toMessage();
           }
         }
 

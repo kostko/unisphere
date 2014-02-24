@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_PARTITION_H
 
 #include "interplex/contact.h"
+#include "social/peer.h"
 
 #include <unordered_map>
 #include <list>
@@ -42,8 +43,10 @@ struct Partition {
     std::string name;
     /// Assigned contact
     Contact contact;
+    /// Assigned private key
+    PrivatePeerKey privateKey;
     /// A list of peers in the topology
-    std::list<Contact> peers;
+    std::list<Peer> peers;
     /// Node properties from the input topology
     std::unordered_map<std::string, boost::any> properties;
 
