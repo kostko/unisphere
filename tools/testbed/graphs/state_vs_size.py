@@ -60,7 +60,7 @@ class StateVsSize(base.PlotterBase):
     fit_function = self.graph.settings.get('fit', None)
     if fit_function is not None:
       popt, pcov = scipy.optimize.curve_fit(fit_function, X, Y)
-      Fx = numpy.linspace(min(X), max(X) + 2*(X[-1] - X[-2]), 100)
+      Fx = numpy.linspace(min(X), max(X) + 1*(X[-1] - X[-2]), 100)
       Fy = [fit_function(x, *popt) for x in Fx]
       ax.plot(Fx, Fy, linestyle='--', color='black', label=self.graph.settings.get('fit_label', 'Fit'))
 
@@ -68,6 +68,9 @@ class StateVsSize(base.PlotterBase):
     ax.set_ylabel('State at a Node [entries]')
     ax.grid()
     ax.set_ylim(0, None)
+
+    if self.graph.settings.get('scale'):
+      ax.set_xscale(self.graph.settings.get('scale'))
 
     legend = ax.legend(loc='lower right')
     legend.get_frame().set_alpha(0.8)
