@@ -55,5 +55,6 @@ class DegreeDistribution(base.PlotterBase):
     self.convert_axes_to_bw(ax)
 
     legend = ax.legend(loc='lower right')
-    legend.get_frame().set_alpha(0.8)
+    if self.settings.GRAPH_TRANSPARENCY:
+      legend.get_frame().set_alpha(0.8)
     fig.savefig(self.get_figure_filename())

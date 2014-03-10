@@ -118,7 +118,10 @@ class MessagingPerformance(base.PlotterBase):
     Plots a timeseries for a variable.
     """
     # Plot rate
-    ax.plot(X, Yrate, color=color, alpha=0.4, zorder=0)
+    if self.settings.GRAPH_TRANSPARENCY:
+      ax.plot(X, Yrate, color=color, alpha=0.4, zorder=0)
+    else:
+      ax.plot(X, Yrate, color=self.get_fake_alpha(color, 0.4), zorder=0)
 
     # Also plot the moving average
     w = 60
@@ -171,8 +174,9 @@ class MessagingPerformance(base.PlotterBase):
     ax.grid()
 
     if self.graph.settings.get('legend', True):
-      legend = ax.legend(loc='upper right', fontsize='small')
-      legend.get_frame().set_alpha(0.8)
+      legend = ax.legend(loc='upper right')
+      if self.settings.GRAPH_TRANSPARENCY:
+        legend.get_frame().set_alpha(0.8)
 
     fig.savefig(self.get_figure_filename())
 
@@ -200,7 +204,8 @@ class MessagingPerformance(base.PlotterBase):
         ax.set_xscale(self.graph.settings.get('avg_scale'))
 
       legend = ax.legend(loc='upper left')
-      legend.get_frame().set_alpha(0.8)
+      if self.settings.GRAPH_TRANSPARENCY:
+        legend.get_frame().set_alpha(0.8)
 
       fig.savefig(self.get_figure_filename("avgs"))
 

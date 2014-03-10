@@ -8,6 +8,7 @@ TESTBED_BINARY = os.path.join(TESTBED_ROOT, "build/release/apps/testbed/testbed"
 DATA_DIRECTORY = os.path.join(TESTBED_ROOT, "data")
 OUTPUT_DIRECTORY = os.path.join(TESTBED_ROOT, "output")
 OUTPUT_GRAPH_FORMAT = "pdf"
+GRAPH_TRANSPARENCY = False
 
 # Cluster configuration
 CLUSTER = {
@@ -167,9 +168,9 @@ GRAPHS = [
     variable="size", scale="log"),
   dict(name="size_state_distribution", plotter="graphs.StateDistribution", runs=["pf-b*"]),
   dict(name="size_ndb_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="ndb_s_act",
-    fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
+    fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Square root fit'),
   dict(name="size_rt_state_vs_size", plotter="graphs.StateVsSize", runs=["pf-b*"], state="rt_s_act",
-    fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Fit of $a \sqrt{x} + c$'),
+    fit=lambda x, a, b: a*numpy.sqrt(x)+b, fit_label='Square root fit'),
   dict(name="size_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="size",
     graph="input-topology.graphml", runs=["pf-b*"]),
   dict(name="size_degrees", plotter="graphs.DegreeVsVariable", variable="size", scale="log",

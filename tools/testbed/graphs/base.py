@@ -24,7 +24,9 @@ import glob
 import heapq
 import itertools
 import logging
+import matplotlib
 import networkx as nx
+import numpy
 import os
 import pandas
 import tempfile
@@ -125,6 +127,12 @@ class PlotterBase(object):
     self.runs = [RunOutputDescriptor(run_id, run, settings) for run in runs]
     self.settings = settings
 
+    matplotlib.rc('font', **{
+      'family': 'sans-serif',
+      'sans-serif': 'Adobe Garamond Pro',
+      'size': 14.0,
+    })
+
   def get_figure_filename(self, suffix=None):
     fname = self.graph.name
     if suffix is not None:
@@ -138,7 +146,7 @@ class PlotterBase(object):
 
   def convert_axes_to_bw(self, ax):
     """
-    Take each Line2D in the axes, ax, and convert the line style to be 
+    Take each Line2D in the axes, ax, and convert the line style to be
     suitable for black and white viewing.
     """
     MARKERSIZE = 3
@@ -158,6 +166,15 @@ class PlotterBase(object):
       line.set_dashes(COLORMAP[color]['dash'])
       line.set_marker(COLORMAP[color]['marker'])
       line.set_markersize(MARKERSIZE)
+
+  def get_fake_alpha(self, color, alpha) :
+    """
+    Compute alpha blending as if on the white background.
+    """
+
+    foreground_tuple  = color[:3]
+    foreground_arr = numpy.array(foreground_tuple)
+    return (1.0 - alpha) + foreground_arr * alpha
 
   def plot(self):
     raise NotImplementedError

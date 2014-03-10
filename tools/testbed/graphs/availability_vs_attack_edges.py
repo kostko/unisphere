@@ -74,5 +74,6 @@ class AvailabilityVsAttackEdges(base.PlotterBase):
     ax.axis((0.0, None, 0, 1.1))
 
     legend = ax.legend(loc='lower right')
-    legend.get_frame().set_alpha(0.8)
+    if self.settings.GRAPH_TRANSPARENCY:
+      legend.get_frame().set_alpha(0.8)
     fig.savefig(self.get_figure_filename())

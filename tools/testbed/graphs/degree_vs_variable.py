@@ -84,5 +84,6 @@ class DegreeVsVariable(base.PlotterBase):
       ax.set_xscale(self.graph.settings.get('scale'))
 
     legend = ax.legend(loc='upper left')
-    legend.get_frame().set_alpha(0.8)
+    if self.settings.GRAPH_TRANSPARENCY:
+      legend.get_frame().set_alpha(0.8)
     fig.savefig(self.get_figure_filename())
