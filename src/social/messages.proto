@@ -7,6 +7,18 @@ package UniSphere.Protocol;
 
 import "src/social/address.proto";
 
+message SecurityAssociationCreate {
+  // Public key for this SA
+  required bytes public_key = 1;
+  // Expiry (in seconds from creation)
+  required uint32 expiry = 2;
+}
+
+message SecurityAssociationInvalid {
+  // Invalid SA public key
+  required bytes public_key = 1;
+}
+
 // TODO: Cryptographic signing
 // TODO: Timestamp to avoid replay attacks
 // TODO: Missing optional cost field
@@ -48,7 +60,7 @@ message RoutedMessage {
   required bytes source_node = 3;
   // Source component identifier
   required uint32 source_comp = 4;
-  
+
   // Destination landmark
   optional bytes destination_landmark = 5;
   // Destination node landmark-relative address
@@ -57,12 +69,12 @@ message RoutedMessage {
   required bytes destination_node = 7;
   // Destination component identifier
   required uint32 destination_comp = 8;
-  
+
   // Hop limit
   required uint32 hop_limit = 9;
   // Delivery mode flag
   required bool delivery = 10;
-  
+
   // Message type (component dependent)
   required uint32 type = 11;
   // Message payload (type dependent)

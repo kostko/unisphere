@@ -30,17 +30,39 @@ namespace UniSphere {
 
 class UNISPHERE_EXPORT SocialIdentity {
 public:
+  /**
+   * Constructs a new social identity.
+   *
+   * @param key Private peer key
+   */
   explicit SocialIdentity(const PrivatePeerKey &key);
 
+  /**
+   * Returns the node identifier of the local node.
+   */
   inline const NodeIdentifier &localId() const { return m_localId; }
 
+  /**
+   * Returns the private key of the local node.
+   */
   inline const PrivatePeerKey &localKey() const { return m_localKey; }
 
-  inline std::unordered_map<NodeIdentifier, Peer> peers() const { return m_peers; }
+  /**
+   * Returns a specific peer instance.
+   *
+   * @param nodeId Peer's node identifier
+   * @return Peer instance
+   */
+  PeerPtr getPeer(const NodeIdentifier &nodeId) const;
+
+  /**
+   * Returns a map of node identifiers to peer instances.
+   */
+  inline std::unordered_map<NodeIdentifier, PeerPtr> peers() const { return m_peers; }
 
   bool isPeer(const Contact &contact) const;
 
-  void addPeer(const Peer &peer);
+  void addPeer(PeerPtr peer);
 
   void addPeer(const PeerKey &key, const Contact &contact);
 
@@ -49,16 +71,18 @@ public:
   Contact getPeerContact(const NodeIdentifier &nodeId) const;
 public:
   /// Signal that gets called after a new peer is added
-  boost::signals2::signal<void(const Peer&)> signalPeerAdded;
+  boost::signals2::signal<void(PeerPtr)> signalPeerAdded;
   /// Signal that gets called after a peer is removed
   boost::signals2::signal<void(const NodeIdentifier&)> signalPeerRemoved;
 private:
+  /// Mutex protecting the social identity
+  mutable std::recursive_mutex m_mutex;
   /// Local identifier
   NodeIdentifier m_localId;
   /// Local private peer key
   PrivatePeerKey m_localKey;
   /// Social peers with contact information
-  std::unordered_map<NodeIdentifier, Peer> m_peers;
+  std::unordered_map<NodeIdentifier, PeerPtr> m_peers;
 };
 
 }

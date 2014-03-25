@@ -43,11 +43,11 @@ public:
    * Constructs a new security association (SA).
    *
    * @param key Key
-   * @param expiryTime SA expiry time
+   * @param expiry SA expiry
    */
-  SecurityAssociation(const KeyType &key, const boost::posix_time::ptime &expiryTime)
+  SecurityAssociation(const KeyType &key, const boost::posix_time::time_duration &expiry)
     : key(key),
-      expiryTime(expiryTime)
+      expiryTime(boost::posix_time::microsec_clock::universal_time() + expiry)
   {
   }
 
@@ -101,6 +101,8 @@ typedef SecurityAssociations<PrivateSecurityAssociationPtr> PrivateSecurityAssoc
 
 class UNISPHERE_EXPORT Peer {
 public:
+  /// An invalid peer instance
+  static const Peer INVALID;
   /// Maximum number of peer security associations
   static const int max_security_associations = 10;
 
@@ -196,6 +198,8 @@ private:
   /// Security associations that we have chosen for this link
   PrivateSecurityAssociations m_privateSa;
 };
+
+UNISPHERE_SHARED_POINTER(Peer)
 
 }
 

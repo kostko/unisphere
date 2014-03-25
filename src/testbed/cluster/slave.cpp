@@ -248,7 +248,7 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
   for (int i = 0; i < request.nodes_size(); i++) {
     auto &node = request.nodes(i);
     Contact contact = Contact::fromMessage(node.contact());
-    std::list<Peer> peers;
+    std::list<PeerPtr> peers;
     contact.addAddress(Address(boost::filesystem::temp_directory_path()/contact.nodeId().hex()), 1);
     for (int j = 0; j < node.peers_size(); j++) {
       auto &peer = node.peers(j);
@@ -256,7 +256,7 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
       Contact peerContact = Contact::fromMessage(peer.contact());
       PeerKey peerKey(peer.public_key());
       peerContact.addAddress(Address(boost::filesystem::temp_directory_path()/peerContact.nodeId().hex()), 1);
-      peers.push_back(Peer(peerKey, peerContact));
+      peers.push_back(boost::make_shared<Peer>(peerKey, peerContact));
     }
 
     PrivatePeerKey key(node.public_key(), KeyData((unsigned char*) node.private_key().data(), node.private_key().size()));

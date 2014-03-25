@@ -49,7 +49,7 @@ TEST_CASE("social/peer", "verify that peer operations work")
   // Test whether peer SAs work
   auto pubSa = peer.addPeerSecurityAssociation(PeerSecurityAssociation{
     key.publicKey(),
-    boost::posix_time::microsec_clock::universal_time() + boost::posix_time::minutes(5)
+    boost::posix_time::minutes(5)
   });
   auto selectSa = peer.selectPeerSecurityAssociation(ctx);
   REQUIRE(selectSa == pubSa);

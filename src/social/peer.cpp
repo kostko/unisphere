@@ -23,6 +23,10 @@
 
 namespace UniSphere {
 
+// Define the invalid peer instance that can be used for return
+// references to invalid peers
+const Peer Peer::INVALID = Peer();
+
 Peer::Peer()
 {
 }
@@ -76,10 +80,7 @@ PrivateSecurityAssociationPtr Peer::createPrivateSecurityAssociation(const boost
   key.generate();
 
   // Create new security association
-  PrivateSecurityAssociationPtr sa = boost::make_shared<PrivateSecurityAssociation>(
-    key,
-    boost::posix_time::microsec_clock::universal_time() + expiry
-  );
+  PrivateSecurityAssociationPtr sa = boost::make_shared<PrivateSecurityAssociation>(key, expiry);
   m_privateSa.push_front(sa);
 
   // Remove old security associations

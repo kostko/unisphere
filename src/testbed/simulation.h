@@ -139,7 +139,7 @@ public:
   void createNode(const std::string &name,
                   const Contact &contact,
                   const PrivatePeerKey &key,
-                  const std::list<Peer> &peers);
+                  const std::list<PeerPtr> &peers);
 
   /**
    * Returns the current simulation state.

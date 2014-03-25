@@ -18,6 +18,8 @@
  */
 #include "social/social_identity.h"
 
+#include <boost/make_shared.hpp>
+
 namespace UniSphere {
 
 SocialIdentity::SocialIdentity(const PrivatePeerKey &key)
@@ -31,22 +33,26 @@ bool SocialIdentity::isPeer(const Contact &contact) const
   return m_peers.find(contact.nodeId()) != m_peers.end();
 }
 
-void SocialIdentity::addPeer(const Peer &peer)
+void SocialIdentity::addPeer(PeerPtr peer)
 {
-  if (peer.isNull())
+  if (!peer || peer->isNull())
     return;
 
-  m_peers[peer.nodeId()] = peer;
+  RecursiveUniqueLock lock(m_mutex);
+
+  m_peers[peer->nodeId()] = peer;
   signalPeerAdded(peer);
 }
 
 void SocialIdentity::addPeer(const PeerKey &key, const Contact &contact)
 {
-  addPeer(Peer(key, contact));
+  addPeer(boost::make_shared<Peer>(key, contact));
 }
 
 void SocialIdentity::removePeer(const NodeIdentifier &nodeId)
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   m_peers.erase(nodeId);
   signalPeerRemoved(nodeId);
 }
@@ -56,11 +62,24 @@ Contact SocialIdentity::getPeerContact(const NodeIdentifier &nodeId) const
   if (!nodeId.isValid())
     return Contact();
 
+  RecursiveUniqueLock lock(m_mutex);
+
   auto it = m_peers.find(nodeId);
   if (it == m_peers.end())
     return Contact();
 
-  return it->second.contact();
+  return it->second->contact();
+}
+
+PeerPtr SocialIdentity::getPeer(const NodeIdentifier &nodeId) const
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  auto it = m_peers.find(nodeId);
+  if (it == m_peers.end())
+    return PeerPtr();
+
+  return it->second;
 }
 
 }
