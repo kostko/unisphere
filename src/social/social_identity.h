@@ -60,14 +60,41 @@ public:
    */
   inline std::unordered_map<NodeIdentifier, PeerPtr> peers() const { return m_peers; }
 
+  /**
+   * Returns true if a given contact is a known peer.
+   *
+   * @param contact Contact data
+   * @return True if contact is a valid peer and false otherwise
+   */
   bool isPeer(const Contact &contact) const;
 
+  /**
+   * Adds a new peer.
+   *
+   * @param peer Peer instance to add
+   */
   void addPeer(PeerPtr peer);
 
+  /**
+   * Adds a new peer.
+   *
+   * @param key Peer public key
+   * @param contact Peer contact data
+   */
   void addPeer(const PeerKey &key, const Contact &contact);
 
+  /**
+   * Removes an existing peer.
+   *
+   * @param nodeId Peer's node identifier
+   */
   void removePeer(const NodeIdentifier &nodeId);
 
+  /**
+   * Returns the peer contact for a given peer.
+   *
+   * @param nodeId Peer's node identifier
+   */
   Contact getPeerContact(const NodeIdentifier &nodeId) const;
 public:
   /// Signal that gets called after a new peer is added
