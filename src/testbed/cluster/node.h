@@ -36,30 +36,71 @@ class RpcEngine;
 
 namespace TestBed {
 
+/**
+ * A base class for implementing different roles in a testbed
+ * cluster.
+ */
 class UNISPHERE_EXPORT ClusterNode : public OptionModule {
 public:
+  /**
+   * Class constructor.
+   */
   ClusterNode();
 
   ClusterNode(const ClusterNode&) = delete;
   ClusterNode &operator=(const ClusterNode&) = delete;
 
+  /**
+   * Starts this cluster node.
+   *
+   * @return Program exit code
+   */
   int start();
 protected:
+  /**
+   * Sets up command line options and initializes the cluster node.
+   *
+   * @param argc Number of command line arguments
+   * @param argv Command line arguments
+   * @param options Program options parser configuration
+   * @param variables Prgoram option variables
+   */
   void setupOptions(int argc,
                     char **argv,
                     boost::program_options::options_description &options,
                     boost::program_options::variables_map &variables);
 
+  /**
+   * Actual cluster node implementations should override this method
+   * to perform actual work here.
+   */
   virtual void run() {};
 protected:
+  /**
+   * Returns the testbed's UNISPHERE context.
+   */
   Context &context();
 
+  /**
+   * Returns the UNISPHERE link manager used for communication between
+   * the testbed cluster nodes.
+   */
   LinkManager &linkManager();
 
+  /**
+   * Returns the RPC engine used for calling methods between the testbed
+   * cluster nodes.
+   */
   RpcEngine<InterplexRpcChannel> &rpc();
 
+  /**
+   * Stops the cluster node and exits with a zero exit code.
+   */
   void stop();
 
+  /**
+   * Stops the  cluster node and exits with a non-zero exit code.
+   */
   void fail();
 private:
   UNISPHERE_DECLARE_PRIVATE(ClusterNode)

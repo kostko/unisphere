@@ -29,6 +29,9 @@ namespace UniSphere {
 
 namespace TestBed {
 
+/**
+ * Descriptor of a slave node's information.
+ */
 class SlaveDescriptor {
 public:
   /// Slave contact information

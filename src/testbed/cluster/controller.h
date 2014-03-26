@@ -25,23 +25,47 @@ namespace UniSphere {
 
 namespace TestBed {
 
+/**
+ * Controller coordinates the execution of test scenarios on the
+ * slaves.
+ */
 class UNISPHERE_EXPORT Controller : public ClusterNode {
   friend class ControllerScenarioApi;
 public:
+  /**
+   * Class constructor.
+   */
   Controller();
 
   Controller(const Controller&) = delete;
   Controller &operator=(const Controller&) = delete;
 protected:
+  /**
+   * Sets up command line options and initializes the cluster node.
+   *
+   * @param argc Number of command line arguments
+   * @param argv Command line arguments
+   * @param options Program options parser configuration
+   * @param variables Prgoram option variables
+   */
   void setupOptions(int argc,
                     char **argv,
                     boost::program_options::options_description &options,
                     boost::program_options::variables_map &variables);
 
+  /**
+   * Runs the controller.
+   */
   void run();
 private:
+  /**
+   * Aborts the simulation.
+   */
   void abortSimulation();
 
+  /**
+   * Finishes the simulation.
+   */
   void finishSimulation();
 private:
   UNISPHERE_DECLARE_PRIVATE(Controller)

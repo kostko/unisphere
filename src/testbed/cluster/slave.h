@@ -27,25 +27,51 @@ namespace UniSphere {
 
 namespace TestBed {
 
+/**
+ * Testbed node that runs the simulated UNISPHERE nodes.
+ */
 class UNISPHERE_EXPORT Slave : public ClusterNode {
   friend class SlaveTestCaseApi;
 public:
+  /**
+   * Class constructor.
+   */
   Slave();
 
   Slave(const Slave&) = delete;
   Slave &operator=(const Slave&) = delete;
 protected:
+  /**
+   * Sets up command line options and initializes the cluster node.
+   *
+   * @param argc Number of command line arguments
+   * @param argv Command line arguments
+   * @param options Program options parser configuration
+   * @param variables Prgoram option variables
+   */
   void setupOptions(int argc,
                     char **argv,
                     boost::program_options::options_description &options,
                     boost::program_options::variables_map &variables);
 
+  /**
+   * Runs the slave.
+   */
   void run();
 private:
+  /**
+   * Performs a testbed cluster join.
+   */
   void joinCluster();
 
+  /**
+   * Performs a rejoin to a testbed cluster.
+   */
   void rejoinCluster();
 
+  /**
+   * Performs periodical cluster heartbeats.
+   */
   void heartbeat(const boost::system::error_code &error = boost::system::error_code());
 private:
   UNISPHERE_DECLARE_PRIVATE(Slave)

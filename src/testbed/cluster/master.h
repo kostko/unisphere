@@ -25,6 +25,10 @@ namespace UniSphere {
 
 namespace TestBed {
 
+/**
+ * Testbed cluster master node responsible for keeping a list of active
+ * slaves and providing this information to the controller node.
+ */
 class UNISPHERE_EXPORT Master : public ClusterNode {
 public:
   /**
@@ -39,11 +43,17 @@ public:
     Aborting
   };
 
+  /**
+   * Class constructor.
+   */
   Master();
 
   Master(const Master&) = delete;
   Master &operator=(const Master&) = delete;
 protected:
+  /**
+   * Runs the master.
+   */
   void run();
 private:
   UNISPHERE_DECLARE_PRIVATE(Master)
