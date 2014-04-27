@@ -37,6 +37,7 @@
 namespace UniSphere {
 
 class LinkManager;
+class LinkManagerPrivate;
 UNISPHERE_SHARED_POINTER(Linklet)
 UNISPHERE_SHARED_POINTER(MessageDispatcher)
 
@@ -47,7 +48,7 @@ UNISPHERE_SHARED_POINTER(MessageDispatcher)
  */
 class UNISPHERE_NO_EXPORT Link : public boost::enable_shared_from_this<Link> {
 public:
-  friend class LinkManager;
+  friend class LinkManagerPrivate;
   friend class Linklet;
 
   /**

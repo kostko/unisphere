@@ -70,7 +70,7 @@ public:
   /**
    * Returns the UNISPHERE context this manager belongs to.
    */
-  inline Context &context() const { return m_context; }
+  Context &context() const;
 
   /**
    * Sends a message to the given contact address.
@@ -118,7 +118,7 @@ public:
   /**
    * Returns the linklet factory instance.
    */
-  inline const LinkletFactory &getLinkletFactory() const { return m_linkletFactory; }
+  const LinkletFactory &getLinkletFactory() const;
 
   /**
    * Returns the local contact information.
@@ -128,12 +128,12 @@ public:
   /**
    * Returns the local node identifier.
    */
-  inline const NodeIdentifier &getLocalNodeId() const { return m_privateKey.nodeId(); }
+  const NodeIdentifier &getLocalNodeId() const;
 
   /**
    * Returns the local private key.
    */
-  inline const PrivatePeerKey &getLocalPrivateKey() const { return m_privateKey; }
+  const PrivatePeerKey &getLocalPrivateKey() const;
 
   /**
    * Sets a local address for all outgoing connections. This will cause all
@@ -146,7 +146,7 @@ public:
   /**
    * Returns the local address.
    */
-  inline const Address &getLocalAddress() const { return m_localAddress; }
+  const Address &getLocalAddress() const;
 
   /**
    * Invokes registered peer verification hooks (signalVerifyPeer) and
@@ -168,63 +168,13 @@ public:
   boost::signals2::signal<bool (const Contact&), AllTrueCombiner> signalVerifyPeer;
 protected:
   /**
-   * Returns a link suitable for communication with the specified contact.
-   *
-   * @param contact Contact information
-   * @return A valid link instance or null
-   */
-  LinkPtr getOrCreateLink(const Contact &contact);
-
-  /**
    * Removes a specific link.
    *
    * @param link Link instance
    */
   void removeLink(LinkPtr link);
-protected:
-  /**
-   * Called by a listener @ref Linklet when a new connection gets accepted
-   * and is ready for dispatch.
-   *
-   * @param linklet New linklet for this connection
-   */
-  void linkletAcceptedConnection(LinkletPtr linklet);
-
-  /**
-   * Called by a @ref Link when a new message is received.
-   *
-   * @param msg Received message
-   */
-  void linkMessageReceived(const Message &msg);
 private:
-  // TODO: Make this private via PIMPL
-
-  /// UNISPHERE context this manager belongs to
-  Context& m_context;
-  /// Logger instance
-  Logger m_logger;
-
-  /// Local private key
-  PrivatePeerKey m_privateKey;
-
-  /// Linklet factory for producing new linklets
-  LinkletFactory m_linkletFactory;
-
-  /// Mapping of all managed links by their identifiers
-  std::unordered_map<NodeIdentifier, LinkPtr> m_links;
-  /// Mutex protecting the link mapping
-  std::recursive_mutex m_linksMutex;
-
-  /// A list of all listening linklets
-  std::list<LinkletPtr> m_listeners;
-  /// Mutex protecting the listening linklet list
-  std::mutex m_listenersMutex;
-
-  /// Local outgoing address
-  Address m_localAddress;
-
-  /// Statistics
-  Statistics m_statistics;
+  UNISPHERE_DECLARE_PRIVATE(LinkManager)
 };
 
 }
