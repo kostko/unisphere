@@ -20,7 +20,6 @@
 from . import base
 from .. import exceptions
 
-import hashlib
 import logging
 import math
 import multiprocessing
@@ -49,7 +48,8 @@ class SimpleCluster(base.ClusterRunnerBase):
   def setup(self, run, run_id):
     try:
       # Generate identifier for the cluster master
-      self.master_id = hashlib.sha1(os.urandom(32)).hexdigest()
+      self.master_private_key = '01EbWJwzjdKeUOcU7Ld5XSNRM+cnAEAKHa0Q0k6sjqs='
+      self.master_public_key = 'o+exIuaGd3w5w/h2PU0EDzkHJDej9Xxd/FZZwJW3wTw='
 
       # Prepare output directory
       out_dir = os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name)
@@ -75,7 +75,8 @@ class SimpleCluster(base.ClusterRunnerBase):
           self.settings.TESTBED_BINARY,
           "--cluster-role", "master",
           "--cluster-ip", self.cluster_cfg['master_ip'],
-          "--cluster-node-id", self.master_id
+          "--cluster-priv-key", self.master_private_key,
+          "--cluster-pub-key", self.master_public_key
         ],
         stdin=None,
         stderr=self.log_master,
@@ -105,7 +106,7 @@ class SimpleCluster(base.ClusterRunnerBase):
             "--cluster-role", "slave",
             "--cluster-ip", self.cluster_cfg['slave_ip'] % slave_id,
             "--cluster-master-ip", self.cluster_cfg['master_ip'],
-            "--cluster-master-id", self.master_id,
+            "--cluster-master-pub-key", self.master_public_key,
             "--sim-ip", self.cluster_cfg['slave_sim_ip'] % slave_id,
             "--sim-port-start", str(self.cluster_cfg['slave_sim_ports'][0]),
             "--sim-port-end", str(self.cluster_cfg['slave_sim_ports'][1]),
@@ -124,7 +125,7 @@ class SimpleCluster(base.ClusterRunnerBase):
 
       # Wait for the slaves to register themselves
       time.sleep(5)
-      
+
       logger.info("Simple cluster ready.")
     except:
       logger.error("Error while setting up cluster, aborting!")
@@ -146,7 +147,7 @@ class SimpleCluster(base.ClusterRunnerBase):
         "--cluster-role", "controller",
         "--cluster-ip", self.cluster_cfg['controller_ip'],
         "--cluster-master-ip", self.cluster_cfg['master_ip'],
-        "--cluster-master-id", self.master_id,
+        "--cluster-master-pub-key", self.master_public_key,
         "--topology", topology_path,
         "--scenario", run.settings['scenario'],
         "--out-dir", os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name),

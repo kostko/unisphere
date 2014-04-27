@@ -145,6 +145,7 @@ Simulation::Simulation(std::uint32_t seed, size_t threads, size_t globalNodeCoun
 
 SimulationSectionPtr Simulation::section()
 {
+  // Can't use make_shared because the constructor is private
   return SimulationSectionPtr(new SimulationSection(*this));
 }
 

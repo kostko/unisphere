@@ -41,25 +41,27 @@ TEST_CASE("social/peer", "verify that peer operations work")
   PrivatePeerKey key;
   key.generate();
   // Generate contact information
-  Contact contact(key.nodeId());
+  Contact contact(key);
 
   // Create new peer
   Peer peer(key.publicKey(), contact);
 
   // Test whether peer SAs work
+  PrivateSignKey skey;
+  skey.generate();
   auto pubSa = peer.addPeerSecurityAssociation(PeerSecurityAssociation{
-    key.publicKey(),
+    skey.publicKey(),
     boost::posix_time::minutes(5)
   });
   auto selectSa = peer.selectPeerSecurityAssociation(ctx);
   REQUIRE(selectSa == pubSa);
-  peer.removePeerSecurityAssociation(key.signRaw());
+  peer.removePeerSecurityAssociation(skey.raw());
   selectSa = peer.selectPeerSecurityAssociation(ctx);
   REQUIRE(!selectSa);
 
   // Test whether private SAs work
   auto privSa = peer.createPrivateSecurityAssociation(boost::posix_time::minutes(5));
-  auto checkSa = peer.getPrivateSecurityAssociation(privSa->signRaw());
+  auto checkSa = peer.getPrivateSecurityAssociation(privSa->raw());
   REQUIRE(privSa == checkSa);
 }
 
@@ -77,7 +79,7 @@ TEST_CASE("social", "verify that compact routing operations work")
   // Network size estimator
   OracleNetworkSizeEstimator sizeEstimator(14);
   // Link manager
-  LinkManager linkManager(ctx, privateKey.nodeId());
+  LinkManager linkManager(ctx, privateKey);
   // Router
   CompactRouter router(identity, linkManager, sizeEstimator);
 

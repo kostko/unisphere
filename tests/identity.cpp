@@ -20,10 +20,77 @@
 #include "catch.hpp"
 
 #include "identity/node_identifier.h"
+#include "identity/sign_key.h"
 #include "identity/peer_key.h"
 #include "identity/exceptions.h"
 
 using namespace UniSphere;
+
+TEST_CASE("identity/sign_key", "verify that sign key works")
+{
+  LibraryInitializer init;
+
+  SECTION("s1", "random key")
+  {
+    PrivateSignKey key;
+    // Generate a new private key
+    key.generate();
+    REQUIRE(!key.isNull());
+
+    // Sign a message with this key
+    std::string origMsg("Hello World!");
+    std::string signedMessage = key.sign(origMsg);
+    std::string msg = key.signOpen(signedMessage);
+    REQUIRE(msg == origMsg);
+  }
+
+  SECTION("s2", "invalid decode")
+  {
+    KeyData invalidPrivateKey((unsigned char*) "foo", 3);
+    PrivateSignKey keyA("not-a-valid-key", invalidPrivateKey, SignKey::Format::Raw);
+    PrivateSignKey keyB("not-a-valid-key", invalidPrivateKey, SignKey::Format::Base64);
+
+    // Check that keys are null
+    REQUIRE(keyA.isNull());
+    REQUIRE(keyB.isNull());
+
+    // Check that sign methods throw
+    REQUIRE_THROWS_AS(keyA.sign("foo"), NullKey);
+    REQUIRE_THROWS_AS(keyA.signOpen("foo"), NullKey);
+  }
+
+  SECTION("s3", "specific key")
+  {
+    PrivateSignKey key(
+      "H2wZSxxqitirRMKrQRDv2uC8e1z3F2SlELYbwcgtsdM=",
+      KeyData(
+        (unsigned char*) "W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x0w==",
+        88
+      ),
+      SignKey::Format::Base64
+    );
+
+    // Check that keys have been parsed
+    REQUIRE(!key.isNull());
+
+    // Sign a message with this key
+    std::string origMsg("Hello World!");
+    std::string signedMessage = key.sign(origMsg);
+    std::string msg = key.signOpen(signedMessage);
+    REQUIRE(msg == origMsg);
+
+    // Import/export of key
+    std::ostringstream bufferOut;
+    bufferOut << key;
+    std::string serialized = bufferOut.str();
+    std::istringstream bufferIn(serialized);
+    PrivateSignKey deserialized;
+    bufferIn >> deserialized;
+
+    REQUIRE(!deserialized.isNull());
+    REQUIRE(deserialized == key);
+  }
+}
 
 TEST_CASE("identity/peer_key", "verify that peer key works")
 {
@@ -38,12 +105,6 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
 
     // Check that node identifier is correctly derived
     REQUIRE(key.nodeId().isValid());
-
-    // Sign a message with this key
-    std::string origMsg("Hello World!");
-    std::string signedMessage = key.sign(origMsg);
-    std::string msg = key.signOpen(signedMessage);
-    REQUIRE(msg == origMsg);
   }
 
   SECTION("s2", "invalid decode")
@@ -55,19 +116,15 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
     // Check that keys are null
     REQUIRE(keyA.isNull());
     REQUIRE(keyB.isNull());
-
-    // Check that sign methods throw
-    REQUIRE_THROWS_AS(keyA.sign("foo"), NullPeerKey);
-    REQUIRE_THROWS_AS(keyA.signOpen("foo"), NullPeerKey);
   }
 
-  SECTION("s2", "specific key")
+  SECTION("s3", "specific key")
   {
     PrivatePeerKey key(
-      "H2wZSxxqitirRMKrQRDv2uC8e1z3F2SlELYbwcgtsdM=",
+      "wNc7fX5Kn7NgRQM9ba7x4tLFoY9A1JSfNCa5QPAK61w=",
       KeyData(
-        (unsigned char*) "W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x0w==",
-        88
+        (unsigned char*) "eiIjfOybATHLE22Ee5WZBjg9emUcG778jj4DXD5OhDs=",
+        44
       ),
       PeerKey::Format::Base64
     );
@@ -77,13 +134,7 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
 
     // Check that node identifier is correctly derived
     REQUIRE(key.nodeId().isValid());
-    REQUIRE(key.nodeId().hex() == "79e02eb463e43bc8969896f8d537b5a1cb56b016");
-
-    // Sign a message with this key
-    std::string origMsg("Hello World!");
-    std::string signedMessage = key.sign(origMsg);
-    std::string msg = key.signOpen(signedMessage);
-    REQUIRE(msg == origMsg);
+    REQUIRE(key.nodeId().hex() == "1c87b9b333cad9f491b86d89b4973c92c13826e0");
 
     // Import/export of key
     std::ostringstream bufferOut;

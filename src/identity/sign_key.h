@@ -16,36 +16,32 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_IDENTITY_PEERKEY_H
-#define UNISPHERE_IDENTITY_PEERKEY_H
+#ifndef UNISPHERE_IDENTITY_SIGNKEY_H
+#define UNISPHERE_IDENTITY_SIGNKEY_H
 
 #include "core/context.h"
-#include "identity/node_identifier.h"
 #include "identity/key.h"
 
 namespace UniSphere {
 
 /**
- * Public peer key base.
+ * Public signing key base.
  */
-class UNISPHERE_EXPORT PeerKeyBase {
+class UNISPHERE_EXPORT SignKeyBase {
 public:
   /// Size of the public key (in bytes)
   static const size_t public_key_length;
 
   /**
-   * Returns a node identifier that identifies this peer key.
-   */
-  const NodeIdentifier &nodeId() const;
-
-  /**
-   * Encrypts the specified buffer.
+   * Verifies the cryptographically signed buffer and returns the payload
+   * in case verification succeeds.
    *
-   * @param buffer Buffer to encrypt
-   * @return Encrypted buffer
-   * @throws NullPeerKey When attempting to encrypt with a null key
+   * @param signedBuffer Cryptographically signed buffer
+   * @return Payload
+   * @throws InvalidSignature When the signature is not valid
+   * @throws NullPeerKey When attempting to verify with a null key
    */
-  std::string encrypt(const std::string &buffer) const;
+  std::string signOpen(const std::string &signedBuffer) const;
 protected:
   /**
    * Performs public key validation and sets the key to null if it
@@ -55,25 +51,23 @@ protected:
 protected:
   // Public key storage
   std::string m_public;
-  // Cached node identifier
-  mutable NodeIdentifier m_nodeId;
 };
 
-/// Public peer key
-typedef Key<PeerKeyBase> PeerKey;
+/// Public signing key
+typedef Key<SignKeyBase> SignKey;
 
 /**
- * Private peer key base.
+ * Private signing key base.
  */
-class UNISPHERE_EXPORT PrivatePeerKeyBase : public PeerKey {
+class UNISPHERE_EXPORT PrivateSignKeyBase : public SignKey {
 public:
   /// Public key type
-  typedef PeerKey public_key_type;
+  typedef SignKey public_key_type;
   /// Size of the private key (in bytes)
   static const size_t private_key_length;
 
   // Inherited base constructors
-  using PeerKey::PeerKey;
+  using SignKey::SignKey;
 
   /**
    * Generates a new private peer key and overwrites the current key.
@@ -81,14 +75,13 @@ public:
   void generate();
 
   /**
-   * Opens an encrypted box.
+   * Cryptographically signs the specified buffer.
    *
-   * @param encryptedBuffer Encrypted box
-   * @return Plaintext
-   * @throws InvalidSignature When the signature is not valid
-   * @throws NullPeerKey When attempting to open a box with a null key
+   * @param buffer Buffer to sign
+   * @return Cryptographically signed buffer
+   * @throws NullPeerKey When attempting to sign with a null key
    */
-  std::string boxOpen(const std::string &encryptedBuffer) const;
+  std::string sign(const std::string &buffer) const;
 protected:
   /**
    * Performs private key validation and sets the key to null if it
@@ -100,8 +93,8 @@ protected:
   KeyData m_private;
 };
 
-/// Private peer key
-typedef PrivateKey<PrivatePeerKeyBase> PrivatePeerKey;
+/// Private signing key
+typedef PrivateKey<PrivateSignKeyBase> PrivateSignKey;
 
 }
 

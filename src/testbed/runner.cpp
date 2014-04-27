@@ -24,6 +24,7 @@
 #include "testbed/exceptions.h"
 
 #include <boost/program_options.hpp>
+#include <boost/make_shared.hpp>
 
 namespace po = boost::program_options;
 
@@ -94,9 +95,9 @@ int RunnerPrivate::run(int argc, char **argv)
     // Handle cluster role option before all others as it determines which module will be used
     if (vm.count("cluster-role")) {
       switch (vm["cluster-role"].as<ClusterRole>()) {
-        case ClusterRole::Master: m_clusterNode = ClusterNodePtr(new Master); break;
-        case ClusterRole::Slave: m_clusterNode = ClusterNodePtr(new Slave); break;
-        case ClusterRole::Controller: m_clusterNode = ClusterNodePtr(new Controller); break;
+        case ClusterRole::Master: m_clusterNode = boost::make_shared<Master>(); break;
+        case ClusterRole::Slave: m_clusterNode = boost::make_shared<Slave>(); break;
+        case ClusterRole::Controller: m_clusterNode = boost::make_shared<Controller>(); break;
       }
     } else {
       std::cout << "ERROR: No --cluster-role specified!" << std::endl;

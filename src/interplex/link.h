@@ -21,7 +21,7 @@
 
 #include "core/globals.h"
 #include "core/context.h"
-
+#include "identity/peer_key.h"
 #include "interplex/contact.h"
 #include "interplex/message.h"
 
@@ -79,7 +79,12 @@ public:
    * Returns the node identifier of the node on the other side of
    * this link.
    */
-  NodeIdentifier nodeId() const { return m_nodeId; }
+  NodeIdentifier nodeId() const { return m_peerKey.nodeId(); }
+
+  /**
+   * Returns the peer key of the node on the other side of this link.
+   */
+  PeerKey peerKey() const { return m_peerKey; }
 
   /**
    * Returns the current link state.
@@ -98,10 +103,10 @@ protected:
    * Private constructor.
    *
    * @param manager Link manager instance
-   * @param nodeId Identifier of the node on the other end
+   * @param peerKey Peer key of the node on the other end
    * @param maxIdleTime Maximum number of seconds a link can be idle
    */
-  Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTime);
+  Link(LinkManager &manager, const PeerKey &peerKey, time_t maxIdleTime);
 
   /**
    * Performs any post-construct initialization. This is required because
@@ -231,8 +236,8 @@ private:
   LinkManager &m_manager;
   /// Logger instance
   Logger m_logger;
-  /// Other end of this link
-  NodeIdentifier m_nodeId;
+  /// Public key of the other peer
+  PeerKey m_peerKey;
   /// Current link state
   State m_state;
   /// Maximum number of seconds a link can be idle without being closed

@@ -30,6 +30,7 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/make_shared.hpp>
 
 namespace midx = boost::multi_index;
 
@@ -565,7 +566,7 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
     // Discover the originator for this entry
     auto it = m_originatorMap.find(entry->destination);
     if (it == m_originatorMap.end()) {
-      RouteOriginatorPtr nro(new RouteOriginator(entry->destination));
+      RouteOriginatorPtr nro(boost::make_shared<RouteOriginator>(entry->destination));
       entry->originator = nro;
       m_originatorMap.insert({{entry->destination, nro}});
     } else {

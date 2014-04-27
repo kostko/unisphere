@@ -27,10 +27,10 @@
 
 namespace UniSphere {
 
-LinkManager::LinkManager(Context &context, const NodeIdentifier &nodeId)
+LinkManager::LinkManager(Context &context, const PrivatePeerKey &privateKey)
   : m_context(context),
     m_logger(logging::keywords::channel = "link_manager"),
-    m_nodeId(nodeId),
+    m_privateKey(privateKey),
     m_linkletFactory(*this)
 {
 }
@@ -46,11 +46,11 @@ void LinkManager::send(const Contact &contact, const Message &msg)
   BOOST_ASSERT(!contact.isNull());
 
   // Ignore attempted deliveries to the local node
-  if (contact.nodeId() == m_nodeId)
+  if (contact.nodeId() == m_privateKey.nodeId())
     return;
 
   // Create a new link or retrieve an existing link if one exists
-  LinkPtr link = get(contact);
+  LinkPtr link = getOrCreateLink(contact);
   if (!link) {
     // No contact address is available and link is not an existing one; we
     // can only drop the packet
@@ -65,10 +65,29 @@ void LinkManager::send(const Contact &contact, const Message &msg)
 
 void LinkManager::send(const NodeIdentifier &nodeId, const Message &msg)
 {
-  send(Contact(nodeId), msg);
+  RecursiveUniqueLock lock(m_linksMutex);
+  LinkPtr link;
+  auto it = m_links.find(nodeId);
+  if (it != m_links.end()) {
+    link = it->second;
+
+    // It can happen that link has switched to invalid and we really should not
+    // queue messages to such a link as they will be lost
+    if (!link->isValid()) {
+      BOOST_LOG_SEV(m_logger, log::warning) << "No link to destination, dropping message!";
+      return removeLink(link);
+    }
+  } else {
+    BOOST_LOG_SEV(m_logger, log::warning) << "No link to destination, dropping message!";
+    return;
+  }
+
+  link->send(msg);
+  m_statistics.global.msgXmits++;
+  m_statistics.links[link->nodeId()].msgXmits++;
 }
 
-LinkPtr LinkManager::get(const Contact &contact, bool create)
+LinkPtr LinkManager::getOrCreateLink(const Contact &contact)
 {
   RecursiveUniqueLock lock(m_linksMutex);
   LinkPtr link;
@@ -79,14 +98,15 @@ LinkPtr LinkManager::get(const Contact &contact, bool create)
     // It can happen that link has switched to invalid and we really should not
     // queue messages to such a link as they will be lost
     if (!link->isValid()) {
-      remove(link);
+      removeLink(link);
       link = LinkPtr();
     }
   }
 
   if (!link) {
-    if (contact.hasAddresses() && create) {
-      link = LinkPtr(new Link(*this, contact.nodeId(), 600));
+    if (contact.hasAddresses()) {
+      // Note that we can't use make_shared here because the Link constructor is private
+      link = LinkPtr(new Link(*this, contact.peerKey(), 600));
       link->init();
       link->signalMessageReceived.connect(boost::bind(&LinkManager::linkMessageReceived, this, _1));
       m_links.insert({{ contact.nodeId(), link }});
@@ -147,7 +167,7 @@ Contact LinkManager::getLinkContact(const NodeIdentifier &linkId)
   return m_links[linkId]->contact();
 }
 
-void LinkManager::remove(LinkPtr link)
+void LinkManager::removeLink(LinkPtr link)
 {
   RecursiveUniqueLock lock(m_linksMutex);
   if (m_links.find(link->nodeId()) == m_links.end() ||
@@ -195,7 +215,7 @@ bool LinkManager::verifyPeer(const Contact &contact)
 void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 {
   // Create and register a new link from the given linklet
-  LinkPtr link = get(linklet->peerContact());
+  LinkPtr link = getOrCreateLink(linklet->peerContact());
   if (!link) {
     linklet->close();
     return;
@@ -212,7 +232,7 @@ void LinkManager::linkletAcceptedConnection(LinkletPtr linklet)
 Contact LinkManager::getLocalContact() const
 {
   // TODO This should probably be cached
-  Contact contact(m_nodeId);
+  Contact contact(m_privateKey.publicKey());
   for (const LinkletPtr &linklet : m_listeners) {
     Address address = linklet->address();
     if (address.type() == Address::Type::IP) {

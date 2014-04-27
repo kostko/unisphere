@@ -29,6 +29,7 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/identity.hpp>
+#include <boost/make_shared.hpp>
 #include <unordered_map>
 
 namespace UniSphere {
@@ -88,6 +89,7 @@ public:
    */
   RpcCallGroupPtr<Channel> group(RpcGroupCompletionHandler complete)
   {
+    // Can't use make_shared here as the constructor is protected
     return RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(*this, complete));
   }
 
@@ -271,7 +273,8 @@ protected:
                                  const RpcCallOptions<Channel> &opts)
   {
     // Register the pending RPC call
-    RpcCallPtr<Channel> call(new RpcCall<Channel>(*this, getNextRpcId(), destination, success, failure, boost::posix_time::seconds(opts.timeout)));
+    RpcCallPtr<Channel> call(boost::make_shared<RpcCall<Channel>>(*this, getNextRpcId(),
+      destination, success, failure, boost::posix_time::seconds(opts.timeout)));
     {
       RecursiveUniqueLock lock(m_mutex);
       m_pendingCalls[call->rpcId()] = call;

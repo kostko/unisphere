@@ -678,7 +678,7 @@ void Controller::setupOptions(int argc,
     clusterOpts.add_options()
       ("cluster-master-ip", po::value<std::string>(), "IP address of cluster master")
       ("cluster-master-port", po::value<unsigned short>()->default_value(8471), "port of cluster master")
-      ("cluster-master-id", po::value<std::string>(), "node identifier of cluster master")
+      ("cluster-master-pub-key", po::value<std::string>(), "public key of cluster master")
     ;
     options.add(clusterOpts);
 
@@ -717,23 +717,23 @@ void Controller::setupOptions(int argc,
     throw ArgumentError("Missing required --cluster-master-port option!");
   }
 
-  NodeIdentifier masterId;
-  if (variables.count("cluster-master-id")) {
-    masterId = NodeIdentifier(variables["cluster-master-id"].as<std::string>(), NodeIdentifier::Format::Hex);
-    if (!masterId.isValid())
-      throw ArgumentError("Invalid master node identifier specified!");
+  PeerKey masterKey;
+  if (variables.count("cluster-master-pub-key")) {
+    masterKey = PeerKey(variables["cluster-master-pub-key"].as<std::string>(), PeerKey::Format::Base64);
+    if (masterKey.isNull())
+      throw ArgumentError("Invalid master node public key specified!");
   } else {
-    throw ArgumentError("Missing required --cluster-master-id option!");
+    throw ArgumentError("Missing required --cluster-master-pub-key option!");
   }
 
-  d->m_masterContact = Contact(masterId);
+  d->m_masterContact = Contact(masterKey);
   d->m_masterContact.addAddress(
     Address(
       variables["cluster-master-ip"].as<std::string>(),
       variables["cluster-master-port"].as<unsigned short>()
     )
   );
-  d->m_master = rpc().service(masterId,
+  d->m_master = rpc().service(masterKey.nodeId(),
     rpc().options()
          .setTimeout(5)
          .setChannelOptions(
@@ -810,7 +810,7 @@ void Controller::finishSimulation()
 void Controller::run()
 {
   // Create controller scenario API instance
-  d->m_scenarioApi = boost::shared_ptr<ControllerScenarioApi>(new ControllerScenarioApi(context(), *d));
+  d->m_scenarioApi = boost::make_shared<ControllerScenarioApi>(context(), *d);
 
   // Register RPC methods
   rpc().registerMethod<Protocol::DatasetRequest, Protocol::DatasetResponse>("Testbed.Simulation.Dataset",
@@ -894,15 +894,15 @@ void Controller::run()
           Protocol::AssignPartitionRequest::Node *n = request.add_nodes();
           n->set_name(node.name);
           *n->mutable_contact() = node.contact.toMessage();
-          n->set_public_key(node.privateKey.signRaw());
+          n->set_public_key(node.privateKey.raw());
           n->set_private_key(
-            node.privateKey.signPrivateRaw(),
-            node.privateKey.signPrivateRaw().size()
+            node.privateKey.privateRaw(),
+            node.privateKey.privateRaw().size()
           );
 
           for (const Peer &peer : node.peers) {
             UniSphere::Protocol::Peer *p = n->add_peers();
-            p->set_public_key(peer.key().signRaw());
+            p->set_public_key(peer.key().raw());
             *p->mutable_contact() = peer.contact().toMessage();
           }
         }

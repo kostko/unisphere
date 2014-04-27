@@ -22,6 +22,7 @@
 #include "src/interplex/interplex.pb.h"
 
 #include <boost/bind.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/log/attributes/constant.hpp>
 #include <boost/filesystem.hpp>
 
@@ -66,7 +67,7 @@ void LocalLinklet::listen(const Address &address)
   BOOST_LOG_SEV(m_logger, log::normal) << "Listening for incoming connections.";
 
   // Setup the local acceptor
-  LinkletPtr linklet(new LocalLinklet(m_manager));
+  LinkletPtr linklet(boost::make_shared<LocalLinklet>(m_manager));
   linklet->signalConnectionSuccess.connect(signalAcceptedConnection);
   m_acceptor.async_accept(
     boost::static_pointer_cast<LocalLinklet>(linklet)->socket(),
@@ -140,7 +141,7 @@ void LocalLinklet::handleAccept(LinkletPtr linklet, const boost::system::error_c
     boost::static_pointer_cast<LocalLinklet>(linklet)->start(false);
 
     // Ready for the next connection
-    LinkletPtr nextLinklet(new LocalLinklet(m_manager));
+    LinkletPtr nextLinklet(boost::make_shared<LocalLinklet>(m_manager));
     nextLinklet->signalConnectionSuccess.connect(signalAcceptedConnection);
     m_acceptor.async_accept(
       boost::static_pointer_cast<LocalLinklet>(nextLinklet)->socket(),

@@ -51,16 +51,6 @@ public:
   RoutingOptions &setDirectDelivery(bool delivery) { directDelivery = delivery; return *this; }
 
   /**
-   * Forces the packet to be delivered over a specific link.
-   */
-  RoutingOptions &setDeliverVia(const NodeIdentifier &linkId) { deliverVia = Contact(linkId); return *this; }
-
-  /**
-   * Forces the packet to be delivered over a specific contact.
-   */
-  RoutingOptions &setDeliverVia(const Contact &contact) { deliverVia = contact; return *this; }
-
-  /**
    * Sets a specific hop limit on the outgoing packet.
    */
   RoutingOptions &setHopLimit(std::uint8_t limit) { hopLimit = limit; return *this; }
@@ -70,8 +60,6 @@ public:
    */
   RoutingOptions &setTrackHopDistance(bool track) { trackHopDistance = track; return *this; }
 public:
-  /// Force delivery over a specific link
-  Contact deliverVia;
   /// Force direct delivery
   bool directDelivery;
   /// Set a specific hop limit

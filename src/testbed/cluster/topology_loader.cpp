@@ -55,7 +55,7 @@ public:
                             const NodeIdentifier &nodeId,
                             size_t partitions);
 
-  Contact assignContact(Partition &part, const NodeIdentifier &nodeId);
+  Contact assignContact(Partition &part, const PeerKey &peerKey);
 
   PrivatePeerKey assignPrivateKey(const std::string &name);
 public:
@@ -153,16 +153,16 @@ int TopologyLoaderPrivate::assignNodeToPartition(const std::string &name,
   return std::hash<NodeIdentifier>()(nodeId) % partitions;
 }
 
-Contact TopologyLoaderPrivate::assignContact(Partition &part, const NodeIdentifier &nodeId)
+Contact TopologyLoaderPrivate::assignContact(Partition &part, const PeerKey &peerKey)
 {
-  auto it = m_contacts.find(nodeId);
+  auto it = m_contacts.find(peerKey.nodeId());
   if (it != m_contacts.end())
     return it->second;
 
-  Contact contact(nodeId);
+  Contact contact(peerKey);
   contact.addAddress(Address(part.ip, part.usedPorts++));
   // TODO: Handle situations when we are out of ports
-  m_contacts.insert({{ nodeId, contact }});
+  m_contacts.insert({{ peerKey.nodeId(), contact }});
   return contact;
 }
 
@@ -224,7 +224,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
     PrivatePeerKey privateKey = d->assignPrivateKey(name);
     NodeIdentifier nodeId = privateKey.nodeId();
     Partition &part = partitions[d->assignNodeToPartition(name, nodeId, partitions.size())];
-    Partition::Node node{ part.index, name, d->assignContact(part, nodeId), privateKey };
+    Partition::Node node{ part.index, name, d->assignContact(part, privateKey), privateKey };
 
     for (const auto &map : d->m_properties) {
       try {
@@ -243,9 +243,9 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
       PrivatePeerKey privateKey = d->assignPrivateKey(peerName);
       NodeIdentifier peerId = privateKey.nodeId();
       Partition &peerPart = partitions[d->assignNodeToPartition(peerName, peerId, partitions.size())];
-      Contact contact = d->assignContact(peerPart, peerId);
+      Contact contact = d->assignContact(peerPart, privateKey);
 
-      node.peers.push_back(Peer(privateKey.publicKey(), contact));
+      node.peers.push_back(Peer(privateKey, contact));
     }
 
     part.nodes.push_back(node);

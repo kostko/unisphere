@@ -136,6 +136,20 @@ public:
   bool linkVerifyPeer(const Contact &peer);
 
   /**
+   * Creates new security associations and transmits their public part
+   * to respecitve peer.
+   *
+   * @param peer Peer to create the SAs for
+   * @param count Number of new SAs to create
+   */
+  void saRefresh(PeerPtr peer, size_t count);
+
+  /**
+   * Refresh security associations for all peers.
+   */
+  void saRefreshAll();
+
+  /**
    * Called by the routing table when an entry should be exported to
    * all neighbors.
    *
@@ -215,6 +229,8 @@ public:
   SloppyGroupManager m_sloppyGroup;
   /// Timer for notifying neighbours about ourselves
   boost::asio::deadline_timer m_announceTimer;
+  /// Security association refresh signal
+  PeriodicRateLimitedSignal<30, 300> m_saRefreshSignal;
   /// Active subscriptions to other components
   std::list<boost::signals2::connection> m_subscriptions;
   /// Local sequence number
@@ -247,6 +263,7 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
     m_sloppyGroup(router, sizeEstimator),
     m_routes(m_context, identity.localId(), sizeEstimator, m_sloppyGroup),
     m_announceTimer(manager.context().service()),
+    m_saRefreshSignal(manager.context()),
     m_seqno(1)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
@@ -273,6 +290,7 @@ void CompactRouterPrivate::initialize()
     << m_routes.signalAddressChanged.connect(boost::bind(&CompactRouterPrivate::ribLocalAddressChanged, this, _1))
     << m_identity.signalPeerAdded.connect(boost::bind(&CompactRouterPrivate::peerAdded, this, _1))
     << m_identity.signalPeerRemoved.connect(boost::bind(&CompactRouterPrivate::peerRemoved, this, _1))
+    << m_saRefreshSignal.connect(boost::bind(&CompactRouterPrivate::saRefreshAll, this))
   ;
 
   // Initialize the sloppy group manager
@@ -280,6 +298,10 @@ void CompactRouterPrivate::initialize()
 
   // Compute whether we should become a landmark or not
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
+
+  // Start SA refresh signal
+  m_saRefreshSignal();
+  m_saRefreshSignal.start();
 
   // Start announcing ourselves to all neighbours
   announceOurselves(boost::system::error_code());
@@ -305,12 +327,40 @@ void CompactRouterPrivate::shutdown()
   // Stop announcing ourselves
   m_announceTimer.cancel();
 
+  // Stop SA refresh signal
+  m_saRefreshSignal.stop();
+
   // Clear the routing table
   m_routes.clear();
 }
 
+void CompactRouterPrivate::saRefresh(PeerPtr peer, size_t count)
+{
+  // Create a new SA that is valid for the next 10 minutes
+  PrivateSecurityAssociationPtr sa = peer->createPrivateSecurityAssociation(boost::posix_time::minutes(10));
+
+  BOOST_LOG_SEV(m_logger, log::normal)
+    << "Refreshed SA for " << peer->nodeId().hex() << " [" << sa->key.base64() << "].";
+
+  // Transmit SA public key to peer
+  Protocol::SecurityAssociationCreate sac;
+  sac.set_public_key(sa->key.raw());
+  sac.set_expiry(600);
+
+  m_manager.send(peer->contact(), Message(Message::Type::Social_SA_Create, sac));
+}
+
+void CompactRouterPrivate::saRefreshAll()
+{
+  for (const std::pair<NodeIdentifier, PeerPtr> &peer : m_identity.peers()) {
+    saRefresh(peer.second, 1);
+  }
+}
+
 void CompactRouterPrivate::peerAdded(PeerPtr peer)
 {
+  // Generate new security associations for this peer link
+  saRefresh(peer, 3);
   // Export announces to new peer when it is added
   m_routes.fullUpdate(peer->nodeId());
 }
@@ -502,7 +552,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
       // Register a new security association
       Protocol::SecurityAssociationCreate sac = message_cast<Protocol::SecurityAssociationCreate>(msg);
       PeerSecurityAssociation sa(
-        PeerKey(sac.public_key()),
+        SignKey(sac.public_key()),
         boost::posix_time::seconds(sac.expiry())
       );
       m_identity.getPeer(msg.originator())->addPeerSecurityAssociation(sa);
@@ -524,7 +574,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
 
       for (int j = 0; j < agg.announces_size(); j++) {
         const Protocol::PathAnnounce &pan = agg.announces(j);
-        RoutingEntryPtr entry(new RoutingEntry(
+        RoutingEntryPtr entry(boost::make_shared<RoutingEntry>(
           m_context,
           NodeIdentifier(pan.destination_id(), NodeIdentifier::Format::Raw),
           pan.landmark(),

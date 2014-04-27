@@ -24,222 +24,64 @@
 
 namespace UniSphere {
 
-// Define the invalid peer key instance that can be used for return
-// references to invalid peer keys
-const PeerKey PeerKey::INVALID = PeerKey();
+const size_t PeerKeyBase::public_key_length = crypto_box_PUBLICKEYBYTES;
+const size_t PrivatePeerKeyBase::private_key_length = crypto_box_SECRETKEYBYTES;
 
-const size_t PeerKey::sign_public_key_length = crypto_sign_ed25519_PUBLICKEYBYTES;
-const size_t PrivatePeerKey::sign_private_key_length = crypto_sign_ed25519_SECRETKEYBYTES;
-
-PeerKey::PeerKey()
+const NodeIdentifier &PeerKeyBase::nodeId() const
 {
-}
-
-PeerKey::PeerKey(const std::string &publicSignKey)
-  : PeerKey(publicSignKey, Format::Raw)
-{
-}
-
-PeerKey::PeerKey(const std::string &publicSignKey, Format format)
-{
-  switch (format) {
-    // Raw bytes format
-    case Format::Raw: m_publicSign = publicSignKey; break;
-
-    // Base64 format
-    case Format::Base64: {
-      try {
-        Botan::Pipe pipe(new Botan::Base64_Decoder());
-        pipe.process_msg(publicSignKey);
-        m_publicSign = pipe.read_all_as_string(0);
-      } catch (std::exception &e) {
-        m_publicSign.clear();
-      }
-      break;
-    }
-  }
-
-  if (m_publicSign.size() != PeerKey::sign_public_key_length)
-    m_publicSign.clear();
-}
-
-const NodeIdentifier &PeerKey::nodeId() const
-{
-  if (isNull())
+  if (m_public.empty())
     return NodeIdentifier::INVALID;
 
   // Generate a node identifier and cache it
-  Botan::Pipe pipe(new Botan::Hash_Filter("SHA-512"));
-  pipe.process_msg(m_publicSign);
-  m_nodeId = NodeIdentifier(pipe.read_all_as_string(0).substr(0, NodeIdentifier::length));
+  if (m_nodeId.isNull()) {
+    Botan::Pipe pipe(new Botan::Hash_Filter("SHA-512"));
+    pipe.process_msg(m_public);
+    m_nodeId = NodeIdentifier(pipe.read_all_as_string(0).substr(0, NodeIdentifier::length));
+  }
 
   return m_nodeId;
 }
 
-std::string PeerKey::signBase32() const
+std::string PeerKeyBase::encrypt(const std::string &buffer) const
 {
-  // TODO
-  return std::string();
-}
-
-std::string PeerKey::signBase64() const
-{
-  Botan::Pipe pipe(new Botan::Base64_Encoder());
-  pipe.process_msg(m_publicSign);
-  return pipe.read_all_as_string(0);
-}
-
-std::string PeerKey::signOpen(const std::string &signedBuffer) const
-{
-  if (isNull())
-    throw NullPeerKey("Attempted to open with a null key!");
-
-  size_t smlen = signedBuffer.size();
-  unsigned char m[smlen];
-  unsigned long long mlen;
-
-  if (crypto_sign_ed25519_open(m, &mlen, (unsigned char*) signedBuffer.c_str(), smlen, (unsigned char*) m_publicSign.c_str()) != 0)
-    throw InvalidSignature("Invalid signature!");
-
-  return std::string((char*) m, mlen);
-}
-
-std::string PeerKey::encrypt(const std::string &buffer) const
-{
-  if (isNull())
-    throw NullPeerKey("Attempted to encrypt with a null key!");
+  if (m_public.empty())
+    throw NullKey("Attempted to encrypt with a null key!");
 
   // TODO
 
   return std::string();
 }
 
-bool PeerKey::operator==(const PeerKey &other) const
+void PeerKeyBase::validatePublic()
 {
-  return m_publicSign == other.m_publicSign;
+  if (m_public.size() != PeerKeyBase::public_key_length)
+    m_public.clear();
 }
 
-PrivatePeerKey::PrivatePeerKey()
-  : PeerKey(),
-    m_privateSign(PrivatePeerKey::sign_private_key_length)
+void PrivatePeerKeyBase::generate()
 {
+  unsigned char pubkey[PeerKey::public_key_length];
+  m_private.resize(PrivatePeerKeyBase::private_key_length);
+  crypto_box_keypair(pubkey, m_private);
+  m_public = std::string((char*) pubkey, sizeof(pubkey));
 }
 
-PrivatePeerKey::PrivatePeerKey(const std::string &publicSignKey,
-                               const Botan::SecureVector<unsigned char> &privateSignKey)
-  : PrivatePeerKey(publicSignKey, privateSignKey, Format::Raw)
+std::string PrivatePeerKeyBase::boxOpen(const std::string &encryptedBuffer) const
 {
+  if (m_private.empty())
+    throw NullKey("Attempted to open box with a null key!");
+
+  // TODO
+
+  return std::string();
 }
 
-PrivatePeerKey::PrivatePeerKey(const std::string &publicSignKey,
-                               const Botan::SecureVector<unsigned char> &privateSignKey,
-                               Format format)
-  : PeerKey(publicSignKey, format)
+void PrivatePeerKeyBase::validatePrivate()
 {
-  switch (format) {
-    // Raw bytes format
-    case Format::Raw: m_privateSign = privateSignKey; break;
-
-    // Base64 format
-    case Format::Base64: {
-      try {
-        Botan::Pipe pipe(new Botan::Base64_Decoder());
-        pipe.process_msg(privateSignKey);
-        m_privateSign = pipe.read_all(0);
-      } catch (std::exception &e) {
-        m_privateSign.clear();
-      }
-      break;
-    }
+  if (m_public.empty() || m_private.size() != PrivatePeerKeyBase::private_key_length) {
+    m_public.clear();
+    m_private.clear();
   }
-
-  if (m_publicSign.empty() || m_privateSign.size() != PrivatePeerKey::sign_private_key_length) {
-    m_publicSign.clear();
-    m_privateSign.clear();
-  }
-}
-
-KeyData PrivatePeerKey::signPrivateBase32() const
-{
-  // TODO
-  return KeyData();
-}
-
-KeyData PrivatePeerKey::signPrivateBase64() const
-{
-  Botan::Pipe pipe(new Botan::Base64_Encoder());
-  pipe.process_msg(m_privateSign);
-  return pipe.read_all(0);
-}
-
-void PrivatePeerKey::generate()
-{
-  unsigned char pubkey[PeerKey::sign_public_key_length];
-  crypto_sign_ed25519_keypair(pubkey, m_privateSign);
-  m_publicSign = std::string((char*) pubkey, sizeof(pubkey));
-}
-
-std::string PrivatePeerKey::sign(const std::string &buffer) const
-{
-  if (isNull())
-    throw NullPeerKey("Attempted to sign with a null key!");
-
-  unsigned char sm[buffer.size() + crypto_sign_ed25519_BYTES];
-  unsigned long long smlen;
-  crypto_sign_ed25519(sm, &smlen, (unsigned char*) buffer.c_str(), buffer.size(), m_privateSign);
-
-  return std::string((char*) sm, smlen);
-}
-
-std::string PrivatePeerKey::boxOpen(const std::string &encryptedBuffer) const
-{
-  if (isNull())
-    throw NullPeerKey("Attempted to open box with a null key!");
-
-  // TODO
-
-  return std::string();
-}
-
-bool PrivatePeerKey::operator==(const PrivatePeerKey &other) const
-{
-  return m_privateSign == other.m_privateSign;
-}
-
-std::ostream &operator<<(std::ostream &stream, const PrivatePeerKey &key)
-{
-  Botan::Pipe pipe(new Botan::Base64_Encoder());
-  pipe.start_msg();
-  pipe.write(key.signRaw());
-  pipe.write(key.signPrivateRaw());
-  pipe.end_msg();
-  stream << pipe;
-
-  return stream;
-}
-
-std::istream &operator>>(std::istream &stream, PrivatePeerKey &key)
-{
-  KeyData buffer(
-    ((PrivatePeerKey::sign_public_key_length + PrivatePeerKey::sign_private_key_length) * 4) / 3
-  );
-  stream.read((char*) &buffer[0], buffer.size());
-
-  Botan::Pipe pipe(new Botan::Base64_Decoder());
-  pipe.start_msg();
-  pipe.write(buffer);
-  pipe.end_msg();
-  buffer = pipe.read_all();
-
-  // Extract public key
-  std::string publicKey((char*) &buffer[0], PrivatePeerKey::sign_public_key_length);
-
-  // Extract private key
-  KeyData privateKey(PrivatePeerKey::sign_private_key_length);
-  privateKey.copy(&buffer[PrivatePeerKey::sign_public_key_length], PrivatePeerKey::sign_private_key_length);
-
-  key = PrivatePeerKey(publicKey, privateKey);
-  return stream;
 }
 
 }

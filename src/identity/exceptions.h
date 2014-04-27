@@ -24,10 +24,10 @@
 namespace UniSphere {
 
 /**
- * Peer key is null exception.
+ * Key is null exception.
  */
-struct UNISPHERE_EXPORT NullPeerKey : public Exception {
-  NullPeerKey(const std::string &msg = "") : Exception(msg) {}
+struct UNISPHERE_EXPORT NullKey : public Exception {
+  NullKey(const std::string &msg = "") : Exception(msg) {}
 };
 
 /**

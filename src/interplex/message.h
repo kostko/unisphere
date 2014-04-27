@@ -40,7 +40,7 @@ UNISPHERE_SHARED_POINTER(Link);
 class UNISPHERE_EXPORT Message {
 public:
   /// UNISPHERE message header size in octets
-  static const size_t header_size = 5;
+  static const size_t header_size;
 
   /**
    * Message types.

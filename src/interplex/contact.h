@@ -21,6 +21,7 @@
 
 #include "core/globals.h"
 #include "identity/node_identifier.h"
+#include "identity/peer_key.h"
 #include "src/interplex/contact.pb.h"
 
 #include <boost/asio.hpp>
@@ -135,9 +136,9 @@ public:
   /**
    * Constructs a new node contact.
    *
-   * @param nodeId Node identifier
+   * @param peerKey Peer key
    */
-  explicit Contact(const NodeIdentifier &nodeId);
+  explicit Contact(const PeerKey &peerKey);
 
   /**
    * Returns true if this contact record is a null one.
@@ -148,6 +149,11 @@ public:
    * Returns the node's identifier.
    */
   NodeIdentifier nodeId() const;
+
+  /**
+   * Returns the peer key.
+   */
+  PeerKey peerKey() const;
 
   /**
    * Returns true when the contact contains some addresses.
@@ -207,8 +213,8 @@ public:
   // Ensure that our hash function is also our friend
   friend class std::hash<Contact>;
 private:
-  /// Node identifier
-  NodeIdentifier m_nodeId;
+  /// Peer key
+  PeerKey m_peerKey;
   /// Contact addresses
   AddressMap m_addresses;
 };
@@ -225,7 +231,7 @@ namespace std {
     size_t operator()(const UniSphere::Contact &contact) const
     {
       std::hash<UniSphere::NodeIdentifier> hasher;
-      return hasher(contact.m_nodeId);
+      return hasher(contact.m_peerKey.nodeId());
     }
   };
 }

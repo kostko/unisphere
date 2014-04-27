@@ -113,6 +113,7 @@ public:
     RpcCallGroupPtr<Channel> self = this->shared_from_this();
 
     m_calls++;
+    // Can't use make_shared here as the constructor is protected
     auto group = RpcCallGroupPtr<Channel>(new RpcCallGroup<Channel>(
       m_engine,
       m_strand.wrap([self, complete]() {

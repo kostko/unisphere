@@ -21,7 +21,7 @@
 
 #include "core/context.h"
 #include "identity/node_identifier.h"
-#include "identity/peer_key.h"
+#include "identity/sign_key.h"
 #include "interplex/contact.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -52,11 +52,11 @@ public:
   }
 
   /**
-   * Returns the public signing key as raw bytes.
+   * Returns the public key as raw bytes.
    */
-  inline std::string signRaw() const
+  inline std::string raw() const
   {
-    return key.signRaw();
+    return key.raw();
   }
 
   /**
@@ -74,10 +74,10 @@ public:
 };
 
 /// Alias definition for peer security association
-typedef SecurityAssociation<PeerKey> PeerSecurityAssociation;
+typedef SecurityAssociation<SignKey> PeerSecurityAssociation;
 typedef boost::shared_ptr<PeerSecurityAssociation> PeerSecurityAssociationPtr;
 /// Alias definition for private security association
-typedef SecurityAssociation<PrivatePeerKey> PrivateSecurityAssociation;
+typedef SecurityAssociation<PrivateSignKey> PrivateSecurityAssociation;
 typedef boost::shared_ptr<PrivateSecurityAssociation> PrivateSecurityAssociationPtr;
 
 /**
@@ -89,7 +89,7 @@ using SecurityAssociations = boost::multi_index_container<
   boost::multi_index::indexed_by<
     boost::multi_index::sequenced<>,
     boost::multi_index::hashed_unique<
-      boost::multi_index::const_mem_fun<T, std::string, &T::signRaw>
+      boost::multi_index::const_mem_fun<T, std::string, &T::raw>
     >
   >
 >;

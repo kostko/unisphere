@@ -36,7 +36,7 @@ VirtualNode::VirtualNode(Context &context,
   : name(name),
     nodeId(key.nodeId()),
     identity(new SocialIdentity(key)),
-    linkManager(new LinkManager(context, nodeId)),
+    linkManager(new LinkManager(context, key)),
     router(new CompactRouter(*identity, *linkManager, sizeEstimator))
 {
   for (const Address &address : contact.addresses() | boost::adaptors::map_values) {

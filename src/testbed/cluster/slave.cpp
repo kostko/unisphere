@@ -450,7 +450,7 @@ void Slave::setupOptions(int argc,
     local.add_options()
       ("cluster-master-ip", po::value<std::string>(), "IP address of cluster master")
       ("cluster-master-port", po::value<unsigned short>()->default_value(8471), "port of cluster master")
-      ("cluster-master-id", po::value<std::string>(), "node identifier of cluster master")
+      ("cluster-master-pub-key", po::value<std::string>(), "public key of cluster master")
     ;
     options.add(local);
 
@@ -477,23 +477,23 @@ void Slave::setupOptions(int argc,
     throw ArgumentError("Missing required --cluster-master-port option!");
   }
 
-  NodeIdentifier masterId;
-  if (variables.count("cluster-master-id")) {
-    masterId = NodeIdentifier(variables["cluster-master-id"].as<std::string>(), NodeIdentifier::Format::Hex);
-    if (!masterId.isValid())
-      throw ArgumentError("Invalid master node identifier specified!");
+  PeerKey masterKey;
+  if (variables.count("cluster-master-pub-key")) {
+    masterKey = PeerKey(variables["cluster-master-pub-key"].as<std::string>(), PeerKey::Format::Base64);
+    if (masterKey.isNull())
+      throw ArgumentError("Invalid master node public key specified!");
   } else {
-    throw ArgumentError("Missing required --cluster-master-id option!");
+    throw ArgumentError("Missing required --cluster-master-pub-key option!");
   }
 
-  d->m_masterContact = Contact(masterId);
+  d->m_masterContact = Contact(masterKey);
   d->m_masterContact.addAddress(
     Address(
       variables["cluster-master-ip"].as<std::string>(),
       variables["cluster-master-port"].as<unsigned short>()
     )
   );
-  d->m_master = rpc().service(masterId,
+  d->m_master = rpc().service(masterKey.nodeId(),
     rpc().options()
          .setTimeout(5)
          .setChannelOptions(
@@ -543,6 +543,7 @@ void Slave::run()
     boost::bind(&SlavePrivate::rpcStartNodes, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
+  BOOST_LOG_SEV(d->m_logger, log::normal) << "Master has ID " << d->m_masterContact.nodeId().hex() << ".";
 
   joinCluster();
 }

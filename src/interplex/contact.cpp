@@ -103,23 +103,27 @@ boost::asio::local::stream_protocol::endpoint Address::toLocalEndpoint() const
 }
 
 Contact::Contact()
-  : m_nodeId()
 {
 }
 
-Contact::Contact(const NodeIdentifier &nodeId)
-  : m_nodeId(nodeId)
+Contact::Contact(const PeerKey &peerKey)
+  : m_peerKey(peerKey)
 {
 }
 
 bool Contact::isNull() const
 {
-  return m_nodeId.isNull();
+  return m_peerKey.isNull();
 }
 
 NodeIdentifier Contact::nodeId() const
 {
-  return m_nodeId;
+  return m_peerKey.nodeId();
+}
+
+PeerKey Contact::peerKey() const
+{
+  return m_peerKey;
 }
 
 bool Contact::hasAddresses() const
@@ -157,7 +161,7 @@ void Contact::setPriority(AddressMap::iterator address, int priority)
 Protocol::Contact Contact::toMessage() const
 {
   Protocol::Contact result;
-  result.set_node_id(m_nodeId.as(NodeIdentifier::Format::Raw));
+  result.set_peer_key(m_peerKey.raw());
 
   for (const auto &p : m_addresses) {
     // Only addresses of type 'IP' can be represented as protocol messages
@@ -173,7 +177,7 @@ Protocol::Contact Contact::toMessage() const
 
 Contact Contact::fromMessage(const Protocol::Contact &msg)
 {
-  Contact result(NodeIdentifier(msg.node_id()));
+  Contact result(PeerKey(msg.peer_key()));
   for (const Protocol::Address &addr : msg.addresses()) {
     result.addAddress(Address(addr.address(), addr.port()));
   }
@@ -183,7 +187,7 @@ Contact Contact::fromMessage(const Protocol::Contact &msg)
 
 bool Contact::operator==(const Contact &other) const
 {
-  return m_nodeId == other.m_nodeId;
+  return m_peerKey == other.m_peerKey;
 }
 
 }

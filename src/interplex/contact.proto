@@ -11,13 +11,13 @@ package UniSphere.Protocol;
 //
 message Address {
   required string address = 1;
-  required uint32 port = 2; 
+  required uint32 port = 2;
 };
 
 //
 // Contact message
 //
 message Contact {
-  required bytes node_id = 1; 
+  required bytes peer_key = 1;
   repeated Address addresses = 2;
 };

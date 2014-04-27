@@ -24,17 +24,18 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/log/attributes/constant.hpp>
+#include <boost/make_shared.hpp>
 
 namespace UniSphere {
 
-Link::Link(LinkManager &manager, const NodeIdentifier &nodeId, time_t maxIdleTime)
+Link::Link(LinkManager &manager, const PeerKey &peerKey, time_t maxIdleTime)
   : enable_shared_from_this<Link>(),
     m_manager(manager),
     m_logger(logging::keywords::channel = "link"),
-    m_nodeId(nodeId),
+    m_peerKey(peerKey),
     m_state(Link::State::Closed),
     m_maxIdleTime(maxIdleTime),
-    m_dispatcher(new RoundRobinMessageDispatcher(m_linklets)),
+    m_dispatcher(boost::make_shared<RoundRobinMessageDispatcher>(m_linklets)),
     m_addressIterator(m_addressList.end()),
     m_retryTimer(manager.context().service()),
     m_idleTimer(manager.context().service())
@@ -64,7 +65,7 @@ void Link::close()
     return;
   m_state = Link::State::Invalid;
 
-  BOOST_LOG_SEV(m_logger, log::normal) << "Closing link with " << m_nodeId.hex() << ".";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Closing link with " << m_peerKey.nodeId().hex() << ".";
 
   // Cancel timers
   m_retryTimer.cancel();
@@ -79,7 +80,7 @@ void Link::close()
   }
 
   m_linklets.clear();
-  m_manager.remove(shared_from_this());
+  m_manager.removeLink(shared_from_this());
 }
 
 void Link::tryCleanup()
@@ -119,7 +120,7 @@ void Link::send(const Message &msg)
 Contact Link::contact()
 {
   RecursiveUniqueLock lock(m_mutex);
-  Contact contact(m_nodeId);
+  Contact contact(m_peerKey);
   for (const Address &address : m_addressList) {
     contact.addAddress(address);
   }
@@ -238,6 +239,7 @@ void Link::setState(State state)
 void Link::addContact(const Contact &contact)
 {
   RecursiveUniqueLock lock(m_mutex);
+  BOOST_ASSERT(contact.peerKey() == m_peerKey);
 
   // Transfer all contact addresses into the queue
   for (const auto &p : contact.addresses()) {
@@ -267,7 +269,8 @@ void Link::tryNextAddress()
   }
 
   // Log our attempt
-  BOOST_LOG_SEV(m_logger, log::normal) << "Trying next address for outgoing connection with " << m_nodeId.hex() << ".";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Trying next address for outgoing connection with "
+    << m_peerKey.nodeId().hex() << ".";
 
   // Change state to connecting
   setState(Link::State::Connecting);
@@ -300,8 +303,9 @@ bool Link::linkletVerifyPeer(LinkletPtr linklet)
   RecursiveUniqueLock lock(m_mutex);
 
   // Check that the peer actually fits this link and close it if not
-  if (linklet->peerContact().nodeId() != m_nodeId) {
-    BOOST_LOG_SEV(m_logger, log::error) << "Link identifier does not match destination node!";
+  if (linklet->peerContact().nodeId() != m_peerKey.nodeId()) {
+    BOOST_LOG_SEV(m_logger, log::error) << "Link identifier does not match destination node! " <<
+      linklet->peerContact().nodeId().hex() << " -- " << m_peerKey.nodeId().hex();
     // TODO used contact address should be removed as it is clearly not valid
     // TODO also we should use some signal that would be used by Router to update routing
     //      table entries
@@ -343,7 +347,7 @@ void Link::linkletMessageReceived(LinkletPtr linklet, const Message &message)
   }
 
   Message msg = message;
-  msg.setOriginator(m_nodeId);
+  msg.setOriginator(m_peerKey.nodeId());
   signalMessageReceived(msg);
 }
 

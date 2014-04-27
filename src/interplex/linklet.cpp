@@ -67,6 +67,7 @@ bool Linklet::messageParsed(Message &msg)
     // Perform additional verification on the peer before transitioning into
     // the connected state
     if (!signalVerifyPeer(shared_from_this()) || !m_manager.verifyPeer(peerContact)) {
+      BOOST_LOG_SEV(m_logger, log::error) << "Peer verificaton has failed!";
       return false;
     }
 

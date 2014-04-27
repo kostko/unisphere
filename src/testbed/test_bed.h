@@ -143,7 +143,7 @@ public:
   /**
    * Creates a new test case instance and returns it.
    */
-  TestCasePtr create() { return TestCasePtr(new T(m_name)); }
+  TestCasePtr create() { return boost::make_shared<T>(m_name); }
 };
 
 /**

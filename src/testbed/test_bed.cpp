@@ -93,7 +93,7 @@ SimulationPtr TestBed::createSimulation(std::uint32_t seed,
                                         size_t threads,
                                         size_t globalNodeCount)
 {
-  SimulationPtr simulation = SimulationPtr(new Simulation(seed, threads, globalNodeCount));
+  SimulationPtr simulation = boost::make_shared<Simulation>(seed, threads, globalNodeCount);
   return simulation;
 }
 

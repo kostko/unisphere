@@ -48,7 +48,7 @@ namespace TestBed {
 
 class ClusterNodePrivate {
 public:
-  void initialize(const NodeIdentifier &nodeId,
+  void initialize(const PrivatePeerKey &privateKey,
                   const std::string &ip,
                   unsigned short port);
 
@@ -156,7 +156,7 @@ void ClusterNodePrivate::formatProfilingLogRecord(const logging::record_view &re
   }
 }
 
-void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
+void ClusterNodePrivate::initialize(const PrivatePeerKey &privateKey,
                                     const std::string &ip,
                                     unsigned short port)
 {
@@ -165,14 +165,14 @@ void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
   sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
   sink->set_filter(
     !(
-      (log::channel == "link" || log::channel == "ip_linklet" || log::channel == "rpc_engine")
+      (log::channel == "link" || log::channel == "ip_linklet" || log::channel == "linklet" || log::channel == "rpc_engine")
       &&
-      log::local_node_id == nodeId
+      log::local_node_id == privateKey.nodeId()
     )
     &&
     log::severity != log::profiling
     &&
-    log::channel != "link" && log::channel != "ip_linklet"
+    log::channel != "link" && log::channel != "ip_linklet" && log::channel == "linklet"
   );
 
 #ifdef UNISPHERE_PROFILE
@@ -185,13 +185,13 @@ void ClusterNodePrivate::initialize(const NodeIdentifier &nodeId,
   logging::core::get()->set_logging_enabled(true);
 
   // Initialize the link manager
-  m_linkManager = boost::shared_ptr<LinkManager>(new LinkManager(m_context, nodeId));
+  m_linkManager = boost::make_shared<LinkManager>(m_context, privateKey);
   m_linkManager->setLocalAddress(Address(ip, 0));
   m_linkManager->listen(Address(ip, port));
 
   // Initialize the RPC engine
-  m_channel = boost::shared_ptr<InterplexRpcChannel>(new InterplexRpcChannel(*m_linkManager));
-  m_rpc = boost::shared_ptr<RpcEngine<InterplexRpcChannel>>(new RpcEngine<InterplexRpcChannel>(*m_channel));
+  m_channel = boost::make_shared<InterplexRpcChannel>(*m_linkManager);
+  m_rpc = boost::make_shared<RpcEngine<InterplexRpcChannel>>(*m_channel);
 }
 
 ClusterNode::ClusterNode()
@@ -225,29 +225,40 @@ void ClusterNode::setupOptions(int argc,
     local.add_options()
       ("cluster-ip", po::value<std::string>(), "local IP address used for cluster control")
       ("cluster-port", po::value<unsigned short>()->default_value(8471), "local port used for cluster control")
-      ("cluster-node-id", po::value<std::string>(), "node identifier for the local cluster node (optional)")
+      ("cluster-priv-key", po::value<std::string>(), "private key for the local cluster node (optional)")
+      ("cluster-pub-key", po::value<std::string>(), "public key for the local cluster node (optional)")
     ;
     options.add(local);
     return;
   }
 
   // Process local options
-  NodeIdentifier nodeId = NodeIdentifier::random();
+  PrivatePeerKey privateKey;
 
   // Validate options
   if (!variables.count("cluster-ip")) {
     throw ArgumentError("Missing required --cluster-ip option!");
   } else if (!variables.count("cluster-port")) {
     throw ArgumentError("Missing required --cluster-port option!");
-  } else if (variables.count("cluster-node-id")) {
-    nodeId = NodeIdentifier(variables["cluster-node-id"].as<std::string>(), NodeIdentifier::Format::Hex);
-    if (!nodeId.isValid())
-      throw ArgumentError("Invalid node identifier specified!");
+  } else if (variables.count("cluster-priv-key") != variables.count("cluster-pub-key")) {
+    throw ArgumentError("Options --cluster-priv-key and --cluster-pub-key must be specified together!");
+  } else if (variables.count("cluster-priv-key") && variables.count("cluster-pub-key")) {
+    privateKey = PrivatePeerKey(
+      variables["cluster-pub-key"].as<std::string>(),
+      fromInsecureKeyStorage(variables["cluster-priv-key"].as<std::string>()),
+      PeerKey::Format::Base64
+    );
+
+    if (privateKey.isNull())
+      throw ArgumentError("Invalid private/public keys specified!");
   }
+
+  if (privateKey.isNull())
+    privateKey.generate();
 
   // Initialize the cluster node
   d->initialize(
-    nodeId,
+    privateKey,
     variables["cluster-ip"].as<std::string>(),
     variables["cluster-port"].as<unsigned short>()
   );

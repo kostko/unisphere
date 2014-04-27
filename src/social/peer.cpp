@@ -76,7 +76,7 @@ PeerSecurityAssociationPtr Peer::selectPeerSecurityAssociation(Context &context)
 PrivateSecurityAssociationPtr Peer::createPrivateSecurityAssociation(const boost::posix_time::time_duration &expiry)
 {
   // Generate a new private key for this association
-  PrivatePeerKey key;
+  PrivateSignKey key;
   key.generate();
 
   // Create new security association
@@ -87,7 +87,7 @@ PrivateSecurityAssociationPtr Peer::createPrivateSecurityAssociation(const boost
   if (m_privateSa.size() > max_security_associations)
     m_privateSa.pop_back();
 
-  return *m_privateSa.get<1>().find(sa->signRaw());
+  return *m_privateSa.get<1>().find(sa->raw());
 }
 
 PrivateSecurityAssociationPtr Peer::getPrivateSecurityAssociation(const std::string &publicKey)

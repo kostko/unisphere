@@ -60,9 +60,9 @@ public:
    * Constructs a new link manager instance.
    *
    * @param context UNISPHERE context
-   * @param nodeId Node identifier of the local node
+   * @param privateKey Private key of the local node
    */
-  LinkManager(Context &context, const NodeIdentifier &nodeId);
+  LinkManager(Context &context, const PrivatePeerKey &privateKey);
 
   LinkManager(const LinkManager&) = delete;
   LinkManager &operator=(const LinkManager&) = delete;
@@ -82,7 +82,7 @@ public:
 
   /**
    * Sends a message to the given peer. If there is no existing link
-   * for the specified peer, message will not be delivered.
+   * for the specified peer the message will not be delivered.
    *
    * @param nodeId Destination node's identifier
    * @param msg Message to send
@@ -128,7 +128,12 @@ public:
   /**
    * Returns the local node identifier.
    */
-  inline const NodeIdentifier &getLocalNodeId() const { return m_nodeId; }
+  inline const NodeIdentifier &getLocalNodeId() const { return m_privateKey.nodeId(); }
+
+  /**
+   * Returns the local private key.
+   */
+  inline const PrivatePeerKey &getLocalPrivateKey() const { return m_privateKey; }
 
   /**
    * Sets a local address for all outgoing connections. This will cause all
@@ -166,17 +171,16 @@ protected:
    * Returns a link suitable for communication with the specified contact.
    *
    * @param contact Contact information
-   * @param create Should a new link be created if none is found
    * @return A valid link instance or null
    */
-  LinkPtr get(const Contact &contact, bool create = true);
+  LinkPtr getOrCreateLink(const Contact &contact);
 
   /**
    * Removes a specific link.
    *
    * @param link Link instance
    */
-  void remove(LinkPtr link);
+  void removeLink(LinkPtr link);
 protected:
   /**
    * Called by a listener @ref Linklet when a new connection gets accepted
@@ -200,8 +204,8 @@ private:
   /// Logger instance
   Logger m_logger;
 
-  /// Local node identifier
-  NodeIdentifier m_nodeId;
+  /// Local private key
+  PrivatePeerKey m_privateKey;
 
   /// Linklet factory for producing new linklets
   LinkletFactory m_linkletFactory;

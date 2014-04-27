@@ -18,13 +18,17 @@
  */
 #include "interplex/message.h"
 
+#include <boost/make_shared.hpp>
+
 #include <arpa/inet.h>
 
 namespace UniSphere {
 
+const size_t Message::header_size = 5;
+
 Message::Message()
   : m_type(Type::Null_Protocol),
-    m_buffer(new std::vector<char>(Message::header_size))
+    m_buffer(boost::make_shared<std::vector<char>>(Message::header_size))
 {
   // Populate the header
   char *hdr = (char*) &buffer()[0];
@@ -34,7 +38,7 @@ Message::Message()
 
 Message::Message(Type type, const google::protobuf::Message &msg)
   : m_type(type),
-    m_buffer(new std::vector<char>())
+    m_buffer(boost::make_shared<std::vector<char>>())
 {
   // Prepare buffer for header and payload
   size_t size = msg.ByteSize();
@@ -52,7 +56,7 @@ Message::Message(Type type, const google::protobuf::Message &msg)
 void Message::detach()
 {
   // Create a new buffer thus releasing ownership of the previous one
-  m_buffer = boost::shared_ptr<std::vector<char> >(new std::vector<char>(Message::header_size));
+  m_buffer = boost::make_shared<std::vector<char>>(Message::header_size);
 }
 
 Message::Type Message::type() const

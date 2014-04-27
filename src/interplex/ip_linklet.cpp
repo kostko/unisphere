@@ -22,6 +22,7 @@
 #include "src/interplex/interplex.pb.h"
 
 #include <boost/bind.hpp>
+#include <boost/make_shared.hpp>
 
 namespace UniSphere {
 
@@ -60,7 +61,7 @@ void IPLinklet::listen(const Address &address)
   BOOST_LOG_SEV(m_logger, log::normal) << "Listening for incoming connections.";
 
   // Setup the TCP acceptor
-  LinkletPtr linklet(new IPLinklet(m_manager));
+  LinkletPtr linklet(boost::make_shared<IPLinklet>(m_manager));
   linklet->signalConnectionSuccess.connect(signalAcceptedConnection);
   m_acceptor.async_accept(
     boost::static_pointer_cast<IPLinklet>(linklet)->socket(),
@@ -141,7 +142,7 @@ void IPLinklet::handleAccept(LinkletPtr linklet, const boost::system::error_code
     boost::static_pointer_cast<IPLinklet>(linklet)->start(false);
 
     // Ready for the next connection
-    LinkletPtr nextLinklet(new IPLinklet(m_manager));
+    LinkletPtr nextLinklet(boost::make_shared<IPLinklet>(m_manager));
     nextLinklet->signalConnectionSuccess.connect(signalAcceptedConnection);
     m_acceptor.async_accept(
       boost::static_pointer_cast<IPLinklet>(nextLinklet)->socket(),
