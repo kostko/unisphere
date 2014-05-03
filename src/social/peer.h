@@ -74,7 +74,7 @@ public:
 };
 
 /// Alias definition for peer security association
-typedef SecurityAssociation<SignKey> PeerSecurityAssociation;
+typedef SecurityAssociation<PublicSignKey> PeerSecurityAssociation;
 typedef boost::shared_ptr<PeerSecurityAssociation> PeerSecurityAssociationPtr;
 /// Alias definition for private security association
 typedef SecurityAssociation<PrivateSignKey> PrivateSecurityAssociation;
@@ -115,30 +115,29 @@ public:
    * Constructs a peer with the specified public key and contact
    * information.
    *
-   * @param key Peer public key
    * @param contact Peer contact information
    */
-  Peer(const PeerKey &key, const Contact &contact);
+  explicit Peer(const Contact &contact);
 
   /**
    * Returns true if this is a null peer.
    */
-  inline bool isNull() const { return m_peerKey.isNull(); }
+  bool isNull() const { return m_contact.isNull(); }
 
   /**
    * Returns the node identifier of this peer.
    */
-  inline const NodeIdentifier &nodeId() const { return m_peerKey.nodeId(); }
+  NodeIdentifier nodeId() const { return m_contact.nodeId(); }
 
   /**
-   * Returns a reference to this peer's key.
+   * Returns this peer's key.
    */
-  inline const PeerKey &key() const { return m_peerKey; }
+  PublicPeerKey key() const { return m_contact.peerKey(); }
 
   /**
-   * Returns a reference to this peer's contact.
+   * Returns this peer's contact.
    */
-  const Contact &contact() const { return m_contact; }
+  Contact contact() const { return m_contact; }
 
   /**
    * Updates this peer's contact information.
@@ -189,8 +188,6 @@ public:
    */
   PrivateSecurityAssociationPtr getPrivateSecurityAssociation(const std::string &publicKey);
 private:
-  /// Public key of this peer
-  PeerKey m_peerKey;
   /// Contact information for this peer
   Contact m_contact;
   /// Security associations that the peer has chosen for this link

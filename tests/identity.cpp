@@ -33,6 +33,7 @@ TEST_CASE("identity/sign_key", "verify that sign key works")
   SECTION("s1", "random key")
   {
     PrivateSignKey key;
+    REQUIRE(key.isNull());
     // Generate a new private key
     key.generate();
     REQUIRE(!key.isNull());
@@ -46,28 +47,28 @@ TEST_CASE("identity/sign_key", "verify that sign key works")
 
   SECTION("s2", "invalid decode")
   {
-    KeyData invalidPrivateKey((unsigned char*) "foo", 3);
-    PrivateSignKey keyA("not-a-valid-key", invalidPrivateKey, SignKey::Format::Raw);
-    PrivateSignKey keyB("not-a-valid-key", invalidPrivateKey, SignKey::Format::Base64);
-
-    // Check that keys are null
-    REQUIRE(keyA.isNull());
-    REQUIRE(keyB.isNull());
-
-    // Check that sign methods throw
-    REQUIRE_THROWS_AS(keyA.sign("foo"), NullKey);
-    REQUIRE_THROWS_AS(keyA.signOpen("foo"), NullKey);
+    REQUIRE_THROWS_AS(PrivateSignKey keyA("not-a-valid-key", "foo", PrivateSignKey::Format::Raw), KeyDecodeFailed);
+    REQUIRE_THROWS_AS(PrivateSignKey keyB("not-a-valid-key", "foo", PrivateSignKey::Format::Base64), KeyDecodeFailed);
   }
 
-  SECTION("s3", "specific key")
+  SECTION("s3", "null key operations")
+  {
+    PrivateSignKey nullKey;
+
+    // Check that key is null
+    REQUIRE(nullKey.isNull());
+
+    // Check that sign methods throw
+    REQUIRE_THROWS_AS(nullKey.sign("foo"), NullKey);
+    REQUIRE_THROWS_AS(nullKey.signOpen("foo"), NullKey);
+  }
+
+  SECTION("s4", "specific key")
   {
     PrivateSignKey key(
       "H2wZSxxqitirRMKrQRDv2uC8e1z3F2SlELYbwcgtsdM=",
-      KeyData(
-        (unsigned char*) "W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x0w==",
-        88
-      ),
-      SignKey::Format::Base64
+      "W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x0w==",
+      PrivateSignKey::Format::Base64
     );
 
     // Check that keys have been parsed
@@ -99,6 +100,7 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
   SECTION("s1", "random key")
   {
     PrivatePeerKey key;
+    REQUIRE(key.isNull());
     // Generate a new private key
     key.generate();
     REQUIRE(!key.isNull());
@@ -109,24 +111,28 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
 
   SECTION("s2", "invalid decode")
   {
-    KeyData invalidPrivateKey((unsigned char*) "foo", 3);
-    PrivatePeerKey keyA("not-a-valid-key", invalidPrivateKey, PeerKey::Format::Raw);
-    PrivatePeerKey keyB("not-a-valid-key", invalidPrivateKey, PeerKey::Format::Base64);
-
-    // Check that keys are null
-    REQUIRE(keyA.isNull());
-    REQUIRE(keyB.isNull());
+    REQUIRE_THROWS_AS(PrivatePeerKey keyA("not-a-valid-key", "foo", PrivatePeerKey::Format::Raw), KeyDecodeFailed);
+    REQUIRE_THROWS_AS(PrivatePeerKey keyB("not-a-valid-key", "foo", PrivatePeerKey::Format::Base64), KeyDecodeFailed);
   }
 
-  SECTION("s3", "specific key")
+  SECTION("s3", "null key operations")
+  {
+    PrivatePeerKey nullKey;
+
+    // Check that key is null
+    REQUIRE(nullKey.isNull());
+
+    // Check that sign methods throw
+    REQUIRE_THROWS_AS(nullKey.sign("foo"), NullKey);
+    REQUIRE_THROWS_AS(nullKey.signOpen("foo"), NullKey);
+  }
+
+  SECTION("s4", "specific key")
   {
     PrivatePeerKey key(
-      "wNc7fX5Kn7NgRQM9ba7x4tLFoY9A1JSfNCa5QPAK61w=",
-      KeyData(
-        (unsigned char*) "eiIjfOybATHLE22Ee5WZBjg9emUcG778jj4DXD5OhDs=",
-        44
-      ),
-      PeerKey::Format::Base64
+      "H2wZSxxqitirRMKrQRDv2uC8e1z3F2SlELYbwcgtsdOj57Ei5oZ3fDnD+HY9TQQPOQckN6P1fF38VlnAlbfBPA==",
+      "W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x09NRG1icM43SnlDnFOy3eV0jUTPnJwBACh2tENJOrI6r",
+      PrivatePeerKey::Format::Base64
     );
 
     // Check that keys have been parsed
@@ -134,7 +140,13 @@ TEST_CASE("identity/peer_key", "verify that peer key works")
 
     // Check that node identifier is correctly derived
     REQUIRE(key.nodeId().isValid());
-    REQUIRE(key.nodeId().hex() == "1c87b9b333cad9f491b86d89b4973c92c13826e0");
+    REQUIRE(key.nodeId().hex() == "f749810a359cef83022e179334f43a520d73853c");
+
+    // Sign a message with this key
+    std::string origMsg("Hello World!");
+    std::string signedMessage = key.sign(origMsg);
+    std::string msg = key.signOpen(signedMessage);
+    REQUIRE(msg == origMsg);
 
     // Import/export of key
     std::ostringstream bufferOut;

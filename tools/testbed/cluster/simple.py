@@ -48,8 +48,8 @@ class SimpleCluster(base.ClusterRunnerBase):
   def setup(self, run, run_id):
     try:
       # Generate identifier for the cluster master
-      self.master_private_key = '01EbWJwzjdKeUOcU7Ld5XSNRM+cnAEAKHa0Q0k6sjqs='
-      self.master_public_key = 'o+exIuaGd3w5w/h2PU0EDzkHJDej9Xxd/FZZwJW3wTw='
+      self.master_private_key = 'W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x09NRG1icM43SnlDnFOy3eV0jUTPnJwBACh2tENJOrI6r'
+      self.master_public_key = 'H2wZSxxqitirRMKrQRDv2uC8e1z3F2SlELYbwcgtsdOj57Ei5oZ3fDnD+HY9TQQPOQckN6P1fF38VlnAlbfBPA=='
 
       # Prepare output directory
       out_dir = os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name)

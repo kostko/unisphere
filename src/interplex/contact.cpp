@@ -106,7 +106,7 @@ Contact::Contact()
 {
 }
 
-Contact::Contact(const PeerKey &peerKey)
+Contact::Contact(const PublicPeerKey &peerKey)
   : m_peerKey(peerKey)
 {
 }
@@ -121,7 +121,7 @@ NodeIdentifier Contact::nodeId() const
   return m_peerKey.nodeId();
 }
 
-PeerKey Contact::peerKey() const
+PublicPeerKey Contact::peerKey() const
 {
   return m_peerKey;
 }
@@ -177,7 +177,7 @@ Protocol::Contact Contact::toMessage() const
 
 Contact Contact::fromMessage(const Protocol::Contact &msg)
 {
-  Contact result(PeerKey(msg.peer_key()));
+  Contact result(PublicPeerKey(msg.peer_key()));
   for (const Protocol::Address &addr : msg.addresses()) {
     result.addAddress(Address(addr.address(), addr.port()));
   }

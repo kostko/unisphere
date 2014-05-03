@@ -55,7 +55,7 @@ public:
                             const NodeIdentifier &nodeId,
                             size_t partitions);
 
-  Contact assignContact(Partition &part, const PeerKey &peerKey);
+  Contact assignContact(Partition &part, const PublicPeerKey &peerKey);
 
   PrivatePeerKey assignPrivateKey(const std::string &name);
 public:
@@ -153,7 +153,7 @@ int TopologyLoaderPrivate::assignNodeToPartition(const std::string &name,
   return std::hash<NodeIdentifier>()(nodeId) % partitions;
 }
 
-Contact TopologyLoaderPrivate::assignContact(Partition &part, const PeerKey &peerKey)
+Contact TopologyLoaderPrivate::assignContact(Partition &part, const PublicPeerKey &peerKey)
 {
   auto it = m_contacts.find(peerKey.nodeId());
   if (it != m_contacts.end())
@@ -245,7 +245,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
       Partition &peerPart = partitions[d->assignNodeToPartition(peerName, peerId, partitions.size())];
       Contact contact = d->assignContact(peerPart, privateKey);
 
-      node.peers.push_back(Peer(privateKey, contact));
+      node.peers.push_back(Peer(contact));
     }
 
     part.nodes.push_back(node);

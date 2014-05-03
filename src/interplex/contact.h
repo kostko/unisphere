@@ -138,7 +138,7 @@ public:
    *
    * @param peerKey Peer key
    */
-  explicit Contact(const PeerKey &peerKey);
+  explicit Contact(const PublicPeerKey &peerKey);
 
   /**
    * Returns true if this contact record is a null one.
@@ -153,7 +153,7 @@ public:
   /**
    * Returns the peer key.
    */
-  PeerKey peerKey() const;
+  PublicPeerKey peerKey() const;
 
   /**
    * Returns true when the contact contains some addresses.
@@ -214,7 +214,7 @@ public:
   friend class std::hash<Contact>;
 private:
   /// Peer key
-  PeerKey m_peerKey;
+  PublicPeerKey m_peerKey;
   /// Contact addresses
   AddressMap m_addresses;
 };

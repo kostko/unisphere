@@ -254,12 +254,11 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
       auto &peer = node.peers(j);
 
       Contact peerContact = Contact::fromMessage(peer.contact());
-      PeerKey peerKey(peer.public_key());
       peerContact.addAddress(Address(boost::filesystem::temp_directory_path()/peerContact.nodeId().hex()), 1);
-      peers.push_back(boost::make_shared<Peer>(peerKey, peerContact));
+      peers.push_back(boost::make_shared<Peer>(peerContact));
     }
 
-    PrivatePeerKey key(node.public_key(), KeyData((unsigned char*) node.private_key().data(), node.private_key().size()));
+    PrivatePeerKey key(node.public_key(), node.private_key());
     simulation->createNode(node.name(), contact, key, peers);
   }
 
@@ -477,11 +476,14 @@ void Slave::setupOptions(int argc,
     throw ArgumentError("Missing required --cluster-master-port option!");
   }
 
-  PeerKey masterKey;
+  PublicPeerKey masterKey;
   if (variables.count("cluster-master-pub-key")) {
-    masterKey = PeerKey(variables["cluster-master-pub-key"].as<std::string>(), PeerKey::Format::Base64);
-    if (masterKey.isNull())
+    try {
+      masterKey = PublicPeerKey(variables["cluster-master-pub-key"].as<std::string>(),
+        PublicPeerKey::Format::Base64);
+    } catch (KeyDecodeFailed &e) {
       throw ArgumentError("Invalid master node public key specified!");
+    }
   } else {
     throw ArgumentError("Missing required --cluster-master-pub-key option!");
   }

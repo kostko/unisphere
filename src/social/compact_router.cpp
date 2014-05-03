@@ -551,11 +551,15 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
     case Message::Type::Social_SA_Create: {
       // Register a new security association
       Protocol::SecurityAssociationCreate sac = message_cast<Protocol::SecurityAssociationCreate>(msg);
-      PeerSecurityAssociation sa(
-        SignKey(sac.public_key()),
-        boost::posix_time::seconds(sac.expiry())
-      );
-      m_identity.getPeer(msg.originator())->addPeerSecurityAssociation(sa);
+      try {
+        PeerSecurityAssociation sa(
+          PublicSignKey(sac.public_key()),
+          boost::posix_time::seconds(sac.expiry())
+        );
+        m_identity.getPeer(msg.originator())->addPeerSecurityAssociation(sa);
+      } catch (KeyDecodeFailed &e) {
+        BOOST_LOG_SEV(m_logger, log::warning) << "SA_Create from peer " << msg.originator().hex() << " contains an invalid key!";
+      }
       break;
     }
 

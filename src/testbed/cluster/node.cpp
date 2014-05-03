@@ -172,7 +172,7 @@ void ClusterNodePrivate::initialize(const PrivatePeerKey &privateKey,
     &&
     log::severity != log::profiling
     &&
-    log::channel != "link" && log::channel != "ip_linklet" && log::channel == "linklet"
+    log::channel != "link" && log::channel != "ip_linklet" && log::channel != "linklet"
   );
 
 #ifdef UNISPHERE_PROFILE
@@ -245,8 +245,8 @@ void ClusterNode::setupOptions(int argc,
   } else if (variables.count("cluster-priv-key") && variables.count("cluster-pub-key")) {
     privateKey = PrivatePeerKey(
       variables["cluster-pub-key"].as<std::string>(),
-      fromInsecureKeyStorage(variables["cluster-priv-key"].as<std::string>()),
-      PeerKey::Format::Base64
+      variables["cluster-priv-key"].as<std::string>(),
+      PublicPeerKey::Format::Base64
     );
 
     if (privateKey.isNull())

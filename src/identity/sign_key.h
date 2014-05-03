@@ -20,57 +20,89 @@
 #define UNISPHERE_IDENTITY_SIGNKEY_H
 
 #include "core/context.h"
+#include "identity/exceptions.h"
 #include "identity/key.h"
+
+#include <sodium.h>
 
 namespace UniSphere {
 
 /**
- * Public signing key base.
+ * Signing key operations.
  */
-class UNISPHERE_EXPORT SignKeyBase {
-public:
-  /// Size of the public key (in bytes)
-  static const size_t public_key_length;
+class UNISPHERE_EXPORT SignKeyOperations {
+protected:
+  /**
+   * Generates a new public/private signing key pair.
+   *
+   * @param publicKey Public key storage
+   * @param publicKeyOffset Public key offset within the storage
+   * @param privateKey Private key storage
+   * @param privateKeyOffset Private key offset within the storage
+   */
+  void opSignGenerate(std::string &publicKey,
+                      size_t publicKeyOffset,
+                      std::string &privateKey,
+                      size_t privateKeyOffset) const;
+
+  /**
+   * Cryptographically signs the specified buffer.
+   *
+   * @param privateKey Private key storage
+   * @param privateKeyOffset Private key offset within the storage
+   * @param buffer Buffer to sign
+   * @return Cryptographically signed buffer
+   */
+  std::string opSign(const std::string &privateKey,
+                     size_t privateKeyOffset,
+                     const std::string &buffer) const;
 
   /**
    * Verifies the cryptographically signed buffer and returns the payload
    * in case verification succeeds.
    *
-   * @param signedBuffer Cryptographically signed buffer
+   * @param publicKey Public key storage
+   * @param publicKeyOffset Public key offset within the storage
+   * @param buffer Cryptographically signed buffer
    * @return Payload
    * @throws InvalidSignature When the signature is not valid
-   * @throws NullPeerKey When attempting to verify with a null key
    */
-  std::string signOpen(const std::string &signedBuffer) const;
-protected:
-  /**
-   * Performs public key validation and sets the key to null if it
-   * is not a valid key.
-   */
-  void validatePublic();
-protected:
-  // Public key storage
-  std::string m_public;
+  std::string opSignOpen(const std::string &publicKey,
+                         size_t publicKeyOffset,
+                         const std::string &buffer) const;
 };
 
-/// Public signing key
-typedef Key<SignKeyBase> SignKey;
-
 /**
- * Private signing key base.
+ * Public signing key.
  */
-class UNISPHERE_EXPORT PrivateSignKeyBase : public SignKey {
+class UNISPHERE_EXPORT PublicSignKey : public virtual PublicKey<crypto_sign_PUBLICKEYBYTES>,
+                                       public SignKeyOperations
+{
 public:
-  /// Public key type
-  typedef SignKey public_key_type;
-  /// Size of the private key (in bytes)
-  static const size_t private_key_length;
-
-  // Inherited base constructors
-  using SignKey::SignKey;
+  using PublicKey::PublicKey;
 
   /**
-   * Generates a new private peer key and overwrites the current key.
+   * Verifies the cryptographically signed buffer and returns the payload
+   * in case verification succeeds.
+   *
+   * @param buffer Cryptographically signed buffer
+   * @return Payload
+   * @throws InvalidSignature When the signature is not valid
+   */
+  std::string signOpen(const std::string &buffer) const;
+};
+
+/**
+ * Private signing key.
+ */
+class UNISPHERE_EXPORT PrivateSignKey : public PublicSignKey,
+                                        public PrivateKey<PublicSignKey, crypto_sign_SECRETKEYBYTES>
+{
+public:
+  using PrivateKey::PrivateKey;
+
+  /**
+   * Generates a new private sign key and overwrites the current key.
    */
   void generate();
 
@@ -79,22 +111,9 @@ public:
    *
    * @param buffer Buffer to sign
    * @return Cryptographically signed buffer
-   * @throws NullPeerKey When attempting to sign with a null key
    */
   std::string sign(const std::string &buffer) const;
-protected:
-  /**
-   * Performs private key validation and sets the key to null if it
-   * is not a valid key.
-   */
-  void validatePrivate();
-protected:
-  /// Private key storage
-  KeyData m_private;
 };
-
-/// Private signing key
-typedef PrivateKey<PrivateSignKeyBase> PrivateSignKey;
 
 }
 

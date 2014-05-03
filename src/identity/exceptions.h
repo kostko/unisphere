@@ -24,6 +24,13 @@
 namespace UniSphere {
 
 /**
+ * Key decode failed exception.
+ */
+struct UNISPHERE_EXPORT KeyDecodeFailed : public Exception {
+  KeyDecodeFailed(const std::string &msg = "") : Exception(msg) {}
+};
+
+/**
  * Key is null exception.
  */
 struct UNISPHERE_EXPORT NullKey : public Exception {

@@ -85,7 +85,7 @@ public:
   /**
    * Returns the peer key of the node on the other side of this link.
    */
-  PeerKey peerKey() const { return m_peerKey; }
+  PublicPeerKey peerKey() const { return m_peerKey; }
 
   /**
    * Returns the current link state.
@@ -107,7 +107,7 @@ protected:
    * @param peerKey Peer key of the node on the other end
    * @param maxIdleTime Maximum number of seconds a link can be idle
    */
-  Link(LinkManager &manager, const PeerKey &peerKey, time_t maxIdleTime);
+  Link(LinkManager &manager, const PublicPeerKey &peerKey, time_t maxIdleTime);
 
   /**
    * Performs any post-construct initialization. This is required because
@@ -238,7 +238,7 @@ private:
   /// Logger instance
   Logger m_logger;
   /// Public key of the other peer
-  PeerKey m_peerKey;
+  PublicPeerKey m_peerKey;
   /// Current link state
   State m_state;
   /// Maximum number of seconds a link can be idle without being closed

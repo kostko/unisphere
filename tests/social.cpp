@@ -44,7 +44,7 @@ TEST_CASE("social/peer", "verify that peer operations work")
   Contact contact(key);
 
   // Create new peer
-  Peer peer(key.publicKey(), contact);
+  Peer peer(contact);
 
   // Test whether peer SAs work
   PrivateSignKey skey;

@@ -17,63 +17,69 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "identity/sign_key.h"
-#include "identity/exceptions.h"
-
-#include <botan/botan.h>
-#include <sodium.h>
 
 namespace UniSphere {
 
-const size_t SignKeyBase::public_key_length = crypto_sign_PUBLICKEYBYTES;
-const size_t PrivateSignKeyBase::private_key_length = crypto_sign_SECRETKEYBYTES;
-
-std::string SignKeyBase::signOpen(const std::string &signedBuffer) const
+void SignKeyOperations::opSignGenerate(std::string &publicKey,
+                                       size_t publicKeyOffset,
+                                       std::string &privateKey,
+                                       size_t privateKeyOffset) const
 {
-  if (m_public.empty())
-    throw NullKey("Attempted to open with a null key!");
+  crypto_sign_keypair(
+    (unsigned char*) &publicKey[publicKeyOffset],
+    (unsigned char*) &privateKey[privateKeyOffset]
+  );
+}
 
-  size_t smlen = signedBuffer.size();
+std::string SignKeyOperations::opSign(const std::string &privateKey,
+                                      size_t privateKeyOffset,
+                                      const std::string &buffer) const
+{
+  unsigned char sm[buffer.size() + crypto_sign_BYTES];
+  unsigned long long smlen;
+  crypto_sign(sm, &smlen, (unsigned char*) buffer.data(), buffer.size(), (unsigned char*) &privateKey[privateKeyOffset]);
+
+  return std::string((char*) sm, smlen);
+}
+
+std::string SignKeyOperations::opSignOpen(const std::string &publicKey,
+                                          size_t publicKeyOffset,
+                                          const std::string &buffer) const
+{
+  size_t smlen = buffer.size();
   unsigned char m[smlen];
   unsigned long long mlen;
 
-  if (crypto_sign_open(m, &mlen, (unsigned char*) signedBuffer.c_str(), smlen, (unsigned char*) m_public.c_str()) != 0)
+  if (crypto_sign_open(m, &mlen, (unsigned char*) buffer.data(), smlen, (unsigned char*) &publicKey[publicKeyOffset]) != 0)
     throw InvalidSignature("Invalid signature!");
 
   return std::string((char*) m, mlen);
 }
 
-void SignKeyBase::validatePublic()
+std::string PublicSignKey::signOpen(const std::string &buffer) const
 {
-  if (m_public.size() != SignKeyBase::public_key_length)
-    m_public.clear();
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opSignOpen(m_public, 0, buffer);
 }
 
-std::string PrivateSignKeyBase::sign(const std::string &buffer) const
+void PrivateSignKey::generate()
 {
-  if (m_private.empty())
-    throw NullKey("Attempted to sign with a null key!");
-
-  unsigned char sm[buffer.size() + crypto_sign_BYTES];
-  unsigned long long smlen;
-  crypto_sign(sm, &smlen, (unsigned char*) buffer.c_str(), buffer.size(), m_private);
-
-  return std::string((char*) sm, smlen);
-}
-
-void PrivateSignKeyBase::generate()
-{
-  unsigned char pubkey[SignKey::public_key_length];
-  m_private.resize(PrivateSignKeyBase::private_key_length);
-  crypto_sign_keypair(pubkey, m_private);
-  m_public = std::string((char*) pubkey, sizeof(pubkey));
-}
-
-void PrivateSignKeyBase::validatePrivate()
-{
-  if (m_public.empty() || m_private.size() != PrivateSignKeyBase::private_key_length) {
-    m_public.clear();
-    m_private.clear();
+  if (isNull()) {
+    m_public.resize(Public::KeySize);
+    m_private.resize(KeySize);
   }
+
+  opSignGenerate(m_public, 0, m_private, 0);
+}
+
+std::string PrivateSignKey::sign(const std::string &buffer) const
+{
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opSign(m_private, 0, buffer);
 }
 
 }

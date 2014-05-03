@@ -21,17 +21,30 @@
 
 #include "core/context.h"
 #include "identity/node_identifier.h"
-#include "identity/key.h"
+#include "identity/sign_key.h"
+#include "identity/box_key.h"
 
 namespace UniSphere {
 
 /**
- * Public peer key base.
+ * Public peer key.
  */
-class UNISPHERE_EXPORT PeerKeyBase {
+class UNISPHERE_EXPORT PublicPeerKey : public virtual PublicKey<PublicSignKey::KeySize + PublicBoxKey::KeySize>,
+                                       public SignKeyOperations,
+                                       public BoxKeyOperations
+{
 public:
-  /// Size of the public key (in bytes)
-  static const size_t public_key_length;
+  using PublicKey::PublicKey;
+
+  /**
+   * Returns a copy of the public signing subkey.
+   */
+  PublicSignKey signSubkey() const;
+
+  /**
+   * Returns a copy of the public boxing subkey.
+   */
+  PublicBoxKey boxSubkey() const;
 
   /**
    * Returns a node identifier that identifies this peer key.
@@ -39,41 +52,27 @@ public:
   const NodeIdentifier &nodeId() const;
 
   /**
-   * Encrypts the specified buffer.
+   * Verifies the cryptographically signed buffer and returns the payload
+   * in case verification succeeds.
    *
-   * @param buffer Buffer to encrypt
-   * @return Encrypted buffer
-   * @throws NullPeerKey When attempting to encrypt with a null key
+   * @param buffer Cryptographically signed buffer
+   * @return Payload
+   * @throws InvalidSignature When the signature is not valid
    */
-  std::string encrypt(const std::string &buffer) const;
+  std::string signOpen(const std::string &buffer) const;
 protected:
-  /**
-   * Performs public key validation and sets the key to null if it
-   * is not a valid key.
-   */
-  void validatePublic();
-protected:
-  // Public key storage
-  std::string m_public;
-  // Cached node identifier
+  /// Cached node identifier
   mutable NodeIdentifier m_nodeId;
 };
 
-/// Public peer key
-typedef Key<PeerKeyBase> PeerKey;
-
 /**
- * Private peer key base.
+ * Private peer key.
  */
-class UNISPHERE_EXPORT PrivatePeerKeyBase : public PeerKey {
+class UNISPHERE_EXPORT PrivatePeerKey : public PublicPeerKey,
+                                        public PrivateKey<PublicPeerKey, PrivateSignKey::KeySize + PrivateBoxKey::KeySize>
+{
 public:
-  /// Public key type
-  typedef PeerKey public_key_type;
-  /// Size of the private key (in bytes)
-  static const size_t private_key_length;
-
-  // Inherited base constructors
-  using PeerKey::PeerKey;
+  using PrivateKey::PrivateKey;
 
   /**
    * Generates a new private peer key and overwrites the current key.
@@ -81,27 +80,63 @@ public:
   void generate();
 
   /**
-   * Opens an encrypted box.
-   *
-   * @param encryptedBuffer Encrypted box
-   * @return Plaintext
-   * @throws InvalidSignature When the signature is not valid
-   * @throws NullPeerKey When attempting to open a box with a null key
+   * Returns a copy of the private signing subkey.
    */
-  std::string boxOpen(const std::string &encryptedBuffer) const;
-protected:
-  /**
-   * Performs private key validation and sets the key to null if it
-   * is not a valid key.
-   */
-  void validatePrivate();
-protected:
-  /// Private key storage
-  KeyData m_private;
-};
+  PrivateSignKey privateSignSubkey() const;
 
-/// Private peer key
-typedef PrivateKey<PrivatePeerKeyBase> PrivatePeerKey;
+  /**
+   * Returns a copy of the private boxing subkey.
+   */
+  PrivateBoxKey privateBoxSubkey() const;
+
+  /**
+   * Cryptographically signs the specified buffer.
+   *
+   * @param buffer Buffer to sign
+   * @return Cryptographically signed buffer
+   */
+  std::string sign(const std::string &buffer) const;
+
+  /**
+   * Creates a cryptographic box containing the specified buffer.
+   *
+   * @param otherPublicKey Public key of the recipient
+   * @param buffer Buffer to store into the box
+   * @return Cryptographic box
+   */
+  std::string boxEncrypt(const PublicPeerKey &otherPublicKey,
+                         const std::string &buffer) const;
+
+  /**
+   * Creates a cryptographic box containing the specified buffer.
+   *
+   * @param otherPublicKey Public key of the recipient
+   * @param buffer Buffer to store into the box
+   * @return Cryptographic box
+   */
+  std::string boxEncrypt(const PublicBoxKey &otherPublicKey,
+                         const std::string &buffer) const;
+
+  /**
+   * Opens a cryptographic box.
+   *
+   * @param otherPublicKey Public key of the sender
+   * @param buffer Buffer containing the cryptographic box
+   * @return Decrypted box contents
+   */
+  std::string boxOpen(const PublicPeerKey &otherPublicKey,
+                      const std::string &buffer) const;
+
+  /**
+   * Opens a cryptographic box.
+   *
+   * @param otherPublicKey Public key of the sender
+   * @param buffer Buffer containing the cryptographic box
+   * @return Decrypted box contents
+   */
+  std::string boxOpen(const PublicBoxKey &otherPublicKey,
+                      const std::string &buffer) const;
+};
 
 }
 

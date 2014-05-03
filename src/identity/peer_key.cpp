@@ -17,19 +17,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "identity/peer_key.h"
-#include "identity/exceptions.h"
-
-#include <botan/botan.h>
-#include <sodium.h>
 
 namespace UniSphere {
 
-const size_t PeerKeyBase::public_key_length = crypto_box_PUBLICKEYBYTES;
-const size_t PrivatePeerKeyBase::private_key_length = crypto_box_SECRETKEYBYTES;
-
-const NodeIdentifier &PeerKeyBase::nodeId() const
+PublicSignKey PublicPeerKey::signSubkey() const
 {
-  if (m_public.empty())
+  if (isNull())
+    return PublicSignKey();
+
+  return PublicSignKey(std::string(m_public, 0, PublicSignKey::KeySize));
+}
+
+PublicBoxKey PublicPeerKey::boxSubkey() const
+{
+  if (isNull())
+    return PublicBoxKey();
+
+  return PublicBoxKey(std::string(m_public, PublicSignKey::KeySize, PublicBoxKey::KeySize));
+}
+
+const NodeIdentifier &PublicPeerKey::nodeId() const
+{
+  if (isNull())
     return NodeIdentifier::INVALID;
 
   // Generate a node identifier and cache it
@@ -42,46 +51,90 @@ const NodeIdentifier &PeerKeyBase::nodeId() const
   return m_nodeId;
 }
 
-std::string PeerKeyBase::encrypt(const std::string &buffer) const
+std::string PublicPeerKey::signOpen(const std::string &buffer) const
 {
-  if (m_public.empty())
-    throw NullKey("Attempted to encrypt with a null key!");
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
 
-  // TODO
-
-  return std::string();
+  return opSignOpen(m_public, 0, buffer);
 }
 
-void PeerKeyBase::validatePublic()
+void PrivatePeerKey::generate()
 {
-  if (m_public.size() != PeerKeyBase::public_key_length)
-    m_public.clear();
-}
-
-void PrivatePeerKeyBase::generate()
-{
-  unsigned char pubkey[PeerKey::public_key_length];
-  m_private.resize(PrivatePeerKeyBase::private_key_length);
-  crypto_box_keypair(pubkey, m_private);
-  m_public = std::string((char*) pubkey, sizeof(pubkey));
-}
-
-std::string PrivatePeerKeyBase::boxOpen(const std::string &encryptedBuffer) const
-{
-  if (m_private.empty())
-    throw NullKey("Attempted to open box with a null key!");
-
-  // TODO
-
-  return std::string();
-}
-
-void PrivatePeerKeyBase::validatePrivate()
-{
-  if (m_public.empty() || m_private.size() != PrivatePeerKeyBase::private_key_length) {
-    m_public.clear();
-    m_private.clear();
+  if (isNull()) {
+    m_public.resize(Public::KeySize);
+    m_private.resize(KeySize);
   }
+
+  opSignGenerate(m_public, 0, m_private, 0);
+  opBoxGenerate(m_public, PublicSignKey::KeySize, m_private, PrivateSignKey::KeySize);
+  m_nodeId = NodeIdentifier();
+}
+
+PrivateSignKey PrivatePeerKey::privateSignSubkey() const
+{
+  if (isNull())
+    return PrivateSignKey();
+
+  return PrivateSignKey(
+    std::string(m_public, 0, PublicSignKey::KeySize),
+    std::string(m_private, 0, PrivateSignKey::KeySize)
+  );
+}
+
+PrivateBoxKey PrivatePeerKey::privateBoxSubkey() const
+{
+  if (isNull())
+    return PrivateBoxKey();
+
+  return PrivateBoxKey(
+    std::string(m_public, PublicSignKey::KeySize, PublicBoxKey::KeySize),
+    std::string(m_private, PrivateSignKey::KeySize, PrivateBoxKey::KeySize)
+  );
+}
+
+std::string PrivatePeerKey::sign(const std::string &buffer) const
+{
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opSign(m_private, 0, buffer);
+}
+
+std::string PrivatePeerKey::boxEncrypt(const PublicPeerKey &otherPublicKey,
+                                       const std::string &buffer) const
+{
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opBoxEncrypt(otherPublicKey.raw(), PublicSignKey::KeySize, m_private, PrivateSignKey::KeySize, buffer);
+}
+
+std::string PrivatePeerKey::boxEncrypt(const PublicBoxKey &otherPublicKey,
+                                       const std::string &buffer) const
+{
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opBoxEncrypt(otherPublicKey.raw(), 0, m_private, PrivateSignKey::KeySize, buffer);
+}
+
+std::string PrivatePeerKey::boxOpen(const PublicPeerKey &otherPublicKey,
+                                    const std::string &buffer) const
+{
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opBoxOpen(otherPublicKey.raw(), PublicSignKey::KeySize, m_private, PrivateSignKey::KeySize, buffer);
+}
+
+std::string PrivatePeerKey::boxOpen(const PublicBoxKey &otherPublicKey,
+                                    const std::string &buffer) const
+{
+  if (isNull())
+    throw NullKey("Unable to perform operation on a null key!");
+
+  return opBoxOpen(otherPublicKey.raw(), 0, m_private, PrivateSignKey::KeySize, buffer);
 }
 
 }

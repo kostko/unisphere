@@ -44,9 +44,9 @@ void SocialIdentity::addPeer(PeerPtr peer)
   signalPeerAdded(peer);
 }
 
-void SocialIdentity::addPeer(const PeerKey &key, const Contact &contact)
+void SocialIdentity::addPeer(const Contact &contact)
 {
-  addPeer(boost::make_shared<Peer>(key, contact));
+  addPeer(boost::make_shared<Peer>(contact));
 }
 
 void SocialIdentity::removePeer(const NodeIdentifier &nodeId)

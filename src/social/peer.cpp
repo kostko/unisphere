@@ -31,11 +31,9 @@ Peer::Peer()
 {
 }
 
-Peer::Peer(const PeerKey &key, const Contact &contact)
-  : m_peerKey(key),
-    m_contact(contact)
+Peer::Peer(const Contact &contact)
+  : m_contact(contact)
 {
-  BOOST_ASSERT(key.nodeId() == contact.nodeId());
 }
 
 void Peer::setContact(const Contact &contact)

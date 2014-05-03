@@ -78,10 +78,9 @@ public:
   /**
    * Adds a new peer.
    *
-   * @param key Peer public key
    * @param contact Peer contact data
    */
-  void addPeer(const PeerKey &key, const Contact &contact);
+  void addPeer(const Contact &contact);
 
   /**
    * Removes an existing peer.

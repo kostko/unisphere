@@ -717,11 +717,14 @@ void Controller::setupOptions(int argc,
     throw ArgumentError("Missing required --cluster-master-port option!");
   }
 
-  PeerKey masterKey;
+  PublicPeerKey masterKey;
   if (variables.count("cluster-master-pub-key")) {
-    masterKey = PeerKey(variables["cluster-master-pub-key"].as<std::string>(), PeerKey::Format::Base64);
-    if (masterKey.isNull())
+    try {
+      masterKey = PublicPeerKey(variables["cluster-master-pub-key"].as<std::string>(),
+        PublicPeerKey::Format::Base64);
+    } catch (KeyDecodeFailed &e) {
       throw ArgumentError("Invalid master node public key specified!");
+    }
   } else {
     throw ArgumentError("Missing required --cluster-master-pub-key option!");
   }
@@ -895,14 +898,10 @@ void Controller::run()
           n->set_name(node.name);
           *n->mutable_contact() = node.contact.toMessage();
           n->set_public_key(node.privateKey.raw());
-          n->set_private_key(
-            node.privateKey.privateRaw(),
-            node.privateKey.privateRaw().size()
-          );
+          n->set_private_key(node.privateKey.privateRaw());
 
           for (const Peer &peer : node.peers) {
             UniSphere::Protocol::Peer *p = n->add_peers();
-            p->set_public_key(peer.key().raw());
             *p->mutable_contact() = peer.contact().toMessage();
           }
         }

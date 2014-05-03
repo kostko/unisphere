@@ -28,7 +28,7 @@
 
 namespace UniSphere {
 
-Link::Link(LinkManager &manager, const PeerKey &peerKey, time_t maxIdleTime)
+Link::Link(LinkManager &manager, const PublicPeerKey &peerKey, time_t maxIdleTime)
   : enable_shared_from_this<Link>(),
     m_manager(manager),
     m_logger(logging::keywords::channel = "link"),
