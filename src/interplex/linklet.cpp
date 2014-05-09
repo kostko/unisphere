@@ -43,7 +43,8 @@ bool Linklet::headerParsed(Message &msg)
   if (m_state == State::IntroWait) {
     // Only hello messages are allowed in IntroWait state
     if (msg.type() != Message::Type::Interplex_Hello) {
-      BOOST_LOG_SEV(m_logger, log::error) << "Received non-hello message in IntroWait phase!";
+      BOOST_LOG_SEV(m_logger, log::error) << "Received non-hello message (type=" <<
+        static_cast<int>(msg.type()) << ") in IntroWait phase!";
       return false;
     }
   }

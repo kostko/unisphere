@@ -278,7 +278,7 @@ void Link::tryNextAddress()
   const Address &address = *m_addressIterator;
   LinkletPtr linklet = m_manager.getLinkletFactory().create(address);
   addLinklet(linklet);
-  linklet->connect(address);
+  linklet->connect(m_peerKey, address);
 }
 
 void Link::linkletConnectionFailed(LinkletPtr linklet)

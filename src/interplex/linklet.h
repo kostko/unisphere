@@ -57,6 +57,9 @@ public:
    */
   Linklet(LinkManager &manager);
 
+  Linklet(const Linklet&) = delete;
+  Linklet &operator=(const Linklet&) = delete;
+
   /**
    * Class destructor.
    */
@@ -88,9 +91,10 @@ public:
   /**
    * Starts connecting to the given address.
    *
+   * @param peerKey Public peer key
    * @param address Address to connect to
    */
-  virtual void connect(const Address &address) = 0;
+  virtual void connect(const PublicPeerKey &peerKey, const Address &address) = 0;
 
   /**
    * Closes the link.

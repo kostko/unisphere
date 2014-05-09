@@ -61,6 +61,9 @@ public:
     Connected
   };
 
+  Link(const Link&) = delete;
+  Link &operator=(const Link&) = delete;
+
   /**
    * Class destructor.
    */

@@ -44,7 +44,7 @@ boost::asio::ip::tcp::socket &IPLinklet::socket()
 
 void IPLinklet::listen(const Address &address)
 {
-  boost::asio::ip::tcp::endpoint endpoint(address.toIpEndpoint());
+  boost::asio::ip::tcp::endpoint endpoint(address.toTcpIpEndpoint());
   try {
     m_acceptor.open(endpoint.protocol());
     m_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
@@ -69,7 +69,7 @@ void IPLinklet::listen(const Address &address)
   );
 }
 
-void IPLinklet::connect(const Address &address)
+void IPLinklet::connect(const PublicPeerKey &peerKey, const Address &address)
 {
   m_connectAddress = address;
   m_state = State::Connecting;
@@ -79,14 +79,15 @@ void IPLinklet::connect(const Address &address)
 
   // When a local address is specified, we should bind to it for outgoing connections
   Address localAddress = m_manager.getLocalAddress();
+  const auto &ep = localAddress.toTcpIpEndpoint();
   if (!localAddress.isNull()) {
-    socket().open(localAddress.toIpEndpoint().protocol());
-    socket().bind(localAddress.toIpEndpoint());
+    socket().open(ep.protocol());
+    socket().bind(ep);
   }
 
   // Setup the TCP socket
   socket().async_connect(
-    address.toIpEndpoint(),
+    address.toTcpIpEndpoint(),
     m_strand.wrap(boost::bind(&IPLinklet::handleConnect, boost::static_pointer_cast<IPLinklet>(shared_from_this()),
       boost::asio::placeholders::error))
   );

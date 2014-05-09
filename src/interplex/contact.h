@@ -58,6 +58,11 @@ public:
   /**
    * Constructs an IP address.
    */
+  explicit Address(const boost::asio::ip::udp::endpoint &endpoint);
+
+  /**
+   * Constructs an IP address.
+   */
   Address(const boost::asio::ip::address &ip, unsigned short port);
 
   /**
@@ -102,7 +107,16 @@ public:
    *
    * @throws AddressTypeMismatch
    */
-  boost::asio::ip::tcp::endpoint toIpEndpoint() const;
+  boost::asio::ip::tcp::endpoint toTcpIpEndpoint() const;
+
+  /**
+   * Returns an IP address representation of this node address. It
+   * is an error to call this method when address type is not IP. An
+   * exception will be thrown in this case.
+   *
+   * @throws AddressTypeMismatch
+   */
+  boost::asio::ip::udp::endpoint toUdpIpEndpoint() const;
 
   /**
    * Returns the local path endpoint representation of this node

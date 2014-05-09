@@ -181,7 +181,7 @@ LinkPtr LinkManagerPrivate::getOrCreateLink(const Contact &contact)
   if (!link) {
     if (contact.hasAddresses()) {
       // Note that we can't use make_shared here because the Link constructor is private
-      link = LinkPtr(new Link(q, contact.peerKey(), 600));
+      link = LinkPtr(new Link(q, contact.peerKey(), 60));
       link->init();
       link->signalMessageReceived.connect(boost::bind(&LinkManagerPrivate::linkMessageReceived, this, _1));
       m_links.insert({{ contact.nodeId(), link }});
@@ -358,8 +358,8 @@ Contact LinkManagerPrivate::getLocalContact() const
   for (const LinkletPtr &linklet : m_listeners) {
     Address address = linklet->address();
     if (address.type() == Address::Type::IP) {
-      auto endpoint = address.toIpEndpoint();
-      auto ip = endpoint.address();
+      const auto &endpoint = address.toTcpIpEndpoint();
+      const auto &ip = endpoint.address();
 
       if ((ip.is_v4() && ip.to_v4() == boost::asio::ip::address_v4::any()) ||
         (ip.is_v6() && ip.to_v6() == boost::asio::ip::address_v6::any())) {
@@ -444,7 +444,7 @@ const PrivatePeerKey &LinkManager::getLocalPrivateKey() const
 
 void LinkManager::setLocalAddress(const Address &address)
 {
-  d->m_localAddress = Address(address.toIpEndpoint().address(), 0);
+  d->m_localAddress = Address(address.toTcpIpEndpoint().address(), 0);
 }
 
 const Address &LinkManager::getLocalAddress() const

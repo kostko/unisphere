@@ -36,6 +36,9 @@ public:
    */
   LocalLinklet(LinkManager &manager);
 
+  LocalLinklet(const LocalLinklet&) = delete;
+  LocalLinklet &operator=(const LocalLinklet&) = delete;
+
   /**
    * Class destructor.
    */
@@ -46,29 +49,30 @@ public:
    *
    * @param address Address to listen on
    */
-  void listen(const Address &address);
+  void listen(const Address &address) override;
 
   /**
    * Starts connecting to the given address.
    *
+   * @param peerKey Public peer key
    * @param address Address to connect to
    */
-  void connect(const Address &address);
+  void connect(const PublicPeerKey &peerKey, const Address &address) override;
 
   /**
    * Closes the link.
    */
-  void close();
+  void close() override;
 
   /**
    * Sends a message via this link.
    *
    * @param msg The message to send
    */
-  void send(const Message &msg);
+  void send(const Message &msg) override;
 
   /**
-   * Starts the TLS handshake.
+   * Starts the handshake.
    *
    * @param client Perform client handshake
    */

@@ -9,11 +9,12 @@ set(Boost_USE_STATIC_LIBS OFF)
 find_package(Threads REQUIRED)
 find_package(Boost 1.55.0 COMPONENTS system filesystem thread program_options date_time graph log serialization coroutine iostreams REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(Botan REQUIRED)
 find_package(GMP REQUIRED)
 find_package(Tcmalloc REQUIRED)
 find_package(Sodium REQUIRED)
+find_package(CurveCPR REQUIRED)
+find_package(CurveCPRASIO REQUIRED)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -std=c++0x")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK")
@@ -25,11 +26,12 @@ include_directories(
   # External includes
   ${Boost_INCLUDE_DIRS}
   ${PROTOBUF_INCLUDE_DIR}
-  ${OPENSSL_INCLUDE_DIR}
   ${BOTAN_INCLUDE_DIR}
   ${GMP_INCLUDE_DIR}
   ${Tcmalloc_INCLUDE_DIR}
   ${SODIUM_INCLUDE_DIR}
+  ${CURVECPR_INCLUDE_DIR}
+  ${CURVECPRASIO_INCLUDE_DIR}
 
   # Internal includes
   ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -41,11 +43,11 @@ set(unisphere_external_libraries
   ${Tcmalloc_LIBRARIES}
   ${PROTOBUF_LIBRARY}
   ${Boost_LIBRARIES}
-  ${OPENSSL_LIBRARIES}
   ${BOTAN_LIBRARIES}
   ${GMP_LIBRARIES}
   ${GMPXX_LIBRARIES}
   ${SODIUM_LIBRARY}
+  ${CURVECPR_LIBRARY}
 )
 
 enable_testing()

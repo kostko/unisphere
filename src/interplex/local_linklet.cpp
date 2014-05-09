@@ -75,7 +75,7 @@ void LocalLinklet::listen(const Address &address)
   );
 }
 
-void LocalLinklet::connect(const Address &address)
+void LocalLinklet::connect(const PublicPeerKey &peerKey, const Address &address)
 {
   m_connectAddress = address;
   m_state = State::Connecting;

@@ -34,6 +34,11 @@ Address::Address(const boost::asio::ip::tcp::endpoint &endpoint)
 {
 }
 
+Address::Address(const boost::asio::ip::udp::endpoint &endpoint)
+  : Address(boost::asio::ip::tcp::endpoint(endpoint.address(), endpoint.port()))
+{
+}
+
 Address::Address(const boost::asio::ip::address &ip, unsigned short port)
   : m_type(Type::IP),
     m_address(boost::asio::ip::tcp::endpoint(ip, port))
@@ -68,7 +73,7 @@ bool Address::operator==(const Address &other) const
     return false;
 
   switch (m_type) {
-    case Type::IP: return toIpEndpoint() == other.toIpEndpoint();
+    case Type::IP: return toTcpIpEndpoint() == other.toTcpIpEndpoint();
     case Type::Local: return toLocalEndpoint() == other.toLocalEndpoint();
     default: return false;
   }
@@ -80,18 +85,24 @@ bool Address::operator<(const Address &other) const
     return false;
 
   switch (m_type) {
-    case Type::IP: return toIpEndpoint() < other.toIpEndpoint();
+    case Type::IP: return toTcpIpEndpoint() < other.toTcpIpEndpoint();
     case Type::Local: return toLocalEndpoint() < other.toLocalEndpoint();
     default: return false;
   }
 }
 
-boost::asio::ip::tcp::endpoint Address::toIpEndpoint() const
+boost::asio::ip::tcp::endpoint Address::toTcpIpEndpoint() const
 {
   if (m_type != Type::IP)
     throw AddressTypeMismatch();
 
   return boost::any_cast<boost::asio::ip::tcp::endpoint>(m_address);
+}
+
+boost::asio::ip::udp::endpoint Address::toUdpIpEndpoint() const
+{
+  const auto &ep = toTcpIpEndpoint();
+  return boost::asio::ip::udp::endpoint(ep.address(), ep.port());
 }
 
 boost::asio::local::stream_protocol::endpoint Address::toLocalEndpoint() const
@@ -167,8 +178,9 @@ Protocol::Contact Contact::toMessage() const
     // Only addresses of type 'IP' can be represented as protocol messages
     if (p.second.type() == Address::Type::IP) {
       Protocol::Address *addr = result.add_addresses();
-      addr->set_address(p.second.toIpEndpoint().address().to_string());
-      addr->set_port(p.second.toIpEndpoint().port());
+      const auto &ep = p.second.toTcpIpEndpoint();
+      addr->set_address(ep.address().to_string());
+      addr->set_port(ep.port());
     }
   }
 

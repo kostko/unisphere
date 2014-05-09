@@ -16,40 +16,44 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef UNISPHERE_INTERPLEX_IPLINKLET_H
-#define UNISPHERE_INTERPLEX_IPLINKLET_H
+#ifndef UNISPHERE_INTERPLEX_CURVECPLINKLET_H
+#define UNISPHERE_INTERPLEX_CURVECPLINKLET_H
 
 #include "core/globals.h"
 #include "interplex/linklet.h"
 
 #include <deque>
 #include <boost/asio.hpp>
+#include <curvecp/curvecp.hpp>
 
 namespace UniSphere {
 
-class UNISPHERE_NO_EXPORT IPLinklet : public Linklet {
+class CurveCPLinklet;
+UNISPHERE_SHARED_POINTER(CurveCPLinklet)
+
+class UNISPHERE_NO_EXPORT CurveCPLinklet : public Linklet {
 public:
   /**
    * Class constructor.
    *
    * @param manager Link manager instance
    */
-  IPLinklet(LinkManager &manager);
+  CurveCPLinklet(LinkManager &manager);
 
-  IPLinklet(const IPLinklet&) = delete;
-  IPLinklet &operator=(const IPLinklet&) = delete;
+  CurveCPLinklet(const CurveCPLinklet&) = delete;
+  CurveCPLinklet &operator=(const CurveCPLinklet&) = delete;
 
   /**
    * Class destructor.
    */
-  virtual ~IPLinklet();
+  virtual ~CurveCPLinklet();
 
   /**
    * Starts listening for incoming connections on the given address.
    *
    * @param address Address to listen on
    */
-  void listen(const Address &address) override;
+  void listen(const Address &address);
 
   /**
    * Starts connecting to the given address.
@@ -57,39 +61,32 @@ public:
    * @param peerKey Public peer key
    * @param address Address to connect to
    */
-  void connect(const PublicPeerKey &peerKey, const Address &address) override;
+  void connect(const PublicPeerKey &peerKey, const Address &address);
 
   /**
    * Closes the link.
    */
-  void close() override;
+  void close();
 
   /**
    * Sends a message via this link.
    *
    * @param msg The message to send
    */
-  void send(const Message &msg) override;
-
-  /**
-   * Starts the handshake.
-   *
-   * @param client Perform client handshake
-   */
-  void start(bool client = true);
-
-  /**
-   * Returns the ASIO TCP socket used by this linklet.
-   */
-  boost::asio::ip::tcp::socket &socket();
+  void send(const Message &msg);
 protected:
   /**
-   * Handles accept of incoming TCP connections.
+   * Starts the introductory contact exchange.
+   */
+  void start();
+
+  /**
+   * Handles accept of incoming CurveCP connections.
    *
    * @param linklet Linklet to use for this new connection
    * @param error Potential error code
    */
-  void handleAccept(LinkletPtr linklet, const boost::system::error_code &error);
+  void handleAccept(CurveCPLinkletPtr linklet, const boost::system::error_code &error);
 
   /**
    * Handles completion of a connect operation.
@@ -120,17 +117,19 @@ protected:
    */
   void handleWrite(const boost::system::error_code &error);
 protected:
-  // ASIO TCP acceptor (when handling incoming connections)
-  boost::asio::ip::tcp::acceptor m_acceptor;
-  // ASIO TCP socket (for actual data transfer)
-  boost::asio::ip::tcp::socket m_socket;
-  // Incoming message and outgoing message queue
+  /// CurveCP acceptor (when handling incoming connections)
+  curvecp::acceptor m_acceptor;
+  /// CurveCP stream
+  curvecp::stream m_stream;
+  /// Incoming message
   Message m_inMessage;
+  /// Outgoing message queue
   std::deque<Message> m_outMessages;
+  /// Mutex for outgoing messages
   std::mutex m_outMessagesMutex;
+  /// Random nonce generator
+  Botan::AutoSeeded_RNG m_rng;
 };
-
-UNISPHERE_SHARED_POINTER(IPLinklet)
 
 }
 
