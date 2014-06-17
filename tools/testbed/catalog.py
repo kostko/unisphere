@@ -34,10 +34,44 @@ class TopologyDescriptor(object):
 
     :param settings: A dictionary of topology settings
     """
-    self.name = settings['name']
-    self.args = settings['args']
-    self.communities = settings['communities']
-    self.connections = settings.get('connections', [])
+
+    self.settings = settings
+
+    if not self.name:
+      raise exceptions.ImproperlyConfigured("Topology is missing a name!")
+    if not self.generator:
+      raise exceptions.ImproperlyConfigured("Topology '%s' has no generator defined!" % self.name)
+
+    # Attempt to load the topology generator
+    generator_module = "testbed.%s" % self.generator
+    i = generator_module.rfind('.')
+    module, attr = generator_module[:i], generator_module[i + 1:]
+    try:
+      module = importlib.import_module(module)
+      self.settings['generator'] = getattr(module, attr)
+      self.generator.name = generator_module
+    except (ImportError, AttributeError):
+      raise exceptions.ImproperlyConfigured("Error importing generator module '%s'!" % generator_module)
+
+  @property
+  def generator(self):
+    return self.settings.get('generator', None)
+
+  @property
+  def name(self):
+    return self.settings.get('name', None)
+
+  @property
+  def args(self):
+    return self.settings.get('args', [])
+
+  @property
+  def communities(self):
+    return self.settings.get('communities', None)
+
+  @property
+  def connections(self):
+    return self.settings.get('connections', [])
 
   def generate(self, run, filename):
     """
@@ -46,10 +80,10 @@ class TopologyDescriptor(object):
     :param run: Run descriptor
     :param filename: Output graph filename
     """
+
     try:
-      # TODO: Support different generator classes?
-      logger.info("Generating topology '%s'..." % self.name)
-      generator.generate(self, run.settings, filename)
+      logger.info("Generating topology '%s' using '%s'..." % (self.name, self.generator.name))
+      self.generator(self, run.settings, filename)
     except:
       logger.error("An error has ocurred while generating the topology!")
       raise
@@ -58,6 +92,7 @@ class TopologyDescriptor(object):
     """
     Returns the topology name.
     """
+
     return self.name
 
 class RunDescriptor(object):

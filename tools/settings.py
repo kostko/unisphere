@@ -25,6 +25,7 @@ CLUSTER = {
 TOPOLOGIES = [
   # A single community but a custom number of nodes
   dict(
+    generator="topologies.generator.generate",
     name="basic_single",
     args=['size'],
     communities=dict(
@@ -34,6 +35,7 @@ TOPOLOGIES = [
 
   # A fixed number of nodes, but multiple communities
   dict(
+    generator="topologies.generator.generate",
     name="basic_multi",
     args=['size', 'communities', 'degree'],
     communities=lambda a: dict([
@@ -51,6 +53,7 @@ TOPOLOGIES = [
   # Varying number of Sybil nodes, but number of edges and sizes of honest/foreign
   # communities stay the same
   dict(
+    generator="topologies.generator.generate",
     name="sybil_count",
     args=['sybils'],
     communities=dict(
@@ -69,6 +72,7 @@ TOPOLOGIES = [
 
   # Varying number of attack edges, but size of all communities stays the same
   dict(
+    generator="topologies.generator.generate",
     name="sybil_edges",
     args=['attack_edges'],
     communities=dict(
