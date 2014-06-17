@@ -23,6 +23,14 @@ CLUSTER = {
 
 # Configure topologies
 TOPOLOGIES = [
+  # CJDNS/Hyperboria topology
+  dict(
+    generator="topologies.loader.load",
+    name="hyperboria",
+    filename=os.path.join(DATA_DIRECTORY, "hyperboria-topology.gml"),
+    format="gml",
+  ),
+
   # A single community but a custom number of nodes
   dict(
     generator="topologies.generator.generate",
@@ -102,6 +110,8 @@ RUNS = [
   dict(name="pf-b7", topology="basic_single", size=1024, scenario="StandardTests"),
   dict(name="pf-b8", topology="basic_single", size=2048, scenario="StandardTests"),
   dict(name="pf-b9", topology="basic_single", size=4096, scenario="StandardTests"),
+
+  dict(name="pf-h1", topology="hyperboria", scenario="StandardTests"),
 
   dict(name="pf-m1", topology="basic_multi", size=512, communities=1, degree=4, scenario="StandardTests"),
   dict(name="pf-m2", topology="basic_multi", size=512, communities=2, degree=4, scenario="StandardTests"),
