@@ -181,7 +181,7 @@ LinkPtr LinkManagerPrivate::getOrCreateLink(const Contact &contact)
   if (!link) {
     if (contact.hasAddresses()) {
       // Note that we can't use make_shared here because the Link constructor is private
-      link = LinkPtr(new Link(q, contact.peerKey(), 60));
+      link = LinkPtr(new Link(q, contact.peerKey(), 600));
       link->init();
       link->signalMessageReceived.connect(boost::bind(&LinkManagerPrivate::linkMessageReceived, this, _1));
       m_links.insert({{ contact.nodeId(), link }});
