@@ -71,6 +71,13 @@ public:
   {}
 };
 
+class UNISPHERE_EXPORT TopologyMalformed : public TestBedException {
+public:
+  TopologyMalformed(const std::string &message)
+    : TestBedException("Input GraphML topology is malformed: " + message)
+  {}
+};
+
 class UNISPHERE_EXPORT VirtualNodeNotFound : public TestBedException {
 public:
   VirtualNodeNotFound(const NodeIdentifier &nodeId)

@@ -219,8 +219,17 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
 
   // Iterate through all vertices and put them into appropriate partitions
   std::unordered_set<TopologyVertex> nodes;
+  std::unordered_set<std::string> nodeNames;
   for (auto vp = boost::vertices(topology); vp.first != vp.second; ++vp.first) {
     std::string name = boost::get(boost::vertex_name, topology, *vp.first);
+
+    // Abort when there is a vertex without a label
+    if (name.empty())
+      throw TopologyMalformed("One of the nodes has an empty label!");
+    // Abort when there is a node with a duplicate label
+    if (nodeNames.find(name) != nodeNames.end())
+      throw TopologyMalformed("At least one node has a duplicate label '" + name + "'!");
+
     PrivatePeerKey privateKey = d->assignPrivateKey(name);
     NodeIdentifier nodeId = privateKey.nodeId();
     Partition &part = partitions[d->assignNodeToPartition(name, nodeId, partitions.size())];
@@ -250,6 +259,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
 
     part.nodes.push_back(node);
     nodes.insert(*vp.first);
+    nodeNames.insert(name);
     d->m_nodes.insert({{ node.contact.nodeId(), node }});
   }
 
