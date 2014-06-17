@@ -69,7 +69,8 @@ void CurveCPLinklet::connect(const PublicPeerKey &peerKey, const Address &addres
   m_state = State::Connecting;
 
   // Log our connection attempt
-  BOOST_LOG_SEV(m_logger, log::normal) << "Connecting to a remote address...";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Connecting to " << address.toUdpIpEndpoint()
+    << " (id " << peerKey.nodeId().hex() << ").";
 
   // When a local address is specified, we should bind to it for outgoing connections
   Address localAddress = m_manager.getLocalAddress();

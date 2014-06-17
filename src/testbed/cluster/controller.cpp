@@ -589,7 +589,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
         (*pendingConfirms)--;
       },
       [this, slaveId](RpcErrorCode code, const std::string &msg) {
-        BOOST_LOG_SEV(m_controller.m_logger, log::error) << "Failed to run test case on " << slaveId.hex() << ".";
+        BOOST_LOG_SEV(m_controller.m_logger, log::error) << "Failed to run test case on " << slaveId.hex() << " (" << msg << ").";
       },
       m_controller.q.rpc().options()
                           .setTimeout(5)
