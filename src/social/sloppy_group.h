@@ -41,6 +41,8 @@ public:
     struct NodeName { typedef boost::vertex_property_tag kind; };
     /// Specifies the node's group
     struct NodeGroup { typedef boost::vertex_property_tag kind; };
+    /// Specifies the node's group prefix length
+    struct NodeGroupPrefixLength { typedef boost::vertex_property_tag kind; };
     /// Specifies whether the link is a foreign one
     struct LinkIsForeign { typedef boost::edge_property_tag kind; };
     /// Specifies whether the link is a reverse one
@@ -54,7 +56,8 @@ public:
       boost::vecS,
       boost::bidirectionalS,
       boost::property<TopologyDumpTags::NodeName, std::string,
-        boost::property<TopologyDumpTags::NodeGroup, std::string>>,
+        boost::property<TopologyDumpTags::NodeGroup, std::string,
+          boost::property<TopologyDumpTags::NodeGroupPrefixLength, int>>>,
       boost::property<TopologyDumpTags::LinkIsForeign, int,
         boost::property<TopologyDumpTags::LinkIsReverse, int>>
     >,

@@ -642,6 +642,7 @@ void SloppyGroupManagerPrivate::dumpTopology(SloppyGroupManager::TopologyDumpGra
   boost::put(boost::get(Tags::NodeName(), graph.graph()), self, name);
   boost::put(boost::get(Tags::NodeGroup(), graph.graph()), self,
     m_groupPrefix.bin().substr(0, m_groupPrefixLength));
+  boost::put(boost::get(Tags::NodeGroupPrefixLength(), graph.graph()), self, m_groupPrefixLength);
 
   auto addEdge = [&](const NodeIdentifier &id, bool foreign = false, bool reverse = false) {
     auto vertex = graph.add_vertex(resolve(id));
