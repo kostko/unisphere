@@ -97,7 +97,7 @@ private:
   const std::type_info &m_type;
 };
 
-template <class LabeledGraph, class NameAttributeTag>
+template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag>
 void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result)
 {
   typedef typename LabeledGraph::graph_type Graph;
@@ -116,8 +116,12 @@ void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result
     std::string name = boost::get(NameAttributeTag(), g, *vp.first);
     auto newVertex = result.add_vertex(name);
 
-    // Copy all vertex properties
-    boost::put(vertexDestMap, newVertex, boost::get(vertexSourceMap, *vp.first));
+    // Copy all vertex properties if the source vertex is not a placeholder
+    boost::optional<bool> placeholder = boost::get(PlaceholderAttributeTag(), g, *vp.first);
+    if (placeholder && *placeholder)
+      boost::put(boost::get(NameAttributeTag(), result.graph()), newVertex, name);
+    else
+      boost::put(vertexDestMap, newVertex, boost::get(vertexSourceMap, *vp.first));
   }
 
   // Then merge all edges
@@ -136,14 +140,14 @@ void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result
 
 }
 
-template <class LabeledGraph, class NameAttributeTag, class Dataset>
+template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag, class Dataset>
 void mergeGraphDataset(const Dataset &dataset, const std::string &key, LabeledGraph &result)
 {
   typedef typename LabeledGraph::graph_type Graph;
 
   for (const auto &record : dataset) {
     const Graph &g = boost::get<Graph>(record.at(key));
-    detail::mergeGraph<LabeledGraph, NameAttributeTag>(g, result);
+    detail::mergeGraph<LabeledGraph, NameAttributeTag, PlaceholderAttributeTag>(g, result);
   }
 }
 

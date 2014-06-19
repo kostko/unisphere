@@ -135,7 +135,7 @@ public:
     using Tags = SloppyGroupManager::TopologyDumpTags;
 
     api.receive(ds_topology);
-    mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
+    mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(ds_topology, "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -190,7 +190,7 @@ public:
     using Tags = CompactRoutingTable::TopologyDumpTags;
 
     api.receive(ds_topology);
-    mergeGraphDataset<Graph, Tags::NodeName>(ds_topology, "graph", graph);
+    mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(ds_topology, "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -626,9 +626,6 @@ public:
           if (sybilMode && (sybilRecord || sybilNode))
             continue;
 
-          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node "
-            << siblingStringId << " (" << siblingNode.name << ") misses record for "
-            << nodeStringId << " (" << node.name << ").";
           consistent = false;
           inconsistentRecords++;
         }

@@ -21,6 +21,8 @@
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/labeled_graph.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/serialization/optional.hpp>
 
 #include "core/context.h"
 #include "core/signal.h"
@@ -171,6 +173,8 @@ public:
     struct NodeIsLandmark { typedef boost::vertex_property_tag kind; };
     /// Node state size
     struct NodeStateSize { typedef boost::vertex_property_tag kind; };
+    /// Specifies whether the vertex is just a placeholder without data
+    struct Placeholder { typedef boost::vertex_property_tag kind; };
     /// Link's vport identifier
     struct LinkVportId { typedef boost::edge_property_tag kind; };
     /// Link weight
@@ -186,7 +190,8 @@ public:
       boost::property<TopologyDumpTags::NodeName, std::string,
         boost::property<TopologyDumpTags::NodeIsLandmark, int,
           boost::property<TopologyDumpTags::NodeStateSize, int,
-            boost::property<TopologyDumpTags::NodeGroup, std::string>>>>,
+            boost::property<TopologyDumpTags::NodeGroup, std::string,
+              boost::property<TopologyDumpTags::Placeholder, boost::optional<bool>>>>>>,
       boost::property<TopologyDumpTags::LinkVportId, Vport,
         boost::property<TopologyDumpTags::LinkWeight, int>>
     >,

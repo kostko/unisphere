@@ -1093,10 +1093,15 @@ void CompactRoutingTablePrivate::dumpTopology(CompactRoutingTable::TopologyDumpG
     m_sloppyGroup.getGroupPrefix().bin().substr(0, m_sloppyGroup.getGroupPrefixLength()));
   boost::put(boost::get(Tags::NodeIsLandmark(), graph.graph()), self, m_landmark);
   boost::put(boost::get(Tags::NodeStateSize(), graph.graph()), self, m_rib.size());
+  boost::put(boost::get(Tags::Placeholder(), graph.graph()), self, false);
 
   auto addEdge = [&](const NodeIdentifier &id, Vport vportId) {
     auto vertex = graph.add_vertex(resolve(id));
     boost::put(boost::get(Tags::NodeName(), graph.graph()), vertex, resolve(id));
+
+    boost::optional<bool> placeholder = boost::get(Tags::Placeholder(), graph.graph(), vertex);
+    if (!placeholder)
+      boost::put(boost::get(Tags::Placeholder(), graph.graph()), vertex, true);
 
     auto edge = boost::add_edge(self, vertex, graph).first;
     boost::put(boost::get(Tags::LinkVportId(), graph.graph()), edge, vportId);

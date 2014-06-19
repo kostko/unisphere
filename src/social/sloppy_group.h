@@ -24,6 +24,8 @@
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/labeled_graph.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/serialization/optional.hpp>
 
 namespace UniSphere {
 
@@ -43,6 +45,8 @@ public:
     struct NodeGroup { typedef boost::vertex_property_tag kind; };
     /// Specifies the node's group prefix length
     struct NodeGroupPrefixLength { typedef boost::vertex_property_tag kind; };
+    /// Specifies whether the vertex is just a placeholder without data
+    struct Placeholder { typedef boost::vertex_property_tag kind; };
     /// Specifies whether the link is a foreign one
     struct LinkIsForeign { typedef boost::edge_property_tag kind; };
     /// Specifies whether the link is a reverse one
@@ -57,7 +61,8 @@ public:
       boost::bidirectionalS,
       boost::property<TopologyDumpTags::NodeName, std::string,
         boost::property<TopologyDumpTags::NodeGroup, std::string,
-          boost::property<TopologyDumpTags::NodeGroupPrefixLength, int>>>,
+          boost::property<TopologyDumpTags::NodeGroupPrefixLength, int,
+            boost::property<TopologyDumpTags::Placeholder, boost::optional<bool>>>>>,
       boost::property<TopologyDumpTags::LinkIsForeign, int,
         boost::property<TopologyDumpTags::LinkIsReverse, int>>
     >,
