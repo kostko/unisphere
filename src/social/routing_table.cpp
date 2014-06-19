@@ -842,8 +842,15 @@ bool CompactRoutingTablePrivate::selectLocalAddress()
   auto ait = m_localAddress.begin();
   auto entries = m_rib.get<RIBTags::LandmarkCost>().equal_range(true);
   bool changed = false;
+  NodeIdentifier lastDestination;
   for (auto it = entries.first; it != entries.second; ++it) {
+    // Skip addresses for the same landmark as they don't offer much redundancy (only
+    // path redundancy but no landmark redundancy)
+    if ((*it)->destination == lastDestination)
+      continue;
+
     LandmarkAddress lrAddress((*it)->destination, (*it)->reversePath);
+    lastDestination = (*it)->destination;
 
     if (ait == m_localAddress.end()) {
       if (m_localAddress.size() >= CompactRoutingTable::local_address_redundancy)
