@@ -626,6 +626,9 @@ public:
           if (sybilMode && (sybilRecord || sybilNode))
             continue;
 
+          BOOST_LOG_SEV(logger(), log::error) << "NDB inconsistent, node "
+            << siblingStringId << " (" << siblingNode.name << ") misses record for "
+            << nodeStringId << " (" << node.name << ").";
           consistent = false;
           inconsistentRecords++;
         }
