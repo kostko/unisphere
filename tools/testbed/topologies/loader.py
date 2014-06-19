@@ -19,5 +19,10 @@ def load(topology, arguments, filename):
   else:
     raise exceptions.ImproperlyConfigured("Topology format '%s' is not supported!" % fmt)
 
+  # Setup label attributes for all nodes in case some do not have it
+  for node in graph.nodes():
+    if 'label' not in graph.node[node]:
+      graph.node[node]['label'] = str(node)
+
   # Convert to GraphML and write to output file
   nx.write_graphml(graph, filename)
