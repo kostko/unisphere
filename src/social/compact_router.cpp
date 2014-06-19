@@ -339,9 +339,6 @@ void CompactRouterPrivate::saRefresh(PeerPtr peer, size_t count)
   // Create a new SA that is valid for the next 10 minutes
   PrivateSecurityAssociationPtr sa = peer->createPrivateSecurityAssociation(boost::posix_time::minutes(10));
 
-  BOOST_LOG_SEV(m_logger, log::normal)
-    << "Refreshed SA for " << peer->nodeId().hex() << " [" << sa->key.base64() << "].";
-
   // Transmit SA public key to peer
   Protocol::SecurityAssociationCreate sac;
   sac.set_public_key(sa->key.raw());
