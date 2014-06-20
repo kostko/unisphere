@@ -145,7 +145,11 @@ public:
 
   void startNode(const NodeIdentifier &nodeId);
 
+  void stopNodes(const Partition::NodeRange &nodes);
+
   void stopNode(const NodeIdentifier &nodeId);
+
+  std::mt19937 &rng();
 
   void mark(const std::string &marker);
 
@@ -163,6 +167,8 @@ public:
   ControllerPrivate &m_controller;
   /// Running test cases
   std::unordered_map<TestCase::Identifier, RunningControllerTestCase> m_runningCases;
+  /// Random number generator
+  std::mt19937 m_rng;
 };
 
 class ControllerPrivate {
@@ -414,7 +420,7 @@ void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
   if (!nodeCount)
     return;
 
-  BOOST_LOG(m_controller.m_logger) << "Requesting to start " << nodeCount << " nodes.";
+  BOOST_LOG(m_controller.m_logger) << "Requesting to start " << nodeCount << " node(s).";
 
   // Contact proper slaves and instruct them to start the virtual nodes
   auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
@@ -453,9 +459,72 @@ void ControllerScenarioApi::startNode(const NodeIdentifier &nodeId)
   // TODO: Request the slave to start a specific node
 }
 
+void ControllerScenarioApi::stopNodes(const Partition::NodeRange &nodes)
+{
+  ScenarioPtr scenario = m_controller.m_scenario;
+  std::vector<std::list<NodeIdentifier>> partitions;
+  partitions.resize(m_controller.m_topology.getPartitions().size());
+  size_t nodeCount = 0;
+
+  for (const Partition::Node &node : nodes) {
+    partitions[node.partition].push_back(node.contact.nodeId());
+    nodeCount++;
+  }
+
+  if (!nodeCount)
+    return;
+
+  BOOST_LOG(m_controller.m_logger) << "Requesting to stop " << nodeCount << " node(s).";
+
+  // Contact proper slaves and instruct them to stop the virtual nodes
+  auto group = m_controller.q.rpc().group(boost::bind(&Scenario::resume, scenario));
+  for (int i = 0; i < partitions.size(); i++) {
+    std::list<NodeIdentifier> &nodes = partitions.at(i);
+    const Partition &partition = m_controller.m_topology.getPartitions().at(i);
+    Protocol::StopNodesRequest request;
+    if (nodes.empty())
+      continue;
+
+    for (const NodeIdentifier &nodeId : nodes) {
+      request.add_node_ids(nodeId.raw());
+    }
+
+    NodeIdentifier slaveId = partition.slave.nodeId();
+    group->call<Protocol::StopNodesRequest, Protocol::StopNodesResponse>(
+      partition.slave.nodeId(),
+      "Testbed.Simulation.StopNodes",
+      request,
+      nullptr,
+      nullptr,
+      m_controller.q.rpc().options()
+                          .setTimeout(5)
+                          .setChannelOptions(
+                            MessageOptions().setContact(partition.slave)
+                          )
+    );
+  }
+  group->start();
+
+  scenario->suspend();
+}
+
 void ControllerScenarioApi::stopNode(const NodeIdentifier &nodeId)
 {
-  // TODO: Request the slave to stop a specific node
+  BOOST_LOG(m_controller.m_logger) << "Requesting to stop node '" << nodeId.hex() << "'.";
+
+  // Obtain the node descriptor
+  const Partition::Node &node = m_controller.m_topology.getNodeById(nodeId);
+  if (node.contact.isNull()) {
+    BOOST_LOG_SEV(m_controller.m_logger, log::error) << "Failed to find node '" << nodeId.hex() << "' to stop.";
+    return;
+  }
+
+  stopNodes(std::list<Partition::Node>({node}));
+}
+
+std::mt19937 &ControllerScenarioApi::rng()
+{
+  return m_rng;
 }
 
 std::string ControllerScenarioApi::getOutputFilename(const std::string &prefix,
@@ -482,6 +551,8 @@ void ControllerScenarioApi::mark(const std::string &marker)
   file << "ts\n";
   file << (boost::posix_time::microsec_clock::universal_time() - m_controller.m_simulationStartTime).total_seconds();
   file << "\n";
+
+  BOOST_LOG(m_controller.m_logger) << "Marker '" << marker << "' reached.";
 }
 
 TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
@@ -814,6 +885,7 @@ void Controller::run()
 {
   // Create controller scenario API instance
   d->m_scenarioApi = boost::make_shared<ControllerScenarioApi>(context(), *d);
+  d->m_scenarioApi->m_rng.seed(d->m_seed);
 
   // Register RPC methods
   rpc().registerMethod<Protocol::DatasetRequest, Protocol::DatasetResponse>("Testbed.Simulation.Dataset",

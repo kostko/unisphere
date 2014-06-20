@@ -136,3 +136,11 @@ message SignalTestRequest {
 
 message SignalTestResponse {
 };
+
+message StopNodesRequest {
+  // Nodes to stop
+  repeated bytes node_ids = 1;
+};
+
+message StopNodesResponse {
+};

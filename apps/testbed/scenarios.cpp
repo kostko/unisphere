@@ -88,6 +88,59 @@ UNISPHERE_SCENARIO(StandardTests)
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 
+UNISPHERE_SCENARIO(Churn)
+{
+  // Start collecting performance data
+  TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
+
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
+
+  api.wait(30);
+  api.mark("all_nodes_up");
+
+  // Run for another 270 seconds without interruptions
+  api.wait(270);
+  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+
+  // Obtain the routing topology
+  auto rtTopology = api.test<Tests::DumpRoutingTopology>("state/routing_topology");
+  const auto &rtGraph = rtTopology->graph;
+
+  // Select some nodes to terminate
+  using Tags = UniSphere::CompactRoutingTable::TopologyDumpTags;
+  auto &rng = api.rng();
+
+  api.mark("churn_start");
+  for (auto vp = boost::vertices(rtGraph); vp.first != vp.second; ++vp.first) {
+    bool isLandmark = boost::get(Tags::NodeIsLandmark(), rtGraph.graph(), *vp.first);
+
+    // Skip landmark nodes from being terminated
+    // TODO: Make this configurable
+    if (isLandmark)
+      continue;
+    // Terminate ~5% of nodes in total
+    if (std::generate_canonical<double, 10>(rng) < 0.95)
+      continue;
+
+    NodeIdentifier nodeId(boost::get(Tags::NodeName(), rtGraph.graph(), *vp.first), NodeIdentifier::Format::Hex);
+    api.stopNode(nodeId);
+    api.wait(15);
+
+    // Dump topology information
+    api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+  }
+  api.mark("churn_end");
+
+  // Run for another 270 seconds without interruptions
+  api.wait(270);
+  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+
+  // Stop collecting performance data
+  api.signal(perfCollector, "finish");
+}
+UNISPHERE_SCENARIO_END_REGISTER(Churn)
+
 UNISPHERE_SCENARIO(SybilNodesNames)
 {
   // Start collecting performance data

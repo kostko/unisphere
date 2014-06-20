@@ -98,7 +98,8 @@ public:
   /**
    * Requests specific nodes to start.
    *
-   * @param nodes A list of nodes   */
+   * @param nodes A list of nodes
+   */
   virtual void startNodes(const Partition::NodeRange &nodes) = 0;
 
   /**
@@ -143,11 +144,23 @@ public:
   virtual void startNode(const NodeIdentifier &nodeId) = 0;
 
   /**
+   * Requests specific nodes to stop.
+   *
+   * @param nodes A list of nodes
+   */
+  virtual void stopNodes(const Partition::NodeRange &nodes) = 0;
+
+  /**
    * Requests to stop a specific node.
    *
    * @param nodeId Node identifier
    */
   virtual void stopNode(const NodeIdentifier &nodeId) = 0;
+
+  /**
+   * Returns a random number generator.
+   */
+  virtual std::mt19937 &rng() = 0;
 
   /**
    * Outputs a marker file that will contain the timestamp when the marker

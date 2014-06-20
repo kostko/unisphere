@@ -102,6 +102,10 @@ public:
   Response<Protocol::StartNodesResponse> rpcStartNodes(const Protocol::StartNodesRequest &request,
                                                        const Message &msg,
                                                        RpcId rpcId);
+
+  Response<Protocol::StopNodesResponse> rpcStopNodes(const Protocol::StopNodesRequest &request,
+                                                     const Message &msg,
+                                                     RpcId rpcId);
 public:
   UNISPHERE_DECLARE_PUBLIC(Slave)
 
@@ -430,6 +434,28 @@ Response<Protocol::StartNodesResponse> SlavePrivate::rpcStartNodes(const Protoco
   return Protocol::StartNodesResponse();
 }
 
+Response<Protocol::StopNodesResponse> SlavePrivate::rpcStopNodes(const Protocol::StopNodesRequest &request,
+                                                                 const Message &msg,
+                                                                 RpcId rpcId)
+{
+  RecursiveUniqueLock lock(m_mutex);
+
+  // Fail when no simulation is running
+  if (!m_simulation || m_simulation->isStopping())
+    throw RpcException(RpcErrorCode::BadRequest, "Simulation is not running!");
+
+  BOOST_LOG(m_logger) << "Stopping " << request.node_ids_size() << " nodes.";
+
+  SimulationSectionPtr section = m_simulation->section();
+  for (int i = 0; i < request.node_ids_size(); i++) {
+    section->execute(NodeIdentifier(request.node_ids(i)),
+      [](VirtualNodePtr vnode) { vnode->shutdown(); });
+  }
+  section->run();
+
+  return Protocol::StopNodesResponse();
+}
+
 Slave::Slave()
   : ClusterNode(),
     d(new SlavePrivate(*this))
@@ -543,6 +569,9 @@ void Slave::run()
 
   rpc().registerMethod<Protocol::StartNodesRequest, Protocol::StartNodesResponse>("Testbed.Simulation.StartNodes",
     boost::bind(&SlavePrivate::rpcStartNodes, d, _1, _2, _3));
+
+  rpc().registerMethod<Protocol::StopNodesRequest, Protocol::StopNodesResponse>("Testbed.Simulation.StopNodes",
+    boost::bind(&SlavePrivate::rpcStopNodes, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Master has ID " << d->m_masterContact.nodeId().hex() << ".";
