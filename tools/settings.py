@@ -31,6 +31,14 @@ TOPOLOGIES = [
     format="gml",
   ),
 
+  # SNAP Facebook topology
+  dict(
+    generator="topologies.loader.load",
+    name="facebook",
+    filename=os.path.join(DATA_DIRECTORY, "facebook-social-circles-topology.edges"),
+    format="edges",
+  ),
+
   # A single community but a custom number of nodes
   dict(
     generator="topologies.generator.generate",
@@ -124,6 +132,10 @@ RUNS = [
   dict(name="pf-e3", topology="basic_multi", size=256, communities=1, degree=8, scenario="StandardTests"),
   dict(name="pf-e4", topology="basic_multi", size=256, communities=1, degree=16, scenario="StandardTests"),
   dict(name="pf-e5", topology="basic_multi", size=256, communities=1, degree=32, scenario="StandardTests"),
+  dict(name="pf-e6", topology="basic_multi", size=256, communities=1, degree=64, scenario="StandardTests"),
+
+  # Scenarios with churn
+  dict(name="pf-ch1", topology="basic_multi", size=256, communities=1, degree=16, scenario="Churn"),
 
   # Sybil-tolerance measurement runs
   dict(name="sy-ns1", topology="sybil_count", sybils=16, scenario="SybilNodesNames"),
@@ -195,6 +207,8 @@ GRAPHS = [
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-b*"]),
   dict(name="size_lr_length_dist", plotter="graphs.LRLengthDistribution", runs=["pf-b*"]),
   dict(name="size_lr_lengths", plotter="graphs.LRLengthVsVariable", runs=["pf-b*"], scale="log"),
+
+  dict(name="hyperboria_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-h1"]),
 
   # Graphs relating to the effect of community structure on protocol operation
   dict(name="community_msg_perf", plotter="graphs.MessagingPerformance",
