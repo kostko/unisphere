@@ -350,6 +350,9 @@ void SloppyGroupManagerPrivate::networkSizeEstimateChanged(std::uint64_t size)
   m_groupPrefix = m_localId.prefix(m_groupPrefixLength);
   m_groupSize = std::sqrt(n * std::log(n));
   m_maxPeerViewSize = static_cast<int>(std::round(std::log(n)));
+  // Limit the minimum peer view size
+  if (m_maxPeerViewSize < 4)
+    m_maxPeerViewSize = 4;
 
   // Preempt peer view maintenance when the group prefix length has been changed
   m_maintenanceSignal();
