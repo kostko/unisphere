@@ -37,6 +37,7 @@ def generate(topology, arguments, filename):
   """
   Generates a topology.
   """
+
   # Prepare the arguments that can be filled in
   args = Arguments()
   for arg in topology.args:
@@ -56,11 +57,20 @@ def generate(topology, arguments, filename):
     if community_size == 0:
       continue
 
-    graph = nx.connected_watts_strogatz_graph(
-      community_size,
-      evaluate_argument(params['degree'], args),
-      evaluate_argument(params['rewire'], args)
-    )
+    if params['type'] == 'watts-strogatz':
+      graph = nx.connected_watts_strogatz_graph(
+        community_size,
+        evaluate_argument(params['degree'], args),
+        evaluate_argument(params['rewire'], args)
+      )
+    elif params['type'] == 'holme-kim':
+      graph = nx.powerlaw_cluster_graph(
+        community_size,
+        evaluate_argument(params['degree'], args),
+        evaluate_argument(params['rewire'], args)
+      )
+    else:
+      raise exceptions.ImproperlyConfigured('Community topology generator "type" not specified!')
 
     sybil = (community == "sybil")
     relabel = { node: "%s%s" % (community, node) for node in graph.nodes() }

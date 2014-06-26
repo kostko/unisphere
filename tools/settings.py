@@ -45,7 +45,7 @@ TOPOLOGIES = [
     name="basic_single",
     args=['size'],
     communities=dict(
-      honest=dict(n=lambda a: a.size, degree=4, rewire=0.8),
+      honest=dict(type='holme-kim', n=lambda a: a.size, degree=4, rewire=0.8),
     ),
   ),
 
@@ -55,7 +55,7 @@ TOPOLOGIES = [
     name="basic_multi",
     args=['size', 'communities', 'degree'],
     communities=lambda a: dict([
-      ("c%d" % i, dict(n=a.size // a.communities, degree=a.degree, rewire=0.8))
+      ("c%d" % i, dict(type='holme-kim', n=a.size // a.communities, degree=a.degree, rewire=0.8))
       for i in xrange(a.communities)
     ]),
     connections=lambda a: [
@@ -73,9 +73,9 @@ TOPOLOGIES = [
     name="sybil_count",
     args=['sybils'],
     communities=dict(
-      honest=dict(n=64, degree=4, rewire=0.8),
-      sybil=dict(n=lambda a: a.sybils, degree=4, rewire=0.8),
-      foreign=dict(n=64, degree=4, rewire=0.8),
+      honest=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
+      sybil=dict(type='holme-kim', n=lambda a: a.sybils, degree=4, rewire=0.8),
+      foreign=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
     ),
     connections=[
       # Attack edges
@@ -92,9 +92,9 @@ TOPOLOGIES = [
     name="sybil_edges",
     args=['attack_edges'],
     communities=dict(
-      honest=dict(n=64, degree=4, rewire=0.8),
-      sybil=dict(n=64, degree=4, rewire=0.8),
-      foreign=dict(n=64, degree=4, rewire=0.8),
+      honest=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
+      sybil=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
+      foreign=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
     ),
     connections=[
       # Attack edges
