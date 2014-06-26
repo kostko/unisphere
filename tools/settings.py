@@ -121,12 +121,6 @@ RUNS = [
 
   dict(name="pf-h1", topology="hyperboria", scenario="StandardTests"),
 
-  dict(name="pf-m1", topology="basic_multi", size=512, communities=1, degree=4, scenario="StandardTests"),
-  dict(name="pf-m2", topology="basic_multi", size=512, communities=2, degree=4, scenario="StandardTests"),
-  dict(name="pf-m3", topology="basic_multi", size=512, communities=4, degree=4, scenario="StandardTests"),
-  dict(name="pf-m4", topology="basic_multi", size=512, communities=8, degree=4, scenario="StandardTests"),
-  dict(name="pf-m5", topology="basic_multi", size=512, communities=16, degree=4, scenario="StandardTests"),
-
   dict(name="pf-e1", topology="basic_multi", size=256, communities=1, degree=2, scenario="StandardTests"),
   dict(name="pf-e2", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
   dict(name="pf-e3", topology="basic_multi", size=256, communities=1, degree=8, scenario="StandardTests"),
@@ -209,20 +203,6 @@ GRAPHS = [
   dict(name="size_lr_lengths", plotter="graphs.LRLengthVsVariable", runs=["pf-b*"], scale="log"),
 
   dict(name="hyperboria_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-h1"]),
-
-  # Graphs relating to the effect of community structure on protocol operation
-  dict(name="community_msg_perf", plotter="graphs.MessagingPerformance",
-    label_attribute="communities", legend=False, runs=["pf-m*"]),
-  dict(name="community_path_stretch_dist", plotter="graphs.PathStretchDistribution", runs=["pf-m*"], variable="communities"),
-  dict(name="community_path_stretches", plotter="graphs.PathStretchVsVariable", runs=["pf-m*"], variable="communities"),
-  dict(name="community_degrees", plotter="graphs.DegreeVsVariable", variable="communities",
-    graph="input-topology.graphml", runs=["pf-m*"]),
-  dict(name="community_rt_degree_dist", plotter="graphs.DegreeDistribution", variable="communities",
-    graph="input-topology.graphml", runs=["pf-m*"]),
-  dict(name="community_sg_degree_dist", plotter="graphs.DegreeDistribution", variable="communities",
-    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-m*"]),
-  dict(name="community_sg_degrees", plotter="graphs.DegreeVsVariable", variable="communities",
-    graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-m*"]),
 
   # Graphs relating to the effect of mixing time on protocol operation
   dict(name="mixing_msg_perf", plotter="graphs.MessagingPerformance",
