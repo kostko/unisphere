@@ -567,6 +567,8 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
     return TestCasePtr();
   }
 
+  BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Starting test case '" << test->getName() << "'.";
+
   if (completion)
     test->signalFinished.connect(completion);
   test->setArguments(args);

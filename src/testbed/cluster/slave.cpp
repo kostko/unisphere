@@ -187,10 +187,12 @@ void SlaveTestCaseApi::send_(const std::string &dsName,
 
   BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sending dataset '" << m_testCase->getName() << "/" << dsName << "'.";
 
+  size_t sentBytes = 0;
   m_datasetBuffer.resize(1048576);
   while (!dsData.eof()) {
     dsData.read(&m_datasetBuffer[0], m_datasetBuffer.size());
     request.set_ds_data(&m_datasetBuffer[0], dsData.gcount());
+    sentBytes += dsData.gcount();
 
     // TODO: Should we do error handling when notification can't be done?
     m_slave.m_controller.call<Protocol::DatasetRequest, Protocol::DatasetResponse>(
@@ -202,6 +204,9 @@ void SlaveTestCaseApi::send_(const std::string &dsName,
       }
     );
   }
+
+  BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sent " << sentBytes << " for dataset '" <<
+    m_testCase->getName() << "/" << dsName << "'.";
 }
 
 std::mt19937 &SlaveTestCaseApi::rng()
