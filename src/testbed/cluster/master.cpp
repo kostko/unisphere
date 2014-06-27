@@ -108,7 +108,7 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
       descriptor.service = q.rpc().service(
         descriptor.contact.nodeId(),
         q.rpc().options()
-               .setTimeout(5)
+               .setTimeout(30)
                .setChannelOptions(
                  MessageOptions().setContact(descriptor.contact)
                )

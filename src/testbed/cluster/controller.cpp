@@ -443,7 +443,7 @@ void ControllerScenarioApi::startNodes(const Partition::NodeRange &nodes)
       nullptr,
       nullptr,
       m_controller.q.rpc().options()
-                          .setTimeout(5)
+                          .setTimeout(30)
                           .setChannelOptions(
                             MessageOptions().setContact(partition.slave)
                           )
@@ -497,7 +497,7 @@ void ControllerScenarioApi::stopNodes(const Partition::NodeRange &nodes)
       nullptr,
       nullptr,
       m_controller.q.rpc().options()
-                          .setTimeout(5)
+                          .setTimeout(30)
                           .setChannelOptions(
                             MessageOptions().setContact(partition.slave)
                           )
@@ -660,10 +660,10 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
         (*pendingConfirms)--;
       },
       [this, slaveId](RpcErrorCode code, const std::string &msg) {
-        BOOST_LOG_SEV(m_controller.m_logger, log::error) << "Failed to run test case on " << slaveId.hex() << ".";
+        BOOST_LOG_SEV(m_controller.m_logger, log::error) << "Failed to run test case on " << slaveId.hex() << " (" << msg << ").";
       },
       m_controller.q.rpc().options()
-                          .setTimeout(5)
+                          .setTimeout(30)
                           .setChannelOptions(
                             MessageOptions().setContact(partition.slave)
                           )
@@ -809,7 +809,7 @@ void Controller::setupOptions(int argc,
   );
   d->m_master = rpc().service(masterKey.nodeId(),
     rpc().options()
-         .setTimeout(5)
+         .setTimeout(30)
          .setChannelOptions(
            MessageOptions().setContact(d->m_masterContact)
          )
@@ -991,7 +991,7 @@ void Controller::run()
             BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to assign partition to " << slaveId.hex() << ": " << msg;
           },
           rpc().options()
-               .setTimeout(5)
+               .setTimeout(30)
                .setChannelOptions(
                  MessageOptions().setContact(part.slave)
                )

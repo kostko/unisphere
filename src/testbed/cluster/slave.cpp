@@ -166,7 +166,9 @@ void SlaveTestCaseApi::finishNow()
     "Testbed.Simulation.TestDone",
     request,
     nullptr,
-    nullptr
+    [this](RpcErrorCode, const std::string &msg) {
+      BOOST_LOG_SEV(m_slave.m_logger, log::error) << "Failed to signal test case completion (" << msg << ")!";
+    }
   );
 
   // Erase only after the above has finished as this will destroy the test case instance
@@ -195,7 +197,9 @@ void SlaveTestCaseApi::send_(const std::string &dsName,
       "Testbed.Simulation.Dataset",
       request,
       nullptr,
-      nullptr
+      [this](RpcErrorCode, const std::string &msg) {
+        BOOST_LOG_SEV(m_slave.m_logger, log::error) << "Failed to send dataset (" << msg << ")!";
+      }
     );
   }
 }
@@ -269,7 +273,7 @@ Response<Protocol::AssignPartitionResponse> SlavePrivate::rpcAssignPartition(con
   // Setup controller service
   m_controller = q.rpc().service(msg.originator(),
     q.rpc().options()
-           .setTimeout(5)
+           .setTimeout(30)
            .setChannelOptions(
              MessageOptions().setContact(q.linkManager().getLinkContact(msg.originator()))
            )
@@ -523,7 +527,7 @@ void Slave::setupOptions(int argc,
   );
   d->m_master = rpc().service(masterKey.nodeId(),
     rpc().options()
-         .setTimeout(5)
+         .setTimeout(30)
          .setChannelOptions(
            MessageOptions().setContact(d->m_masterContact)
          )
@@ -574,6 +578,7 @@ void Slave::run()
     boost::bind(&SlavePrivate::rpcStopNodes, d, _1, _2, _3));
 
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster slave initialized.";
+  BOOST_LOG_SEV(d->m_logger, log::normal) << "Slave has ID " << linkManager().getLocalNodeId().hex() << ".";
   BOOST_LOG_SEV(d->m_logger, log::normal) << "Master has ID " << d->m_masterContact.nodeId().hex() << ".";
 
   joinCluster();
