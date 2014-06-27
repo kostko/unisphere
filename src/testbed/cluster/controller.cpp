@@ -567,7 +567,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
     return TestCasePtr();
   }
 
-  BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Starting test case '" << test->getName() << "'.";
+  BOOST_LOG(m_controller.m_logger) << "Starting test case '" << test->getName() << "'.";
 
   if (completion)
     test->signalFinished.connect(completion);
@@ -602,7 +602,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
 
   // If the test case is not scheduled to run on any partition, finish it immediately
   if (!selectedPartitions) {
-    BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Test case '" << test->getName() << "' not scheduled to run on any nodes.";
+    BOOST_LOG(m_controller.m_logger) << "Test case '" << test->getName() << "' not scheduled to run on any nodes.";
     test->tryComplete(*api);
     return test;
   }
@@ -623,7 +623,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
     }
 
     // Test case now running on selected partitions
-    BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Test case '" << test->getName() << "' now running.";
+    BOOST_LOG(m_controller.m_logger) << "Test case '" << test->getName() << "' now running.";
   });
 
   for (SelectedPartition &selected : selectedNodes) {
@@ -658,7 +658,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
       "Testbed.Simulation.RunTest",
       request,
       [this, slaveId, pendingConfirms](const Protocol::RunTestResponse &response, const Message&) {
-        BOOST_LOG_SEV(m_controller.m_logger, log::normal) << "Test case running on " << slaveId.hex() << ".";
+        BOOST_LOG(m_controller.m_logger) << "Test case running on " << slaveId.hex() << ".";
         (*pendingConfirms)--;
       },
       [this, slaveId](RpcErrorCode code, const std::string &msg) {
@@ -671,6 +671,8 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
                           )
     );
   }
+
+  BOOST_LOG(m_controller.m_logger) << "Test case '" << test->getName() << "' scheduled to start.";
   group->start();
 
   return test;
