@@ -559,8 +559,6 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
                                                std::function<void()> completion,
                                                typename TestCase::ArgumentList args)
 {
-  RecursiveUniqueLock lock(m_controller.m_mutex);
-
   TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name, args);
   if (!test) {
     BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Test case '" << name << "' not found.";
@@ -607,8 +605,11 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
   }
 
   // Register the test case under running test cases
-  BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
-  m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedPartitions };
+  {
+    RecursiveUniqueLock lock(m_controller.m_mutex);
+    BOOST_ASSERT(m_runningCases.find(test->getId()) == m_runningCases.end());
+    m_runningCases[test->getId()] = RunningControllerTestCase{ test, api, selectedNodes, selectedPartitions };
+  }
 
   // Request slaves to run local portions of test cases and report back
   boost::shared_ptr<std::atomic<unsigned int>> pendingConfirms =
