@@ -277,7 +277,7 @@ void TopologyLoader::partition(const SlaveDescriptorMap &slaves, IdGenerationTyp
     void discover_vertex(TopologyVertex &vertex, const Topology &topology)
     {
       std::string name = boost::get(boost::vertex_name, topology, vertex);
-      d->m_nodesBfs->push_back(d->m_nodes.at(d->assignPrivateKey(name).nodeId()));
+      d->m_nodesBfs->push_back(d->m_nodes.at(d->m_privateKeys.at(name).nodeId()));
       nodes.erase(vertex);
     }
   } vis(d, nodes);
