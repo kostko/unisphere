@@ -30,7 +30,7 @@ namespace TestBed {
 
 class TestCasePrivate {
 public:
-  TestCasePrivate(const std::string &name);
+  TestCasePrivate(const std::string &name, TestCase::ArgumentList args);
 public:
   /// Mutex
   mutable std::recursive_mutex m_mutex;
@@ -56,7 +56,7 @@ public:
   boost::thread m_processingThread;
 };
 
-TestCasePrivate::TestCasePrivate(const std::string &name)
+TestCasePrivate::TestCasePrivate(const std::string &name, TestCase::ArgumentList args)
   : m_name(name),
     m_nodes(nullptr),
     m_logger(logging::keywords::channel = "test_case"),
@@ -66,11 +66,16 @@ TestCasePrivate::TestCasePrivate(const std::string &name)
   Botan::AutoSeeded_RNG rng;
   rng.randomize((Botan::byte*) &m_id, sizeof(m_id));
 
+  // Configure test case arguments
+  for (const TestCase::Argument &arg : args) {
+    m_arguments[arg.name] = arg.value;
+  }
+
   m_logger.add_attribute("TestCase", logging::attributes::constant<std::string>(name));
 }
 
-TestCase::TestCase(const std::string &name)
-  : d(new TestCasePrivate(name))
+TestCase::TestCase(const std::string &name, ArgumentList args)
+  : d(new TestCasePrivate(name, args))
 {
 }
 
@@ -92,15 +97,6 @@ void TestCase::setId(Identifier id)
 void TestCase::setState(State state)
 {
   d->m_state = state;
-}
-
-void TestCase::setArguments(std::initializer_list<Argument> arguments)
-{
-  RecursiveUniqueLock lock(d->m_mutex);
-  d->m_arguments.clear();
-  for (const Argument &arg : arguments) {
-    d->m_arguments[arg.name] = arg.value;
-  }
 }
 
 bool TestCase::isFinished() const
@@ -217,7 +213,6 @@ Logger &TestCase::logger()
 
 boost::any TestCase::argumentAny(const std::string &name) const
 {
-  RecursiveUniqueLock lock(d->m_mutex);
   auto it = d->m_arguments.find(name);
   if (it == d->m_arguments.end())
     return boost::any();

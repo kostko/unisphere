@@ -67,6 +67,16 @@ public:
   TestCasePtr createTestCase(const std::string &id) const;
 
   /**
+   * Creates a new instance of the specified test case.
+   *
+   * @param id Test case identifier
+   * @param args A list of test case arguments
+   * @return A corresponding test case or null when one doesn't exist
+   */
+  TestCasePtr createTestCase(const std::string &id,
+                             TestCase::ArgumentList args) const;
+
+  /**
    * Creates a new simulation.
    *
    * @param seed Seed for the simulation's basic RNG
@@ -123,7 +133,7 @@ public:
   /**
    * Creates a new test case instance and returns it.
    */
-  virtual TestCasePtr create() = 0;
+  virtual TestCasePtr create(TestCase::ArgumentList args) = 0;
 protected:
   /// Test case name
   std::string m_name;
@@ -143,7 +153,10 @@ public:
   /**
    * Creates a new test case instance and returns it.
    */
-  TestCasePtr create() { return boost::make_shared<T>(m_name); }
+  TestCasePtr create(TestCase::ArgumentList args)
+  {
+    return boost::make_shared<T>(m_name, args);
+  }
 };
 
 /**

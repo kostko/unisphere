@@ -561,7 +561,7 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
 {
   RecursiveUniqueLock lock(m_controller.m_mutex);
 
-  TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name);
+  TestCasePtr test = TestBed::getGlobalTestbed().createTestCase(name, args);
   if (!test) {
     BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Test case '" << name << "' not found.";
     return TestCasePtr();
@@ -571,7 +571,6 @@ TestCasePtr ControllerScenarioApi::runTestCase(const std::string &name,
 
   if (completion)
     test->signalFinished.connect(completion);
-  test->setArguments(args);
 
   // Create API instance
   boost::shared_ptr<ControllerTestCaseApi> api =

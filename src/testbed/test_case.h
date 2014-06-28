@@ -73,8 +73,10 @@ public:
 
   /**
    * Class constructor.
+   *
+    @param args A list of arguments
    */
-  TestCase(const std::string &name);
+  TestCase(const std::string &name, ArgumentList args);
 
   TestCase(const TestCase&) = delete;
   TestCase &operator=(const TestCase&) = delete;
@@ -102,15 +104,6 @@ public:
    * @param state New state
    */
   void setState(State state);
-
-  /**
-   * Configures test case arguments. These arguments are only visible on
-   * the controller -- in order to transfer any of them to slave instances,
-   * they must be forwarded in selectNode for each virtual node.
-   *
-   * @param arguments A list of arguments
-   */
-  void setArguments(ArgumentList arguments);
 
   /**
    * Returns true if the test case has finished.

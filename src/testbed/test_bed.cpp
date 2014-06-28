@@ -79,14 +79,20 @@ ScenarioPtr TestBed::getScenario(const std::string &id) const
   return it->second;
 }
 
-TestCasePtr TestBed::createTestCase(const std::string &id) const
+TestCasePtr TestBed::createTestCase(const std::string &id,
+                                    typename TestCase::ArgumentList args) const
 {
   RecursiveUniqueLock lock(d->m_mutex);
   auto it = d->m_testCases.find(id);
   if (it == d->m_testCases.end())
     return TestCasePtr();
 
-  return it->second->create();
+  return it->second->create(args);
+}
+
+TestCasePtr TestBed::createTestCase(const std::string &id) const
+{
+  return createTestCase(id, TestCase::ArgumentList());
 }
 
 SimulationPtr TestBed::createSimulation(std::uint32_t seed,
