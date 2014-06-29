@@ -399,10 +399,11 @@ boost::posix_time::time_duration RouteOriginator::age() const
 }
 
 RoutingEntry::RoutingEntry(Context &context,
-                           const NodeIdentifier &destination,
+                           const PublicPeerKey &publicKey,
                            bool landmark,
                            std::uint16_t seqno)
-  : destination(destination),
+  : destination(publicKey.nodeId()),
+    publicKey(publicKey),
     landmark(landmark),
     seqno(seqno),
     active(false),

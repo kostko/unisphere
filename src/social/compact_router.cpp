@@ -376,7 +376,7 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
   Protocol::PathAnnounce announce;
   for (const std::pair<NodeIdentifier, PeerPtr> &peer : m_identity.peers()) {
     announce.Clear();
-    announce.set_destination_id(m_identity.localId().as(NodeIdentifier::Format::Raw));
+    announce.set_public_key(m_identity.localKey().raw());
     announce.set_landmark(m_routes.isLandmark());
     if (m_routes.isLandmark()) {
       // Get/assign the outgoing vport for this announcement
@@ -411,7 +411,7 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
 {
   // Prepare the announce message
   Protocol::PathAnnounce announce;
-  announce.set_destination_id(entry->destination.as(NodeIdentifier::Format::Raw));
+  announce.set_public_key(entry->publicKey.raw());
   announce.set_landmark(entry->landmark);
   announce.set_seqno(entry->seqno);
 
@@ -466,8 +466,8 @@ void CompactRouterPrivate::ribExportQueueAnnounce(const Contact &contact,
     buffer = it->second;
   }
 
-  // Replace existing announces with new ones, so only the lastest are transmitted
-  buffer->announces[announce.destination_id()] = announce;
+  // Replace existing announces with new ones, so only the latest are transmitted
+  buffer->announces[announce.public_key()] = announce;
 
   // Buffer further messages for another 5 seconds, then transmit all of them
   if (!buffer->buffering) {
@@ -577,7 +577,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
         const Protocol::PathAnnounce &pan = agg.announces(j);
         RoutingEntryPtr entry(boost::make_shared<RoutingEntry>(
           m_context,
-          NodeIdentifier(pan.destination_id(), NodeIdentifier::Format::Raw),
+          PublicPeerKey(pan.public_key()),
           pan.landmark(),
           pan.seqno()
         ));

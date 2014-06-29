@@ -19,12 +19,19 @@ message SecurityAssociationInvalid {
   required bytes public_key = 1;
 }
 
+message PathDelegation {
+  // Public SA key to delegate announce privilege to
+  required bytes delegation = 1;
+  // Signature of <forward_vport, reverse_vport, delegation>
+  required bytes signature = 2;
+}
+
 // TODO: Cryptographic signing
 // TODO: Timestamp to avoid replay attacks
 // TODO: Missing optional cost field
 message PathAnnounce {
-  // Destination identifier
-  required bytes destination_id = 1;
+  // Originator public key
+  required bytes public_key = 1;
   // Forward path
   repeated uint32 forward_path = 2;
   // Reverse path (included only for landmark announces)
@@ -33,6 +40,8 @@ message PathAnnounce {
   required bool landmark = 4;
   // Sequence number
   required uint32 seqno = 5;
+  // Cryptographic path delegation chain
+  repeated PathDelegation delegation_chain = 6;
 }
 
 message AggregatePathAnnounce {

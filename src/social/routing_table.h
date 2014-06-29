@@ -27,6 +27,7 @@
 #include "core/context.h"
 #include "core/signal.h"
 #include "identity/node_identifier.h"
+#include "identity/peer_key.h"
 #include "social/size_estimator.h"
 #include "social/address.h"
 
@@ -81,12 +82,12 @@ public:
    * Constructs a routing entry.
    *
    * @param context UNISPHERE context
-   * @param destination Destination node identifier
+   * @param publicKey Originator public key
    * @param landmark Landmark status of the entry
    * @param seqno Sequence number
    */
   RoutingEntry(Context &context,
-               const NodeIdentifier &destination,
+               const PublicPeerKey &publicKey,
                bool landmark,
                std::uint16_t seqno);
 
@@ -124,6 +125,8 @@ public:
   RouteOriginatorPtr originator;
   /// Destination node identifier
   NodeIdentifier destination;
+  /// Originator public key
+  PublicPeerKey publicKey;
   /// Path of vports to destination
   RoutingPath forwardPath;
   /// Path of vports from destination (only for landmarks)
