@@ -15,10 +15,10 @@ find_package(GMP REQUIRED)
 find_package(Tcmalloc REQUIRED)
 find_package(Sodium REQUIRED)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -std=c++0x")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -std=c++11")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK")
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -DUNISPHERE_DEBUG -DUNISPHERE_PROFILE -std=c++0x")
+set(CMAKE_CXX_FLAGS_DEBUG "-g3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -DUNISPHERE_DEBUG -DUNISPHERE_PROFILE -std=c++11")
 set(CMAKE_C_FLAGS_DEBUG "-g3 -fvisibility=hidden -DBOOST_ALL_DYN_LINK -DUNISPHERE_DEBUG -DUNISPHERE_PROFILE")
 
 include_directories(
