@@ -33,46 +33,6 @@
 
 namespace UniSphere {
 
-/**
- * A descriptor for a remote node that originates routes. It is used
- * to keep track of its sequence numbers when routing entries get
- * removed.
- */
-class UNISPHERE_EXPORT RouteOriginator {
-public:
-  /**
-   * Class constructor.
-   *
-   * @param nodeId Originator node identifier
-   */
-  RouteOriginator(const NodeIdentifier &nodeId);
-
-  /**
-   * Returns true if given sequence number is newer than the currently
-   * stored for this route originator.
-   *
-   * @param seq Sequence number to check against
-   * @return True if given sequence number is newer, false otherwise
-   */
-  bool isNewer(std::uint16_t seq) const;
-
-  /**
-   * Returns the age of this route originator descriptor.
-   */
-  boost::posix_time::time_duration age() const;
-public:
-  /// Node identifier
-  NodeIdentifier identifier;
-  /// Sequence number
-  std::uint16_t seqno;
-  /// Smallest cost that was ever advertised by the local node for this originator
-  std::uint16_t smallestCost;
-  /// Entry liveness
-  boost::posix_time::ptime lastUpdate;
-};
-
-UNISPHERE_SHARED_POINTER(RouteOriginator)
-
 /// A list of routing path delegations
 using RoutingPathDelegations = std::list<std::string>;
 
@@ -105,11 +65,6 @@ public:
   bool isDirect() const { return forwardPath.size() == 1; }
 
   /**
-   * Returns true if this is a feasible route.
-   */
-  bool isFeasible() const;
-
-  /**
    * Returns the vport identifier of the first routing hop.
    */
   Vport originVport() const { return forwardPath.front(); }
@@ -124,8 +79,6 @@ public:
    */
   boost::posix_time::time_duration age() const;
 public:
-  /// Route originator descriptor
-  RouteOriginatorPtr originator;
   /// Destination node identifier
   NodeIdentifier destination;
   /// Originator public key

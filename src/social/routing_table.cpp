@@ -121,9 +121,6 @@ typedef boost::bimap<
   boost::bimaps::unordered_set_of<Vport>
 > VportMap;
 
-/// Mapping of identifiers to route originator descriptors
-typedef std::unordered_map<NodeIdentifier, RouteOriginatorPtr> RouteOriginatorMap;
-
 class CompactRoutingTablePrivate {
 public:
   /**
@@ -366,8 +363,6 @@ public:
   mutable std::recursive_mutex m_mutex;
   /// Information needed for routing to any node
   RoutingInformationBase m_rib;
-  /// Route originator mapping
-  RouteOriginatorMap m_originatorMap;
   /// Vport mapping for direct routes
   VportMap m_vportMap;
   /// Vport index counter
@@ -380,23 +375,6 @@ public:
   /// Statistics
   CompactRoutingTable::Statistics m_statistics;
 };
-
-RouteOriginator::RouteOriginator(const NodeIdentifier &nodeId)
-  : identifier(nodeId),
-    seqno(0),
-    smallestCost(0xFFFF)
-{
-}
-
-bool RouteOriginator::isNewer(std::uint16_t seq) const
-{
-  return (seqno - seq) & 0x8000;
-}
-
-boost::posix_time::time_duration RouteOriginator::age() const
-{
-  return boost::posix_time::microsec_clock::universal_time() - lastUpdate;
-}
 
 RoutingEntry::RoutingEntry(Context &context,
                            const PublicPeerKey &publicKey,
@@ -413,23 +391,6 @@ RoutingEntry::RoutingEntry(Context &context,
 
 RoutingEntry::~RoutingEntry()
 {
-}
-
-bool RoutingEntry::isFeasible() const
-{
-  // If originator is not yet defined, this entry is feasible
-  if (!originator)
-    return true;
-
-  // If sequence number is greater, this entry is feasible
-  if (originator->isNewer(seqno))
-    return true;
-
-  // If cost is strictly smaller than known minimum cost, this entry is feasible
-  if (cost < originator->smallestCost)
-    return true;
-
-  return false;
 }
 
 boost::posix_time::time_duration RoutingEntry::age() const
@@ -562,18 +523,6 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
   assert(entry);
   if (entry->destination == m_localId)
     return false;
-
-  if (!entry->originator) {
-    // Discover the originator for this entry
-    auto it = m_originatorMap.find(entry->destination);
-    if (it == m_originatorMap.end()) {
-      RouteOriginatorPtr nro(boost::make_shared<RouteOriginator>(entry->destination));
-      entry->originator = nro;
-      m_originatorMap.insert({{entry->destination, nro}});
-    } else {
-      entry->originator = it->second;
-    }
-  }
 
   // Compute cost based on hop count and set entry timestamp
   entry->cost = entry->forwardPath.size();
@@ -723,18 +672,6 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
 
 void CompactRoutingTablePrivate::exportEntry(RoutingEntryPtr entry, const NodeIdentifier &peer)
 {
-  RouteOriginatorPtr orig = entry->originator;
-
-  // Update route originator sequence number and liveness
-  if (orig->age().total_seconds() > CompactRouter::origin_expiry_time ||
-      orig->isNewer(entry->seqno) ||
-      (entry->seqno == orig->seqno && entry->cost < orig->smallestCost)) {
-    orig->seqno = entry->seqno;
-    orig->smallestCost = entry->cost + 1;
-  }
-  orig->lastUpdate = boost::posix_time::microsec_clock::universal_time();
-
-  // Export the entry
   q.signalExportEntry(entry, peer);
 }
 
@@ -749,8 +686,7 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
   if (entries.first == entries.second)
     return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
 
-  // Finds the first feasible route with minimum cost
-  bool unfeasibleRoute = false;
+  // Finds the route with minimum cost
   for (auto it = entries.first; it != entries.second; ++it) {
     RoutingEntryPtr e = *it;
     if (e->active)
@@ -764,23 +700,12 @@ boost::tuple<bool, RoutingEntryPtr, RoutingEntryPtr> CompactRoutingTablePrivate:
         break;
     }
 
-    if (!e->isFeasible()) {
-      unfeasibleRoute = true;
-      continue;
-    }
-
     newBest = it;
   }
 
-  // If there are no feasible routes, return early
-  if (newBest == ribDestination.end()) {
-    if (unfeasibleRoute) {
-      // TODO: Request a new sequence number from route originator
-      BOOST_LOG_SEV(m_logger, log::warning) << "No feasible routes towards " << destination.hex() << ".";
-    }
-
+  // If there are no suitable routes, return early
+  if (newBest == ribDestination.end())
     return boost::make_tuple(false, RoutingEntryPtr(), RoutingEntryPtr());
-  }
 
   RoutingEntryPtr newBestEntry = *newBest;
   RoutingEntryPtr oldBestEntry;
