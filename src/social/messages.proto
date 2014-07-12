@@ -10,8 +10,6 @@ import "src/social/address.proto";
 message SecurityAssociationCreate {
   // Public key for this SA
   required bytes public_key = 1;
-  // Expiry (in seconds from creation)
-  required uint32 expiry = 2;
 }
 
 message SecurityAssociationInvalid {
@@ -19,11 +17,12 @@ message SecurityAssociationInvalid {
   required bytes public_key = 1;
 }
 
+message SecurityAssociationFlush {
+}
+
 message PathDelegation {
   // Public SA key to delegate announce privilege to
   required bytes delegation = 1;
-  // Signature of <forward_vport, reverse_vport, delegation>
-  required bytes signature = 2;
 }
 
 // TODO: Cryptographic signing
@@ -41,7 +40,7 @@ message PathAnnounce {
   // Sequence number
   required uint32 seqno = 5;
   // Cryptographic path delegation chain
-  repeated PathDelegation delegation_chain = 6;
+  repeated bytes delegation_chain = 6;
 }
 
 message AggregatePathAnnounce {

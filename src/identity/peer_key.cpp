@@ -101,6 +101,14 @@ std::string PrivatePeerKey::sign(const std::string &buffer) const
   return opSign(m_private, 0, buffer);
 }
 
+std::string PrivatePeerKey::sign(const google::protobuf::Message &msg) const
+{
+  std::string buffer;
+  msg.SerializeToString(&buffer);
+
+  return sign(buffer);
+}
+
 std::string PrivatePeerKey::boxEncrypt(const PublicPeerKey &otherPublicKey,
                                        const std::string &buffer) const
 {

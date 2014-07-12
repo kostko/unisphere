@@ -687,6 +687,7 @@ public:
       { "rt_updates",   statsRt.routeUpdates },
       { "rt_exp",       statsRt.routeExpirations },
       { "rt_lnd",       statsRouter.msgsLandmarkRouted },
+      { "sa_msgs",      statsRouter.saUpdateXmits },
       { "ndb_inserts",  statsNdb.recordInsertions },
       { "ndb_updates",  statsNdb.recordUpdates },
       { "ndb_exp",      statsNdb.recordExpirations },
@@ -733,6 +734,7 @@ public:
       {
         "ts", "node_id",
         "rt_msgs", "rt_updates", "rt_exp", "rt_lnd",
+        "sa_msgs",
         "ndb_inserts", "ndb_updates", "ndb_exp", "ndb_drops", "ndb_refresh",
         "sg_msgs", "sg_msgs_r",
         "rt_s_all", "rt_s_act", "rt_s_vic",

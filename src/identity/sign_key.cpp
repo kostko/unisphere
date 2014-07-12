@@ -35,17 +35,24 @@ std::string SignKeyOperations::opSign(const std::string &privateKey,
                                       size_t privateKeyOffset,
                                       const std::string &buffer) const
 {
+#ifdef UNISPHERE_CRYPTO_NOOP
+  return buffer;
+#else
   unsigned char sm[buffer.size() + crypto_sign_BYTES];
   unsigned long long smlen;
   crypto_sign(sm, &smlen, (unsigned char*) buffer.data(), buffer.size(), (unsigned char*) &privateKey[privateKeyOffset]);
 
   return std::string((char*) sm, smlen);
+#endif
 }
 
 std::string SignKeyOperations::opSignOpen(const std::string &publicKey,
                                           size_t publicKeyOffset,
                                           const std::string &buffer) const
 {
+#ifdef UNISPHERE_CRYPTO_NOOP
+  return buffer;
+#else
   size_t smlen = buffer.size();
   unsigned char m[smlen];
   unsigned long long mlen;
@@ -54,6 +61,7 @@ std::string SignKeyOperations::opSignOpen(const std::string &publicKey,
     throw InvalidSignature("Invalid signature!");
 
   return std::string((char*) m, mlen);
+#endif
 }
 
 std::string PublicSignKey::signOpen(const std::string &buffer) const
@@ -80,6 +88,14 @@ std::string PrivateSignKey::sign(const std::string &buffer) const
     throw NullKey("Unable to perform operation on a null key!");
 
   return opSign(m_private, 0, buffer);
+}
+
+std::string PrivateSignKey::sign(const google::protobuf::Message &msg) const
+{
+  std::string buffer;
+  msg.SerializeToString(&buffer);
+
+  return sign(buffer);
 }
 
 }

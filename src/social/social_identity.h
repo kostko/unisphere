@@ -63,6 +63,14 @@ public:
   /**
    * Returns true if a given contact is a known peer.
    *
+   * @param nodeId Peer node identifier
+   * @return True if node is a valid peer and false otherwise
+   */
+  bool isPeer(const NodeIdentifier &nodeId) const;
+
+  /**
+   * Returns true if a given contact is a known peer.
+   *
    * @param contact Contact data
    * @return True if contact is a valid peer and false otherwise
    */
@@ -95,6 +103,15 @@ public:
    * @param nodeId Peer's node identifier
    */
   Contact getPeerContact(const NodeIdentifier &nodeId) const;
+
+  /**
+   * Returns true if there exist a peer security association with the
+   * given public key.
+   *
+   * @param publicKey SA public key
+   * @return True if such SA exists, false otherwise
+   */
+  bool hasPeerSecurityAssociation(const std::string &publicKey) const;
 public:
   /// Signal that gets called after a new peer is added
   boost::signals2::signal<void(PeerPtr)> signalPeerAdded;

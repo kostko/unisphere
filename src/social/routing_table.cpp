@@ -594,6 +594,9 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       // Update the entry's last seen timestamp
       BOOST_ASSERT(ribVport.modify(existing, [&](RoutingEntryPtr e) {
         e->lastUpdate = entry->lastUpdate;
+        // Update delegations as they might change
+        e->delegations = entry->delegations;
+        e->saKey = entry->saKey;
 
         // Restart expiry timer
         if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {
@@ -617,6 +620,9 @@ bool CompactRoutingTablePrivate::import(RoutingEntryPtr entry)
       e->seqno = entry->seqno;
       e->cost = entry->cost;
       e->lastUpdate = entry->lastUpdate;
+      // Update delegations
+      e->delegations = entry->delegations;
+      e->saKey = entry->saKey;
 
       // Restart expiry timer
       if (e->expiryTimer.expires_from_now(m_context.roughly(CompactRouter::interval_neighbor_expiry)) > 0) {

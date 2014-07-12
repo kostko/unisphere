@@ -43,11 +43,9 @@ public:
    * Constructs a new security association (SA).
    *
    * @param key Key
-   * @param expiry SA expiry
    */
-  SecurityAssociation(const KeyType &key, const boost::posix_time::time_duration &expiry)
-    : key(key),
-      expiryTime(boost::posix_time::microsec_clock::universal_time() + expiry)
+  explicit SecurityAssociation(const KeyType &key)
+    : key(key)
   {
   }
 
@@ -58,17 +56,7 @@ public:
   {
     return key.raw();
   }
-
-  /**
-   * Returns true if this security association has already expired.
-   */
-  inline bool isExpired() const
-  {
-    return expiryTime <= boost::posix_time::microsec_clock::universal_time();
-  }
 public:
-  /// Time when this security association expires
-  const boost::posix_time::ptime expiryTime;
   /// Security association key
   const KeyType key;
 };
@@ -101,8 +89,6 @@ typedef SecurityAssociations<PrivateSecurityAssociationPtr> PrivateSecurityAssoc
 
 class UNISPHERE_EXPORT Peer {
 public:
-  /// An invalid peer instance
-  static const Peer INVALID;
   /// Maximum number of peer security associations
   static const int max_security_associations = 10;
 
@@ -112,12 +98,27 @@ public:
   Peer();
 
   /**
+   * Copy constructor.
+   */
+  Peer(const Peer &peer);
+
+  /**
+   * Move constructor.
+   */
+  Peer(Peer &&peer) = default;
+
+  /**
    * Constructs a peer with the specified public key and contact
    * information.
    *
    * @param contact Peer contact information
    */
   explicit Peer(const Contact &contact);
+
+  /**
+   * Copy/move assignment operator.
+   */
+  Peer &operator=(Peer other);
 
   /**
    * Returns true if this is a null peer.
@@ -164,6 +165,15 @@ public:
   void removePeerSecurityAssociation(const std::string &publicKey);
 
   /**
+   * Returns true if there exists a security association with the given
+   * public key.
+   *
+   * @param publicKey SA public key
+   * @return True if such SA exists, false otherwise
+   */
+  bool hasPeerSecurityAssociation(const std::string &publicKey) const;
+
+  /**
    * Randomly selects a valid peer security association and returns it.
    *
    * @param context UNISPHERE context
@@ -174,10 +184,9 @@ public:
   /**
    * Creates a new private security association.
    *
-   * @param expiry Expiry time
    * @return A reference to the newly created security association
    */
-  PrivateSecurityAssociationPtr createPrivateSecurityAssociation(const boost::posix_time::time_duration &expiry);
+  PrivateSecurityAssociationPtr createPrivateSecurityAssociation();
 
   /**
    * Returns a private security association identified by its
@@ -187,6 +196,21 @@ public:
    * @return A pointer to the specified private SA or null when one cannot be found
    */
   PrivateSecurityAssociationPtr getPrivateSecurityAssociation(const std::string &publicKey);
+
+  /**
+   * Returns a list of private security associations.
+   */
+  std::list<PrivateSecurityAssociationPtr> getPrivateSecurityAssociations() const;
+
+  /**
+   * Returns true if we have stored any peer-SAs for this link.
+   */
+  bool hasPublicSecurityAssociations() const;
+
+  /**
+   * Returns true if we have generated any SAs for this link.
+   */
+  bool hasPrivateSecurityAssociations() const;
 private:
   /// Contact information for this peer
   Contact m_contact;
@@ -194,6 +218,8 @@ private:
   PeerSecurityAssociations m_peerSa;
   /// Security associations that we have chosen for this link
   PrivateSecurityAssociations m_privateSa;
+  /// Mutex protecting this peer
+  mutable std::recursive_mutex m_mutex;
 };
 
 UNISPHERE_SHARED_POINTER(Peer)

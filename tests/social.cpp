@@ -49,10 +49,7 @@ TEST_CASE("social/peer", "verify that peer operations work")
   // Test whether peer SAs work
   PrivateSignKey skey;
   skey.generate();
-  auto pubSa = peer.addPeerSecurityAssociation(PeerSecurityAssociation{
-    skey.publicKey(),
-    boost::posix_time::minutes(5)
-  });
+  auto pubSa = peer.addPeerSecurityAssociation(PeerSecurityAssociation{skey.publicKey()});
   auto selectSa = peer.selectPeerSecurityAssociation(ctx);
   REQUIRE(selectSa == pubSa);
   peer.removePeerSecurityAssociation(skey.raw());
@@ -60,7 +57,7 @@ TEST_CASE("social/peer", "verify that peer operations work")
   REQUIRE(!selectSa);
 
   // Test whether private SAs work
-  auto privSa = peer.createPrivateSecurityAssociation(boost::posix_time::minutes(5));
+  auto privSa = peer.createPrivateSecurityAssociation();
   auto checkSa = peer.getPrivateSecurityAssociation(privSa->raw());
   REQUIRE(privSa == checkSa);
 }

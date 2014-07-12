@@ -90,12 +90,22 @@ public:
   PrivateBoxKey privateBoxSubkey() const;
 
   /**
-   * Cryptographically signs the specified buffer.
+   * Cryptographically signs the specified buffer. The resulting buffer
+   * includes the contents.
    *
    * @param buffer Buffer to sign
    * @return Cryptographically signed buffer
    */
   std::string sign(const std::string &buffer) const;
+
+  /**
+   * Cryptographically signs the specified Protocol Buffers message. The
+   * resulting buffer includes the contents.
+   *
+   * @param msg Protocol Buffers message to sign
+   * @return Cryptographically signed buffer
+   */
+  std::string sign(const google::protobuf::Message &msg) const;
 
   /**
    * Creates a cryptographic box containing the specified buffer.

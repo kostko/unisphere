@@ -84,6 +84,8 @@ public:
     std::unordered_map<NodeIdentifier, LinkStatistics> links;
     /// Number of transmitted routing entries
     size_t entryXmits = 0;
+    /// Number of SA-related update transmissions
+    size_t saUpdateXmits = 0;
     /// Number of messages routed via a landmark node
     size_t msgsLandmarkRouted = 0;
     /// Number of messages routed via a sloppy group member

@@ -19,6 +19,7 @@
 #include "social/social_identity.h"
 
 #include <boost/make_shared.hpp>
+#include <boost/range/adaptors.hpp>
 
 namespace UniSphere {
 
@@ -28,9 +29,14 @@ SocialIdentity::SocialIdentity(const PrivatePeerKey &key)
 {
 }
 
+bool SocialIdentity::isPeer(const NodeIdentifier &nodeId) const
+{
+  return m_peers.find(nodeId) != m_peers.end();
+}
+
 bool SocialIdentity::isPeer(const Contact &contact) const
 {
-  return m_peers.find(contact.nodeId()) != m_peers.end();
+  return isPeer(contact.nodeId());
 }
 
 void SocialIdentity::addPeer(PeerPtr peer)
@@ -80,6 +86,17 @@ PeerPtr SocialIdentity::getPeer(const NodeIdentifier &nodeId) const
     return PeerPtr();
 
   return it->second;
+}
+
+bool SocialIdentity::hasPeerSecurityAssociation(const std::string &publicKey) const
+{
+  RecursiveUniqueLock lock(m_mutex);
+  for (PeerPtr peer : m_peers | boost::adaptors::map_values) {
+    if (peer->hasPeerSecurityAssociation(publicKey))
+      return true;
+  }
+
+  return false;
 }
 
 }

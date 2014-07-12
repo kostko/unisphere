@@ -23,6 +23,7 @@
 #include "social/name_database.h"
 #include "social/sloppy_group.h"
 #include "social/rpc_channel.h"
+#include "social/exceptions.h"
 #include "rpc/engine.hpp"
 #include "interplex/link_manager.h"
 #include "core/operators.h"
@@ -336,15 +337,29 @@ void CompactRouterPrivate::shutdown()
 
 void CompactRouterPrivate::saRefresh(PeerPtr peer, size_t count)
 {
-  // Create a new SA that is valid for the next 10 minutes
-  PrivateSecurityAssociationPtr sa = peer->createPrivateSecurityAssociation(boost::posix_time::minutes(10));
+  // If there are no existing SAs then we should always create one
+  if (!count && !peer->hasPrivateSecurityAssociations()) {
+    count = 1;
+  }
 
-  // Transmit SA public key to peer
-  Protocol::SecurityAssociationCreate sac;
-  sac.set_public_key(sa->key.raw());
-  sac.set_expiry(600);
-
-  m_manager.send(peer->contact(), Message(Message::Type::Social_SA_Create, sac));
+  if (count > 0) {
+    // Create count new security associations and transmit them
+    for (int i = 0; i < count; i++) {
+      PrivateSecurityAssociationPtr sa = peer->createPrivateSecurityAssociation();
+      Protocol::SecurityAssociationCreate sac;
+      sac.set_public_key(sa->raw());
+      m_manager.send(peer->contact(), Message(Message::Type::Social_SA_Create, sac));
+      m_statistics.saUpdateXmits++;
+    }
+  } else {
+    // Retransmit existing SAs
+    for (PrivateSecurityAssociationPtr sa : peer->getPrivateSecurityAssociations()) {
+      Protocol::SecurityAssociationCreate sac;
+      sac.set_public_key(sa->raw());
+      m_manager.send(peer->contact(), Message(Message::Type::Social_SA_Create, sac));
+      m_statistics.saUpdateXmits++;
+    }
+  }
 }
 
 void CompactRouterPrivate::saRefreshAll()
@@ -357,7 +372,7 @@ void CompactRouterPrivate::saRefreshAll()
 void CompactRouterPrivate::peerAdded(PeerPtr peer)
 {
   // Generate new security associations for this peer link
-  saRefresh(peer, 3);
+  saRefresh(peer, 1);
   // Export announces to new peer when it is added
   m_routes.fullUpdate(peer->nodeId());
 }
@@ -375,6 +390,17 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
   // Announce ourselves to all neighbours and send them routing updates
   Protocol::PathAnnounce announce;
   for (const std::pair<NodeIdentifier, PeerPtr> &peer : m_identity.peers()) {
+    PeerPtr peerInfo = peer.second;
+    // Get a security association for this link to setup delegations
+    PeerSecurityAssociationPtr sa = peerInfo->selectPeerSecurityAssociation(m_context);
+    if (!sa) {
+      // TODO: Rate limit transmission of SA_Flush
+      m_manager.send(peerInfo->contact(),
+        Message(Message::Type::Social_SA_Flush, Protocol::SecurityAssociationFlush()));
+      m_statistics.saUpdateXmits++;
+      continue;
+    }
+
     announce.Clear();
     announce.set_public_key(m_identity.localKey().raw());
     announce.set_landmark(m_routes.isLandmark());
@@ -384,8 +410,14 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
       announce.add_reverse_path(vport);
     }
 
+    // Construct the delegation message
+    Protocol::PathDelegation delegation;
+    delegation.set_delegation(sa->raw());
+    // TODO: Include reverse vport in signature
+    announce.add_delegation_chain(m_identity.localKey().privateSignSubkey().sign(delegation));
+
     announce.set_seqno(m_seqno);
-    ribExportQueueAnnounce(peer.second->contact(), announce);
+    ribExportQueueAnnounce(peerInfo->contact(), announce);
 
     // Send full routing table to neighbor
     m_routes.fullUpdate(peer.first);
@@ -425,28 +457,62 @@ void CompactRouterPrivate::ribExportEntry(RoutingEntryPtr entry, const NodeIdent
   // Prepare an empty slot for the reverse path that will be filled in for each peer
   announce.add_reverse_path(0);
 
-  auto exportEntry = [&](const Contact &contact) {
-    if (contact.isNull()) {
-      BOOST_LOG_SEV(m_logger, log::error) << "Attempted export for null contact!";
+  // Include all existing delegations from the route entry
+  for (const std::string &dg : entry->delegations) {
+    announce.add_delegation_chain(dg);
+  }
+  // Prepare a delegation chain entry that will be filled in for each peer
+  announce.add_delegation_chain("");
+
+  // We have been delegated the announce privilege, so we must sign with the SA key
+  // TODO: Can we simplify this?
+  PeerPtr incomingPeer = m_identity.getPeer(m_routes.getNeighborForVport(entry->originVport()));
+  PrivateSecurityAssociationPtr psa = incomingPeer->getPrivateSecurityAssociation(entry->saKey);
+  if (!psa) {
+    // TODO: Rate limit transmission of SA_Invalid
+    Protocol::SecurityAssociationInvalid sai;
+    sai.set_public_key(entry->saKey);
+    m_manager.send(incomingPeer->contact(), Message(Message::Type::Social_SA_Invalid, sai));
+    m_statistics.saUpdateXmits++;
+    return;
+  }
+
+  auto exportEntry = [&](PeerPtr peerInfo) {
+    BOOST_ASSERT(peerInfo);
+    BOOST_ASSERT(announce.delegation_chain_size() >= 2);
+
+    // Get a security association for this link to setup delegations
+    PeerSecurityAssociationPtr sa = peerInfo->selectPeerSecurityAssociation(m_context);
+    if (!sa) {
+      // TODO: Rate limit transmission of SA_Flush
+      m_manager.send(peerInfo->contact(),
+        Message(Message::Type::Social_SA_Flush, Protocol::SecurityAssociationFlush()));
+      m_statistics.saUpdateXmits++;
       return;
     }
 
     // Retrieve vport for given peer and check that it is not the origin
-    Vport vport = m_routes.getVportForNeighbor(contact.nodeId());
+    Vport vport = m_routes.getVportForNeighbor(peerInfo->nodeId());
     if (vport == entry->originVport())
       return;
 
+    // Construct the delegation message
+    Protocol::PathDelegation delegation;
+    delegation.set_delegation(sa->raw());
+    // TODO: Include forward and reverse ports in signature
+    announce.set_delegation_chain(announce.delegation_chain_size() - 1, psa->key.sign(delegation));
+
     announce.set_reverse_path(announce.reverse_path_size() - 1, vport);
-    ribExportQueueAnnounce(contact, announce);
+    ribExportQueueAnnounce(peerInfo->contact(), announce);
   };
 
   if (peer.isNull()) {
     // Export entry to all neighbors
     for (const std::pair<NodeIdentifier, PeerPtr> &peer : m_identity.peers()) {
-      exportEntry(peer.second->contact());
+      exportEntry(peer.second);
     }
   } else {
-    exportEntry(m_identity.getPeerContact(peer));
+    exportEntry(m_identity.getPeer(peer));
   }
 }
 
@@ -489,11 +555,7 @@ void CompactRouterPrivate::ribExportTransmitBuffer(const boost::system::error_co
     *aggregate.add_announces() = pa.second;
   }
 
-  m_manager.send(
-    buffer->contact,
-    Message(Message::Type::Social_Announce, aggregate)
-  );
-
+  m_manager.send(buffer->contact, Message(Message::Type::Social_Announce, aggregate));
   m_statistics.entryXmits += buffer->announces.size();
 
   // Clear the buffer after transmission
@@ -547,13 +609,15 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
   switch (msg.type()) {
     case Message::Type::Social_SA_Create: {
       // Register a new security association
+      // TODO: Do some rate limiting on SA_Create
+      PeerPtr peer = m_identity.getPeer(msg.originator());
+      if (!peer)
+        return;
+
       Protocol::SecurityAssociationCreate sac = message_cast<Protocol::SecurityAssociationCreate>(msg);
       try {
-        PeerSecurityAssociation sa(
-          PublicSignKey(sac.public_key()),
-          boost::posix_time::seconds(sac.expiry())
-        );
-        m_identity.getPeer(msg.originator())->addPeerSecurityAssociation(sa);
+        PeerSecurityAssociation sa(PublicSignKey(sac.public_key()));
+        peer->addPeerSecurityAssociation(sa);
       } catch (KeyDecodeFailed &e) {
         BOOST_LOG_SEV(m_logger, log::warning) << "SA_Create from peer " << msg.originator().hex() << " contains an invalid key!";
       }
@@ -562,8 +626,29 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
 
     case Message::Type::Social_SA_Invalid: {
       // Remove an existing association
+      // TODO: Do some rate limiting on SA_Invalid
+      PeerPtr peer = m_identity.getPeer(msg.originator());
+      if (!peer)
+        return;
+
       Protocol::SecurityAssociationInvalid sai = message_cast<Protocol::SecurityAssociationInvalid>(msg);
-      m_identity.getPeer(msg.originator())->removePeerSecurityAssociation(sai.public_key());
+      try {
+        peer->removePeerSecurityAssociation(sai.public_key());
+      } catch (InvalidSecurityAssociation &e) {
+        BOOST_LOG_SEV(m_logger, log::warning) << "SA_Invalid from peer " << msg.originator().hex() << " contains an unknown key.";
+      }
+      break;
+    }
+
+    case Message::Type::Social_SA_Flush: {
+      // Flush all SAs for the given peer and generate new ones
+      // TODO: Do some rate limiting on SA_Flush
+      PeerPtr peer = m_identity.getPeer(msg.originator());
+      if (!peer)
+        return;
+
+      Protocol::SecurityAssociationFlush saf = message_cast<Protocol::SecurityAssociationFlush>(msg);
+      saRefresh(peer, 0);
       break;
     }
 
@@ -572,6 +657,17 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
       // Get the incoming vport for these announcements; if none is available a
       // new vport is automatically assigned
       Vport vport = m_routes.getVportForNeighbor(msg.originator());
+
+      // If we have received an announce but there are no SAs established for
+      // this link, we immediately do a SA refresh
+      PeerPtr peer = m_identity.getPeer(msg.originator());
+      if (!peer) {
+        BOOST_LOG_SEV(m_logger, log::warning) << "Dropping announce for an unknown peer '" << msg.originator().hex() << "'!";
+        return;
+      }
+
+      if (!peer->hasPrivateSecurityAssociations())
+        saRefresh(peer, 1);
 
       for (int j = 0; j < agg.announces_size(); j++) {
         const Protocol::PathAnnounce &pan = agg.announces(j);
@@ -595,6 +691,46 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
             entry->reversePath.push_back(pan.reverse_path(i));
           }
         }
+
+        // Verify and populate the delegations
+        if (pan.delegation_chain_size() < 1) {
+          BOOST_LOG_SEV(m_logger, log::warning) << "Route update from '" << msg.originator().hex() << "' contained malformed delegation chain.";
+          return;
+        }
+
+        PublicSignKey knownKey = entry->publicKey.signSubkey();
+        bool validated = true;
+        for (int i = 0; i < pan.delegation_chain_size(); i++) {
+          try {
+            const Protocol::PathDelegation &dg = message_cast<Protocol::PathDelegation>(
+              knownKey.signOpen(pan.delegation_chain(i)));
+
+            // Routing loop detection via SA delegation chains
+            if (m_identity.hasPeerSecurityAssociation(dg.delegation())) {
+              BOOST_LOG_SEV(m_logger, log::warning) << "Routing loop detected, 1-hop="
+                << msg.originator().hex() << " origin=" << entry->destination.hex()
+                << " len=" << entry->forwardPath.size();
+              validated = false;
+              break;
+            }
+
+            knownKey = PublicSignKey(dg.delegation());
+            entry->delegations.push_back(pan.delegation_chain(i));
+          } catch(InvalidSignature &e) {
+            BOOST_LOG_SEV(m_logger, log::warning) << "Route update from '" << msg.originator().hex() << "' failed verification.";
+            validated = false;
+            break;
+          } catch (MessageCastFailed &e) {
+            BOOST_LOG_SEV(m_logger, log::warning) << "Route update from '" << msg.originator().hex() << "' contained malformed delegation.";
+            validated = false;
+            break;
+          }
+        }
+
+        // When an announcement failed validation, ignore it and skip to the next one
+        if (!validated)
+          continue;
+        entry->saKey = knownKey.raw();
 
         // Attempt to import the entry into the routing table
         m_routes.import(entry);

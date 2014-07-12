@@ -73,6 +73,9 @@ public:
 
 UNISPHERE_SHARED_POINTER(RouteOriginator)
 
+/// A list of routing path delegations
+using RoutingPathDelegations = std::list<std::string>;
+
 /**
  * An entry in the compact routing table.
  */
@@ -127,6 +130,10 @@ public:
   NodeIdentifier destination;
   /// Originator public key
   PublicPeerKey publicKey;
+  /// Delegations
+  RoutingPathDelegations delegations;
+  /// Last SA public signing key
+  std::string saKey;
   /// Path of vports to destination
   RoutingPath forwardPath;
   /// Path of vports from destination (only for landmarks)

@@ -58,6 +58,7 @@ public:
     Social_Routed           = 0x08,
     Social_SA_Create        = 0x09,
     Social_SA_Invalid       = 0x0A,
+    Social_SA_Flush         = 0x0B,
 
     /* 0x20 - 0xEF RESERVED FOR FUTURE USE */
 

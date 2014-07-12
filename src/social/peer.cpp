@@ -23,11 +23,14 @@
 
 namespace UniSphere {
 
-// Define the invalid peer instance that can be used for return
-// references to invalid peers
-const Peer Peer::INVALID = Peer();
-
 Peer::Peer()
+{
+}
+
+Peer::Peer(const Peer &peer)
+  : m_contact(peer.m_contact),
+    m_peerSa(peer.m_peerSa),
+    m_privateSa(peer.m_privateSa)
 {
 }
 
@@ -36,14 +39,25 @@ Peer::Peer(const Contact &contact)
 {
 }
 
+Peer &Peer::operator=(Peer other)
+{
+  std::swap(m_contact, other.m_contact);
+  std::swap(m_peerSa, other.m_peerSa);
+  std::swap(m_privateSa, other.m_privateSa);
+  return *this;
+}
+
 void Peer::setContact(const Contact &contact)
 {
   BOOST_ASSERT(contact.nodeId() == m_contact.nodeId());
+
+  RecursiveUniqueLock lock(m_mutex);
   m_contact = contact;
 }
 
 PeerSecurityAssociationPtr Peer::addPeerSecurityAssociation(const PeerSecurityAssociation &sa)
 {
+  RecursiveUniqueLock lock(m_mutex);
   PeerSecurityAssociationPtr psa = boost::make_shared<PeerSecurityAssociation>(sa);
   m_peerSa.push_front(psa);
   if (m_peerSa.size() > max_security_associations)
@@ -54,12 +68,21 @@ PeerSecurityAssociationPtr Peer::addPeerSecurityAssociation(const PeerSecurityAs
 
 void Peer::removePeerSecurityAssociation(const std::string &publicKey)
 {
+  RecursiveUniqueLock lock(m_mutex);
   if (!m_peerSa.get<1>().erase(publicKey))
     throw InvalidSecurityAssociation("Security association not found!");
 }
 
+bool Peer::hasPeerSecurityAssociation(const std::string &publicKey) const
+{
+  RecursiveUniqueLock lock(m_mutex);
+  return m_peerSa.get<1>().find(publicKey) != m_peerSa.get<1>().end();
+}
+
 PeerSecurityAssociationPtr Peer::selectPeerSecurityAssociation(Context &context)
 {
+  RecursiveUniqueLock lock(m_mutex);
+
   if (m_peerSa.empty())
     return PeerSecurityAssociationPtr();
 
@@ -71,36 +94,56 @@ PeerSecurityAssociationPtr Peer::selectPeerSecurityAssociation(Context &context)
   }
 }
 
-PrivateSecurityAssociationPtr Peer::createPrivateSecurityAssociation(const boost::posix_time::time_duration &expiry)
+PrivateSecurityAssociationPtr Peer::createPrivateSecurityAssociation()
 {
   // Generate a new private key for this association
   PrivateSignKey key;
   key.generate();
 
-  // Create new security association
-  PrivateSecurityAssociationPtr sa = boost::make_shared<PrivateSecurityAssociation>(key, expiry);
-  m_privateSa.push_front(sa);
+  PrivateSecurityAssociationPtr sa;
+  {
+    RecursiveUniqueLock lock(m_mutex);
 
-  // Remove old security associations
-  if (m_privateSa.size() > max_security_associations)
-    m_privateSa.pop_back();
+    // Create new security association
+    sa = boost::make_shared<PrivateSecurityAssociation>(key);
+    m_privateSa.push_front(sa);
 
-  return *m_privateSa.get<1>().find(sa->raw());
+    // Remove old security associations
+    if (m_privateSa.size() > max_security_associations)
+      m_privateSa.pop_back();
+  }
+
+  return sa;
 }
 
 PrivateSecurityAssociationPtr Peer::getPrivateSecurityAssociation(const std::string &publicKey)
 {
+  RecursiveUniqueLock lock(m_mutex);
   auto it = m_privateSa.get<1>().find(publicKey);
   if (it == m_privateSa.get<1>().end())
     return PrivateSecurityAssociationPtr();
 
-  PrivateSecurityAssociationPtr sa = *it;
-  if (sa->isExpired()) {
-    m_privateSa.get<1>().erase(it);
-    return PrivateSecurityAssociationPtr();
-  }
+  return *it;
+}
 
-  return sa;
+std::list<PrivateSecurityAssociationPtr> Peer::getPrivateSecurityAssociations() const
+{
+  RecursiveUniqueLock lock(m_mutex);
+  std::list<PrivateSecurityAssociationPtr> result;
+  for (PrivateSecurityAssociationPtr sa : m_privateSa) {
+    result.push_back(sa);
+  }
+  return result;
+}
+
+bool Peer::hasPublicSecurityAssociations() const
+{
+  return !m_peerSa.empty();
+}
+
+bool Peer::hasPrivateSecurityAssociations() const
+{
+  return !m_privateSa.empty();
 }
 
 }
