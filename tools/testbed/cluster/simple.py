@@ -73,6 +73,7 @@ class SimpleCluster(base.ClusterRunnerBase):
       self.master = subprocess.Popen(
         [
           self.settings.TESTBED_BINARY,
+          "--dataset-storage", self.cluster_cfg['dataset_storage'],
           "--cluster-role", "master",
           "--cluster-ip", self.cluster_cfg['master_ip'],
           "--cluster-priv-key", self.master_private_key,

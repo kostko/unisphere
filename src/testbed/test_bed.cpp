@@ -36,11 +36,12 @@ public:
   std::recursive_mutex m_mutex;
   /// Logger instance
   Logger m_logger;
-
   /// Registered test case factories
   std::map<std::string, TestCaseFactoryPtr> m_testCases;
   /// Registered scenarios
   std::map<std::string, ScenarioPtr> m_scenarios;
+  /// Dataset storage
+  DataSetStorage m_datasetStorage;
 };
 
 /// Global instance of the testbed
@@ -113,6 +114,11 @@ void TestBed::registerScenario(Scenario *scenario)
 {
   RecursiveUniqueLock lock(d->m_mutex);
   d->m_scenarios.insert({{ scenario->name(), ScenarioPtr(scenario) }});
+}
+
+DataSetStorage &TestBed::getDataSetStorage()
+{
+  return d->m_datasetStorage;
 }
 
 }

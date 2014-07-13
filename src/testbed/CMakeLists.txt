@@ -11,6 +11,7 @@ cluster/master.cpp
 cluster/slave.cpp
 cluster/controller.cpp
 cluster/topology_loader.cpp
+dataset/storage.cpp
 )
 
 PROTOBUF_GENERATE_CPP(unisphere_testbed_proto_src unisphere_testbed_proto_hdr

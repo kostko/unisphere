@@ -915,6 +915,17 @@ void Controller::run()
         }});
       }
 
+      // Configure dataset storage connection string
+      try {
+        DataSetStorage &dss = TestBed::getGlobalTestbed().getDataSetStorage();
+        dss.setConnectionString(response.dataset_storage_cs());
+        BOOST_LOG(d->m_logger) << "Dataset storage configured (cs=" << dss.getConnectionString().toString() << ").";
+      } catch (ConnectionStringError &e) {
+        BOOST_LOG_SEV(d->m_logger, log::error) << "Master sent us invalid dataset storage configuration!";
+        abortSimulation();
+        return;
+      }
+
       BOOST_LOG_SEV(d->m_logger, log::normal) << "Initialized simulation with " << slaves.size() << " slaves.";
 
       // Load topology and assign partitions to slaves

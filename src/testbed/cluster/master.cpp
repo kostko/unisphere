@@ -95,6 +95,8 @@ Response<Protocol::ClusterJoinResponse> MasterPrivate::rpcClusterJoin(const Prot
 
   if (m_state == Master::State::Idle) {
     response.set_registered(true);
+    response.set_dataset_storage_cs(
+      TestBed::getGlobalTestbed().getDataSetStorage().getConnectionString().toString());
 
     if (m_slaves.find(msg.originator()) == m_slaves.end()) {
       // Perform registration
@@ -180,6 +182,9 @@ Response<Protocol::StartResponse> MasterPrivate::rpcStart(const Protocol::StartR
       s->set_port_end(std::get<0>(slave.simulationPortRange));
     }
 
+    response.set_dataset_storage_cs(
+      TestBed::getGlobalTestbed().getDataSetStorage().getConnectionString().toString());
+
     // Switch to running state to block new registrations
     m_state = Master::State::Running;
     BOOST_LOG_SEV(m_logger, log::normal) << "Entered 'Running' state as requested by controller.";
@@ -241,6 +246,44 @@ Response<Protocol::AbortResponse> MasterPrivate::rpcAbort(const Protocol::AbortR
   return Protocol::AbortResponse();
 }
 
+
+
+void Master::setupOptions(int argc,
+                          char **argv,
+                          po::options_description &options,
+                          po::variables_map &variables)
+{
+  TestBed &testbed = TestBed::getGlobalTestbed();
+
+  if (variables.empty()) {
+    ClusterNode::setupOptions(argc, argv, options, variables);
+
+    // Cluster-related master options
+    po::options_description clusterOpts("Master Cluster Options");
+    clusterOpts.add_options()
+      ("dataset-storage", po::value<std::string>(), "MongoDB connection string for dataset storage")
+    ;
+    options.add(clusterOpts);
+    return;
+  }
+
+  // Process local options
+  ClusterNode::setupOptions(argc, argv, options, variables);
+
+  // Validate options
+  if (!variables.count("dataset-storage")) {
+    throw ArgumentError("Missing required --dataset-storage option!");
+  }
+
+  // Configure dataset storage
+  DataSetStorage &dss = testbed.getDataSetStorage();
+  try {
+    dss.setConnectionString(variables["dataset-storage"].as<std::string>());
+  } catch (ConnectionStringError &e) {
+    throw ArgumentError("Invalid MongoDB connection string specified for dataset storage!");
+  }
+}
+
 void Master::run()
 {
   // Register RPC methods
@@ -256,7 +299,11 @@ void Master::run()
   rpc().registerMethod<Protocol::AbortRequest, Protocol::AbortResponse>("Testbed.Cluster.Abort",
     boost::bind(&MasterPrivate::rpcAbort, d, _1, _2, _3));
 
-  BOOST_LOG_SEV(d->m_logger, log::normal) << "Cluster master initialized (id=" << linkManager().getLocalNodeId().hex() << ").";
+  BOOST_LOG(d->m_logger) << "Cluster master initialized (id=" << linkManager().getLocalNodeId().hex() << ").";
+  BOOST_LOG(d->m_logger)
+    << "Dataset storage configured (cs="
+    << TestBed::getGlobalTestbed().getDataSetStorage().getConnectionString().toString()
+    << ").";
 }
 
 }

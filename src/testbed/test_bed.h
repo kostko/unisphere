@@ -23,6 +23,7 @@
 #include "testbed/test_case.h"
 #include "testbed/scenario.h"
 #include "testbed/simulation.h"
+#include "testbed/dataset/storage.h"
 
 namespace UniSphere {
 
@@ -102,6 +103,11 @@ public:
    * @param scenario Scenario instance
    */
   void registerScenario(Scenario *scenario);
+
+  /**
+   * Returns the dataset storage reference.
+   */
+  DataSetStorage &getDataSetStorage();
 protected:
   /**
    * Class constructor.

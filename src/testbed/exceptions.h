@@ -106,6 +106,13 @@ public:
   {}
 };
 
+class UNISPHERE_EXPORT ConnectionStringError : public TestBedException {
+public:
+  ConnectionStringError(const std::string &error)
+    : TestBedException("Connection string error: " + error)
+  {}
+};
+
 }
 
 }

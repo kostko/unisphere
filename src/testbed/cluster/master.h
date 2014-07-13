@@ -52,6 +52,19 @@ public:
   Master &operator=(const Master&) = delete;
 protected:
   /**
+   * Sets up command line options and initializes the cluster node.
+   *
+   * @param argc Number of command line arguments
+   * @param argv Command line arguments
+   * @param options Program options parser configuration
+   * @param variables Prgoram option variables
+   */
+  void setupOptions(int argc,
+                    char **argv,
+                    boost::program_options::options_description &options,
+                    boost::program_options::variables_map &variables);
+
+  /**
    * Runs the master.
    */
   void run();

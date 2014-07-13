@@ -19,6 +19,8 @@ message ClusterJoinRequest {
 message ClusterJoinResponse {
   // Must be true for successful registration
   required bool registered = 1;
+  // Dataset storage connection string
+  required string dataset_storage_cs = 2;
 };
 
 message ClusterHeartbeat {
@@ -43,6 +45,8 @@ message StartResponse {
 
   // A list of registered slaves
   repeated Slave slaves = 1;
+  // Dataset storage connection string
+  required string dataset_storage_cs = 2;
 };
 
 message AssignPartitionRequest {

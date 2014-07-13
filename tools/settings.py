@@ -18,6 +18,7 @@ CLUSTER = {
     'slave_ip': '127.0.1.%d',
     'slave_sim_ip': '127.0.2.%d',
     'slave_sim_ports': (9000, 20000),
+    'dataset_storage': 'mongodb://127.0.0.1:27017/unisphere_testbed',
   }
 }
 
