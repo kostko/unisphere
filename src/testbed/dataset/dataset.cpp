@@ -26,19 +26,19 @@ namespace UniSphere {
 
 namespace TestBed {
 
-DataSetRecord::DataSetRecord()
+DataSetRecordBuilder::DataSetRecordBuilder()
   : m_bson(boost::make_shared<mongo::BSONObjBuilder>()),
     m_dataset(nullptr)
 {
 }
 
-DataSetRecord::DataSetRecord(DataSet2 *dataset)
-  : DataSetRecord()
+DataSetRecordBuilder::DataSetRecordBuilder(DataSet2 *dataset)
+  : DataSetRecordBuilder()
 {
   m_dataset = dataset;
 }
 
-DataSetRecord::~DataSetRecord()
+DataSetRecordBuilder::~DataSetRecordBuilder()
 {
   if (m_dataset)
     m_dataset->add(*this);
@@ -52,12 +52,12 @@ DataSet2::DataSet2(const std::string &id, const std::string &name)
 {
 }
 
-DataSetRecord DataSet2::add()
+DataSetRecordBuilder DataSet2::add()
 {
-  return DataSetRecord(this);
+  return DataSetRecordBuilder(this);
 }
 
-void DataSet2::add(DataSetRecord &record)
+void DataSet2::add(DataSetRecordBuilder &record)
 {
   boost::this_thread::disable_interruption di;
   try {

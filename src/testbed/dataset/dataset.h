@@ -34,12 +34,12 @@ class DataSet2;
 /**
  * Helper class for insertion of data into a dataset.
  */
-class UNISPHERE_EXPORT DataSetRecord {
+class UNISPHERE_EXPORT DataSetRecordBuilder {
 public:
   /**
    * Class constructor.
    */
-  DataSetRecord();
+  DataSetRecordBuilder();
 
   /**
    * Constructs a self-inserting dataset record. After the record's
@@ -48,12 +48,12 @@ public:
    *
    * @param dataset Dataset instance to insert into after completion
    */
-  explicit DataSetRecord(DataSet2 *dataset);
+  explicit DataSetRecordBuilder(DataSet2 *dataset);
 
   /**
    * Class destructor.
    */
-  ~DataSetRecord();
+  ~DataSetRecordBuilder();
 
   /**
    * Returns the BSON object of this record. After calling this function,
@@ -71,7 +71,7 @@ public:
    * @param value Value
    */
   template <typename BsonSerializableValue>
-  DataSetRecord &operator()(const std::string &key, const BsonSerializableValue &value)
+  DataSetRecordBuilder &operator()(const std::string &key, const BsonSerializableValue &value)
   {
     m_bson->append(key, value);
     return *this;
@@ -83,7 +83,7 @@ public:
    * @param key Key name
    * @param value Value
    */
-  DataSetRecord &operator()(const std::string &key, size_t value)
+  DataSetRecordBuilder &operator()(const std::string &key, size_t value)
   {
     m_bson->appendIntOrLL(key, static_cast<long long>(value));
     return *this;
@@ -95,7 +95,7 @@ public:
    * @param key Key name
    * @param value Value
    */
-  DataSetRecord &operator()(const std::string &key, const NodeIdentifier &value)
+  DataSetRecordBuilder &operator()(const std::string &key, const NodeIdentifier &value)
   {
     m_bson->append(key, value.hex());
     return *this;
@@ -136,7 +136,7 @@ public:
    * Starts adding a new dataset record. After the record is destroyed,
    * all the data is saved into the data set storage.
    */
-  DataSetRecord add();
+  DataSetRecordBuilder add();
 
   /**
    * Adds a record to the dataset. After this operation, the record object
@@ -144,7 +144,7 @@ public:
    *
    * @param record Record object to add to dataset
    */
-  void add(DataSetRecord &record);
+  void add(DataSetRecordBuilder &record);
 
   /**
    * Exports the dataset to CSV.
