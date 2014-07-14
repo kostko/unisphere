@@ -40,12 +40,14 @@ mongo::ConnectionString DataSetStorage::getConnectionString() const
   return m_cs;
 }
 
-mongo::ScopedDbConnection &&DataSetStorage::getConnection() const
+void DataSetStorage::initialize()
 {
-  if (!m_cs.isValid())
-    throw ConnectionStringError("Connection not configured.");
-
-  return std::move(mongo::ScopedDbConnection(m_cs));
+  try {
+    mongo::ScopedDbConnection db(getConnectionString());
+    db.done();
+  } catch (mongo::UserException &e) {
+    throw DataSetStorageConnectionFailed(e.toString());
+  }
 }
 
 }

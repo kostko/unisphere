@@ -55,6 +55,8 @@ public:
   void defer(std::function<void()> fun, int timeout);
 
   std::uint32_t getTime();
+
+  DataSet2 dataset(const std::string &name);
 private:
   void send_(const std::string &dsName,
              std::istream &dsData);
@@ -173,6 +175,11 @@ void SlaveTestCaseApi::finishNow()
 
   // Erase only after the above has finished as this will destroy the test case instance
   m_slave.m_runningCases.erase(it);
+}
+
+DataSet2 SlaveTestCaseApi::dataset(const std::string &name)
+{
+  return DataSet2(m_testCase->getIdString(), name);
 }
 
 void SlaveTestCaseApi::send_(const std::string &dsName,

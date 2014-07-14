@@ -279,8 +279,11 @@ void Master::setupOptions(int argc,
   DataSetStorage &dss = testbed.getDataSetStorage();
   try {
     dss.setConnectionString(variables["dataset-storage"].as<std::string>());
+    dss.initialize();
   } catch (ConnectionStringError &e) {
     throw ArgumentError("Invalid MongoDB connection string specified for dataset storage!");
+  } catch (DataSetStorageConnectionFailed &e) {
+    throw ArgumentError("Connection with dataset storage failed!");
   }
 }
 

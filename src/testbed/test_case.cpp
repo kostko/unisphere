@@ -89,6 +89,11 @@ TestCase::Identifier TestCase::getId() const
   return d->m_id;
 }
 
+std::string TestCase::getIdString() const
+{
+  return boost::lexical_cast<std::string>(d->m_id);
+}
+
 void TestCase::setId(Identifier id)
 {
   d->m_id = id;

@@ -678,6 +678,36 @@ public:
     const auto &rt = node->router->routingTable();
     const auto &ndb = node->router->nameDb();
 
+    api.dataset("ds_stats").add()
+      // Timestamp and node identifier
+      ("ts",            api.getTime())
+      ("node_id",       node->nodeId)
+      // Messaging complexity
+      ("rt_msgs",      statsRouter.entryXmits)
+      ("rt_updates",   statsRt.routeUpdates)
+      ("rt_exp",       statsRt.routeExpirations)
+      ("rt_lnd",       statsRouter.msgsLandmarkRouted)
+      ("sa_msgs",      statsRouter.saUpdateXmits)
+      ("ndb_inserts",  statsNdb.recordInsertions)
+      ("ndb_updates",  statsNdb.recordUpdates)
+      ("ndb_exp",      statsNdb.recordExpirations)
+      ("ndb_drops",    statsNdb.recordDrops)
+      ("ndb_refresh",  statsNdb.localRefreshes)
+      ("sg_msgs",      statsSg.recordXmits)
+      ("sg_msgs_r",    statsSg.recordRcvd)
+      ("lm_sent",      statsLink.global.msgXmits)
+      ("lm_rcvd",      statsLink.global.msgRcvd)
+      // Local state complexity
+      //   Routing table
+      ("rt_s_all",     rt.size())
+      ("rt_s_act",     rt.sizeActive())
+      ("rt_s_vic",     rt.sizeVicinity())
+      //   Name database
+      ("ndb_s_all",    ndb.size())
+      ("ndb_s_act",    ndb.sizeActive())
+      ("ndb_s_cac",    ndb.sizeCache())
+    ;
+
     ds_stats.add({
       // Timestamp and node identifier
       { "ts",           static_cast<int>(api.getTime()) },

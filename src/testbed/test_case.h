@@ -92,6 +92,11 @@ public:
   Identifier getId() const;
 
   /**
+   * Returns the test case's unique identifier as a string.
+   */
+  std::string getIdString() const;
+
+  /**
    * Sets the test case's unique identifier.
    *
    * @param id Identifier

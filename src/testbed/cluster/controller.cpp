@@ -91,6 +91,8 @@ public:
   TestCasePtr callTestCase(const std::string &name);
 
   void setGlobalArguments(const boost::property_tree::ptree &args);
+
+  DataSet2 dataset(const std::string &name);
 private:
   DataSetBuffer &receive_(const std::string &dsName);
 
@@ -218,6 +220,11 @@ ControllerTestCaseApi::ControllerTestCaseApi(ControllerPrivate &controller,
   : m_controller(controller),
     m_testCase(testCase)
 {
+}
+
+DataSet2 ControllerTestCaseApi::dataset(const std::string &name)
+{
+  return DataSet2(m_testCase->getIdString(), name);
 }
 
 DataSetBuffer &ControllerTestCaseApi::receive_(const std::string &dsName)

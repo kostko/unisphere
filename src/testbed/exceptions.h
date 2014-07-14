@@ -113,6 +113,13 @@ public:
   {}
 };
 
+class UNISPHERE_EXPORT DataSetStorageConnectionFailed : public TestBedException {
+public:
+  DataSetStorageConnectionFailed(const std::string &error)
+    : TestBedException("Dataset storage connection failed: " + error)
+  {}
+};
+
 }
 
 }

@@ -20,6 +20,7 @@
 #define UNISPHERE_TESTBED_TESTCASEAPI_H
 
 #include "core/globals.h"
+#include "testbed/dataset/dataset.h"
 #include "testbed/dataset.hpp"
 #include "testbed/exceptions.h"
 #include "testbed/cluster/partition.h"
@@ -52,6 +53,16 @@ public:
    * on slaves.
    */
   virtual void finishNow()
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
+   * Returns a specific dataset.
+   *
+   * @param name Unique dataset name within the test case
+   */
+  virtual DataSet2 dataset(const std::string &name)
   {
     throw IllegalApiCall();
   }

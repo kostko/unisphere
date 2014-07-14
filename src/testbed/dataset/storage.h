@@ -53,9 +53,9 @@ public:
   mongo::ConnectionString getConnectionString() const;
 
   /**
-   * Returns a connection suitable for dataset storage.
+   * Performs dataset storage initialization.
    */
-  mongo::ScopedDbConnection &&getConnection() const;
+  void initialize();
 private:
   /// Connection string for the storage server
   mongo::ConnectionString m_cs;
