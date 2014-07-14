@@ -49,57 +49,6 @@ using namespace UniSphere::TestBed;
 
 namespace Tests {
 
-class CountState : public TestCase
-{
-public:
-  /// State dataset
-  DataSet<> ds_state{"ds_state"};
-
-  using TestCase::TestCase;
-
-  /**
-   * Count the amount of state a node is using.
-   */
-  void runNode(TestCaseApi &api,
-               VirtualNodePtr node,
-               const boost::property_tree::ptree &args)
-  {
-    ds_state.add({
-      { "node_name",    node->name },
-      // Routing table state
-      { "rt_all",       node->router->routingTable().size() },
-      { "rt_active",    node->router->routingTable().sizeActive() },
-      { "rt_vicinity",  node->router->routingTable().sizeVicinity() },
-      // Name database state
-      { "ndb_all",      node->router->nameDb().size() },
-      { "ndb_active",   node->router->nameDb().sizeActive() },
-      { "ndb_cache",    node->router->nameDb().sizeCache() }
-    });
-
-    finish(api);
-  }
-
-  void processLocalResults(TestCaseApi &api)
-  {
-    BOOST_LOG(logger()) << "Sending " << ds_state.size() << " records in ds_state.";
-    api.send(ds_state);
-  }
-
-  void processGlobalResults(TestCaseApi &api)
-  {
-    api.receive(ds_state);
-    BOOST_LOG(logger()) << "Received " << ds_state.size() << " records in ds_state.";
-
-    outputCsvDataset(
-      ds_state,
-      { "node_name", "rt_all", "rt_active", "rt_vicinity", "ndb_all", "ndb_active", "ndb_cache" },
-      api.getOutputFilename("state", "csv")
-    );
-  }
-};
-
-UNISPHERE_REGISTER_TEST_CASE(CountState, "state/count")
-
 class DumpSloppyGroupTopology : public TestCase
 {
 public:
@@ -490,9 +439,6 @@ UNISPHERE_REGISTER_TEST_CASE(EndMessageTrace, "traces/end")
 class GetMessageTraces : public TestCase
 {
 public:
-  /// Traces dataset
-  DataSet<> ds_traces{"ds_traces"};
-
   using TestCase::TestCase;
 
   /**
@@ -503,38 +449,31 @@ public:
                const boost::property_tree::ptree &args)
   {
 #ifdef UNISPHERE_PROFILE
+    DataSet2 ds_traces = api.dataset("ds_traces");
     for (const auto &p : node->router->msgTracer().getTraceRecords()) {
-      ds_traces.add({
-        { "node_id",        node->nodeId.hex() },
-        { "pkt_id",         p.first },
-        { "timestamp",      p.second.at("timestamp") },
-        { "src",            p.second.at("src") },
-        { "dst",            p.second.at("dst") },
-        { "dst_lr",         p.second.at("dst_lr") },
-        { "route_duration", p.second.at("route_duration") },
-        { "local",          p.second.at("local") },
-        { "processed",      p.second.at("processed") }
-      });
+      ds_traces.add()
+        ("node_id",        node->nodeId)
+        ("pkt_id",         p.first)
+        ("timestamp",      p.second.at("timestamp"))
+        ("src",            p.second.at("src"))
+        ("dst",            p.second.at("dst"))
+        ("dst_lr",         p.second.at("dst_lr"))
+        ("route_duration", p.second.at("route_duration"))
+        ("local",          p.second.at("local"))
+        ("processed",      p.second.at("processed"))
+      ;
     }
 #endif
 
     finish(api);
   }
 
-  void processLocalResults(TestCaseApi &api)
-  {
-    api.send(ds_traces);
-  }
-
   void processGlobalResults(TestCaseApi &api)
   {
-    api.receive(ds_traces);
-
-    outputCsvDataset(
-      ds_traces,
+    api.dataset("ds_traces").csv(
       { "node_id", "pkt_id", "timestamp", "src", "dst", "dst_lr", "route_duration", "local", "processed" },
       api.getOutputFilename("traces", "csv")
-    );
+    ).clear();
   }
 };
 
@@ -661,9 +600,6 @@ UNISPHERE_REGISTER_TEST_CASE(NdbConsistentSanityCheck, "sanity/check_consistent_
 class GetPerformanceStatistics : public TestCase
 {
 public:
-  /// General statistics dataset
-  DataSet<> ds_stats{"ds_stats"};
-
   using TestCase::TestCase;
 
   void extractStatistics(TestCaseApi &api,
@@ -707,36 +643,6 @@ public:
       ("ndb_s_act",    ndb.sizeActive())
       ("ndb_s_cac",    ndb.sizeCache())
     ;
-
-    ds_stats.add({
-      // Timestamp and node identifier
-      { "ts",           static_cast<int>(api.getTime()) },
-      { "node_id",      node->nodeId.hex() },
-      // Messaging complexity
-      { "rt_msgs",      statsRouter.entryXmits },
-      { "rt_updates",   statsRt.routeUpdates },
-      { "rt_exp",       statsRt.routeExpirations },
-      { "rt_lnd",       statsRouter.msgsLandmarkRouted },
-      { "sa_msgs",      statsRouter.saUpdateXmits },
-      { "ndb_inserts",  statsNdb.recordInsertions },
-      { "ndb_updates",  statsNdb.recordUpdates },
-      { "ndb_exp",      statsNdb.recordExpirations },
-      { "ndb_drops",    statsNdb.recordDrops },
-      { "ndb_refresh",  statsNdb.localRefreshes },
-      { "sg_msgs",      statsSg.recordXmits },
-      { "sg_msgs_r",    statsSg.recordRcvd },
-      { "lm_sent",      statsLink.global.msgXmits },
-      { "lm_rcvd",      statsLink.global.msgRcvd },
-      // Local state complexity
-      //   Routing table
-      { "rt_s_all",     rt.size() },
-      { "rt_s_act",     rt.sizeActive() },
-      { "rt_s_vic",     rt.sizeVicinity() },
-      //   Name database
-      { "ndb_s_all",    ndb.size() },
-      { "ndb_s_act",    ndb.sizeActive() },
-      { "ndb_s_cac",    ndb.sizeCache() }
-    });
   }
 
   /**
@@ -750,17 +656,9 @@ public:
     finish(api);
   }
 
-  void processLocalResults(TestCaseApi &api)
-  {
-    api.send(ds_stats);
-  }
-
   void processGlobalResults(TestCaseApi &api)
   {
-    api.receive(ds_stats);
-
-    outputCsvDataset(
-      ds_stats,
+    api.dataset("ds_stats").csv(
       {
         "ts", "node_id",
         "rt_msgs", "rt_updates", "rt_exp", "rt_lnd",
@@ -771,7 +669,7 @@ public:
         "ndb_s_all", "ndb_s_act", "ndb_s_cac"
       },
       api.getOutputFilename("raw", "csv", argument<std::string>("marker"))
-    );
+    ).clear();
   }
 };
 
@@ -818,12 +716,8 @@ public:
   std::recursive_mutex mutex;
   /// Link congestion
   std::unordered_map<std::tuple<NodeIdentifier, NodeIdentifier>, size_t> congestion;
-  /// Link congestion dataset
-  DataSet<> ds_links{"ds_links"};
   /// Results of the pair-wise ping test if one wants congestion stretch computation
   boost::shared_ptr<PairWisePing> pairWisePing;
-  /// Shortest path simulated congestion dataset
-  DataSet<> ds_spcongestion{"ds_spcongestion"};
 
   using TestCase::TestCase;
 
@@ -873,28 +767,26 @@ public:
 
   void processLocalResults(TestCaseApi &api)
   {
+    DataSet2 ds_links = api.dataset("ds_links");
     for (const auto &p : congestion) {
-      ds_links.add({
-        { "ts",       static_cast<int>(api.getTime()) },
-        { "node_id",  std::get<0>(p.first).hex() },
-        { "link_id",  std::get<1>(p.first).hex() },
-        { "msgs",     p.second }
-      });
+      ds_links.add()
+        ("ts",        api.getTime())
+        ("node_id",   std::get<0>(p.first))
+        ("link_id",   std::get<1>(p.first))
+        ("msgs",      p.second)
+      ;
     }
-    api.send(ds_links);
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
-    api.receive(ds_links);
-
-    outputCsvDataset(
-      ds_links,
+    api.dataset("ds_links").csv(
       { "ts", "node_id", "link_id", "msgs" },
       api.getOutputFilename("raw", "csv", argument<std::string>("marker"))
-    );
+    ).clear();
 
     if (pairWisePing && pairWisePing->isFinished()) {
+      DataSet2 ds_spcongestion = api.dataset("ds_spcongestion");
       // Compute expected congestion in shortest-path protocols and compare
       std::unordered_map<std::tuple<std::string, std::string>, size_t> spCongestion;
 
@@ -910,19 +802,18 @@ public:
       }
 
       for (const auto &p : spCongestion) {
-        ds_spcongestion.add({
-          { "node_id", std::get<0>(p.first) },
-          { "link_id", std::get<1>(p.first) },
-          { "msgs", p.second }
-        });
+        ds_spcongestion.add()
+          ("node_id", std::get<0>(p.first))
+          ("link_id", std::get<1>(p.first))
+          ("msgs",    p.second)
+        ;
       }
-    }
 
-    outputCsvDataset(
-      ds_spcongestion,
-      { "node_id", "link_id", "msgs" },
-      api.getOutputFilename("sp", "csv", argument<std::string>("marker"))
-    );
+      ds_spcongestion.csv(
+        { "node_id", "link_id", "msgs" },
+        api.getOutputFilename("sp", "csv", argument<std::string>("marker"))
+      ).clear();
+    }
   }
 };
 
@@ -931,11 +822,6 @@ UNISPHERE_REGISTER_TEST_CASE(CollectLinkCongestion, "stats/collect_link_congesti
 class GetLRAddressLengths : public TestCase
 {
 public:
-  /// Primary address length dataset
-  DataSet<> ds_primary{"ds_primary"};
-  /// Secondary address length dataset
-  DataSet<> ds_secondary{"ds_secondary"};
-
   using TestCase::TestCase;
 
   /**
@@ -945,31 +831,25 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
+    DataSet2 ds_primary = api.dataset("ds_primary");
+    DataSet2 ds_secondary = api.dataset("ds_secondary");
+
     bool primary = true;
     for (const LandmarkAddress &address : node->router->routingTable().getLocalAddresses()) {
       auto &ds = primary ? ds_primary : ds_secondary;
       primary = false;
-      ds.add({
-        { "node_id",  node->nodeId.hex() },
-        { "length",   address.size() }
-      });
+      ds.add()
+        ("node_id",  node->nodeId)
+        ("length",   address.size())
+      ;
     }
     finish(api);
   }
 
-  void processLocalResults(TestCaseApi &api)
-  {
-    api.send(ds_primary);
-    api.send(ds_secondary);
-  }
-
   void processGlobalResults(TestCaseApi &api)
   {
-    api.receive(ds_primary);
-    api.receive(ds_secondary);
-
-    outputCsvDataset(ds_primary, { "node_id", "length" }, api.getOutputFilename("primary", "csv"));
-    outputCsvDataset(ds_secondary, { "node_id", "length" }, api.getOutputFilename("secondary", "csv"));
+    api.dataset("ds_primary").csv({ "node_id", "length" }, api.getOutputFilename("primary", "csv"));
+    api.dataset("ds_secondary").csv({ "node_id", "length" }, api.getOutputFilename("secondary", "csv"));
   }
 };
 

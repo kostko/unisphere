@@ -20,6 +20,8 @@
 #include "testbed/dataset/storage.h"
 #include "testbed/test_bed.h"
 
+#include <fstream>
+
 namespace UniSphere {
 
 namespace TestBed {
@@ -69,6 +71,57 @@ void DataSet2::add(DataSetRecord &record)
     Logger logger;
     BOOST_LOG_SEV(logger, log::error) << "OperationException raised by MongoDB driver on insert: " << e.what();
   }
+}
+
+DataSet2 &DataSet2::csv(std::initializer_list<std::string> fields,
+                        const std::string &filename)
+{
+  boost::this_thread::disable_interruption di;
+  std::ofstream file;
+  file.open(filename);
+
+  // Output column list
+  for (const std::string &field : fields) {
+    file << field;
+    file << "\t";
+  }
+  file << "\n";
+
+  // Output data
+  try {
+    mongo::ScopedDbConnection db(m_dss.getConnectionString());
+    auto cursor = db->query(m_namespace, mongo::Query().sort("_id"));
+    while (cursor->more()) {
+      mongo::BSONObj record = cursor->next();
+      for (const std::string &field : fields) {
+        if (record.hasField(field)) {
+          mongo::BSONElement element = record[field];
+          switch (element.type()) {
+            case mongo::NumberDouble: file << element.Double(); break;
+            case mongo::String: file << element.String(); break;
+            case mongo::Bool: file << element.Bool() ? 1 : 0; break;
+            case mongo::NumberInt: file << element.Int(); break;
+            case mongo::NumberLong: file << element.Long(); break;
+            default: file << "-"; break;
+          }
+        } else {
+          file << "-";
+        }
+
+        file << "\t";
+      }
+      file << "\n";
+    }
+    db.done();
+  } catch (mongo::UserException &e) {
+    Logger logger;
+    BOOST_LOG_SEV(logger, log::error) << "UserException raised by MongoDB driver on export: " << e.what();
+  } catch (mongo::OperationException &e) {
+    Logger logger;
+    BOOST_LOG_SEV(logger, log::error) << "OperationException raised by MongoDB driver on export: " << e.what();
+  }
+
+  return *this;
 }
 
 void DataSet2::clear()

@@ -147,6 +147,16 @@ public:
   void add(DataSetRecord &record);
 
   /**
+   * Exports the dataset to CSV.
+   *
+   * @param fields Fields to export
+   * @param filename Output filename
+   * @return Reference to self for command chaining
+   */
+  DataSet2 &csv(std::initializer_list<std::string> fields,
+                const std::string &filename);
+
+  /**
    * Clears this dataset. This method should only be called after it is
    * known that all clients have finished processing the dataset.
    */
