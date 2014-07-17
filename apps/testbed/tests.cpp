@@ -56,8 +56,6 @@ public:
   typedef SloppyGroupManager::TopologyDumpGraph Graph;
   /// Graph storage
   Graph graph;
-  /// Topology dataset
-  DataSet<Graph::graph_type> ds_topology{"ds_topology"};
 
   using TestCase::TestCase;
 
@@ -74,17 +72,16 @@ public:
 
   void processLocalResults(TestCaseApi &api)
   {
-    ds_topology.add({ "graph", graph.graph() });
-    BOOST_LOG(logger()) << "Sending " << boost::num_vertices(graph.graph()) << " vertices in ds_topology.";
-    api.send(ds_topology);
+    api.dataset("ds_topology").add()
+      ("graph", graph.graph())
+    ;
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
     using Tags = SloppyGroupManager::TopologyDumpTags;
 
-    api.receive(ds_topology);
-    mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(ds_topology, "graph", graph);
+    mergeGraphDataset2<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -111,8 +108,6 @@ public:
   typedef CompactRoutingTable::TopologyDumpGraph Graph;
   /// Graph storage
   Graph graph;
-  /// Topology dataset
-  DataSet<Graph::graph_type> ds_topology{"ds_topology"};
 
   using TestCase::TestCase;
 
@@ -129,17 +124,16 @@ public:
 
   void processLocalResults(TestCaseApi &api)
   {
-    ds_topology.add({ "graph", graph.graph() });
-    BOOST_LOG(logger()) << "Sending " << boost::num_vertices(graph.graph()) << " vertices in ds_topology.";
-    api.send(ds_topology);
+    api.dataset("ds_topology").add()
+      ("graph", graph.graph())
+    ;
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
     using Tags = CompactRoutingTable::TopologyDumpTags;
 
-    api.receive(ds_topology);
-    mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(ds_topology, "graph", graph);
+    mergeGraphDataset2<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 

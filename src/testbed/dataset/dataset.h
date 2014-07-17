@@ -25,6 +25,11 @@
 #include <mongo/client/dbclient.h>
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 namespace UniSphere {
 
@@ -72,91 +77,110 @@ public:
     if (!hasField(name))
       return def;
 
-    return getField(m_bson.getField(name), def);
+    T value;
+    extractField(m_bson.getField(name), value);
+    return value;
   }
 protected:
   /**
    * Field extractor.
    */
-  std::string getField(const mongo::BSONElement &element, const std::string&) const
+  void extractField(const mongo::BSONElement &element, std::string &value) const
   {
-    return element.String();
+    value = element.String();
   }
 
   /**
    * Field extractor.
    */
-  int getField(const mongo::BSONElement &element, int) const
+  void extractField(const mongo::BSONElement &element, int &value) const
   {
-    return element.Int();
+    value = element.Int();
   }
 
   /**
    * Field extractor.
    */
-  long int getField(const mongo::BSONElement &element, long int) const
+  void extractField(const mongo::BSONElement &element, long int &value) const
   {
-    return element.Long();
+    value = element.Long();
   }
 
   /**
    * Field extractor.
    */
-  long long getField(const mongo::BSONElement &element, long long) const
+  void extractField(const mongo::BSONElement &element, long long &value) const
   {
-    return element.Long();
+    value = element.Long();
   }
 
   /**
    * Field extractor.
    */
-  bool getField(const mongo::BSONElement &element, bool) const
+  void extractField(const mongo::BSONElement &element, bool &value) const
   {
-    return element.Bool();
+    value = element.Bool();
   }
 
   /**
    * Field extractor.
    */
-  NodeIdentifier getField(const mongo::BSONElement &element, const NodeIdentifier&) const
+  void extractField(const mongo::BSONElement &element, NodeIdentifier &value) const
   {
-    return NodeIdentifier(element.String(), NodeIdentifier::Format::Hex);
+    value = NodeIdentifier(element.String(), NodeIdentifier::Format::Hex);
   }
 
   /**
    * Field extractor.
    */
-  boost::posix_time::ptime getField(const mongo::BSONElement &element, const boost::posix_time::ptime&) const
+  void extractField(const mongo::BSONElement &element, boost::posix_time::ptime &value) const
   {
-    return boost::posix_time::from_time_t(0) + boost::posix_time::milliseconds(element.Date());
-  }
-
-  /**
-   * Field extractor.
-   */
-  template <typename T>
-  std::vector<T> getField(const mongo::BSONElement &element, const std::vector<T>&) const
-  {
-    std::vector<T> v;
-    for (auto it = element.Obj().begin(); it.more();) {
-      mongo::BSONElement e = it.next();
-      v.push_back(getField(e, T()));
-    }
-    return v;
+    value = boost::posix_time::from_time_t(0) + boost::posix_time::milliseconds(element.Date());
   }
 
   /**
    * Field extractor.
    */
   template <typename T>
-  std::list<T> getField(const mongo::BSONElement &element, const std::list<T>&) const
+  void extractField(const mongo::BSONElement &element, std::vector<T> &value) const
   {
-    std::list<T> v;
     for (auto it = element.Obj().begin(); it.more();) {
       mongo::BSONElement e = it.next();
-      v.push_back(getField(e, T()));
+      T subvalue;
+      extractField(e, subvalue);
+      value.push_back(subvalue);
     }
-    return v;
+  }
+
+  /**
+   * Field extractor.
+   */
+  template <typename T>
+  void extractField(const mongo::BSONElement &element, std::list<T> &value) const
+  {
+    for (auto it = element.Obj().begin(); it.more();) {
+      mongo::BSONElement e = it.next();
+      T subvalue;
+      extractField(e, subvalue);
+      value.push_back(subvalue);
+    }
+  }
+
+  /**
+   * Field extractor.
+   */
+  template <typename... T>
+  void extractField(const mongo::BSONElement &element, boost::adjacency_list<T...> &value) const
+  {
+    int bufferLength = 0;
+    const char *data = element.binData(bufferLength);
+    std::string buffer(data, bufferLength);
+    std::stringstream is(buffer);
+    boost::iostreams::filtering_istream f;
+    f.push(boost::iostreams::gzip_decompressor());
+    f.push(is);
+    boost::archive::text_iarchive archive(f);
+    archive >> value;
   }
 private:
   /// Underlying BSON object
@@ -315,6 +339,29 @@ public:
       key,
       mongo::Date_t((value - boost::posix_time::from_time_t(0)).total_milliseconds())
     );
+    return *this;
+  }
+
+  /**
+   * Overloadable operator for adding key-value data to this record.
+   *
+   * @param key Key name
+   * @param value Value
+   */
+  template <typename... T>
+  DataSetRecordBuilder &operator()(const std::string &key,
+                                   const boost::adjacency_list<T...> &value)
+  {
+    std::stringstream buffer;
+    {
+      boost::iostreams::filtering_ostream f;
+      f.push(boost::iostreams::gzip_compressor());
+      f.push(buffer);
+      boost::archive::text_oarchive archive(f);
+      archive << value;
+    }
+    std::string data = buffer.str();
+    m_bson->appendBinData(key, data.size(), mongo::bdtCustom, static_cast<const void*>(data.data()));
     return *this;
   }
 private:

@@ -19,6 +19,8 @@
 #ifndef UNISPHERE_TESTBED_DATASETGRAPHS_H
 #define UNISPHERE_TESTBED_DATASETGRAPHS_H
 
+#include "testbed/dataset/dataset.h"
+
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/labeled_graph.hpp>
 #include <boost/graph/graphml.hpp>
@@ -147,6 +149,17 @@ void mergeGraphDataset(const Dataset &dataset, const std::string &key, LabeledGr
 
   for (const auto &record : dataset) {
     const Graph &g = boost::get<Graph>(record.at(key));
+    detail::mergeGraph<LabeledGraph, NameAttributeTag, PlaceholderAttributeTag>(g, result);
+  }
+}
+
+template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag>
+void mergeGraphDataset2(const DataSet2 &dataset, const std::string &key, LabeledGraph &result)
+{
+  typedef typename LabeledGraph::graph_type Graph;
+
+  for (const auto &record : dataset) {
+    const Graph &g = record.field<Graph>(key);
     detail::mergeGraph<LabeledGraph, NameAttributeTag, PlaceholderAttributeTag>(g, result);
   }
 }
