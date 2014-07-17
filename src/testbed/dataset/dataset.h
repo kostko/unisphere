@@ -24,12 +24,186 @@
 
 #include <mongo/client/dbclient.h>
 
+#include <boost/iterator/iterator_facade.hpp>
+
 namespace UniSphere {
 
 namespace TestBed {
 
 class DataSetStorage;
 class DataSet2;
+
+/**
+ * An immutable dataset record.
+ */
+class UNISPHERE_EXPORT DataSetRecord {
+public:
+  friend class DataSetRecordIterator;
+
+  /**
+   * Class constructor.
+   */
+  DataSetRecord();
+
+  /**
+   * Constructs a dataset record from BSON data.
+   *
+   * @param bson BSON data
+   */
+  DataSetRecord(const mongo::BSONObj &bson);
+
+  /**
+   * Returns true if the record contains a specific field.
+   *
+   * @param name Field name
+   * @return True if record contains the field, false otherwise
+   */
+  bool hasField(const std::string &name) const { return m_bson.hasField(name); }
+
+  /**
+   * Retrieves a given field belonging to this record.
+   *
+   * @param name Field name
+   * @param def Default field value in case it doesn't exist
+   */
+  template <typename T>
+  T field(const std::string &name, const T &def = T()) const
+  {
+    if (!hasField(name))
+      return def;
+
+    return getField(m_bson.getField(name), def);
+  }
+protected:
+  /**
+   * Field extractor.
+   */
+  std::string getField(const mongo::BSONElement &element, const std::string&) const
+  {
+    return element.String();
+  }
+
+  /**
+   * Field extractor.
+   */
+  int getField(const mongo::BSONElement &element, int) const
+  {
+    return element.Int();
+  }
+
+  /**
+   * Field extractor.
+   */
+  long long getField(const mongo::BSONElement &element, long long) const
+  {
+    return element.Long();
+  }
+
+  /**
+   * Field extractor.
+   */
+  bool getField(const mongo::BSONElement &element, bool) const
+  {
+    return element.Bool();
+  }
+
+  /**
+   * Field extractor.
+   */
+  NodeIdentifier getField(const mongo::BSONElement &element, const NodeIdentifier&) const
+  {
+    return NodeIdentifier(element.String(), NodeIdentifier::Format::Hex);
+  }
+
+  /**
+   * Field extractor.
+   */
+  template <typename T>
+  std::vector<T> getField(const mongo::BSONElement &element, const std::vector<T>&) const
+  {
+    std::vector<T> v;
+    for (auto it = element.Obj().begin(); it.more();) {
+      mongo::BSONElement e = it.next();
+      v.push_back(getField(e, T()));
+    }
+    return v;
+  }
+
+  /**
+   * Field extractor.
+   */
+  template <typename T>
+  std::list<T> getField(const mongo::BSONElement &element, const std::list<T>&) const
+  {
+    std::list<T> v;
+    for (auto it = element.Obj().begin(); it.more();) {
+      mongo::BSONElement e = it.next();
+      v.push_back(getField(e, T()));
+    }
+    return v;
+  }
+private:
+  /// Underlying BSON object
+  mongo::BSONObj m_bson;
+};
+
+/**
+ * Iterator over dataset records.
+ */
+class UNISPHERE_EXPORT DataSetRecordIterator : public boost::iterator_facade<
+  DataSetRecordIterator,
+  DataSetRecord const,
+  boost::single_pass_traversal_tag
+> {
+public:
+  /**
+   * Class constructor.
+   */
+  DataSetRecordIterator();
+
+  /**
+   * Default move constructor.
+   */
+  DataSetRecordIterator(DataSetRecordIterator &&other) = default;
+
+  /**
+   * Class constructor
+   *
+   * @param db Database instance
+   * @param cursor Cursor instance
+   */
+  DataSetRecordIterator(std::unique_ptr<mongo::ScopedDbConnection> &&db,
+                        std::unique_ptr<mongo::DBClientCursor> &&cursor);
+
+  /**
+   * Class destructor.
+   */
+  ~DataSetRecordIterator();
+private:
+  friend class boost::iterator_core_access;
+
+  /**
+   * Iterator increment operation implementation.
+   */
+  void increment();
+
+  /**
+   * Iterator equality check implementation.
+   */
+  bool equal(const DataSetRecordIterator &other) const;
+
+  /**
+   * Iterator dereference operation implementation.
+   */
+  const DataSetRecord &dereference() const;
+private:
+  /// Underlying MongoDB connection
+  std::unique_ptr<mongo::ScopedDbConnection> m_db;
+  /// Underlying MongoDB cursor
+  std::unique_ptr<mongo::DBClientCursor> m_cursor;
+  /// Last fetched record
+  DataSetRecord m_record;
+};
 
 /**
  * Helper class for insertion of data into a dataset.
@@ -155,6 +329,16 @@ public:
    */
   DataSet2 &csv(std::initializer_list<std::string> fields,
                 const std::string &filename);
+
+  /**
+   * Returns an iterator to the beginning of the dataset.
+   */
+  DataSetRecordIterator begin() const;
+
+  /**
+   * Returns an iterator past the end of the dataset.
+   */
+  DataSetRecordIterator end() const;
 
   /**
    * Clears this dataset. This method should only be called after it is

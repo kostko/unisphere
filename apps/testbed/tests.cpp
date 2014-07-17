@@ -482,57 +482,41 @@ UNISPHERE_REGISTER_TEST_CASE(GetMessageTraces, "traces/retrieve")
 class NdbConsistentSanityCheck : public TestCase
 {
 public:
-  /// Name database dataset
-  DataSet<> ds_ndb{"ds_ndb"};
-  /// Group membership dataset
-  DataSet<> ds_groups{"ds_groups"};
-
   using TestCase::TestCase;
 
   void runNode(TestCaseApi &api,
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    ds_groups.add({
-      { "node_id",    node->nodeId.hex() },
-      { "group_len",  node->router->sloppyGroup().getGroupPrefixLength() }
-    });
+    api.dataset("ds_groups").add()
+      ("node_id",    node->nodeId)
+      ("group_len",  node->router->sloppyGroup().getGroupPrefixLength())
+    ;
 
+    DataSet2 ds_ndb = api.dataset("ds_ndb");
     for (NameRecordPtr record : node->router->nameDb().getNames(NameRecord::Type::SloppyGroup)) {
-      ds_ndb.add({
-        { "node_id",    node->nodeId.hex() },
-        { "record_id",  record->nodeId.hex() },
-        { "ts",         static_cast<int>(record->timestamp) },
-        { "seqno",      static_cast<int>(record->seqno) }
-      });
+      ds_ndb.add()
+        ("node_id",    node->nodeId)
+        ("record_id",  record->nodeId)
+        ("ts",         record->timestamp)
+        ("seqno",      record->seqno)
+      ;
     }
     finish(api);
   }
 
-  void processLocalResults(TestCaseApi &api)
-  {
-    api.send(ds_ndb);
-    api.send(ds_groups);
-  }
-
   void processGlobalResults(TestCaseApi &api)
   {
-    api.receive(ds_ndb);
-    api.receive(ds_groups);
+    DataSet2 ds_ndb = api.dataset("ds_ndb");
+    DataSet2 ds_groups = api.dataset("ds_groups");
 
-    outputCsvDataset(
-      ds_ndb,
-      { "node_id", "record_id", "ts", "seqno" },
-      api.getOutputFilename("raw", "csv")
-    );
+    ds_ndb.csv({ "node_id", "record_id", "ts", "seqno" }, api.getOutputFilename("raw", "csv"));
 
     // Build a per-node map of name records
     std::unordered_map<std::string, std::unordered_set<std::string>> globalNdb;
     for (const auto &record : ds_ndb) {
-      globalNdb[boost::get<std::string>(record.at("node_id"))].insert(
-        boost::get<std::string>(record.at("record_id")));
+      globalNdb[record.field<std::string>("node_id")].insert(record.field<std::string>("record_id"));
     }
-    ds_ndb.clear();
 
     // Check record consistency
     bool sybilMode = argument<bool>("sybil_mode", false);
@@ -540,15 +524,15 @@ public:
     size_t checkedRecords = 0;
     size_t inconsistentRecords = 0;
     for (const auto &record : ds_groups) {
-      std::string nodeStringId = boost::get<std::string>(record.at("node_id"));
+      std::string nodeStringId = record.field<std::string>("node_id");
       NodeIdentifier nodeId(nodeStringId, NodeIdentifier::Format::Hex);
       const Partition::Node &node = api.getNodeById(nodeId);
-      size_t groupPrefixLen = boost::get<size_t>(record.at("group_len"));
+      size_t groupPrefixLen = record.field<int>("group_len");
       NodeIdentifier groupPrefix = nodeId.prefix(groupPrefixLen);
       bool sybilRecord = static_cast<bool>(node.property<int>("sybil"));
 
       for (const auto &sibling : ds_groups) {
-        std::string siblingStringId = boost::get<std::string>(sibling.at("node_id"));
+        std::string siblingStringId = sibling.field<std::string>("node_id");
         NodeIdentifier siblingId(siblingStringId, NodeIdentifier::Format::Hex);
         const Partition::Node &siblingNode = api.getNodeById(siblingId);
         bool sybilNode = static_cast<bool>(siblingNode.property<int>("sybil"));
@@ -580,18 +564,14 @@ public:
       BOOST_LOG(logger()) << "NDB consistent after checking " << checkedRecords << " records.";
 
     // Save the fraction of inconsistent records
-    DataSet<> ds_report;
-    ds_report.add({
-      { "checked",  checkedRecords },
-      { "failed",   inconsistentRecords },
-      { "ratio",    static_cast<double>(checkedRecords - inconsistentRecords) / checkedRecords }
-    });
+    auto ds_report = api.dataset("ds_report");
+    ds_report.add()
+      ("checked",  checkedRecords)
+      ("failed",   inconsistentRecords)
+      ("ratio",    static_cast<double>(checkedRecords - inconsistentRecords) / checkedRecords)
+    ;
 
-    outputCsvDataset(
-      ds_report,
-      { "checked", "failed", "ratio" },
-      api.getOutputFilename("report", "csv")
-    );
+    ds_report.csv({ "checked", "failed", "ratio" }, api.getOutputFilename("report", "csv"));
   }
 };
 

@@ -26,6 +26,64 @@ namespace UniSphere {
 
 namespace TestBed {
 
+DataSetRecord::DataSetRecord()
+{
+}
+
+DataSetRecord::DataSetRecord(const mongo::BSONObj &bson)
+  : m_bson(bson)
+{
+}
+
+DataSetRecordIterator::DataSetRecordIterator()
+{
+}
+
+DataSetRecordIterator::DataSetRecordIterator(std::unique_ptr<mongo::ScopedDbConnection> &&db,
+                                             std::unique_ptr<mongo::DBClientCursor> &&cursor)
+  : m_db(std::move(db)),
+    m_cursor(std::move(cursor))
+{
+  increment();
+}
+
+DataSetRecordIterator::~DataSetRecordIterator()
+{
+  if (m_db)
+    m_db->done();
+}
+
+void DataSetRecordIterator::increment()
+{
+  boost::this_thread::disable_interruption di;
+  if (!m_cursor || !m_db)
+    return;
+
+  try {
+    if (m_cursor->more()) {
+      m_record = DataSetRecord(m_cursor->next());
+      return;
+    }
+  } catch (mongo::UserException &e) {
+  } catch (mongo::OperationException &e) {
+  }
+
+  m_record = DataSetRecord();
+  m_cursor.reset();
+  m_db->done();
+  m_db.reset();
+}
+
+bool DataSetRecordIterator::equal(const DataSetRecordIterator &other) const
+{
+  return m_cursor == other.m_cursor && m_record.m_bson == other.m_record.m_bson;
+}
+
+const DataSetRecord &DataSetRecordIterator::dereference() const
+{
+  return m_record;
+}
+
 DataSetRecordBuilder::DataSetRecordBuilder()
   : m_bson(boost::make_shared<mongo::BSONObjBuilder>()),
     m_dataset(nullptr)
@@ -47,7 +105,7 @@ DataSetRecordBuilder::~DataSetRecordBuilder()
 DataSet2::DataSet2(const std::string &id, const std::string &name)
   : m_id(name + id),
     m_name(name),
-    m_namespace("unisphere_testbed.datasets_" + m_id),
+    m_namespace(DataSetStorage::Namespace + ".datasets_" + m_id),
     m_dss(TestBed::getGlobalTestbed().getDataSetStorage())
 {
 }
@@ -122,6 +180,26 @@ DataSet2 &DataSet2::csv(std::initializer_list<std::string> fields,
   }
 
   return *this;
+}
+
+DataSetRecordIterator DataSet2::begin() const
+{
+  boost::this_thread::disable_interruption di;
+  try {
+    // TODO: Use std::make_unique in C++14
+    auto db = std::unique_ptr<mongo::ScopedDbConnection>(new mongo::ScopedDbConnection(m_dss.getConnectionString()));
+    auto cursor = (*db)->query(m_namespace, mongo::Query().sort("_id"));
+    return DataSetRecordIterator(std::move(db), std::move(cursor));
+  } catch (mongo::UserException &e) {
+    return end();
+  } catch (mongo::OperationException &e) {
+    return end();
+  }
+}
+
+DataSetRecordIterator DataSet2::end() const
+{
+  return DataSetRecordIterator();
 }
 
 void DataSet2::clear()

@@ -32,6 +32,9 @@ namespace TestBed {
  */
 class UNISPHERE_EXPORT DataSetStorage {
 public:
+  /// Dataset storage namespace (MongoDB database name)
+  static const std::string Namespace;
+
   /**
    * Class constructor.
    */
@@ -56,6 +59,11 @@ public:
    * Performs dataset storage initialization.
    */
   void initialize();
+
+  /**
+   * Clears the data storage, erasing all existing data.
+   */
+  void clear();
 private:
   /// Connection string for the storage server
   mongo::ConnectionString m_cs;

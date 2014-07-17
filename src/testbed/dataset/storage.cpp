@@ -23,6 +23,8 @@ namespace UniSphere {
 
 namespace TestBed {
 
+const std::string DataSetStorage::Namespace = "unisphere_testbed";
+
 DataSetStorage::DataSetStorage()
 {
 }
@@ -44,6 +46,17 @@ void DataSetStorage::initialize()
 {
   try {
     mongo::ScopedDbConnection db(getConnectionString());
+    db.done();
+  } catch (mongo::UserException &e) {
+    throw DataSetStorageConnectionFailed(e.toString());
+  }
+}
+
+void DataSetStorage::clear()
+{
+  try {
+    mongo::ScopedDbConnection db(getConnectionString());
+    db->dropDatabase(DataSetStorage::Namespace);
     db.done();
   } catch (mongo::UserException &e) {
     throw DataSetStorageConnectionFailed(e.toString());
