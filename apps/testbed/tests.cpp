@@ -167,10 +167,6 @@ public:
 
   /// Dependent routing topology dump
   DumpRoutingTopologyPtr rt_topology;
-  /// Raw measurements
-  DataSet<> ds_raw{"ds_raw"};
-  /// Stretch measurements
-  DataSet<ShortestPath> ds_stretch{"ds_stretch"};
   /// Node sampling
   std::uniform_real_distribution<double> sampler{0.0, 1.0};
   /// Mutex
@@ -284,26 +280,26 @@ public:
 
         rpc.call<Protocol::PingRequest, Protocol::PingResponse>(nodeId, "Core.Ping", request,
           [this, &api, node, nodeId, xmitTime](const Protocol::PingResponse &rsp, const RoutedMessage &msg) {
-            ds_raw.add({
-              { "timestamp", boost::posix_time::microsec_clock::universal_time() },
-              { "node_a", node->nodeId.hex() },
-              { "node_b", nodeId.hex() },
-              { "success", true },
+            api.dataset("ds_raw").add()
+              ("timestamp", boost::posix_time::microsec_clock::universal_time())
+              ("node_a", node->nodeId)
+              ("node_b", nodeId)
+              ("success", true)
 #ifdef UNISPHERE_PROFILE
-              { "msg_id", node->router->msgTracer().getMessageId(msg) },
+              ("msg_id", node->router->msgTracer().getMessageId(msg))
 #endif
-              { "hops", (int) msg.hopDistance() },
-              { "rtt", duration_cast<microseconds>(high_resolution_clock::now() - xmitTime).count() }
-            });
+              ("hops", msg.hopDistance())
+              ("rtt", duration_cast<microseconds>(high_resolution_clock::now() - xmitTime).count())
+            ;
             callNext(api);
           },
           [this, &api, node, nodeId](RpcErrorCode code, const std::string &msg) {
-            ds_raw.add({
-              { "timestamp", boost::posix_time::microsec_clock::universal_time() },
-              { "node_a", node->nodeId.hex() },
-              { "node_b", nodeId.hex() },
-              { "success", false }
-            });
+            api.dataset("ds_raw").add()
+              ("timestamp", boost::posix_time::microsec_clock::universal_time())
+              ("node_a", node->nodeId)
+              ("node_b", nodeId)
+              ("success", false)
+            ;
             callNext(api);
           },
           rpc.options().setTimeout(15)
@@ -322,16 +318,15 @@ public:
   void processLocalResults(TestCaseApi &api)
   {
     BOOST_LOG(logger()) << "Ping calls completed.";
-    api.send(ds_raw);
   }
 
   void processGlobalResults(TestCaseApi &api)
   {
-    api.receive(ds_raw);
+    auto ds_raw = api.dataset("ds_raw");
+    auto ds_stretch = api.dataset("ds_stretch");
 
     // Output RAW dataset received from slaves
-    outputCsvDataset(
-      ds_raw,
+    ds_raw.csv(
       { "timestamp", "node_a", "node_b", "msg_id", "success", "hops", "rtt" },
       api.getOutputFilename("raw", "csv")
     );
@@ -355,11 +350,11 @@ public:
 
     // Compute path stretches for each raw measurement pair
     for (const auto &record : ds_raw) {
-      if (!boost::get<bool>(record.at("success")))
+      if (!record.field<bool>("success"))
         continue;
 
-      std::string nodeA = boost::get<std::string>(record.at("node_a"));
-      std::string nodeB = boost::get<std::string>(record.at("node_b"));
+      std::string nodeA = record.field<std::string>("node_a");
+      std::string nodeB = record.field<std::string>("node_b");
       // TODO: We should group measurements by root vertex to avoid doing the same computation over and over
       boost::bellman_ford_shortest_paths(topology.graph(),
         boost::weight_map(boost::get(CompactRoutingTable::TopologyDumpTags::LinkWeight(), topology.graph()))
@@ -368,7 +363,7 @@ public:
         .root_vertex(topology.vertex(nodeA))
       );
 
-      int measuredLength = boost::get<int>(record.at("hops"));
+      int measuredLength = record.field<int>("hops");
       int shortestLength = distanceMap[topology.vertex(nodeB)];
       double stretch = (double) measuredLength / (double) shortestLength;
 
@@ -379,19 +374,18 @@ public:
         path.push_back(nameMap[u]);
       }
 
-      ds_stretch.add({
-        { "timestamp", record.at("timestamp") },
-        { "node_a", nodeA },
-        { "node_b", nodeB },
-        { "measured", measuredLength },
-        { "shortest", shortestLength },
-        { "stretch", stretch },
-        { "shortest_path", path }
-      });
+      ds_stretch.add()
+        ("timestamp", record.field<boost::posix_time::ptime>("timestamp"))
+        ("node_a", nodeA)
+        ("node_b", nodeB)
+        ("measured", measuredLength)
+        ("shortest", shortestLength)
+        ("stretch", stretch)
+        ("shortest_path", path)
+      ;
     }
 
-    outputCsvDataset(
-      ds_stretch,
+    ds_stretch.csv(
       { "node_a", "node_b", "measured", "shortest", "stretch" },
       api.getOutputFilename("stretch", "csv")
     );
@@ -770,9 +764,8 @@ public:
       // Compute expected congestion in shortest-path protocols and compare
       std::unordered_map<std::tuple<std::string, std::string>, size_t> spCongestion;
 
-      auto &pairs = pairWisePing->ds_stretch;
-      for (const auto &record : pairs) {
-        const auto &path = boost::get<PairWisePing::ShortestPath>(record.at("shortest_path"));
+      for (const auto &record : api.dataset(pairWisePing, "ds_stretch")) {
+        const auto &path = record.field<PairWisePing::ShortestPath>("shortest_path");
         // Make sure to skip the last (source) vertex; this computation should be consistent with
         // the above measurements of real congestion
         for (int i = 0; i < path.size() - 1; i++) {

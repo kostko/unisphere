@@ -156,10 +156,11 @@ DataSet2 &DataSet2::csv(std::initializer_list<std::string> fields,
           mongo::BSONElement element = record[field];
           switch (element.type()) {
             case mongo::NumberDouble: file << element.Double(); break;
-            case mongo::String: file << element.String(); break;
+            case mongo::String: file << '"' << element.String() << '"'; break;
             case mongo::Bool: file << element.Bool() ? 1 : 0; break;
             case mongo::NumberInt: file << element.Int(); break;
             case mongo::NumberLong: file << element.Long(); break;
+            case mongo::Date: file << '"' << element.Date().toString() << '"'; break;
             default: file << "-"; break;
           }
         } else {

@@ -57,6 +57,8 @@ public:
   std::uint32_t getTime();
 
   DataSet2 dataset(const std::string &name);
+
+  DataSet2 dataset(TestCasePtr testCase, const std::string &name);
 private:
   void send_(const std::string &dsName,
              std::istream &dsData);
@@ -180,6 +182,11 @@ void SlaveTestCaseApi::finishNow()
 DataSet2 SlaveTestCaseApi::dataset(const std::string &name)
 {
   return DataSet2(m_testCase->getIdString(), name);
+}
+
+DataSet2 SlaveTestCaseApi::dataset(TestCasePtr testCase, const std::string &name)
+{
+  return DataSet2(testCase->getIdString(), name);
 }
 
 void SlaveTestCaseApi::send_(const std::string &dsName,

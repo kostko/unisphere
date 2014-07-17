@@ -94,6 +94,14 @@ protected:
   /**
    * Field extractor.
    */
+  long int getField(const mongo::BSONElement &element, long int) const
+  {
+    return element.Long();
+  }
+
+  /**
+   * Field extractor.
+   */
   long long getField(const mongo::BSONElement &element, long long) const
   {
     return element.Long();
@@ -113,6 +121,14 @@ protected:
   NodeIdentifier getField(const mongo::BSONElement &element, const NodeIdentifier&) const
   {
     return NodeIdentifier(element.String(), NodeIdentifier::Format::Hex);
+  }
+
+  /**
+   * Field extractor.
+   */
+  boost::posix_time::ptime getField(const mongo::BSONElement &element, const boost::posix_time::ptime&) const
+  {
+    return boost::posix_time::from_time_t(0) + boost::posix_time::milliseconds(element.Date());
   }
 
   /**
@@ -257,6 +273,18 @@ public:
    * @param key Key name
    * @param value Value
    */
+  DataSetRecordBuilder &operator()(const std::string &key, long int value)
+  {
+    m_bson->appendIntOrLL(key, static_cast<long long>(value));
+    return *this;
+  }
+
+  /**
+   * Overloadable operator for adding key-value data to this record.
+   *
+   * @param key Key name
+   * @param value Value
+   */
   DataSetRecordBuilder &operator()(const std::string &key, size_t value)
   {
     m_bson->appendIntOrLL(key, static_cast<long long>(value));
@@ -272,6 +300,21 @@ public:
   DataSetRecordBuilder &operator()(const std::string &key, const NodeIdentifier &value)
   {
     m_bson->append(key, value.hex());
+    return *this;
+  }
+
+  /**
+   * Overloadable operator for adding key-value data to this record.
+   *
+   * @param key Key name
+   * @param value Value
+   */
+  DataSetRecordBuilder &operator()(const std::string &key, const boost::posix_time::ptime &value)
+  {
+    m_bson->appendDate(
+      key,
+      mongo::Date_t((value - boost::posix_time::from_time_t(0)).total_milliseconds())
+    );
     return *this;
   }
 private:

@@ -68,6 +68,17 @@ public:
   }
 
   /**
+   * Returns a specific dataset belonging to another testcase.
+   *
+   * @param testCase Instance of another testcase
+   * @param name Unique dataset name within the test case
+   */
+  virtual DataSet2 dataset(TestCasePtr testCase, const std::string &name)
+  {
+    throw IllegalApiCall();
+  }
+
+  /**
    * Transmits the specified dataset back to the controller. This method is
    * only available on slaves.
    *
