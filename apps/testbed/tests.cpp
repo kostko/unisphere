@@ -19,7 +19,6 @@
 #include "core/operators.h"
 #include "testbed/test_bed.h"
 #include "testbed/dataset/graphs.hpp"
-#include "testbed/dataset/csv.hpp"
 #include "social/compact_router.h"
 #include "social/routing_table.h"
 #include "social/name_database.h"
@@ -81,7 +80,7 @@ public:
   {
     using Tags = SloppyGroupManager::TopologyDumpTags;
 
-    mergeGraphDataset2<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
+    mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -133,7 +132,7 @@ public:
   {
     using Tags = CompactRoutingTable::TopologyDumpTags;
 
-    mergeGraphDataset2<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
+    mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
 
     BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
 
@@ -437,7 +436,7 @@ public:
                const boost::property_tree::ptree &args)
   {
 #ifdef UNISPHERE_PROFILE
-    DataSet2 ds_traces = api.dataset("ds_traces");
+    DataSet ds_traces = api.dataset("ds_traces");
     for (const auto &p : node->router->msgTracer().getTraceRecords()) {
       ds_traces.add()
         ("node_id",        node->nodeId)
@@ -481,7 +480,7 @@ public:
       ("group_len",  node->router->sloppyGroup().getGroupPrefixLength())
     ;
 
-    DataSet2 ds_ndb = api.dataset("ds_ndb");
+    DataSet ds_ndb = api.dataset("ds_ndb");
     for (NameRecordPtr record : node->router->nameDb().getNames(NameRecord::Type::SloppyGroup)) {
       ds_ndb.add()
         ("node_id",    node->nodeId)
@@ -495,8 +494,8 @@ public:
 
   void processGlobalResults(TestCaseApi &api)
   {
-    DataSet2 ds_ndb = api.dataset("ds_ndb");
-    DataSet2 ds_groups = api.dataset("ds_groups");
+    DataSet ds_ndb = api.dataset("ds_ndb");
+    DataSet ds_groups = api.dataset("ds_groups");
 
     ds_ndb.csv({ "node_id", "record_id", "ts", "seqno" }, api.getOutputFilename("raw", "csv"));
 
@@ -735,7 +734,7 @@ public:
 
   void processLocalResults(TestCaseApi &api)
   {
-    DataSet2 ds_links = api.dataset("ds_links");
+    DataSet ds_links = api.dataset("ds_links");
     for (const auto &p : congestion) {
       ds_links.add()
         ("ts",        api.getTime())
@@ -754,7 +753,7 @@ public:
     ).clear();
 
     if (pairWisePing && pairWisePing->isFinished()) {
-      DataSet2 ds_spcongestion = api.dataset("ds_spcongestion");
+      DataSet ds_spcongestion = api.dataset("ds_spcongestion");
       // Compute expected congestion in shortest-path protocols and compare
       std::unordered_map<std::tuple<std::string, std::string>, size_t> spCongestion;
 
@@ -798,8 +797,8 @@ public:
                VirtualNodePtr node,
                const boost::property_tree::ptree &args)
   {
-    DataSet2 ds_primary = api.dataset("ds_primary");
-    DataSet2 ds_secondary = api.dataset("ds_secondary");
+    DataSet ds_primary = api.dataset("ds_primary");
+    DataSet ds_secondary = api.dataset("ds_secondary");
 
     bool primary = true;
     for (const LandmarkAddress &address : node->router->routingTable().getLocalAddresses()) {

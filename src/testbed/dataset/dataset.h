@@ -36,7 +36,7 @@ namespace UniSphere {
 namespace TestBed {
 
 class DataSetStorage;
-class DataSet2;
+class DataSet;
 
 /**
  * An immutable dataset record.
@@ -262,7 +262,7 @@ public:
    *
    * @param dataset Dataset instance to insert into after completion
    */
-  explicit DataSetRecordBuilder(DataSet2 *dataset);
+  explicit DataSetRecordBuilder(DataSet *dataset);
 
   /**
    * Class destructor.
@@ -368,7 +368,7 @@ private:
   /// BSON object builder
   boost::shared_ptr<mongo::BSONObjBuilder> m_bson;
   /// Optional reference to a dataset this record was created for
-  DataSet2 *m_dataset;
+  DataSet *m_dataset;
 };
 
 /**
@@ -376,7 +376,7 @@ private:
  * multiple key-value pairs and values are predefined serializable
  * objects.
  */
-class UNISPHERE_EXPORT DataSet2 {
+class UNISPHERE_EXPORT DataSet {
 public:
   /*
    * Constructs a dataset.
@@ -384,7 +384,7 @@ public:
    * @param id Unique test case identifier
    * @param name Data set name
    */
-  DataSet2(const std::string &id, const std::string &name);
+  DataSet(const std::string &id, const std::string &name);
 
   /**
    * Returns a unique identifier of this dataset.
@@ -417,7 +417,7 @@ public:
    * @param filename Output filename
    * @return Reference to self for command chaining
    */
-  DataSet2 &csv(std::initializer_list<std::string> fields,
+  DataSet &csv(std::initializer_list<std::string> fields,
                 const std::string &filename);
 
   /**

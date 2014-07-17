@@ -21,26 +21,16 @@
 
 #include "core/globals.h"
 #include "testbed/dataset/dataset.h"
-#include "testbed/dataset.hpp"
 #include "testbed/exceptions.h"
 #include "testbed/cluster/partition.h"
 #include "testbed/test_case_fwd.h"
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/range/adaptors.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
 
 namespace UniSphere {
 
 namespace TestBed {
-
-/// Data set instance identifier
-typedef std::tuple<NodeIdentifier, std::uint32_t> DataSetInstance;
-/// Buffer that contains received datasets pending deserialization
-typedef std::unordered_map<DataSetInstance, std::stringstream> DataSetBuffer;
 
 /**
  * Public interface that can be used by test cases to perform tasks.
@@ -62,7 +52,7 @@ public:
    *
    * @param name Unique dataset name within the test case
    */
-  virtual DataSet2 dataset(const std::string &name)
+  virtual DataSet dataset(const std::string &name)
   {
     throw IllegalApiCall();
   }
@@ -73,61 +63,9 @@ public:
    * @param testCase Instance of another testcase
    * @param name Unique dataset name within the test case
    */
-  virtual DataSet2 dataset(TestCasePtr testCase, const std::string &name)
+  virtual DataSet dataset(TestCasePtr testCase, const std::string &name)
   {
     throw IllegalApiCall();
-  }
-
-  /**
-   * Transmits the specified dataset back to the controller. This method is
-   * only available on slaves.
-   *
-   * @param dataset Dataset to transmit
-   */
-  template <typename DataSetType>
-  void send(const DataSetType &dataset)
-  {
-    if (!dataset.size())
-      return;
-
-    std::stringstream buffer;
-    {
-      boost::iostreams::filtering_ostream f;
-      f.push(boost::iostreams::gzip_compressor());
-      f.push(buffer);
-      boost::archive::text_oarchive archive(f);
-      archive << dataset;
-    }
-
-    send_(dataset.getName(), buffer);
-  }
-
-  /**
-   * Receives an aggregated dataset from slaves. This method is only available
-   * on controller.
-   *
-   * @param dataset Dataset to receive
-   * @return True if dataset has been received, false otherwise
-   */
-  template <typename DataSetType>
-  bool receive(DataSetType &dataset)
-  {
-    try {
-      DataSetBuffer &buf = receive_(dataset.getName());
-      dataset.clear();
-      for (std::stringstream &ds_buffer : buf | boost::adaptors::map_values) {
-        DataSetType received;
-        boost::iostreams::filtering_istream f;
-        f.push(boost::iostreams::gzip_decompressor());
-        f.push(ds_buffer);
-        boost::archive::text_iarchive archive(f);
-        archive >> received;
-        dataset.moveFrom(received);
-      }
-      return true;
-    } catch (DataSetNotFound &e) {
-      return false;
-    }
   }
 
   /**
@@ -226,29 +164,6 @@ public:
     throw IllegalApiCall();
   }
 private:
-  /**
-   * Transmits the specified dataset back to the controller.
-   *
-   * @param dsName Data set name
-   * @param dsData Data set data stream
-   */
-  virtual void send_(const std::string &dsName,
-                     std::istream &dsData)
-  {
-    throw IllegalApiCall();
-  }
-
-  /**
-   * Receives an aggregated dataset from slaves.
-   *
-   * @param dsName Data set name
-   * @return Reference to received data set buffer
-   */
-  virtual DataSetBuffer &receive_(const std::string &dsName)
-  {
-    throw DataSetNotFound(dsName);
-  }
-
   /**
    * Removes the running test case. This method is only available on the
    * controller.

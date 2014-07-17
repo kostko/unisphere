@@ -142,19 +142,8 @@ void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result
 
 }
 
-template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag, class Dataset>
-void mergeGraphDataset(const Dataset &dataset, const std::string &key, LabeledGraph &result)
-{
-  typedef typename LabeledGraph::graph_type Graph;
-
-  for (const auto &record : dataset) {
-    const Graph &g = boost::get<Graph>(record.at(key));
-    detail::mergeGraph<LabeledGraph, NameAttributeTag, PlaceholderAttributeTag>(g, result);
-  }
-}
-
 template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag>
-void mergeGraphDataset2(const DataSet2 &dataset, const std::string &key, LabeledGraph &result)
+void mergeGraphDataset(const DataSet &dataset, const std::string &key, LabeledGraph &result)
 {
   typedef typename LabeledGraph::graph_type Graph;
 

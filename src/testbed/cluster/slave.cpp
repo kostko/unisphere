@@ -56,12 +56,9 @@ public:
 
   std::uint32_t getTime();
 
-  DataSet2 dataset(const std::string &name);
+  DataSet dataset(const std::string &name);
 
-  DataSet2 dataset(TestCasePtr testCase, const std::string &name);
-private:
-  void send_(const std::string &dsName,
-             std::istream &dsData);
+  DataSet dataset(TestCasePtr testCase, const std::string &name);
 public:
   /// Slave instance
   SlavePrivate &m_slave;
@@ -69,10 +66,6 @@ public:
   TestCasePtr m_testCase;
   /// Random number generator
   std::mt19937 m_rng;
-  /// Dataset instance counter
-  std::uint32_t m_datasetInstance;
-  /// Dataset buffer
-  std::vector<char> m_datasetBuffer;
 };
 
 struct RunningSlaveTestCase {
@@ -143,8 +136,7 @@ public:
 
 SlaveTestCaseApi::SlaveTestCaseApi(SlavePrivate &slave, TestCasePtr testCase)
   : m_slave(slave),
-    m_testCase(testCase),
-    m_datasetInstance(0)
+    m_testCase(testCase)
 {
 }
 
@@ -179,48 +171,14 @@ void SlaveTestCaseApi::finishNow()
   m_slave.m_runningCases.erase(it);
 }
 
-DataSet2 SlaveTestCaseApi::dataset(const std::string &name)
+DataSet SlaveTestCaseApi::dataset(const std::string &name)
 {
-  return DataSet2(m_testCase->getIdString(), name);
+  return DataSet(m_testCase->getIdString(), name);
 }
 
-DataSet2 SlaveTestCaseApi::dataset(TestCasePtr testCase, const std::string &name)
+DataSet SlaveTestCaseApi::dataset(TestCasePtr testCase, const std::string &name)
 {
-  return DataSet2(testCase->getIdString(), name);
-}
-
-void SlaveTestCaseApi::send_(const std::string &dsName,
-                             std::istream &dsData)
-{
-  RecursiveUniqueLock lock(m_slave.m_mutex);
-
-  Protocol::DatasetRequest request;
-  request.set_test_id(m_testCase->getId());
-  request.set_ds_name(dsName);
-  request.set_ds_instance(m_datasetInstance++);
-
-  BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sending dataset '" << m_testCase->getName() << "/" << dsName << "'.";
-
-  size_t sentBytes = 0;
-  m_datasetBuffer.resize(1048576);
-  while (!dsData.eof()) {
-    dsData.read(&m_datasetBuffer[0], m_datasetBuffer.size());
-    request.set_ds_data(&m_datasetBuffer[0], dsData.gcount());
-    sentBytes += dsData.gcount();
-
-    // TODO: Should we do error handling when notification can't be done?
-    m_slave.m_controller.call<Protocol::DatasetRequest, Protocol::DatasetResponse>(
-      "Testbed.Simulation.Dataset",
-      request,
-      nullptr,
-      [this](RpcErrorCode, const std::string &msg) {
-        BOOST_LOG_SEV(m_slave.m_logger, log::error) << "Failed to send dataset (" << msg << ")!";
-      }
-    );
-  }
-
-  BOOST_LOG_SEV(m_slave.m_logger, log::normal) << "Sent " << sentBytes << " for dataset '" <<
-    m_testCase->getName() << "/" << dsName << "'.";
+  return DataSet(testCase->getIdString(), name);
 }
 
 std::mt19937 &SlaveTestCaseApi::rng()

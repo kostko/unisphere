@@ -92,20 +92,16 @@ public:
 
   void setGlobalArguments(const boost::property_tree::ptree &args);
 
-  DataSet2 dataset(const std::string &name);
+  DataSet dataset(const std::string &name);
 
-  DataSet2 dataset(TestCasePtr testCase, const std::string &name);
+  DataSet dataset(TestCasePtr testCase, const std::string &name);
 private:
-  DataSetBuffer &receive_(const std::string &dsName);
-
   void removeRunningTestCase();
 public:
   /// Slave instance
   ControllerPrivate &m_controller;
   /// Test case instance
   TestCasePtr m_testCase;
-  /// Received datasets
-  std::unordered_map<std::string, DataSetBuffer> m_datasets;
   /// Global test case arguments
   boost::property_tree::ptree m_globalArgs;
   /// Random number generator
@@ -224,28 +220,14 @@ ControllerTestCaseApi::ControllerTestCaseApi(ControllerPrivate &controller,
 {
 }
 
-DataSet2 ControllerTestCaseApi::dataset(const std::string &name)
+DataSet ControllerTestCaseApi::dataset(const std::string &name)
 {
-  return DataSet2(m_testCase->getIdString(), name);
+  return DataSet(m_testCase->getIdString(), name);
 }
 
-DataSet2 ControllerTestCaseApi::dataset(TestCasePtr testCase, const std::string &name)
+DataSet ControllerTestCaseApi::dataset(TestCasePtr testCase, const std::string &name)
 {
-  return DataSet2(testCase->getIdString(), name);
-}
-
-DataSetBuffer &ControllerTestCaseApi::receive_(const std::string &dsName)
-{
-  RecursiveUniqueLock lock(m_controller.m_mutex);
-
-  // Check if a given dataset has been received
-  auto it = m_datasets.find(dsName);
-  if (it == m_datasets.end()) {
-    BOOST_LOG_SEV(m_controller.m_logger, log::warning) << "Dataset '" << m_testCase->getName() << "/" << dsName << "' not received.";
-    throw DataSetNotFound(dsName);
-  }
-
-  return it->second;
+  return DataSet(testCase->getIdString(), name);
 }
 
 std::string ControllerTestCaseApi::getOutputFilename(const std::string &prefix,
@@ -698,30 +680,6 @@ ControllerPrivate::ControllerPrivate(Controller &controller)
 {
 }
 
-Response<Protocol::DatasetResponse> ControllerPrivate::rpcDataset(const Protocol::DatasetRequest &request,
-                                                                  const Message &msg,
-                                                                  RpcId rpcId)
-{
-  RecursiveUniqueLock lock(m_mutex);
-
-  // Obtain the running test
-  auto &runningCases = m_scenarioApi->m_runningCases;
-  auto it = runningCases.find(request.test_id());
-  if (it == runningCases.end()) {
-    BOOST_LOG_SEV(m_logger, log::warning) << "Received dataset for non-running test case!";
-    throw RpcException(RpcErrorCode::BadRequest, "Specified test case is not running!");
-  }
-
-  RunningControllerTestCase &tc = it->second;
-  BOOST_LOG_SEV(m_logger, log::normal) << "Received dataset '" << tc.testCase->getName() << "/" << request.ds_name() << "' from " << msg.originator().hex() << ".";
-
-  // Store received (serialized) dataset in buffer
-  DataSetBuffer &buffer = tc.api->m_datasets[request.ds_name()];
-  buffer[std::make_tuple(msg.originator(), request.ds_instance())] << request.ds_data();
-
-  return Protocol::DatasetResponse();
-}
-
 Response<Protocol::TestDoneResponse> ControllerPrivate::rpcTestDone(const Protocol::TestDoneRequest &request,
                                                                     const Message &msg,
                                                                     RpcId rpcId)
@@ -906,9 +864,6 @@ void Controller::run()
   d->m_scenarioApi->m_rng.seed(d->m_seed);
 
   // Register RPC methods
-  rpc().registerMethod<Protocol::DatasetRequest, Protocol::DatasetResponse>("Testbed.Simulation.Dataset",
-    boost::bind(&ControllerPrivate::rpcDataset, d, _1, _2, _3));
-
   rpc().registerMethod<Protocol::TestDoneRequest, Protocol::TestDoneResponse>("Testbed.Simulation.TestDone",
     boost::bind(&ControllerPrivate::rpcTestDone, d, _1, _2, _3));
 

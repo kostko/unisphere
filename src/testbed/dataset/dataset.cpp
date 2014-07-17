@@ -90,7 +90,7 @@ DataSetRecordBuilder::DataSetRecordBuilder()
 {
 }
 
-DataSetRecordBuilder::DataSetRecordBuilder(DataSet2 *dataset)
+DataSetRecordBuilder::DataSetRecordBuilder(DataSet *dataset)
   : DataSetRecordBuilder()
 {
   m_dataset = dataset;
@@ -102,7 +102,7 @@ DataSetRecordBuilder::~DataSetRecordBuilder()
     m_dataset->add(*this);
 }
 
-DataSet2::DataSet2(const std::string &id, const std::string &name)
+DataSet::DataSet(const std::string &id, const std::string &name)
   : m_id(name + id),
     m_name(name),
     m_namespace(DataSetStorage::Namespace + ".datasets_" + m_id),
@@ -110,12 +110,12 @@ DataSet2::DataSet2(const std::string &id, const std::string &name)
 {
 }
 
-DataSetRecordBuilder DataSet2::add()
+DataSetRecordBuilder DataSet::add()
 {
   return DataSetRecordBuilder(this);
 }
 
-void DataSet2::add(DataSetRecordBuilder &record)
+void DataSet::add(DataSetRecordBuilder &record)
 {
   boost::this_thread::disable_interruption di;
   try {
@@ -131,7 +131,7 @@ void DataSet2::add(DataSetRecordBuilder &record)
   }
 }
 
-DataSet2 &DataSet2::csv(std::initializer_list<std::string> fields,
+DataSet &DataSet::csv(std::initializer_list<std::string> fields,
                         const std::string &filename)
 {
   boost::this_thread::disable_interruption di;
@@ -183,7 +183,7 @@ DataSet2 &DataSet2::csv(std::initializer_list<std::string> fields,
   return *this;
 }
 
-DataSetRecordIterator DataSet2::begin() const
+DataSetRecordIterator DataSet::begin() const
 {
   boost::this_thread::disable_interruption di;
   try {
@@ -198,12 +198,12 @@ DataSetRecordIterator DataSet2::begin() const
   }
 }
 
-DataSetRecordIterator DataSet2::end() const
+DataSetRecordIterator DataSet::end() const
 {
   return DataSetRecordIterator();
 }
 
-void DataSet2::clear()
+void DataSet::clear()
 {
   boost::this_thread::disable_interruption di;
   try {
