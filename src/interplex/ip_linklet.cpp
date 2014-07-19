@@ -75,7 +75,7 @@ void IPLinklet::connect(const Address &address)
   m_state = State::Connecting;
 
   // Log our connection attempt
-  BOOST_LOG_SEV(m_logger, log::normal) << "Connecting to a remote address...";
+  BOOST_LOG_SEV(m_logger, log::normal) << "Connecting to " << address.toIpEndpoint() << " ...";
 
   // When a local address is specified, we should bind to it for outgoing connections
   Address localAddress = m_manager.getLocalAddress();
@@ -162,7 +162,7 @@ void IPLinklet::handleConnect(const boost::system::error_code &error)
     start();
   } else {
     // Signal connection failure to upper layers
-    BOOST_LOG_SEV(m_logger, log::warning) << "Outgoing connection failed!";
+    BOOST_LOG_SEV(m_logger, log::warning) << "Outgoing connection failed: " << error.message();
     signalConnectionFailed(shared_from_this());
   }
 }
