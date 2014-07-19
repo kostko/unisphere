@@ -11,7 +11,7 @@ OUTPUT_GRAPH_FORMAT = "pdf"
 GRAPH_TRANSPARENCY = False
 
 # Cluster configuration
-CLUSTER = {
+CLUSTERS = {
   'testbed.cluster.simple.SimpleCluster': {
     'master_ip': '127.0.0.1',
     'controller_ip': '127.0.0.2',
@@ -19,8 +19,26 @@ CLUSTER = {
     'slave_sim_ip': '127.0.2.%d',
     'slave_sim_ports': (9000, 20000),
     'dataset_storage': 'mongodb://127.0.0.1:27017/',
+  },
+
+  'testbed.cluster.multihost.MultihostCluster': {
+    'username': 'ubuntu',
+    'keyfile': '/home/kostko/Keys/keypair-aws-ec2.pem',
+    'testbed_root': '/unisphere',
+    'testbed_output': '/unisphere/output',
+    'testbed_binary': '/unisphere/build/release/apps/testbed/testbed',
+    'hosts': {
+      'mc': {'host': '54.187.223.246', 'interface': 'eth0'},
+      'w0': {'host': '54.191.202.163', 'interface': 'eth0', 'workers': 30},
+      'w1': {'host': '54.191.187.13', 'interface': 'eth0', 'workers': 30},
+      'w2': {'host': '54.191.197.190', 'interface': 'eth0', 'workers': 30},
+    }
   }
 }
+
+# Cluster configuration that should be used by default
+CLUSTER = 'testbed.cluster.multihost.MultihostCluster'
+#CLUSTER = 'testbed.cluster.simple.SimpleCluster'
 
 # Configure topologies
 TOPOLOGIES = [

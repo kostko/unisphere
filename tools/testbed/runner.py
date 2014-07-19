@@ -46,17 +46,17 @@ class Runner(object):
     logging.config.dictConfig(settings.LOGGING)
     logger.info("Testbed root: %s" % settings.TESTBED_ROOT)
 
-    # TODO: Support multiple clusters, currently only the first one is used
-    cluster_module, cluster_cfg = settings.CLUSTER.items()[0]
+    # Select cluster configuration
+    cluster_cfg = settings.CLUSTERS[settings.CLUSTER]
 
-    logger.info("Loading cluster runner '%s'..." % cluster_module)
-    i = cluster_module.rfind('.')
-    module, attr = cluster_module[:i], cluster_module[i + 1:]
+    logger.info("Loading cluster runner '%s'..." % settings.CLUSTER)
+    i = settings.CLUSTER.rfind('.')
+    module, attr = settings.CLUSTER[:i], settings.CLUSTER[i + 1:]
     try:
       module = importlib.import_module(module)
       cluster = getattr(module, attr)(cluster_cfg, settings)
     except (ImportError, AttributeError):
-      raise exceptions.ImproperlyConfigured("Error importing cluster runner '%s'!" % cluster_module)
+      raise exceptions.ImproperlyConfigured("Error importing cluster runner '%s'!" % settings.CLUSTER)
 
     logger.info("Loading run catalog...")
     catalog.load(settings, graphs=False)
