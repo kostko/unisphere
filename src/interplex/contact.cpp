@@ -77,7 +77,7 @@ bool Address::operator==(const Address &other) const
 bool Address::operator<(const Address &other) const
 {
   if (m_type != other.m_type)
-    return false;
+    return static_cast<int>(m_type) < static_cast<int>(other.m_type);
 
   switch (m_type) {
     case Type::IP: return toIpEndpoint() < other.toIpEndpoint();

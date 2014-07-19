@@ -41,8 +41,8 @@ public:
    */
   enum class Type {
     Null,
-    IP,
     Local,
+    IP,
   };
 
   /**
