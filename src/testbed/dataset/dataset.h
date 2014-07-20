@@ -431,6 +431,11 @@ public:
   DataSetRecordIterator end() const;
 
   /**
+   * Waits until all dataset operations have been committed to the server.
+   */
+  DataSet &wait();
+
+  /**
    * Clears this dataset. This method should only be called after it is
    * known that all clients have finished processing the dataset.
    */

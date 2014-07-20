@@ -71,9 +71,11 @@ public:
 
   void processLocalResults(TestCaseApi &api)
   {
-    api.dataset("ds_topology").add()
+    auto ds_topology = api.dataset("ds_topology");
+    ds_topology.add()
       ("graph", graph.graph())
     ;
+    ds_topology.wait();
   }
 
   void processGlobalResults(TestCaseApi &api)
@@ -123,9 +125,11 @@ public:
 
   void processLocalResults(TestCaseApi &api)
   {
-    api.dataset("ds_topology").add()
+    auto ds_topology = api.dataset("ds_topology");
+    ds_topology.add()
       ("graph", graph.graph())
     ;
+    ds_topology.wait();
   }
 
   void processGlobalResults(TestCaseApi &api)
@@ -311,6 +315,7 @@ public:
   void processLocalResults(TestCaseApi &api)
   {
     BOOST_LOG(logger()) << "Ping calls completed.";
+    api.dataset("ds_raw").wait();
   }
 
   void processGlobalResults(TestCaseApi &api)
@@ -378,7 +383,7 @@ public:
       ;
     }
 
-    ds_stretch.csv(
+    ds_stretch.wait().csv(
       { "node_a", "node_b", "measured", "shortest", "stretch" },
       api.getOutputFilename("stretch", "csv")
     );
@@ -455,6 +460,11 @@ public:
     finish(api);
   }
 
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.dataset("ds_traces").wait();
+  }
+
   void processGlobalResults(TestCaseApi &api)
   {
     api.dataset("ds_traces").csv(
@@ -490,6 +500,12 @@ public:
       ;
     }
     finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.dataset("ds_groups").wait();
+    api.dataset("ds_ndb").wait();
   }
 
   void processGlobalResults(TestCaseApi &api)
@@ -558,7 +574,7 @@ public:
       ("ratio",    static_cast<double>(checkedRecords - inconsistentRecords) / checkedRecords)
     ;
 
-    ds_report.csv({ "checked", "failed", "ratio" }, api.getOutputFilename("report", "csv"));
+    ds_report.wait().csv({ "checked", "failed", "ratio" }, api.getOutputFilename("report", "csv"));
   }
 };
 
@@ -621,6 +637,11 @@ public:
   {
     extractStatistics(api, node);
     finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.dataset("ds_stats").wait();
   }
 
   void processGlobalResults(TestCaseApi &api)
@@ -743,6 +764,8 @@ public:
         ("msgs",      p.second)
       ;
     }
+
+    ds_links.wait();
   }
 
   void processGlobalResults(TestCaseApi &api)
@@ -775,7 +798,7 @@ public:
         ;
       }
 
-      ds_spcongestion.csv(
+      ds_spcongestion.wait().csv(
         { "node_id", "link_id", "msgs" },
         api.getOutputFilename("sp", "csv", argument<std::string>("marker"))
       ).clear();
@@ -810,6 +833,12 @@ public:
       ;
     }
     finish(api);
+  }
+
+  void processLocalResults(TestCaseApi &api)
+  {
+    api.dataset("ds_primary").wait();
+    api.dataset("ds_secondary").wait();
   }
 
   void processGlobalResults(TestCaseApi &api)

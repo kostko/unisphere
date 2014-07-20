@@ -279,7 +279,6 @@ void Master::setupOptions(int argc,
   DataSetStorage &dss = testbed.getDataSetStorage();
   try {
     dss.setConnectionString(variables["dataset-storage"].as<std::string>());
-    dss.initialize();
   } catch (ConnectionStringError &e) {
     throw ArgumentError("Invalid MongoDB connection string specified for dataset storage!");
   } catch (DataSetStorageConnectionFailed &e) {
@@ -303,10 +302,11 @@ void Master::run()
     boost::bind(&MasterPrivate::rpcAbort, d, _1, _2, _3));
 
   BOOST_LOG(d->m_logger) << "Cluster master initialized (id=" << linkManager().getLocalNodeId().hex() << ").";
-  BOOST_LOG(d->m_logger)
-    << "Dataset storage configured (cs="
-    << TestBed::getGlobalTestbed().getDataSetStorage().getConnectionString().toString()
-    << ").";
+
+  // Initialize the dataset storage
+  DataSetStorage &dss = TestBed::getGlobalTestbed().getDataSetStorage();
+  dss.initialize();
+  BOOST_LOG(d->m_logger) << "Dataset storage configured (cs=" << dss.getConnectionString().toString() << ").";
 }
 
 }

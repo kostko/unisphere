@@ -17,29 +17,51 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "testbed/dataset/storage.h"
+#include "testbed/dataset/processor.h"
 #include "testbed/exceptions.h"
 
 namespace UniSphere {
 
 namespace TestBed {
 
+class DataSetStoragePrivate {
+public:
+  DataSetStoragePrivate(DataSetStorage &dss);
+public:
+  /// Connection string for the storage server
+  mongo::ConnectionString m_cs;
+  /// Dataset processor instance
+  DataSetProcessor m_processor;
+};
+
+DataSetStoragePrivate::DataSetStoragePrivate(DataSetStorage &dss)
+  : m_processor(dss)
+{
+}
+
 const std::string DataSetStorage::Namespace = "unisphere_testbed";
 
 DataSetStorage::DataSetStorage()
+  : d(new DataSetStoragePrivate(*this))
 {
 }
 
 void DataSetStorage::setConnectionString(const std::string &cs)
 {
   std::string error;
-  m_cs = mongo::ConnectionString::parse(cs, error);
-  if (!m_cs.isValid())
+  d->m_cs = mongo::ConnectionString::parse(cs, error);
+  if (!d->m_cs.isValid())
     throw ConnectionStringError(error);
 }
 
 mongo::ConnectionString DataSetStorage::getConnectionString() const
 {
-  return m_cs;
+  return d->m_cs;
+}
+
+DataSetProcessor &DataSetStorage::getProcessor()
+{
+  return d->m_processor;
 }
 
 void DataSetStorage::initialize()
@@ -50,6 +72,9 @@ void DataSetStorage::initialize()
   } catch (mongo::UserException &e) {
     throw DataSetStorageConnectionFailed(e.toString());
   }
+
+  // Initielize the dataset processor thread
+  d->m_processor.initialize();
 }
 
 void DataSetStorage::clear()

@@ -18,6 +18,7 @@
  */
 #include "testbed/dataset/dataset.h"
 #include "testbed/dataset/storage.h"
+#include "testbed/dataset/processor.h"
 #include "testbed/test_bed.h"
 
 #include <fstream>
@@ -117,18 +118,7 @@ DataSetRecordBuilder DataSet::add()
 
 void DataSet::add(DataSetRecordBuilder &record)
 {
-  boost::this_thread::disable_interruption di;
-  try {
-    mongo::ScopedDbConnection db(m_dss.getConnectionString());
-    db->insert(m_namespace, record.getBSON());
-    db.done();
-  } catch (mongo::UserException &e) {
-    Logger logger;
-    BOOST_LOG_SEV(logger, log::error) << "UserException raised by MongoDB driver on insert: " << e.what();
-  } catch (mongo::OperationException &e) {
-    Logger logger;
-    BOOST_LOG_SEV(logger, log::error) << "OperationException raised by MongoDB driver on insert: " << e.what();
-  }
+  m_dss.getProcessor().insert(m_namespace, record.getBSON());
 }
 
 DataSet &DataSet::csv(std::initializer_list<std::string> fields,
@@ -201,6 +191,21 @@ DataSetRecordIterator DataSet::begin() const
 DataSetRecordIterator DataSet::end() const
 {
   return DataSetRecordIterator();
+}
+
+DataSet &DataSet::wait()
+{
+  using namespace std::chrono;
+  auto startTime = high_resolution_clock::now();
+
+  m_dss.getProcessor().wait(m_namespace);
+
+  Logger logger;
+  BOOST_LOG(logger)
+    << "Waited " << duration_cast<milliseconds>(high_resolution_clock::now() - startTime).count() << " ms "
+    << "for dataset '" << m_name << "' to commit.";
+
+  return *this;
 }
 
 void DataSet::clear()

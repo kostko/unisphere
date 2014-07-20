@@ -27,6 +27,8 @@ namespace UniSphere {
 
 namespace TestBed {
 
+class DataSetProcessor;
+
 /**
  * Dataset storage configuration.
  */
@@ -56,6 +58,11 @@ public:
   mongo::ConnectionString getConnectionString() const;
 
   /**
+   * Returns a reference to the dataset processor.
+   */
+  DataSetProcessor &getProcessor();
+
+  /**
    * Performs dataset storage initialization.
    */
   void initialize();
@@ -65,8 +72,7 @@ public:
    */
   void clear();
 private:
-  /// Connection string for the storage server
-  mongo::ConnectionString m_cs;
+  UNISPHERE_DECLARE_PRIVATE(DataSetStorage)
 };
 
 }

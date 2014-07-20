@@ -888,6 +888,7 @@ void Controller::run()
       try {
         DataSetStorage &dss = TestBed::getGlobalTestbed().getDataSetStorage();
         dss.setConnectionString(response.dataset_storage_cs());
+        dss.initialize();
         dss.clear();
         BOOST_LOG(d->m_logger) << "Dataset storage configured (cs=" << dss.getConnectionString().toString() << ").";
       } catch (ConnectionStringError &e) {
