@@ -124,14 +124,15 @@ void SimulationSection::run()
   SimulationWorkerThread &worker = d->m_simulation.m_sectionThreads[id];
   if (!worker.isRunning()) {
     if (d->m_testCase) {
-      d->m_testCase->signalFinished.connect([this, id]() {
-        RecursiveUniqueLock lock(d->m_simulation.m_mutex);
-        auto it = d->m_simulation.m_sectionThreads.find(id);
-        if (it == d->m_simulation.m_sectionThreads.end())
+      SimulationPrivate &simulation = d->m_simulation;
+      d->m_testCase->signalFinished.connect([&simulation, id]() {
+        RecursiveUniqueLock lock(simulation.m_mutex);
+        auto it = simulation.m_sectionThreads.find(id);
+        if (it == simulation.m_sectionThreads.end())
           return;
 
         (*it).second.stop();
-        d->m_simulation.m_sectionThreads.erase(it);
+        simulation.m_sectionThreads.erase(it);
       });
     }
 
