@@ -188,7 +188,7 @@ std::mt19937 &SlaveTestCaseApi::rng()
 
 void SlaveTestCaseApi::defer(std::function<void()> fun, int timeout)
 {
-  SimulationSectionPtr section = m_slave.m_simulation->section();
+  SimulationSectionPtr section = m_slave.m_simulation->section(m_testCase);
   TestCaseWeakPtr testCase(m_testCase);
   section->execute([testCase, fun]() {
     // Do not execute the defered function when test case has already finished
@@ -314,7 +314,7 @@ Response<Protocol::RunTestResponse> SlavePrivate::rpcRunTest(const Protocol::Run
 
   BOOST_LOG_SEV(m_logger, log::normal) << "Running test case '" << test->getName() << "' on " << request.nodes_size() << " nodes.";
 
-  SimulationSectionPtr section = m_simulation->section();
+  SimulationSectionPtr section = m_simulation->section(test);
 
   // Deserialize global test case parameters and schedule pre-run
   {
@@ -385,7 +385,7 @@ void SlavePrivate::rpcSignalTest(const Protocol::SignalTestRequest &request,
   RunningSlaveTestCase &runningCase = it->second;
   BOOST_LOG(m_logger) << "Sending signal '" << request.signal() << "' to test '" << runningCase.testCase->getName() << "'.";
 
-  SimulationSectionPtr section = m_simulation->section();
+  SimulationSectionPtr section = m_simulation->section(runningCase.testCase);
   section->execute([&runningCase, request, response]() {
     runningCase.testCase->signalReceived(*runningCase.api, request.signal());
     response.success();

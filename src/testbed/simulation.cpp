@@ -18,7 +18,9 @@
  */
 #include "testbed/simulation.h"
 #include "testbed/exceptions.h"
+#include "testbed/test_case.h"
 #include "core/context.h"
+#include "core/consumer_thread.h"
 #include "social/size_estimator.h"
 #include "social/social_identity.h"
 
@@ -33,19 +35,31 @@ class SimulationPrivate;
 
 class SimulationSectionPrivate {
 public:
-  SimulationSectionPrivate(SimulationPrivate &simulation);
+  SimulationSectionPrivate(SimulationPrivate &simulation, TestCasePtr testCase);
 public:
   /// Simulation instance
   SimulationPrivate &m_simulation;
+  /// Test case we are executing for
+  TestCasePtr m_testCase;
   /// Scheduled functions
   std::list<std::function<void()>> m_queue;
+};
+
+class SimulationWorkerThread : public ConsumerThread<SimulationSectionPtr> {
+public:
+  virtual void consume(SimulationSectionPtr &&section) const override
+  {
+    for (const auto &fun : section->d->m_queue) {
+      fun();
+    }
+
+    section->signalFinished();
+  }
 };
 
 class SimulationPrivate {
 public:
   SimulationPrivate(std::uint32_t seed, size_t threads, size_t globalNodeCount);
-
-  void runSections();
 public:
   /// Mutex
   std::recursive_mutex m_mutex;
@@ -63,17 +77,18 @@ public:
   std::uint32_t m_seed;
   /// Number of threads
   size_t m_threads;
-  /// Sections pending execution
-  std::list<SimulationSectionPtr> m_pendingSections;
+  /// Section worker threads
+  std::unordered_map<TestCase::Identifier, SimulationWorkerThread> m_sectionThreads;
 };
 
-SimulationSectionPrivate::SimulationSectionPrivate(SimulationPrivate &simulation)
-  : m_simulation(simulation)
+SimulationSectionPrivate::SimulationSectionPrivate(SimulationPrivate &simulation, TestCasePtr testCase)
+  : m_simulation(simulation),
+    m_testCase(testCase)
 {
 }
 
-SimulationSection::SimulationSection(Simulation &simulation)
-  : d(new SimulationSectionPrivate(*simulation.d))
+SimulationSection::SimulationSection(Simulation &simulation, TestCasePtr testCase)
+  : d(new SimulationSectionPrivate(*simulation.d, testCase))
 {
 }
 
@@ -100,11 +115,30 @@ void SimulationSection::run()
   if (d->m_simulation.m_state != Simulation::State::Running)
     return;
 
-  d->m_simulation.m_pendingSections.push_back(shared_from_this());
-  lock.unlock();
+  TestCase::Identifier id;
+  if (d->m_testCase)
+    id = d->m_testCase->getId();
+  else
+    id = 0;
 
-  // Interrupt the simulation thread to invoke the section runner
-  d->m_simulation.m_thread.interrupt();
+  SimulationWorkerThread &worker = d->m_simulation.m_sectionThreads[id];
+  if (!worker.isRunning()) {
+    if (d->m_testCase) {
+      d->m_testCase->signalFinished.connect([this, id]() {
+        RecursiveUniqueLock lock(d->m_simulation.m_mutex);
+        auto it = d->m_simulation.m_sectionThreads.find(id);
+        if (it == d->m_simulation.m_sectionThreads.end())
+          return;
+
+        (*it).second.stop();
+        d->m_simulation.m_sectionThreads.erase(it);
+      });
+    }
+
+    worker.start();
+  }
+
+  worker.push(shared_from_this());
 }
 
 void SimulationSection::schedule(int timeout)
@@ -117,25 +151,6 @@ SimulationPrivate::SimulationPrivate(std::uint32_t seed, size_t threads, size_t 
     m_seed(seed),
     m_threads(threads)
 {
-  m_context.signalInterrupted.connect(boost::bind(&SimulationPrivate::runSections, this));
-}
-
-void SimulationPrivate::runSections()
-{
-  std::list<SimulationSectionPtr> sections;
-  {
-    RecursiveUniqueLock lock(m_mutex);
-    sections = std::move(m_pendingSections);
-    m_pendingSections.clear();
-  }
-
-  for (SimulationSectionPtr section : sections) {
-    for (std::function<void()> fun : section->d->m_queue) {
-      fun();
-    }
-
-    section->signalFinished();
-  }
 }
 
 Simulation::Simulation(std::uint32_t seed, size_t threads, size_t globalNodeCount)
@@ -143,10 +158,15 @@ Simulation::Simulation(std::uint32_t seed, size_t threads, size_t globalNodeCoun
 {
 }
 
-SimulationSectionPtr Simulation::section()
+SimulationSectionPtr Simulation::section(TestCasePtr testCase)
 {
   // Can't use make_shared because the constructor is private
-  return SimulationSectionPtr(new SimulationSection(*this));
+  return SimulationSectionPtr(new SimulationSection(*this, testCase));
+}
+
+SimulationSectionPtr Simulation::section()
+{
+  return section(TestCasePtr());
 }
 
 void Simulation::createNode(const std::string &name,

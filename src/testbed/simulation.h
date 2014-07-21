@@ -22,6 +22,7 @@
 #include "interplex/contact.h"
 #include "social/peer.h"
 #include "testbed/nodes.h"
+#include "testbed/test_case_fwd.h"
 
 #include <boost/signals2/signal.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -39,6 +40,7 @@ class Simulation;
 class UNISPHERE_EXPORT SimulationSection : public boost::enable_shared_from_this<SimulationSection> {
   friend class Simulation;
   friend class SimulationPrivate;
+  friend class SimulationWorkerThread;
 public:
   /// Section function type
   typedef std::function<void()> SectionFunction;
@@ -84,7 +86,7 @@ private:
   /**
    * Private constructor.
    */
-  explicit SimulationSection(Simulation &simulation);
+  SimulationSection(Simulation &simulation, TestCasePtr testCase);
 private:
   UNISPHERE_DECLARE_PRIVATE(SimulationSection)
 };
@@ -125,6 +127,13 @@ public:
 
   /**
    * Creates a new section of execution.
+   *
+   * @param testCase Test case the section is for
+   */
+  SimulationSectionPtr section(TestCasePtr testCase);
+
+  /**
+   * Creates a new section of execution not linked to any test case.
    */
   SimulationSectionPtr section();
 

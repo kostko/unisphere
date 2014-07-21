@@ -203,9 +203,11 @@ void TestCase::finish(TestCaseApi &api)
 {
   if (d->m_state == State::Running) {
     // We should immediately finish with this test case
+    TestCasePtr self = shared_from_this();
     d->m_state = State::Finished;
     processLocalResults(api);
     api.finishNow();
+    signalFinished();
   } else {
     d->m_state = State::Finished;
   }
