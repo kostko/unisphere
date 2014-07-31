@@ -147,17 +147,20 @@ class MessagingPerformance(base.PlotterBase):
       run_attribute = run.orig.settings.get(label_attribute, 0)
 
       # Pre-process dataset so it gets properly grouped by timestamp for each node
-      timestamps, grouped_data = self.pre_process(run, ['sg_msgs', 'rt_msgs'])
+      timestamps, grouped_data = self.pre_process(run, ['sg_msgs', 'rt_msgs', 'sa_msgs'])
 
       # Compute rates
       sX, sYrate = self.compute_rate(timestamps, grouped_data, 'sg_msgs')
       rX, rYrate = self.compute_rate(timestamps, grouped_data, 'rt_msgs')
+      saX, saYrate = self.compute_rate(timestamps, grouped_data, 'sa_msgs')
 
       # Plot variables
       self.plot_variable(ax, sX, sYrate, mpl.cm.winter(float(i) / len(self.runs)),
         'SG records (%s = %d)' % (label_attribute, run_attribute))
       self.plot_variable(ax, rX, rYrate, mpl.cm.autumn(float(i) / len(self.runs)),
         'RT records (%s = %d)' % (label_attribute, run_attribute))
+      self.plot_variable(ax, saX, saYrate, mpl.cm.summer(float(i) / len(self.runs)),
+        'SA updates (%s = %d)' % (label_attribute, run_attribute))
 
       # Retrieve the moment in time when all nodes are considered up and compute average rates
       nodes_up_ts = run.get_marker("all_nodes_up")
