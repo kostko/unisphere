@@ -305,7 +305,13 @@ void Master::run()
 
   // Initialize the dataset storage
   DataSetStorage &dss = TestBed::getGlobalTestbed().getDataSetStorage();
-  dss.initialize();
+  try {
+    dss.initialize();
+  } catch (DataSetStorageConnectionFailed &e) {
+    BOOST_LOG_SEV(d->m_logger, log::error) << "Failed to connect with dataset storage (" << dss.getConnectionString().toString() << ").";
+    return fail();
+  }
+
   BOOST_LOG(d->m_logger) << "Dataset storage configured (cs=" << dss.getConnectionString().toString() << ").";
 }
 
