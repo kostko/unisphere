@@ -113,7 +113,7 @@ void Context::schedule(boost::posix_time::seconds timeout, std::function<void()>
 {
   // The timer pointer is passed into a closure so it will be automatically removed
   // when the operation is done executing
-  typedef boost::shared_ptr<boost::asio::deadline_timer> SharedTimer;
+  using SharedTimer = boost::shared_ptr<boost::asio::deadline_timer>;
   SharedTimer timer = SharedTimer(new boost::asio::deadline_timer(d->m_io));
   timer->expires_from_now(timeout);
   timer->async_wait([timer, operation](const boost::system::error_code&) { operation(); });

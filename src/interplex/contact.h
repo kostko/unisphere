@@ -120,7 +120,7 @@ private:
 };
 
 /// Address map
-typedef std::multimap<int, Address> AddressMap;
+using AddressMap = std::multimap<int, Address>;
 
 /**
  * Represents node contact information - all known node's addresses

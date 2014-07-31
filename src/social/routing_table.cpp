@@ -46,7 +46,8 @@ namespace RIBTags {
   class VportDestination;
 }
 
-typedef boost::multi_index_container<
+/// Routing information base
+using RoutingInformationBase = boost::multi_index_container<
   RoutingEntryPtr,
   midx::indexed_by<
     // Index by destination identifier and order by cost within
@@ -113,13 +114,13 @@ typedef boost::multi_index_container<
       >
     >
   >
-> RoutingInformationBase;
+>;
 
 /// Bidirectional nodeId-vport mapping
-typedef boost::bimap<
+using VportMap = boost::bimap<
   boost::bimaps::unordered_set_of<NodeIdentifier>,
   boost::bimaps::unordered_set_of<Vport>
-> VportMap;
+>;
 
 class CompactRoutingTablePrivate {
 public:

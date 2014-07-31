@@ -89,7 +89,7 @@ public:
 UNISPHERE_SHARED_POINTER(VirtualNode)
 
 /// Virtual nodes running in our testbed
-typedef std::unordered_map<NodeIdentifier, VirtualNodePtr> VirtualNodeMap;
+using VirtualNodeMap = std::unordered_map<NodeIdentifier, VirtualNodePtr>;
 
 }
 

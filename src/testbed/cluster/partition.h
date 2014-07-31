@@ -64,12 +64,12 @@ struct Partition {
   };
 
   /// Type for specifying traversible ranges of node descriptors
-  typedef boost::any_range<
+  using NodeRange = boost::any_range<
     Node,
     boost::single_pass_traversal_tag,
     Node,
     std::ptrdiff_t
-  > NodeRange;
+  >;
 
   /// Partition index
   size_t index;
@@ -86,12 +86,12 @@ struct Partition {
 };
 
 /// Type for specifying traversible ranges of partition descriptors
-typedef boost::any_range<
+using PartitionRange = boost::any_range<
   Partition,
   boost::random_access_traversal_tag,
   Partition,
   std::ptrdiff_t
-> PartitionRange;
+>;
 
 /**
  * A partition selected for test case run.

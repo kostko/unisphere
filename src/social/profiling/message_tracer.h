@@ -34,7 +34,7 @@ public:
   /**
    * Possible values that a record may hold.
    */
-  typedef boost::variant<
+  using ValueType = boost::variant<
     bool,
     int,
     long,
@@ -44,7 +44,7 @@ public:
     std::uint64_t,
     std::string,
     boost::posix_time::ptime
-  > ValueType;
+  >;
 
   /**
    * Convenience structure for simpler initialization of a record.
@@ -57,9 +57,9 @@ public:
   };
 
   /// A single trace record contains multiple key-value pairs
-  typedef std::map<std::string, ValueType> Record;
+  using Record = std::map<std::string, ValueType>;
   /// A map of records
-  typedef std::map<std::string, Record> RecordMap;
+  using RecordMap = std::map<std::string, Record>;
 
   /**
    * Class constructor.

@@ -28,9 +28,9 @@ namespace UniSphere {
 namespace TestBed {
 
 /// Scenario coroutine type (pull)
-typedef boost::coroutines::coroutine<void>::pull_type ScenarioCoroutinePull;
+using ScenarioCoroutinePull = boost::coroutines::coroutine<void>::pull_type;
 /// Scenario coroutine type (push)
-typedef boost::coroutines::coroutine<void>::push_type ScenarioCoroutinePush;
+using ScenarioCoroutinePush = boost::coroutines::coroutine<void>::push_type;
 
 class ScenarioPrivate {
 public:

@@ -43,9 +43,9 @@ class UNISPHERE_EXPORT SimulationSection : public boost::enable_shared_from_this
   friend class SimulationWorkerThread;
 public:
   /// Section function type
-  typedef std::function<void()> SectionFunction;
+  using SectionFunction = std::function<void()>;
   /// Section function with node type
-  typedef std::function<void(VirtualNodePtr)> SectionFunctionNode;
+  using SectionFunctionNode = std::function<void(VirtualNodePtr)>;
 public:
   SimulationSection(const SimulationSection&) = delete;
   SimulationSection &operator=(const SimulationSection&) = delete;

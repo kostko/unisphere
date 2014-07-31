@@ -52,7 +52,7 @@ class DumpSloppyGroupTopology : public TestCase
 {
 public:
   /// Graph topology type
-  typedef SloppyGroupManager::TopologyDumpGraph Graph;
+  using Graph = SloppyGroupManager::TopologyDumpGraph;
   /// Graph storage
   Graph graph;
 
@@ -106,7 +106,7 @@ class DumpRoutingTopology : public TestCase
 {
 public:
   /// Graph topology type
-  typedef CompactRoutingTable::TopologyDumpGraph Graph;
+  using Graph = CompactRoutingTable::TopologyDumpGraph;
   /// Graph storage
   Graph graph;
 
@@ -160,7 +160,7 @@ class PairWisePing : public TestCase
 {
 public:
   /// Shortest path type
-  typedef std::vector<std::string> ShortestPath;
+  using ShortestPath = std::vector<std::string>;
 
   /// Dependent routing topology dump
   DumpRoutingTopologyPtr rt_topology;
@@ -332,12 +332,12 @@ public:
     // Run all-pairs shortest paths algorithm on the obtained topology
     auto &topology = rt_topology->graph;
 
-    typedef typename CompactRoutingTable::TopologyDumpGraph Graph;
-    typedef typename boost::graph_traits<Graph>::vertex_descriptor Vertex;
-    typedef boost::property_map<Graph, boost::vertex_index_t>::type IndexMap;
-    typedef boost::property_map<Graph, CompactRoutingTable::TopologyDumpTags::NodeName>::type NameMap;
-    typedef boost::iterator_property_map<Vertex*, IndexMap, Vertex, Vertex&> PredecessorMap;
-    typedef boost::iterator_property_map<int*, IndexMap, int, int&> DistanceMap;
+    using Graph = typename CompactRoutingTable::TopologyDumpGraph;
+    using Vertex = typename boost::graph_traits<Graph>::vertex_descriptor;
+    using IndexMap = boost::property_map<Graph, boost::vertex_index_t>::type;
+    using NameMap = boost::property_map<Graph, CompactRoutingTable::TopologyDumpTags::NodeName>::type;
+    using PredecessorMap = boost::iterator_property_map<Vertex*, IndexMap, Vertex, Vertex&>;
+    using DistanceMap = boost::iterator_property_map<int*, IndexMap, int, int&>;
     std::vector<Vertex> predecessors(boost::num_vertices(topology.graph()));
     std::vector<int> distances(boost::num_vertices(topology.graph()));
 

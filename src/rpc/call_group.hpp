@@ -29,7 +29,7 @@
 namespace UniSphere {
 
 /// Callback type for RPC group completion handlers
-typedef std::function<void()> RpcGroupCompletionHandler;
+using RpcGroupCompletionHandler = std::function<void()>;
 
 template<typename Channel>
 class RpcCallGroup;

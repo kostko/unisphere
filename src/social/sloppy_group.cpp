@@ -131,7 +131,7 @@ namespace PVTags {
 /**
  * A data structure for storing sloppy group siblings.
  */
-typedef boost::multi_index_container<
+using PeerView = boost::multi_index_container<
   SloppyPeer,
   midx::indexed_by<
     // Unique index by node identifier
@@ -146,7 +146,7 @@ typedef boost::multi_index_container<
       BOOST_MULTI_INDEX_MEMBER(SloppyPeer, size_t, hops)
     >
   >
-> PeerView;
+>;
 
 /**
  * Private details of the sloppy group manager.

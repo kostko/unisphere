@@ -48,9 +48,9 @@ template <typename MessageType, typename OptionsType>
 class UNISPHERE_EXPORT RpcChannel {
 public:
   /// Defines the lower-level message type of the channel used to encapsulate RPC messages
-  typedef MessageType message_type;
+  using message_type = MessageType;
   /// Defines the channel-specific options type that can be used to give special delivery options
-  typedef OptionsType options_type;
+  using options_type = OptionsType;
 public:
   /**
    * Class constructor.

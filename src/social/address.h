@@ -27,10 +27,10 @@
 namespace UniSphere {
 
 /// Vport identifier type
-typedef std::uint32_t Vport;
+using Vport = std::uint32_t;
 
 /// The routing path type that contains a list of vports to reach a destination
-typedef std::list<Vport> RoutingPath;
+using RoutingPath = std::list<Vport>;
 
 /**
  * Represents a landmark-relative address of the current node. Such an address
@@ -113,7 +113,7 @@ private:
 };
 
 /// A list of L-R addresses
-typedef std::list<LandmarkAddress> LandmarkAddressList;
+using LandmarkAddressList = std::list<LandmarkAddress>;
 
 /// Operator for easier display of L-R address lists
 UNISPHERE_EXPORT std::ostream &operator<<(std::ostream &stream, const LandmarkAddressList &addresses);

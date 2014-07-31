@@ -31,10 +31,10 @@ using boost::format;
 
 namespace UniSphere {
 
-/// Unique lock typedef
-typedef std::unique_lock<std::mutex> UniqueLock;
-/// Recursive unique lock typedef
-typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
+/// Unique lock type
+using UniqueLock = std::unique_lock<std::mutex>;
+/// Recursive unique lock type
+using RecursiveUniqueLock = std::unique_lock<std::recursive_mutex>;
 
 }
 
@@ -45,8 +45,8 @@ typedef std::unique_lock<std::recursive_mutex> RecursiveUniqueLock;
 // Helper macro for creating a shared pointer type
 #define UNISPHERE_SHARED_POINTER(Class) \
   class Class; \
-  typedef boost::shared_ptr<Class> Class##Ptr; \
-  typedef boost::weak_ptr<Class> Class##WeakPtr;
+  using Class##Ptr = boost::shared_ptr<Class>; \
+  using Class##WeakPtr = boost::weak_ptr<Class>;
 
 // Helper macro for the pimpl idiom by the use of a d-reference
 #define UNISPHERE_DECLARE_PRIVATE(Class) \

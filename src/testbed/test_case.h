@@ -43,7 +43,7 @@ class TestBed;
 class UNISPHERE_EXPORT TestCase : public boost::enable_shared_from_this<TestCase> {
 public:
   /// Test case identifier type
-  typedef std::uint32_t Identifier;
+  using Identifier = std::uint32_t;
 public:
   /**
    * Current state the test case instance is in.
@@ -68,8 +68,9 @@ public:
     /// Argument value
     boost::any value;
   };
+
   /// Argument initializer list type
-  typedef std::initializer_list<Argument> ArgumentList;
+  using ArgumentList = std::initializer_list<Argument>;
 
   /**
    * Class constructor.

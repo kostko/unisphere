@@ -31,9 +31,9 @@
 namespace UniSphere {
 
 /// RPC identifier type
-typedef std::uint64_t RpcId;
+using RpcId = std::uint64_t;
 /// RPC call mapping key
-typedef std::tuple<NodeIdentifier, RpcId> RpcCallKey;
+using RpcCallKey = std::tuple<NodeIdentifier, RpcId>;
 
 /// Callback type for successful RPC method responses
 template <typename Channel>
@@ -42,7 +42,7 @@ using RpcResponseSuccess = std::function<void(const Protocol::RpcResponse&, cons
 template <typename Channel>
 using RpcCallSuccess = std::function<void(const Protocol::RpcResponse&, const typename Channel::message_type&)>;
 /// Callback type for failed RPC calls
-typedef std::function<void(RpcErrorCode, const std::string&)> RpcResponseFailure;
+using RpcResponseFailure = std::function<void(RpcErrorCode, const std::string&)>;
 /// Callback type for RPC method handlers
 template <typename Channel>
 using RpcHandler = std::function<void(const typename Channel::message_type&, const Protocol::RpcRequest&, RpcResponseSuccess<Channel>, RpcResponseFailure)>;

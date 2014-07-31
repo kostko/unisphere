@@ -32,16 +32,16 @@ namespace UniSphere {
 namespace TestBed {
 
 /// Graph representation type
-typedef boost::adjacency_list<
+using Topology = boost::adjacency_list<
   boost::listS,
   boost::vecS,
   boost::undirectedS,
   boost::property<boost::vertex_name_t, std::string>,
   boost::property<boost::edge_weight_t, double>
-> Topology;
+>;
 
 /// Vertex descriptor type
-typedef typename boost::graph_traits<Topology>::vertex_descriptor TopologyVertex;
+using TopologyVertex = typename boost::graph_traits<Topology>::vertex_descriptor;
 
 class TopologyLoaderPrivate {
 public:

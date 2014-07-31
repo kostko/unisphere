@@ -39,7 +39,7 @@ struct VariadicDispatcher {
 
   template<int ...> struct seq {};
   template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
-  template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
+  template<int ...S> struct gens<0, S...>{ using type = seq<S...>; };
 
   /**
    * Dispatches the stored call.
@@ -69,7 +69,7 @@ template<typename... T>
 class DeferrableSignal : public boost::signals2::signal<T...> {
 public:
   /// Base class
-  typedef typename boost::signals2::signal<T...>::signal base_class;
+  using base_class = typename boost::signals2::signal<T...>::signal;
 
   /**
    * Class constructor.
@@ -106,7 +106,7 @@ template <int Delay, int MaxDelay, int Rate, int Period = 0>
 class PeriodicRateDelayedSignal : public boost::signals2::signal<void()> {
 public:
   /// Base class
-  typedef typename boost::signals2::signal<void()>::signal base_class;
+  using base_class = typename boost::signals2::signal<void()>::signal;
 
   BOOST_STATIC_ASSERT(Delay <= MaxDelay);
   BOOST_STATIC_ASSERT(MaxDelay <= Rate);
@@ -246,7 +246,7 @@ using PeriodicRateLimitedSignal = PeriodicRateDelayedSignal<0, 0, Rate, Period>;
  */
 class AllTrueCombiner {
 public:
-  typedef bool result_type;
+  using result_type = bool;
 
   template<typename InputIterator>
   result_type operator()(InputIterator first, InputIterator last)

@@ -45,7 +45,7 @@ public:
 };
 
 /// A mapping of slave descriptors
-typedef std::unordered_map<NodeIdentifier, SlaveDescriptor> SlaveDescriptorMap;
+using SlaveDescriptorMap = std::unordered_map<NodeIdentifier, SlaveDescriptor>;
 
 }
 

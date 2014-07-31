@@ -30,7 +30,7 @@ class RoutedMessage;
 
 class UNISPHERE_EXPORT MessageSniffer {
 public:
-  typedef std::function<bool(const RoutedMessage&)> Filter;
+  using Filter = std::function<bool(const RoutedMessage&)>;
 
   /**
    * Constructs a message sniffer.

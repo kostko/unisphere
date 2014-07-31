@@ -40,21 +40,21 @@ public:
   /// Tags for topology dump graph properties.
   struct TopologyDumpTags {
     /// Specifies the node's name
-    struct NodeName { typedef boost::vertex_property_tag kind; };
+    struct NodeName { using kind = boost::vertex_property_tag; };
     /// Specifies the node's group
-    struct NodeGroup { typedef boost::vertex_property_tag kind; };
+    struct NodeGroup { using kind = boost::vertex_property_tag; };
     /// Specifies the node's group prefix length
-    struct NodeGroupPrefixLength { typedef boost::vertex_property_tag kind; };
+    struct NodeGroupPrefixLength { using kind = boost::vertex_property_tag; };
     /// Specifies whether the vertex is just a placeholder without data
-    struct Placeholder { typedef boost::vertex_property_tag kind; };
+    struct Placeholder { using kind = boost::vertex_property_tag; };
     /// Specifies whether the link is a foreign one
-    struct LinkIsForeign { typedef boost::edge_property_tag kind; };
+    struct LinkIsForeign { using kind = boost::edge_property_tag; };
     /// Specifies whether the link is a reverse one
-    struct LinkIsReverse { typedef boost::edge_property_tag kind; };
+    struct LinkIsReverse { using kind = boost::edge_property_tag; };
   };
 
   /// Graph definition for dumping the sloppy group topology into
-  typedef boost::labeled_graph<
+  using TopologyDumpGraph = boost::labeled_graph<
     boost::adjacency_list<
       boost::hash_setS,
       boost::vecS,
@@ -68,7 +68,7 @@ public:
     >,
     std::string,
     boost::hash_mapS
-  > TopologyDumpGraph;
+  >;
 
   /**
    * A structure for reporting sloppy group statistics.

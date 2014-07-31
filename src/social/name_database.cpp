@@ -46,7 +46,7 @@ namespace NIBTags {
 }
 
 /// Name information base (database of all name records)
-typedef boost::multi_index_container<
+using NameInformationBase = boost::multi_index_container<
   NameRecordPtr,
   midx::indexed_by<
     // Index by node identifier, sorted by type
@@ -79,7 +79,7 @@ typedef boost::multi_index_container<
       >
     >
   >
-> NameInformationBase;
+>;
 
 class NameDatabasePrivate {
 public:

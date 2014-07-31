@@ -129,23 +129,23 @@ public:
   /// Tags for topology dump graph properties.
   struct TopologyDumpTags {
     /// Specifies the node's name
-    struct NodeName { typedef boost::vertex_property_tag kind; };
+    struct NodeName { using kind = boost::vertex_property_tag; };
     /// Specifies the node's group
-    struct NodeGroup { typedef boost::vertex_property_tag kind; };
+    struct NodeGroup { using kind = boost::vertex_property_tag; };
     /// Specifies the node's landmark status
-    struct NodeIsLandmark { typedef boost::vertex_property_tag kind; };
+    struct NodeIsLandmark { using kind = boost::vertex_property_tag; };
     /// Node state size
-    struct NodeStateSize { typedef boost::vertex_property_tag kind; };
+    struct NodeStateSize { using kind = boost::vertex_property_tag; };
     /// Specifies whether the vertex is just a placeholder without data
-    struct Placeholder { typedef boost::vertex_property_tag kind; };
+    struct Placeholder { using kind = boost::vertex_property_tag; };
     /// Link's vport identifier
-    struct LinkVportId { typedef boost::edge_property_tag kind; };
+    struct LinkVportId { using kind = boost::edge_property_tag; };
     /// Link weight
-    struct LinkWeight { typedef boost::edge_property_tag kind; };
+    struct LinkWeight { using kind = boost::edge_property_tag; };
   };
 
   /// Graph definition for dumping the compact routing topology into
-  typedef boost::labeled_graph<
+  using TopologyDumpGraph = boost::labeled_graph<
     boost::adjacency_list<
       boost::hash_setS,
       boost::vecS,
@@ -160,7 +160,7 @@ public:
     >,
     std::string,
     boost::hash_mapS
-  > TopologyDumpGraph;
+  >;
 
   /// A helper structure for returning sloppy group relays
   struct SloppyGroupRelay {

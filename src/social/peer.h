@@ -62,11 +62,11 @@ public:
 };
 
 /// Alias definition for peer security association
-typedef SecurityAssociation<PublicSignKey> PeerSecurityAssociation;
-typedef boost::shared_ptr<PeerSecurityAssociation> PeerSecurityAssociationPtr;
+using PeerSecurityAssociation = SecurityAssociation<PublicSignKey>;
+using PeerSecurityAssociationPtr = boost::shared_ptr<PeerSecurityAssociation>;
 /// Alias definition for private security association
-typedef SecurityAssociation<PrivateSignKey> PrivateSecurityAssociation;
-typedef boost::shared_ptr<PrivateSecurityAssociation> PrivateSecurityAssociationPtr;
+using PrivateSecurityAssociation = SecurityAssociation<PrivateSignKey>;
+using PrivateSecurityAssociationPtr = boost::shared_ptr<PrivateSecurityAssociation>;
 
 /**
  * A container for security associations.
@@ -83,9 +83,9 @@ using SecurityAssociations = boost::multi_index_container<
 >;
 
 /// Alias definition for container of peer security associations
-typedef SecurityAssociations<PeerSecurityAssociationPtr> PeerSecurityAssociations;
+using PeerSecurityAssociations = SecurityAssociations<PeerSecurityAssociationPtr>;
 /// Alias definition for container of private security associations
-typedef SecurityAssociations<PrivateSecurityAssociationPtr> PrivateSecurityAssociations;
+using PrivateSecurityAssociations = SecurityAssociations<PrivateSecurityAssociationPtr>;
 
 class UNISPHERE_EXPORT Peer {
 public:

@@ -102,7 +102,7 @@ private:
 template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag>
 void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result)
 {
-  typedef typename LabeledGraph::graph_type Graph;
+  using Graph = typename LabeledGraph::graph_type;
 
   typename boost::property_map<Graph, boost::vertex_all_t>::const_type vertexSourceMap =
     boost::get(boost::vertex_all, g);
@@ -145,7 +145,7 @@ void mergeGraph(const typename LabeledGraph::graph_type &g, LabeledGraph &result
 template <class LabeledGraph, class NameAttributeTag, class PlaceholderAttributeTag>
 void mergeGraphDataset(const DataSet &dataset, const std::string &key, LabeledGraph &result)
 {
-  typedef typename LabeledGraph::graph_type Graph;
+  using Graph = typename LabeledGraph::graph_type;
 
   for (const auto &record : dataset) {
     const Graph &g = record.field<Graph>(key);
@@ -168,8 +168,8 @@ void mergeInputNodeMetadata(TestCaseApi &api,
                             LabeledGraph &graph,
                             boost::dynamic_properties &properties)
 {
-  typedef typename LabeledGraph::graph_type Graph;
-  typedef typename boost::graph_traits<Graph>::vertex_descriptor Vertex;
+  using Graph = typename LabeledGraph::graph_type;
+  using Vertex = typename boost::graph_traits<Graph>::vertex_descriptor;
 
   std::unordered_map<std::string, boost::shared_ptr<detail::AnyPropertyMap<Vertex>>> maps;
 

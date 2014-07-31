@@ -74,7 +74,7 @@ inline logging::formatting_ostream &operator<<(logging::formatting_ostream &stre
 }
 
 /// Defined logger type
-typedef logging::sources::severity_channel_logger<log::LogSeverityLevel, std::string> Logger;
+using Logger = logging::sources::severity_channel_logger<log::LogSeverityLevel, std::string>;
 
 }
 
