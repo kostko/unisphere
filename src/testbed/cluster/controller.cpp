@@ -909,7 +909,12 @@ void Controller::run()
       int i = 0;
       BOOST_LOG_SEV(d->m_logger, log::normal) << "Loaded topology with " << loader.getTopologySize() << " nodes.";
       for (const Partition &part : partitions) {
-        BOOST_LOG_SEV(d->m_logger, log::normal) << "  [] Partition " << ++i << ": " << part.nodes.size() << " nodes";
+        size_t links = 0;
+        for (const auto &node : part.nodes) {
+          links += node.peers.size();
+        }
+
+        BOOST_LOG_SEV(d->m_logger, log::normal) << "  [] Partition " << ++i << ": " << part.nodes.size() << " nodes, " << links << " links";
       }
 
       // Instruct each slave to create its own partition
