@@ -250,7 +250,7 @@ class MultihostCluster(base.ClusterRunnerBase):
 
         for slave_id in xrange(1, worker.host_cfg['workers'] + 1):
           logger.info("  * Starting slave %d (ports %d-%d)." % (slave_id, port_start, port_start + ports_per_slave - 1))
-          log_slave = open(os.path.join(self.settings.OUTPUT_DIRECTORY, run_id, run.name, "tb_%s_slave%d.log" % (worker.host_id, slave_id)), 'w')
+          log_slave = None
           worker.start_testbed(
             [
               "--cluster-role", "slave",
@@ -264,6 +264,7 @@ class MultihostCluster(base.ClusterRunnerBase):
               "--sim-port-end", str(port_start + ports_per_slave - 1),
               "--sim-threads", "1",
               "--exit-on-finish",
+              "--log-disable",
             ],
             logfile=log_slave
           )
@@ -342,7 +343,8 @@ class MultihostCluster(base.ClusterRunnerBase):
     self.log_controller.close()
 
     for slave in self.slaves:
-      slave['log'].close()
+      if slave['log']:
+        slave['log'].close()
 
     self.local_output_directory = None
     self.remote_output_directory = None

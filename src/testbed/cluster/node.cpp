@@ -50,7 +50,8 @@ class ClusterNodePrivate {
 public:
   void initialize(const PrivatePeerKey &privateKey,
                   const std::string &ip,
-                  unsigned short port);
+                  unsigned short port,
+                  bool enableLog);
 
   void formatLogRecord(const logging::record_view &rec, logging::formatting_ostream &stream);
 
@@ -158,31 +159,36 @@ void ClusterNodePrivate::formatProfilingLogRecord(const logging::record_view &re
 
 void ClusterNodePrivate::initialize(const PrivatePeerKey &privateKey,
                                     const std::string &ip,
-                                    unsigned short port)
+                                    unsigned short port,
+                                    bool enableLog)
 {
-  // Setup a logging sink for general messages
-  auto sink = logging::add_console_log(std::clog);
-  sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
-  sink->set_filter(
-    !(
-      (log::channel == "link" || log::channel == "ip_linklet" || log::channel == "linklet" || log::channel == "rpc_engine")
+  if (enableLog) {
+    // Setup a logging sink for general messages
+    auto sink = logging::add_console_log(std::clog);
+    sink->set_formatter(boost::bind(&ClusterNodePrivate::formatLogRecord, this, _1, _2));
+    sink->set_filter(
+      !(
+        (log::channel == "link" || log::channel == "ip_linklet" || log::channel == "linklet" || log::channel == "rpc_engine")
+        &&
+        log::local_node_id == privateKey.nodeId()
+      )
       &&
-      log::local_node_id == privateKey.nodeId()
-    )
-    &&
-    log::severity != log::profiling
-    &&
-    log::channel != "link" && log::channel != "ip_linklet" && log::channel != "linklet"
-  );
+      log::severity != log::profiling
+      &&
+      log::channel != "link" && log::channel != "ip_linklet" && log::channel != "linklet"
+    );
 
-#ifdef UNISPHERE_PROFILE
-  // Setup a profiling sink for profiling
-  auto psink = logging::add_file_log((boost::format("profile-%d.log") % getpid()).str());
-  psink->set_formatter(boost::bind(&ClusterNodePrivate::formatProfilingLogRecord, this, _1, _2));
-  psink->set_filter(log::severity == log::profiling);
-#endif
+  #ifdef UNISPHERE_PROFILE
+    // Setup a profiling sink for profiling
+    auto psink = logging::add_file_log((boost::format("profile-%d.log") % getpid()).str());
+    psink->set_formatter(boost::bind(&ClusterNodePrivate::formatProfilingLogRecord, this, _1, _2));
+    psink->set_filter(log::severity == log::profiling);
+  #endif
 
-  logging::core::get()->set_logging_enabled(true);
+    logging::core::get()->set_logging_enabled(true);
+  } else {
+    logging::core::get()->set_logging_enabled(false);
+  }
 
   // Initialize the link manager
   m_linkManager = boost::make_shared<LinkManager>(m_context, privateKey);
@@ -227,6 +233,7 @@ void ClusterNode::setupOptions(int argc,
       ("cluster-port", po::value<unsigned short>()->default_value(8471), "local port used for cluster control")
       ("cluster-priv-key", po::value<std::string>(), "private key for the local cluster node (optional)")
       ("cluster-pub-key", po::value<std::string>(), "public key for the local cluster node (optional)")
+      ("log-disable", "disable logging")
     ;
     options.add(local);
     return;
@@ -260,7 +267,8 @@ void ClusterNode::setupOptions(int argc,
   d->initialize(
     privateKey,
     variables["cluster-ip"].as<std::string>(),
-    variables["cluster-port"].as<unsigned short>()
+    variables["cluster-port"].as<unsigned short>(),
+    variables.count("log-disable") ? false : true
   );
 }
 
