@@ -171,6 +171,11 @@ class Host(object):
     """
 
     self.host.exec_command("killall -9 testbed")
+    if self.cluster.cluster_cfg.get('halt_after_finished', False):
+      logger.info("Sending remote system halt command to host '%s'." % self.host_id)
+      time.sleep(5)
+      self.host.exec_command("sudo halt")
+
     self.host.close()
 
     for node in self.testbed_nodes:
@@ -262,7 +267,7 @@ class MultihostCluster(base.ClusterRunnerBase):
               "--sim-ip", worker.private_ip,
               "--sim-port-start", str(port_start),
               "--sim-port-end", str(port_start + ports_per_slave - 1),
-              "--sim-threads", "1",
+              "--sim-threads", str(worker.host_cfg.get('threads', 2)),
               "--exit-on-finish",
               "--log-disable",
             ],
@@ -332,12 +337,13 @@ class MultihostCluster(base.ClusterRunnerBase):
   def shutdown(self):
     logger.info("Shutting down cluster...")
 
+    for host in self.host_workers:
+      host.close()
+
     if self.host_mc:
       logger.info("Copying data from MC node...")
       self.host_mc.copy_output_data()
       self.host_mc.close()
-    for host in self.host_workers:
-      host.close()
 
     self.log_master.close()
     self.log_controller.close()
