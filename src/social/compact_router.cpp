@@ -312,8 +312,6 @@ void CompactRouterPrivate::shutdown()
 {
   BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down router.";
 
-  m_statistics = CompactRouter::Statistics();
-
   // Unregister core routing RPC methods
   unregisterCoreRpcMethods();
 

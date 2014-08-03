@@ -324,8 +324,6 @@ void SloppyGroupManagerPrivate::shutdown()
 
   BOOST_LOG_SEV(m_logger, log::normal) << "Shutting down sloppy group manager.";
 
-  m_statistics = SloppyGroupManager::Statistics();
-
   // Unsubscribe from all events
   for (boost::signals2::connection c : m_subscriptions)
     c.disconnect();
