@@ -238,6 +238,10 @@ public:
   std::uint16_t m_seqno;
   /// Aggregated path announcement
   std::unordered_map<NodeIdentifier, AggregationBufferPtr> m_ribExportAggregate;
+  /// Force landmark status flag
+  bool m_forceLandmark;
+  /// Initialized flag
+  bool m_initialized;
 #ifdef UNISPHERE_PROFILE
   /// Message tracer for packet traversal profiling
   MessageTracer m_msgTracer;
@@ -265,7 +269,9 @@ CompactRouterPrivate::CompactRouterPrivate(SocialIdentity &identity,
     m_routes(m_context, identity.localId(), sizeEstimator, m_sloppyGroup),
     m_announceTimer(manager.context().service()),
     m_saRefreshSignal(manager.context()),
-    m_seqno(1)
+    m_seqno(1),
+    m_forceLandmark(false),
+    m_initialized(false)
 {
   BOOST_ASSERT(identity.localId() == manager.getLocalNodeId());
   m_logger.add_attribute("LocalNodeID", logging::attributes::constant<NodeIdentifier>(manager.getLocalNodeId()));
@@ -296,6 +302,8 @@ void CompactRouterPrivate::initialize()
 
   // Initialize the sloppy group manager
   m_sloppyGroup.initialize();
+
+  m_initialized = true;
 
   // Compute whether we should become a landmark or not
   networkSizeEstimateChanged(m_sizeEstimator.getNetworkSize());
@@ -331,6 +339,8 @@ void CompactRouterPrivate::shutdown()
 
   // Clear the routing table
   m_routes.clear();
+
+  m_initialized = false;
 }
 
 void CompactRouterPrivate::saRefresh(PeerPtr peer, size_t count)
@@ -788,14 +798,18 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
 
 void CompactRouterPrivate::networkSizeEstimateChanged(std::uint64_t size)
 {
-  // Re-evaluate network size and check if we should alter our landmark status
-  double x = std::generate_canonical<double, 32>(m_manager.context().basicRng());
-  double n = static_cast<double>(size);
-
-  // TODO: Only flip landmark status if size has changed by at least a factor 2
-  if (x < std::sqrt(std::log(n) / n)) {
-    BOOST_LOG_SEV(m_logger, log::normal) << "Becoming a LANDMARK.";
+  if (m_forceLandmark) {
     m_routes.setLandmark(true);
+  } else {
+    // Re-evaluate network size and check if we should alter our landmark status
+    double x = std::generate_canonical<double, 32>(m_manager.context().basicRng());
+    double n = static_cast<double>(size);
+
+    // TODO: Only flip landmark status if size has changed by at least a factor 2
+    if (x < std::sqrt(std::log(n) / n)) {
+      BOOST_LOG_SEV(m_logger, log::normal) << "Becoming a LANDMARK.";
+      m_routes.setLandmark(true);
+    }
   }
 }
 
@@ -1043,6 +1057,15 @@ void CompactRouter::route(std::uint32_t sourceCompId,
 
   // Processing of locally originating messages should be deferred to avoid deadlocks
   d->m_context.service().post(boost::bind(&CompactRouter::route, this, rmsg));
+}
+
+void CompactRouter::setForceLandmark(bool landmark)
+{
+  d->m_forceLandmark = landmark;
+
+  if (d->m_initialized) {
+    d->networkSizeEstimateChanged(d->m_sizeEstimator.getNetworkSize());
+  }
 }
 
 }

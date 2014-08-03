@@ -189,6 +189,13 @@ public:
              std::uint32_t type,
              const google::protobuf::Message &msg,
              const RoutingOptions &opts = RoutingOptions());
+
+  /**
+   * Should the local node force landmark status. Defaults to false.
+   *
+   * @param landmark True to force landmark status
+   */
+  void setForceLandmark(bool landmark);
 public:
   /// Signal for delivery of locally-bound messages
   boost::signals2::signal<void(const RoutedMessage&)> signalDeliverMessage;

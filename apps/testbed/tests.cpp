@@ -861,6 +861,8 @@ public:
   bool evilRouting = false;
   /// Signal subscriptions
   std::list<boost::signals2::connection> subscriptions;
+  /// Local Sybil nodes
+  std::list<VirtualNodePtr> localSybilNodes;
 
   using TestCase::TestCase;
 
@@ -908,6 +910,7 @@ public:
                const boost::property_tree::ptree &args)
   {
     BOOST_LOG(logger()) << "I am an evil Sybil node: " << node->name;
+    localSybilNodes.push_back(node);
 
     subscriptions << node->router->nameDb().signalImportRecord.connect(
       [this](NameRecordPtr record) -> bool {
@@ -950,6 +953,11 @@ public:
       // Instruct Sybil nodes to become nice
       BOOST_LOG(logger()) << "Sybil nodes becoming nice (routing).";
       evilRouting = false;
+    } else if (signal == "force_landmarks") {
+      // Instruct all Sybil nodes to designate themselves as landmarks
+      for (VirtualNodePtr node : localSybilNodes) {
+        node->router->setForceLandmark(true);
+      }
     }
   }
 };

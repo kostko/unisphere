@@ -172,6 +172,38 @@ UNISPHERE_SCENARIO(SybilNodesNames)
 }
 UNISPHERE_SCENARIO_END_REGISTER(SybilNodesNames)
 
+UNISPHERE_SCENARIO(SybilNodesNamesLandmarks)
+{
+  // Start collecting performance data
+  TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
+
+  // Configure Sybil nodes to be malicious
+  TestCasePtr sybils = api.testInBackground("roles/setup_sybil_nodes");
+  api.signal(sybils, "evil_names");
+  api.signal(sybils, "force_landmarks");
+
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
+
+  api.wait(30);
+  api.mark("all_nodes_up");
+
+  api.wait(90);
+
+  // Perform some sanity checks
+  api.test("sanity/check_consistent_ndb", {{ "sybil_mode", true }});
+  // Dump topology information
+  api.test({ "state/sloppy_group_topology", "state/routing_topology" });
+
+  api.wait(10);
+
+  // Stop collecting performance data
+  api.signal(perfCollector, "finish");
+  // Stop sybil behaviour
+  api.signal(sybils, "finish");
+}
+UNISPHERE_SCENARIO_END_REGISTER(SybilNodesNamesLandmarks)
+
 UNISPHERE_SCENARIO(SybilNodesRouting)
 {
   // Start collecting performance data
