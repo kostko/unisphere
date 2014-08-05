@@ -88,6 +88,24 @@ UNISPHERE_SCENARIO(StandardTests)
 }
 UNISPHERE_SCENARIO_END_REGISTER(StandardTests)
 
+UNISPHERE_SCENARIO(LongRunningPerformanceTest)
+{
+  // Start collecting performance data
+  TestCasePtr perfCollector = api.testInBackground("stats/collect_performance");
+
+  // Start nodes in batches
+  api.startNodesBatch(api.getNodes(), 10, 5);
+
+  api.wait(30);
+  api.mark("all_nodes_up");
+
+  api.wait(5000);
+
+  // Stop collecting performance data
+  api.signal(perfCollector, "finish");
+}
+UNISPHERE_SCENARIO_END_REGISTER(LongRunningPerformanceTest)
+
 UNISPHERE_SCENARIO(Churn)
 {
   // Start collecting performance data
