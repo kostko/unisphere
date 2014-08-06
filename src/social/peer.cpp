@@ -60,7 +60,7 @@ PeerSecurityAssociationPtr Peer::addPeerSecurityAssociation(const PeerSecurityAs
   RecursiveUniqueLock lock(m_mutex);
   PeerSecurityAssociationPtr psa = boost::make_shared<PeerSecurityAssociation>(sa);
   m_peerSa.push_front(psa);
-  if (m_peerSa.size() > max_security_associations)
+  if (m_peerSa.size() > max_peer_security_associations)
     m_peerSa.pop_back();
 
   return psa;
@@ -109,7 +109,7 @@ PrivateSecurityAssociationPtr Peer::createPrivateSecurityAssociation()
     m_privateSa.push_front(sa);
 
     // Remove old security associations
-    if (m_privateSa.size() > max_security_associations)
+    if (m_privateSa.size() > max_private_security_associations)
       m_privateSa.pop_back();
   }
 

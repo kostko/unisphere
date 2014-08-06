@@ -90,7 +90,9 @@ using PrivateSecurityAssociations = SecurityAssociations<PrivateSecurityAssociat
 class UNISPHERE_EXPORT Peer {
 public:
   /// Maximum number of peer security associations
-  static const int max_security_associations = 10;
+  static const int max_peer_security_associations = 10;
+  /// Maximum number of private security associations
+  static const int max_private_security_associations = 13;
 
   /**
    * Constructs a null peer.
