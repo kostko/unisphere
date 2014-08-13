@@ -25,6 +25,7 @@
 
 #include <boost/signals2/signal.hpp>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace UniSphere {
 
@@ -105,6 +106,25 @@ public:
   Contact getPeerContact(const NodeIdentifier &nodeId) const;
 
   /**
+   * Adds a new peer security association for the specified peer.
+   *
+   * @param peer Peer instance
+   * @param sa Peer security association
+   * @return A reference to the newly added security association
+   */
+  PeerSecurityAssociationPtr addPeerSecurityAssociation(PeerPtr peer, const PeerSecurityAssociation &sa);
+
+  /**
+   * Removes an existing peer security association identifierd by its
+   * public key.
+   *
+   * @param peer Peer instance
+   * @param publicKey Public key identifying the SA
+   * @throws InvalidSecurityAssociation When SA cannot be found
+   */
+  void removePeerSecurityAssociation(PeerPtr peer, const std::string &publicKey);
+
+  /**
    * Returns true if there exist a peer security association with the
    * given public key.
    *
@@ -126,6 +146,8 @@ private:
   PrivatePeerKey m_localKey;
   /// Social peers with contact information
   std::unordered_map<NodeIdentifier, PeerPtr> m_peers;
+  /// Peer security association cache
+  std::unordered_set<std::string> m_peerSaCache;
 };
 
 }

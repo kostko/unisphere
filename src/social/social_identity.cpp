@@ -88,15 +88,24 @@ PeerPtr SocialIdentity::getPeer(const NodeIdentifier &nodeId) const
   return it->second;
 }
 
+PeerSecurityAssociationPtr SocialIdentity::addPeerSecurityAssociation(PeerPtr peer, const PeerSecurityAssociation &sa)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  m_peerSaCache.insert(sa.raw());
+  return peer->addPeerSecurityAssociation(sa);
+}
+
+void SocialIdentity::removePeerSecurityAssociation(PeerPtr peer, const std::string &publicKey)
+{
+  RecursiveUniqueLock lock(m_mutex);
+  m_peerSaCache.erase(publicKey);
+  peer->removePeerSecurityAssociation(publicKey);
+}
+
 bool SocialIdentity::hasPeerSecurityAssociation(const std::string &publicKey) const
 {
   RecursiveUniqueLock lock(m_mutex);
-  for (PeerPtr peer : m_peers | boost::adaptors::map_values) {
-    if (peer->hasPeerSecurityAssociation(publicKey))
-      return true;
-  }
-
-  return false;
+  return m_peerSaCache.find(publicKey) != m_peerSaCache.end();
 }
 
 }

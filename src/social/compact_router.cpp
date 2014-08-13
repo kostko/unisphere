@@ -625,7 +625,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
       Protocol::SecurityAssociationCreate sac = message_cast<Protocol::SecurityAssociationCreate>(msg);
       try {
         PeerSecurityAssociation sa(PublicSignKey(sac.public_key()));
-        peer->addPeerSecurityAssociation(sa);
+        m_identity.addPeerSecurityAssociation(peer, sa);
       } catch (KeyDecodeFailed &e) {
         BOOST_LOG_SEV(m_logger, log::warning) << "SA_Create from peer " << msg.originator().hex() << " contains an invalid key!";
       }
@@ -641,7 +641,7 @@ void CompactRouterPrivate::messageReceived(const Message &msg)
 
       Protocol::SecurityAssociationInvalid sai = message_cast<Protocol::SecurityAssociationInvalid>(msg);
       try {
-        peer->removePeerSecurityAssociation(sai.public_key());
+        m_identity.removePeerSecurityAssociation(peer, sai.public_key());
       } catch (InvalidSecurityAssociation &e) {
         BOOST_LOG_SEV(m_logger, log::warning) << "SA_Invalid from peer " << msg.originator().hex() << " contains an unknown key.";
       }
