@@ -27,18 +27,22 @@ CLUSTERS = {
     'testbed_root': '/unisphere',
     'testbed_output': '/unisphere/output',
     'testbed_binary': '/unisphere/build/release/apps/testbed/testbed',
+    'halt_after_finished': False,
     'hosts': {
-      'mc': {'host': '54.187.223.246', 'interface': 'eth0'},
-      'w0': {'host': '54.191.202.163', 'interface': 'eth0', 'workers': 30},
-      'w1': {'host': '54.191.187.13', 'interface': 'eth0', 'workers': 30},
-      'w2': {'host': '54.191.197.190', 'interface': 'eth0', 'workers': 30},
+      'mc': {'host': '54.200.64.127', 'interface': 'eth0'},
+      'w0': {'host': '54.201.232.205', 'interface': 'eth0', 'workers': 30, 'threads': 2},
+      'w1': {'host': '54.186.225.128', 'interface': 'eth0', 'workers': 30, 'threads': 2},
+      'w2': {'host': '54.213.0.20', 'interface': 'eth0', 'workers': 30, 'threads': 2},
+      'w3': {'host': '54.191.57.145', 'interface': 'eth0', 'workers': 30, 'threads': 2},
+      'w4': {'host': '54.191.155.137', 'interface': 'eth0', 'workers': 30, 'threads': 2},
+      'w5': {'host': '54.201.129.254', 'interface': 'eth0', 'workers': 30, 'threads': 2},
     }
   }
 }
 
 # Cluster configuration that should be used by default
-CLUSTER = 'testbed.cluster.multihost.MultihostCluster'
-#CLUSTER = 'testbed.cluster.simple.SimpleCluster'
+#CLUSTER = 'testbed.cluster.multihost.MultihostCluster'
+CLUSTER = 'testbed.cluster.simple.SimpleCluster'
 
 # Configure topologies
 TOPOLOGIES = [
@@ -48,6 +52,22 @@ TOPOLOGIES = [
     name="hyperboria",
     filename=os.path.join(DATA_DIRECTORY, "hyperboria-topology.gml"),
     format="gml",
+  ),
+
+  # AS-733 #1 topology
+  dict(
+    generator="topologies.loader.load",
+    name="as-733-a",
+    filename=os.path.join(DATA_DIRECTORY, "as19971108.edges"),
+    format="edges",
+  ),
+
+  # AS-733 #2 topology
+  dict(
+    generator="topologies.loader.load",
+    name="as-733-b",
+    filename=os.path.join(DATA_DIRECTORY, "as20000102.edges"),
+    format="edges",
   ),
 
   # SNAP Facebook topology
@@ -64,7 +84,7 @@ TOPOLOGIES = [
     name="basic_single",
     args=['size'],
     communities=dict(
-      honest=dict(type='holme-kim', n=lambda a: a.size, degree=4, rewire=0.8),
+      honest=dict(type='holme-kim', n=lambda a: a.size, degree=4, rewire=0.2),
     ),
   ),
 
@@ -74,7 +94,7 @@ TOPOLOGIES = [
     name="basic_multi",
     args=['size', 'communities', 'degree'],
     communities=lambda a: dict([
-      ("c%d" % i, dict(type='holme-kim', n=a.size // a.communities, degree=a.degree, rewire=0.8))
+      ("c%d" % i, dict(type='holme-kim', n=a.size // a.communities, degree=a.degree, rewire=0.2))
       for i in xrange(a.communities)
     ]),
     connections=lambda a: [
@@ -92,9 +112,9 @@ TOPOLOGIES = [
     name="sybil_count",
     args=['sybils'],
     communities=dict(
-      honest=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
-      sybil=dict(type='holme-kim', n=lambda a: a.sybils, degree=4, rewire=0.8),
-      foreign=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
+      honest=dict(type='holme-kim', n=64, degree=4, rewire=0.2),
+      sybil=dict(type='holme-kim', n=lambda a: a.sybils, degree=4, rewire=0.2),
+      foreign=dict(type='holme-kim', n=64, degree=4, rewire=0.2),
     ),
     connections=[
       # Attack edges
@@ -111,9 +131,9 @@ TOPOLOGIES = [
     name="sybil_edges",
     args=['attack_edges'],
     communities=dict(
-      honest=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
-      sybil=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
-      foreign=dict(type='holme-kim', n=64, degree=4, rewire=0.8),
+      honest=dict(type='holme-kim', n=64, degree=4, rewire=0.2),
+      sybil=dict(type='holme-kim', n=64, degree=4, rewire=0.2),
+      foreign=dict(type='holme-kim', n=64, degree=4, rewire=0.2),
     ),
     connections=[
       # Attack edges
@@ -138,7 +158,12 @@ RUNS = [
   dict(name="pf-b8", topology="basic_single", size=2048, scenario="StandardTests"),
   dict(name="pf-b9", topology="basic_single", size=4096, scenario="StandardTests"),
 
-  dict(name="pf-h1", topology="hyperboria", scenario="StandardTests"),
+  dict(name="pf-hb", topology="hyperboria", scenario="StandardTests"),
+
+  dict(name="pf-as733-a", topology="as-733-a", scenario="StandardTests"),
+  dict(name="pf-as733-b", topology="as-733-b", scenario="StandardTests"),
+
+  dict(name="pf-fb", topology="facebook", scenario="StandardTests"),
 
   dict(name="pf-e1", topology="basic_multi", size=256, communities=1, degree=2, scenario="StandardTests"),
   dict(name="pf-e2", topology="basic_multi", size=256, communities=1, degree=4, scenario="StandardTests"),
@@ -150,29 +175,8 @@ RUNS = [
   # Scenarios with churn
   dict(name="pf-ch1", topology="basic_multi", size=256, communities=1, degree=16, scenario="Churn"),
 
-  # Sybil-tolerance measurement runs
-  dict(name="sy-ns1", topology="sybil_count", sybils=16, scenario="SybilNodesNames"),
-  dict(name="sy-ns2", topology="sybil_count", sybils=32, scenario="SybilNodesNames"),
-  dict(name="sy-ns3", topology="sybil_count", sybils=48, scenario="SybilNodesNames"),
-  dict(name="sy-ns4", topology="sybil_count", sybils=64, scenario="SybilNodesNames"),
-  dict(name="sy-ns5", topology="sybil_count", sybils=80, scenario="SybilNodesNames"),
-  dict(name="sy-ns6", topology="sybil_count", sybils=96, scenario="SybilNodesNames"),
-
-  dict(name="sy-ne1", topology="sybil_edges", attack_edges=60, scenario="SybilNodesNames"),
-  dict(name="sy-ne2", topology="sybil_edges", attack_edges=80, scenario="SybilNodesNames"),
-  dict(name="sy-ne3", topology="sybil_edges", attack_edges=100, scenario="SybilNodesNames"),
-  dict(name="sy-ne4", topology="sybil_edges", attack_edges=120, scenario="SybilNodesNames"),
-  dict(name="sy-ne5", topology="sybil_edges", attack_edges=140, scenario="SybilNodesNames"),
-  dict(name="sy-ne6", topology="sybil_edges", attack_edges=160, scenario="SybilNodesNames"),
-  dict(name="sy-ne7", topology="sybil_edges", attack_edges=180, scenario="SybilNodesNames"),
-
-  dict(name="sy-rs0", topology="sybil_count", sybils=0, scenario="SybilNodesRouting"),
-  dict(name="sy-rs1", topology="sybil_count", sybils=16, scenario="SybilNodesRouting"),
-  dict(name="sy-rs2", topology="sybil_count", sybils=32, scenario="SybilNodesRouting"),
-  dict(name="sy-rs3", topology="sybil_count", sybils=48, scenario="SybilNodesRouting"),
-  dict(name="sy-rs4", topology="sybil_count", sybils=64, scenario="SybilNodesRouting"),
-  dict(name="sy-rs5", topology="sybil_count", sybils=80, scenario="SybilNodesRouting"),
-  dict(name="sy-rs6", topology="sybil_count", sybils=96, scenario="SybilNodesRouting"),
+  # Long-running performance test
+  dict(name="pf-long1", topology="basic_single", size=256, scenario="LongRunningPerformanceTest"),
 
   # Repeat all attack edge routing runs 10 times
   dict(apply_to=["sy-re*"], repeats=10),
@@ -188,6 +192,30 @@ RUNS = [
   dict(name="sy-re8", topology="sybil_edges", attack_edges=50, scenario="SybilNodesRouting"),
   dict(name="sy-re9", topology="sybil_edges", attack_edges=55, scenario="SybilNodesRouting"),
   dict(name="sy-re10", topology="sybil_edges", attack_edges=60, scenario="SybilNodesRouting"),
+
+  dict(name="sy-ne0", topology="sybil_edges", attack_edges=0, scenario="SybilNodesNames"),
+  dict(name="sy-ne1", topology="sybil_edges", attack_edges=5, scenario="SybilNodesNames"),
+  dict(name="sy-ne2", topology="sybil_edges", attack_edges=15, scenario="SybilNodesNames"),
+  dict(name="sy-ne3", topology="sybil_edges", attack_edges=25, scenario="SybilNodesNames"),
+  dict(name="sy-ne4", topology="sybil_edges", attack_edges=30, scenario="SybilNodesNames"),
+  dict(name="sy-ne5", topology="sybil_edges", attack_edges=35, scenario="SybilNodesNames"),
+  dict(name="sy-ne6", topology="sybil_edges", attack_edges=40, scenario="SybilNodesNames"),
+  dict(name="sy-ne7", topology="sybil_edges", attack_edges=45, scenario="SybilNodesNames"),
+  dict(name="sy-ne8", topology="sybil_edges", attack_edges=50, scenario="SybilNodesNames"),
+  dict(name="sy-ne9", topology="sybil_edges", attack_edges=55, scenario="SybilNodesNames"),
+  dict(name="sy-ne10", topology="sybil_edges", attack_edges=60, scenario="SybilNodesNames"),
+
+  dict(name="sy-ld0", topology="sybil_edges", attack_edges=0, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld1", topology="sybil_edges", attack_edges=5, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld2", topology="sybil_edges", attack_edges=15, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld3", topology="sybil_edges", attack_edges=25, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld4", topology="sybil_edges", attack_edges=30, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld5", topology="sybil_edges", attack_edges=35, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld6", topology="sybil_edges", attack_edges=40, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld7", topology="sybil_edges", attack_edges=45, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld8", topology="sybil_edges", attack_edges=50, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld9", topology="sybil_edges", attack_edges=55, scenario="SybilNodesNamesLandmarks"),
+  dict(name="sy-ld10", topology="sybil_edges", attack_edges=60, scenario="SybilNodesNamesLandmarks"),
 ]
 
 # Configure graph generation
@@ -198,7 +226,8 @@ GRAPHS = [
   dict(name="size_msg_perf_s128", plotter="graphs.MessagingPerformance", runs=["pf-b4"]),
   dict(name="size_msg_perf_s256", plotter="graphs.MessagingPerformance", runs=["pf-b5"]),
   dict(name="size_msg_perf_s512", plotter="graphs.MessagingPerformance", runs=["pf-b6"]),
-  dict(name="size_msg_perf_s1024", plotter="graphs.MessagingPerformance", runs=["pf-b7"]),
+  dict(name="size_msg_perf_s1024", plotter="graphs.MessagingPerformance", runs=["pf-b7"],
+    legend_loc='upper left'),
   dict(name="size_msg_perf_s2048", plotter="graphs.MessagingPerformance", runs=["pf-b8"]),
   dict(name="size_msg_perf_s4096", plotter="graphs.MessagingPerformance", runs=["pf-b9"]),
   dict(name="size_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-b8"]),
@@ -221,7 +250,17 @@ GRAPHS = [
   dict(name="size_lr_length_dist", plotter="graphs.LRLengthDistribution", runs=["pf-b*"]),
   dict(name="size_lr_lengths", plotter="graphs.LRLengthVsVariable", runs=["pf-b*"], scale="log"),
 
-  dict(name="hyperboria_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-h1"]),
+  dict(name="hyperboria_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-hb"]),
+  dict(name="hyperboria_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-hb"]),
+  dict(name="hyperboria_lr_length_dist", plotter="graphs.LRLengthDistribution", runs=["pf-hb"]),
+  dict(name="hyperboria_path_stretch_dist", plotter="graphs.PathStretchDistribution", runs=["pf-hb"]),
+
+  dict(name="as733a_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-as733-a"]),
+  dict(name="as733a_link_congestion", plotter="graphs.LinkCongestion", runs=["pf-as733-a"]),
+  dict(name="as733a_lr_length_dist", plotter="graphs.LRLengthDistribution", runs=["pf-as733-a"]),
+  dict(name="as733a_path_stretch_dist", plotter="graphs.PathStretchDistribution", runs=["pf-as733-a"]),
+
+  dict(name="facebook_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-fb"]),
 
   # Graphs relating to the effect of mixing time on protocol operation
   dict(name="mixing_msg_perf", plotter="graphs.MessagingPerformance",
@@ -235,22 +274,19 @@ GRAPHS = [
   dict(name="mixing_sg_degrees", plotter="graphs.DegreeVsVariable", variable="degree",
     graph="state-sloppy_group_topology-sg-topo-*.graphml", runs=["pf-e*"]),
 
-  # Graphs relating to the effect of the number of Sybils on protocol operation
-  dict(name="sybilnum_msg_perf", plotter="graphs.MessagingPerformance",
-    label_attribute="sybils", legend=False, runs=["sy-ns*"]),
+  # Graphs relating to churn scenarios
+  dict(name="churn_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-ch1"],
+    legend_loc='lower right'),
+
+  # Graphs for long-running performance tests
+  dict(name="long_running_msg_perf", plotter="graphs.MessagingPerformance", runs=["pf-long1"]),
 
   # Graphs relating to the effect of the number of attack edges on protocol operation
   dict(name="sybiledg_msg_perf", plotter="graphs.MessagingPerformance",
     label_attribute="attack_edges", legend=False, runs=["sy-ne*"]),
-  dict(name="sybiledg_resolvability", plotter="graphs.ResolvabilityVsAttackEdges", runs=["sy-re*"]),
   dict(name="sybiledg_availability", plotter="graphs.AvailabilityVsAttackEdges", runs=["sy-re*"]),
 
-  # Graphs relating to the effect of the number of Sybils on routing
-  dict(name="sybilnum_deliverability", plotter="graphs.DeliverabilityVsVariable", runs=["sy-rs*"],
-    variable="sybils"),
-
-  # Graphs relating to the effect of the number of attack edges on routing
-  dict(name="sybiledg_deliverability", plotter="graphs.DeliverabilityVsAttackEdges", runs=["sy-re*"]),
+  dict(name="sybil_scenarios", plotter="graphs.SybilScenarios", runs=["sy-re*", "sy-ne*", "sy-ld*"]),
 ]
 
 # Configure logging
