@@ -54,6 +54,7 @@ class Host(object):
       username=self.cluster.cluster_cfg['username'],
       key_filename=self.cluster.cluster_cfg['keyfile'],
     )
+    self.host.get_transport().set_keepalive(60)
     self.private_ip = None
     self.failed = False
     self.testbed_nodes = []
