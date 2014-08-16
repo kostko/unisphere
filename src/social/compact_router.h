@@ -51,11 +51,9 @@ class RpcEngine;
 class UNISPHERE_EXPORT CompactRouter {
 public:
   /// Self-announce refresh interval
-  static const int interval_announce = 10;
+  static const int interval_announce = 30;
   /// Neighbor expiry interval
-  static const int interval_neighbor_expiry = 60;
-  /// Route origin descriptor expiry time
-  static const int origin_expiry_time = 300;
+  static const int interval_neighbor_expiry = 90;
 
   /**
    * Identifiers of components that can be routed to. These components

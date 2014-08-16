@@ -431,7 +431,7 @@ void CompactRouterPrivate::announceOurselves(const boost::system::error_code &er
     m_routes.fullUpdate(peer.first);
   }
 
-  // Redo announce after 10 seconds
+  // Reschedule self announce
   m_announceTimer.expires_from_now(m_context.roughly(CompactRouter::interval_announce));
   m_announceTimer.async_wait(boost::bind(&CompactRouterPrivate::announceOurselves, this, _1));
 }
