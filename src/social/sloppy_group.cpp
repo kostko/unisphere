@@ -409,10 +409,10 @@ void SloppyGroupManagerPrivate::nibExportQueueRecord(const SloppyPeer &peer,
   // Replace existing announces with new ones, so only the lastest are transmitted
   buffer->announces[announce.origin_id()] = announce;
 
-  // Buffer further messages for another 15 seconds, then transmit all of them
+  // Buffer further messages, then transmit all of them at once
   if (!buffer->buffering) {
     buffer->buffering = true;
-    buffer->timer.expires_from_now(m_router.context().roughly(15));
+    buffer->timer.expires_from_now(m_router.context().roughly(30));
     buffer->timer.async_wait(boost::bind(&SloppyGroupManagerPrivate::nibExportTransmitBuffer, this, _1, buffer));
   }
 }
