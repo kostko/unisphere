@@ -149,7 +149,7 @@ public:
     boost::adjacency_list<
       boost::hash_setS,
       boost::vecS,
-      boost::bidirectionalS,
+      boost::undirectedS,
       boost::property<TopologyDumpTags::NodeName, std::string,
         boost::property<TopologyDumpTags::NodeIsLandmark, int,
           boost::property<TopologyDumpTags::NodeStateSize, int,
