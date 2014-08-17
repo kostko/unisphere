@@ -138,7 +138,8 @@ public:
 
     mergeGraphDataset<Graph, Tags::NodeName, Tags::Placeholder>(api.dataset("ds_topology"), "graph", graph);
 
-    BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices in ds_topology (after merge).";
+    BOOST_LOG(logger()) << "Received " << boost::num_vertices(graph.graph()) << " vertices and " <<
+      boost::num_edges(graph.graph()) << " edges in ds_topology (after merge).";
 
     boost::dynamic_properties properties;
     properties.property("name", boost::get(Tags::NodeName(), graph.graph()));
