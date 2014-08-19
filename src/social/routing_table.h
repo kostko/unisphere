@@ -162,6 +162,14 @@ public:
     boost::hash_mapS
   >;
 
+  /// A helper structure for returning next hops
+  struct NextHop {
+    /// Next hop identifier
+    NodeIdentifier nodeId;
+    /// Source-route towards the destination
+    RoutingPath path;
+  };
+
   /// A helper structure for returning sloppy group relays
   struct SloppyGroupRelay {
     /// Node identifier of the sloppy group relay node in vicinity
@@ -210,9 +218,9 @@ public:
    * route an invalid entry is returned.
    *
    * @param destination Destination address
-   * @return Node identifier of the next hop
+   * @return Next hop metadata
    */
-  NodeIdentifier getActiveRoute(const NodeIdentifier &destination);
+  NextHop getActiveRoute(const NodeIdentifier &destination);
 
   /**
    * Returns the routing entry that can be used as a relay when

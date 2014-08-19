@@ -844,7 +844,19 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
   Contact nextHop;
 
   // Always attempt to first route directly without L-R addressing
-  nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationNodeId()));
+  CompactRoutingTable::NextHop directNextHop = m_routes.getActiveRoute(msg.destinationNodeId());
+  nextHop = m_identity.getPeerContact(directNextHop.nodeId);
+
+  if (!nextHop.isNull() && directNextHop.path.size() > 1) {
+    // We know a direct multi-hop path, so we should embed it into the message for cases where
+    // the next hop might not know the path; we only do this in case a path is not yet
+    // embedded or if the new path would be shorter
+    if (msg.destinationAddress().isNull() || msg.destinationAddress().size() > directNextHop.path.size()) {
+      msg.setDestinationAddress(LandmarkAddress(m_manager.getLocalNodeId(), directNextHop.path));
+      msg.setDeliveryMode(true);
+      msg.processSourceRouteHop();
+    }
+  }
 
   if (!msg.options().directDelivery) {
     if (nextHop.isNull() && !msg.destinationAddress().isNull()) {
@@ -886,7 +898,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
         msg.processSourceRouteHop();
       } else {
         // We must route to landmark node
-        nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationAddress().landmarkId()));
+        nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationAddress().landmarkId()).nodeId);
       }
     }
 
@@ -895,7 +907,7 @@ void CompactRouterPrivate::route(RoutedMessage &msg)
       NameRecordPtr record = m_nameDb.lookup(msg.destinationNodeId());
       if (record) {
         msg.setDestinationAddress(record->landmarkAddress());
-        nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationAddress().landmarkId()));
+        nextHop = m_identity.getPeerContact(m_routes.getActiveRoute(msg.destinationAddress().landmarkId()).nodeId);
       }
 
       if (nextHop.isNull()) {

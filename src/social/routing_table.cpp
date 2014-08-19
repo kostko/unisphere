@@ -171,9 +171,9 @@ public:
    * route an invalid entry is returned.
    *
    * @param destination Destination address
-   * @return Node identifier of the next hop
+   * @return Next hop metadata
    */
-  NodeIdentifier getActiveRoute(const NodeIdentifier &destination);
+  CompactRoutingTable::NextHop getActiveRoute(const NodeIdentifier &destination);
 
   /**
    * Returns the routing entry that can be used as a relay when
@@ -809,16 +809,19 @@ bool CompactRoutingTablePrivate::selectLocalAddress()
   return changed;
 }
 
-NodeIdentifier CompactRoutingTablePrivate::getActiveRoute(const NodeIdentifier &destination)
+CompactRoutingTable::NextHop CompactRoutingTablePrivate::getActiveRoute(const NodeIdentifier &destination)
 {
   RecursiveUniqueLock lock(m_mutex);
 
   auto &ribActive =  m_rib.get<RIBTags::ActiveRoutes>();
   auto entry = ribActive.find(boost::make_tuple(true, destination));
   if (entry == ribActive.end())
-    return NodeIdentifier::INVALID;
+    return CompactRoutingTable::NextHop();
 
-  return getNeighborForVport((*entry)->originVport());
+  return CompactRoutingTable::NextHop{
+    getNeighborForVport((*entry)->originVport()),
+    (*entry)->forwardPath
+  };
 }
 
 CompactRoutingTable::SloppyGroupRelay CompactRoutingTablePrivate::getSloppyGroupRelay(const NodeIdentifier &destination)
@@ -1074,7 +1077,7 @@ CompactRoutingTable::CompactRoutingTable(Context &context,
 {
 }
 
-NodeIdentifier CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
+CompactRoutingTable::NextHop CompactRoutingTable::getActiveRoute(const NodeIdentifier &destination)
 {
   return d->getActiveRoute(destination);
 }
