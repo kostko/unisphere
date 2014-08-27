@@ -147,12 +147,12 @@ class Host(object):
       return
 
     try:
-      remote_archive_path = os.path.join(self.cluster.remote_output_directory, 'output.tar.bz2')
-      self.host.exec_command("tar --create --bzip2 --file %s --directory %s --exclude output.tar.bz2 ." % (
+      remote_archive_path = os.path.join(self.cluster.remote_output_directory, 'output.tar.xz')
+      self.host.exec_command("tar --create --xz --file %s --directory %s --exclude output.tar.xz ." % (
         remote_archive_path,
         self.cluster.remote_output_directory
       ))
-      local_archive_path = os.path.join(self.cluster.local_output_directory, 'output.tar.bz2')
+      local_archive_path = os.path.join(self.cluster.local_output_directory, 'output.tar.xz')
       self.sftp.get(remote_archive_path, local_archive_path)
       self.sftp.remove(remote_archive_path)
       subprocess.call([
