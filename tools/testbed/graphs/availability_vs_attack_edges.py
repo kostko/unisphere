@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -18,20 +19,21 @@
 #
 
 from . import base
-from .. import exceptions
 
 import matplotlib.pyplot as plt
 import numpy
-import scipy.optimize
+
 
 class AvailabilityVsAttackEdges(base.PlotterBase):
   """
   Draws deliverability and resolvability in relation to fraction of attack edges.
   """
+
   def plot(self):
     """
     Plots the deliverability and resolvability  vs. fraction of attack edges.
     """
+
     fig, ax = plt.subplots()
 
     values = {
@@ -69,7 +71,7 @@ class AvailabilityVsAttackEdges(base.PlotterBase):
 
       ax.errorbar(X, Y, Yerr, label=k.capitalize(), color='black', dashes=dash[k], marker='x')
 
-    ax.set_xlabel('Percentage of attack edges')
+    ax.set_xlabel(u'Delež napadenih povezav')
     ax.grid()
     ax.axis((0.0, None, 0, 1.1))
 

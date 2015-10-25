@@ -22,14 +22,17 @@ from . import base
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+
 class VariableDistribution(base.PlotterBase):
   """
   Draws distribution of some variable over nodes
   """
+
   def plot(self):
     """
     Plots the CDF of some variable.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name
@@ -48,7 +51,7 @@ class VariableDistribution(base.PlotterBase):
       ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2)
 
     ax.set_xlabel(variable.capitalize())
-    ax.set_ylabel('Cummulative Probability')
+    ax.set_ylabel('Kumulativna verjetnost')
     ax.grid()
     ax.axis((0, None, 0, 1.01))
     self.convert_axes_to_bw(ax)

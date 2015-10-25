@@ -17,11 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+
 class ImproperlyConfigured(Exception):
   pass
 
+
 class ScenarioRunFailed(Exception):
   pass
+
 
 class MissingDatasetError(Exception):
   pass

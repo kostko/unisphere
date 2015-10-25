@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -20,23 +21,25 @@
 from . import base
 
 import matplotlib.pyplot as plt
-import numpy
 import statsmodels.api as sm
+
 
 class PathStretchDistribution(base.PlotterBase):
   """
   Draws path stretch distribution over paths.
   """
+
   def plot(self):
     """
     Plots the CDF of path stretch.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name
-    variable = self.graph.settings.get('variable', 'size')
+    variable = self.graph.settings.get('variable', None)
+    variable_label = self.graph.settings.get('variable_label', variable)
 
-    averages = {}
     for run in self.runs:
       # Load dataset
       data = run.get_dataset("routing-pair_wise_ping-stretch-*.csv")
@@ -47,18 +50,22 @@ class PathStretchDistribution(base.PlotterBase):
       # Compute ECDF and plot it
       ecdf = sm.distributions.ECDF(data)
 
-      ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2,
-        label="%s = %d" % (variable, run.orig.settings.get(variable, 0)))
+      if variable is not None:
+        ecdf_label = "%s = %d" % (variable_label, run.orig.settings.get(variable, 0))
+      else:
+        ecdf_label = None
 
-      averages[run.orig.settings.get(variable, 0)] = (numpy.average(data), numpy.std(data))
+      ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2, label=ecdf_label)
 
-    ax.set_xlabel('Path Stretch')
-    ax.set_ylabel('Cummulative Probability')
+    ax.set_xlabel('Razteg poti')
+    ax.set_ylabel('Kumulativna verjetnost')
     ax.grid()
     ax.axis((0.5, None, 0, 1.01))
     self.convert_axes_to_bw(ax)
 
-    legend = ax.legend(loc='lower right')
-    if self.settings.GRAPH_TRANSPARENCY:
-      legend.get_frame().set_alpha(0.8)
+    if variable is not None:
+      legend = ax.legend(loc='lower right')
+      if self.settings.GRAPH_TRANSPARENCY:
+        legend.get_frame().set_alpha(0.8)
+
     fig.savefig(self.get_figure_filename())

@@ -27,6 +27,7 @@ import logging
 
 logger = logging.getLogger('testbed.catalog')
 
+
 class TopologyDescriptor(object):
   def __init__(self, settings):
     """
@@ -95,6 +96,7 @@ class TopologyDescriptor(object):
 
     return self.name
 
+
 class RunDescriptor(object):
   def __init__(self, settings):
     """
@@ -102,6 +104,7 @@ class RunDescriptor(object):
 
     :param settings: A dictionary of run settings
     """
+
     self.name = settings['name']
     self.settings = settings.copy()
     del self.settings['name']
@@ -112,6 +115,7 @@ class RunDescriptor(object):
 
     :param filename: Output graph filename
     """
+
     self.settings['topology'].generate(self, filename)
 
   def run(self, cluster, run_id):
@@ -121,6 +125,7 @@ class RunDescriptor(object):
     :param cluster: Cluster configurator instance
     :param run_id: Unique identifier for the run session
     """
+
     try:
       logger.info("Setting up cluster...")
       cluster.setup(self, run_id)
@@ -135,6 +140,7 @@ class RunDescriptor(object):
       cluster.shutdown()
       raise
 
+
 class GraphDescriptor(object):
   def __init__(self, settings):
     """
@@ -142,6 +148,7 @@ class GraphDescriptor(object):
 
     :param settings: A dictionary of graph settings
     """
+
     self.name = settings['name']
     self.plotter = settings['plotter']
     self.runs = settings['runs']
@@ -158,6 +165,7 @@ class GraphDescriptor(object):
     :param runs: A list of dependent run descriptors
     :param settings: User settings
     """
+
     try:
       # Create a new plotter instance
       plotter = self.plotter(self, run_id, runs, settings)
@@ -168,14 +176,17 @@ class GraphDescriptor(object):
       logger.error("An error has ocurred while plotting the graph!")
       raise
 
+
 class Catalog(object):
   """
   The catalog contains all topology, run and graph configuration.
   """
+
   def __init__(self):
     """
     Class constructor.
     """
+
     self._topologies = collections.OrderedDict()
     self._runs = collections.OrderedDict()
     self._graphs = collections.OrderedDict()
@@ -187,6 +198,7 @@ class Catalog(object):
     :param settings: User settings dictionary
     :param graphs: Should we also load graphs
     """
+
     # Iterate over configured topologies
     for topology in settings.TOPOLOGIES:
       self._topologies[topology['name']] = TopologyDescriptor(topology)
@@ -257,24 +269,28 @@ class Catalog(object):
     """
     Returns an iterator over the topologies collection.
     """
+
     return iter(self._topologies.values())
 
   def runs(self):
     """
     Returns an iterator over the run collection.
     """
+
     return iter(self._runs.values())
 
   def graphs(self):
     """
     Returns an iterator over the graphs collection.
     """
+
     return iter(self._graphs.values())
 
   def get_run_descriptors(self, run_names):
     """
     Returns run descriptors for specified run names.
     """
+
     return [self._runs[name] for name in run_names]
 
 catalog = Catalog()

@@ -33,6 +33,7 @@ import tempfile
 
 logger = logging.getLogger('testbed.graphs.base')
 
+
 class RunOutputDescriptor(object):
   def __init__(self, run_id, run, settings):
     self.run_id = run_id
@@ -119,6 +120,7 @@ class RunOutputDescriptor(object):
 
   def get_marker(self, marker):
     return self.get_dataset("marker-%s-*.csv" % marker)['ts'][0]
+
 
 class PlotterBase(object):
   def __init__(self, graph, run_id, runs, settings):

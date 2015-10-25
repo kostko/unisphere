@@ -18,20 +18,21 @@
 #
 
 from . import base
-from .. import exceptions
 
 import matplotlib.pyplot as plt
 import numpy
-import scipy.optimize
+
 
 class DeliverabilityVsVariable(base.PlotterBase):
   """
   Draws deliverability in relation to some variable.
   """
+
   def plot(self):
     """
     Plots the deliverability vs. variable.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name

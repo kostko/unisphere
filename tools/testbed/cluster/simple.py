@@ -31,7 +31,12 @@ import time
 
 logger = logging.getLogger('testbed.cluster.simple')
 
+
 class SimpleCluster(base.ClusterRunnerBase):
+  """
+  Sets up a simple cluster running on a single machine.
+  """
+
   master_id = None
 
   master = None
@@ -46,6 +51,10 @@ class SimpleCluster(base.ClusterRunnerBase):
     resource.setrlimit(resource.RLIMIT_CORE, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
 
   def setup(self, run, run_id):
+    """
+    Prepares the cluster for running the emulation.
+    """
+
     try:
       # Generate identifier for the cluster master
       self.master_private_key = 'W3qqkUybqur79JJbxIiWYcayXgt+tiWF6D+5T7/HS8YfbBlLHGqK2KtEwqtBEO/a4Lx7XPcXZKUQthvByC2x09NRG1icM43SnlDnFOy3eV0jUTPnJwBACh2tENJOrI6r'
@@ -133,6 +142,10 @@ class SimpleCluster(base.ClusterRunnerBase):
       raise
 
   def run_scenario(self, run, run_id):
+    """
+    Starts the controller and begins the emulation.
+    """
+
     if self.master is None or not self.slaves:
       logger.error("Cluster not ready, aborting scenario run.")
       raise exceptions.ScenarioRunFailed
@@ -171,6 +184,10 @@ class SimpleCluster(base.ClusterRunnerBase):
     time.sleep(5)
 
   def shutdown(self):
+    """
+    Shuts down the testbed environment.
+    """
+
     logger.info("Shutting down cluster...")
 
     # Terminate everything

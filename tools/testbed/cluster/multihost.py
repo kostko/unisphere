@@ -31,6 +31,7 @@ import time
 
 logger = logging.getLogger('testbed.cluster.multihost')
 
+
 class Host(object):
   """
   Represents a testbed host accessible via an SSH connection.
@@ -182,7 +183,11 @@ class Host(object):
     for node in self.testbed_nodes:
       node.join()
 
+
 class MultihostCluster(base.ClusterRunnerBase):
+  """
+  Sets up a testbed cluster spanning multiple remote hosts.
+  """
 
   local_output_directory = None
   remote_output_directory = None
@@ -193,6 +198,10 @@ class MultihostCluster(base.ClusterRunnerBase):
   slaves = []
 
   def setup(self, run, run_id):
+    """
+    Prepares the cluster for running the emulation.
+    """
+
     try:
       # First establish all connections
       self.host_mc = Host(self, 'mc')
@@ -287,6 +296,10 @@ class MultihostCluster(base.ClusterRunnerBase):
       raise
 
   def run_scenario(self, run, run_id):
+    """
+    Starts the controller and begins the emulation.
+    """
+
     if self.host_mc is None or any([s.failed for s in self.host_workers]):
       logger.error("Cluster not ready, aborting scenario run.")
       raise exceptions.ScenarioRunFailed
@@ -336,6 +349,10 @@ class MultihostCluster(base.ClusterRunnerBase):
     time.sleep(15)
 
   def shutdown(self):
+    """
+    Shuts down the testbed environment.
+    """
+
     logger.info("Shutting down cluster...")
 
     for host in self.host_workers:

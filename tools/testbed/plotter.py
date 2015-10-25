@@ -22,21 +22,20 @@ from . import exceptions
 
 import argparse
 import fnmatch
-import hashlib
-import importlib
 import logging
 import logging.config
 import os
-import sys
 import traceback
 
 logger = logging.getLogger('testbed.plotter')
+
 
 class Plotter(object):
   def run(self, settings):
     """
     Scenario runner entry point.
     """
+
     main_parser = argparse.ArgumentParser("plotter")
     main_parser.add_argument('run_groups', metavar='run_id', type=str, nargs='+',
                              help='unique run identifier')
@@ -93,7 +92,7 @@ class Plotter(object):
           logger.info("Abort requested by user.")
           return
         except NotImplementedError:
-          logger.warning("Skipping non-implemented graph plotter '%s.%s'." % 
+          logger.warning("Skipping non-implemented graph plotter '%s.%s'." %
             (graph.plotter.__module__, graph.plotter.__name__))
           continue
         except exceptions.MissingDatasetError:

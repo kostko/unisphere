@@ -18,20 +18,21 @@
 #
 
 from . import base
-from .. import exceptions
 
 import matplotlib.pyplot as plt
 import numpy
-import scipy.optimize
+
 
 class ResolvabilityVsAttackEdges(base.PlotterBase):
   """
   Draws resolvability in relation to fraction of attack edges.
   """
+
   def plot(self):
     """
     Plots the resolvability vs. fraction of attack edges.
     """
+
     fig, ax = plt.subplots()
 
     values = {}

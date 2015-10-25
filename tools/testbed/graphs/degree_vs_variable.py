@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -18,24 +19,32 @@
 #
 
 from . import base
-from .. import exceptions
 
 import matplotlib.pyplot as plt
 import numpy
 import scipy.optimize
 
+
 class DegreeVsVariable(base.PlotterBase):
   """
   Draws graph degree in relation to some variable.
   """
+
   def plot(self):
     """
     Plots the degree vs. variable.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name
     variable = self.graph.settings.get('variable', 'size')
+
+    labels = {
+      'degree': "Stopnja",
+      'in-degree': "Vhodna stopnja",
+      'out-degree': "Izhodna stopnja",
+    }
 
     values = {
       'degree': {},
@@ -63,7 +72,7 @@ class DegreeVsVariable(base.PlotterBase):
       Yerr = [values[typ][x][1] for x in X]
 
       if X:
-        ax.errorbar(X, Y, Yerr, marker='x', label=typ)
+        ax.errorbar(X, Y, Yerr, marker='x', label=labels[typ])
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
@@ -76,8 +85,8 @@ class DegreeVsVariable(base.PlotterBase):
       Fy = [fit_function(x, *popt) for x in Fx]
       ax.plot(Fx, Fy, linestyle='--', color='black', label=self.graph.settings.get('fit_label', 'Fit'))
 
-    ax.set_xlabel(variable.capitalize())
-    ax.set_ylabel('Degree')
+    ax.set_xlabel(u'Število vozlišč v osnovni topologiji')
+    ax.set_ylabel(u'Stopnja vozlišča')
     ax.grid()
 
     if self.graph.settings.get('scale'):

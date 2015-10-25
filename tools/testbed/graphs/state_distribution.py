@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -22,14 +23,17 @@ from . import base
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+
 class StateDistribution(base.PlotterBase):
   """
   Draws routing state distribution over nodes
   """
+
   def plot(self):
     """
     Plots the CDF of path stretch.
     """
+
     fig, ax = plt.subplots()
 
     for run in self.runs:
@@ -45,8 +49,8 @@ class StateDistribution(base.PlotterBase):
       ax.plot(ecdf.x, ecdf.y, drawstyle='steps', linewidth=2,
         label="n = %d" % run.orig.settings.get('size', 0))
 
-    ax.set_xlabel('State at a Node [entries]')
-    ax.set_ylabel('Cummulative Probability')
+    ax.set_xlabel(u'Število vnosov')
+    ax.set_ylabel('Kumulativna verjetnost')
     ax.grid()
     ax.axis((0.5, None, 0, 1.01))
     self.convert_axes_to_bw(ax)

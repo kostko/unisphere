@@ -27,16 +27,17 @@ import importlib
 import logging
 import logging.config
 import os
-import sys
 import traceback
 
 logger = logging.getLogger('testbed.runner')
+
 
 class Runner(object):
   def run(self, settings):
     """
     Scenario runner entry point.
     """
+
     main_parser = argparse.ArgumentParser("runner")
     main_parser.add_argument('--runs', metavar='name', type=str, nargs='+',
                              help='limit to specific runs')

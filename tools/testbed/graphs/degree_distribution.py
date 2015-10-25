@@ -22,14 +22,17 @@ from . import base
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+
 class DegreeDistribution(base.PlotterBase):
   """
   Draws degree distribution over nodes.
   """
+
   def plot(self):
     """
     Plots the CDF of node degrees.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -18,24 +19,26 @@
 #
 
 from . import base
-from .. import exceptions
 
 import matplotlib.pyplot as plt
 import numpy
-import scipy.optimize
+
 
 class LRLengthVsVariable(base.PlotterBase):
   """
   Draws L-R address length in relation to some variable.
   """
+
   def plot(self):
     """
     Plots the L-R address length vs. variable.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name
     variable = self.graph.settings.get('variable', 'size')
+    variable_label = self.graph.settings.get('variable_label', variable.capitalize().replace('_', ' '))
 
     values = {
       'primary': {},
@@ -58,14 +61,19 @@ class LRLengthVsVariable(base.PlotterBase):
       'secondary': (5, 5),
     }
 
+    labels = {
+      'primary': 'Primarni',
+      'secondary': 'Sekundarni',
+    }
+
     for typ in values:
       X = sorted(values[typ].keys())
       Y = [values[typ][x][0] for x in X]
       Yerr = [values[typ][x][1] for x in X]
-      ax.errorbar(X, Y, Yerr, marker='x', color='black', dashes=dash[typ], label=typ)
+      ax.errorbar(X, Y, Yerr, marker='x', color='black', dashes=dash[typ], label=labels[typ])
 
-    ax.set_xlabel(variable.capitalize().replace('_', ' '))
-    ax.set_ylabel('L-R Address Length')
+    ax.set_xlabel(variable_label)
+    ax.set_ylabel(u'Dolžina naslova L-R')
     ax.grid()
 
     if self.graph.settings.get('scale'):

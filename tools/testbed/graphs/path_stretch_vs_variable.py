@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -21,20 +22,23 @@ from . import base
 
 import matplotlib.pyplot as plt
 import numpy
-import statsmodels.api as sm
+
 
 class PathStretchVsVariable(base.PlotterBase):
   """
   Draws path stretch growth in relation to a variable.
   """
+
   def plot(self):
     """
     Plots the path stretch growth.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label variable name
     variable = self.graph.settings.get('variable', 'size')
+    variable_label = self.graph.settings.get('variable_label', variable.capitalize())
 
     averages = {}
     for run in self.runs:
@@ -50,8 +54,8 @@ class PathStretchVsVariable(base.PlotterBase):
     Yerr = [averages[x][1] for x in X]
     ax.errorbar(X, Y, Yerr, color='black', linestyle='-', marker='x')
 
-    ax.set_xlabel(variable.capitalize())
-    ax.set_ylabel('Path Stretch')
+    ax.set_xlabel(variable_label)
+    ax.set_ylabel('Razteg poti')
     ax.set_ylim(0, None)
     ax.grid()
 

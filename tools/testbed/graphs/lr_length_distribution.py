@@ -22,14 +22,17 @@ from . import base
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+
 class LRLengthDistribution(base.PlotterBase):
   """
   Draws L-R address length distribution over nodes.
   """
+
   def plot(self):
     """
     Plots the CDF of L-R address length distribution.
     """
+
     fig, ax = plt.subplots()
 
     for run in self.runs:

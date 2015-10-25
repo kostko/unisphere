@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -25,15 +26,18 @@ import matplotlib.pyplot as plt
 import numpy
 import pandas
 
+
 class MessagingPerformance(base.PlotterBase):
   """
   Draws messaging performance of the USphere protocol.
   """
+
   def pre_process(self, run, variables):
     """
     Performs pre-processing of the data so that the timeseries is grouped
     by timestamps and nodes in order to be processed correctly later on.
     """
+
     chunks = run.get_dataset("stats-collect_performance-raw-*.csv", chunksize=5000)
     ts_base, groups = None, set()
     for chunk in chunks:
@@ -95,6 +99,7 @@ class MessagingPerformance(base.PlotterBase):
     """
     Computes the rate of a variable.
     """
+
     # Extract variable from the grouped dataset
     X = timestamps[:-10]
     Y = [grouped_data[x][variable] for x in X]
@@ -110,6 +115,7 @@ class MessagingPerformance(base.PlotterBase):
     """
     Computes average and standard deviation.
     """
+
     Yf = [y for x, y in zip(X, Y) if x >= x_min]
     return numpy.average(Yf), numpy.std(Yf)
 
@@ -117,6 +123,7 @@ class MessagingPerformance(base.PlotterBase):
     """
     Plots a timeseries for a variable.
     """
+
     # Plot rate
     if self.settings.GRAPH_TRANSPARENCY:
       ax.plot(X, Yrate, color=color, alpha=0.4, zorder=0)
@@ -132,11 +139,12 @@ class MessagingPerformance(base.PlotterBase):
     """
     Plots the messaging performance.
     """
+
     fig, ax = plt.subplots()
 
     # Determine the label attribute name
     label_attribute = self.graph.settings.get('label_attribute', 'size')
-    label_attribute_dsc = self.graph.settings.get('label_attribute_dsc', 'Topology Size [nodes]')
+    label_attribute_dsc = self.graph.settings.get('label_attribute_dsc', u'Število vozlišč')
 
     min_max_ts = None
     averages = {
@@ -154,13 +162,18 @@ class MessagingPerformance(base.PlotterBase):
       rX, rYrate = self.compute_rate(timestamps, grouped_data, 'rt_msgs')
       saX, saYrate = self.compute_rate(timestamps, grouped_data, 'sa_msgs')
 
+      if len(self.runs) > 1:
+        additional_label = ' (%s = %d)' % (label_attribute, run_attribute)
+      else:
+        additional_label = ''
+
       # Plot variables
       self.plot_variable(ax, sX, sYrate, mpl.cm.winter(float(i) / len(self.runs)),
-        'SG records (%s = %d)' % (label_attribute, run_attribute))
+        'Zapisi SG' + additional_label)
       self.plot_variable(ax, rX, rYrate, mpl.cm.autumn(float(i) / len(self.runs)),
-        'RT records (%s = %d)' % (label_attribute, run_attribute))
+        'Zapisi RT' + additional_label)
       self.plot_variable(ax, saX, saYrate, mpl.cm.summer(float(i) / len(self.runs)),
-        'SA updates (%s = %d)' % (label_attribute, run_attribute))
+        'Zapisi SA' + additional_label)
 
       # Retrieve the moment in time when all nodes are considered up and compute average rates
       nodes_up_ts = run.get_marker("all_nodes_up")
@@ -171,13 +184,13 @@ class MessagingPerformance(base.PlotterBase):
       if min_max_ts is None or timestamps[-1] < min_max_ts:
         min_max_ts = timestamps[-1]
 
-    ax.set_xlabel('Time [s]')
-    ax.set_ylabel('Records/s')
+    ax.set_xlabel(u'Čas [s]')
+    ax.set_ylabel('Zapisi/s')
     ax.set_xlim(0, min_max_ts)
     ax.grid()
 
     if self.graph.settings.get('legend', True):
-      legend = ax.legend(loc='upper right')
+      legend = ax.legend(loc=self.graph.settings.get('legend_loc', 'upper left'))
       if self.settings.GRAPH_TRANSPARENCY:
         legend.get_frame().set_alpha(0.8)
 
@@ -188,8 +201,8 @@ class MessagingPerformance(base.PlotterBase):
       ax.clear()
 
       descriptions = {
-        'sg_msgs': 'SG records',
-        'rt_msgs': 'RT records',
+        'sg_msgs': 'Zapisi SG',
+        'rt_msgs': 'Zapisi RT',
       }
 
       for typ, ls in zip(averages, itertools.cycle(['-', '--'])):
@@ -198,8 +211,8 @@ class MessagingPerformance(base.PlotterBase):
         Yerr = [averages[typ][x][1] for x in X]
         ax.errorbar(X, Y, Yerr, color='black', linestyle=ls, marker='x', label=descriptions[typ])
 
-      ax.set_xlabel(label_attribute)
-      ax.set_ylabel('Records/s')
+      ax.set_xlabel(label_attribute_dsc)
+      ax.set_ylabel('Zapisi/s')
       ax.grid()
       ax.set_ylim(0, None)
 

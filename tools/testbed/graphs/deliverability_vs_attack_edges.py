@@ -18,20 +18,21 @@
 #
 
 from . import base
-from .. import exceptions
 
 import matplotlib.pyplot as plt
 import numpy
-import scipy.optimize
+
 
 class DeliverabilityVsAttackEdges(base.PlotterBase):
   """
   Draws deliverability in relation to fraction of attack edges.
   """
+
   def plot(self):
     """
     Plots the deliverability vs. fraction of attack edges.
     """
+
     fig, ax = plt.subplots()
 
     values = {}

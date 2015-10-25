@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -22,14 +23,17 @@ from . import base
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+
 class LinkCongestion(base.PlotterBase):
   """
   Draws link load distribution over paths.
   """
+
   def plot(self):
     """
     Plots the CDF of link load.
     """
+
     fig, ax = plt.subplots()
 
     for run in self.runs:
@@ -45,13 +49,18 @@ class LinkCongestion(base.PlotterBase):
       ecdf_measure = sm.distributions.ECDF(data_measure)
       ecdf_sp = sm.distributions.ECDF(data_sp)
 
-      ax.plot(ecdf_measure.x, ecdf_measure.y, drawstyle='steps', linewidth=2,
-        label="U-Sphere (n = %d)" % run.orig.settings.get('size', 0))
-      ax.plot(ecdf_sp.x, ecdf_sp.y, drawstyle='steps', linewidth=2,
-        label="Shortest-paths (n = %d)" % run.orig.settings.get('size', 0))
+      variable_label = ""
+      size = run.orig.settings.get('size', None)
+      if size is not None:
+        variable_label = " (n=%d)" % size
 
-    ax.set_xlabel('Link Congestion')
-    ax.set_ylabel('Cummulative Probability')
+      ax.plot(ecdf_measure.x, ecdf_measure.y, drawstyle='steps', linewidth=2,
+        label="U-Sphere%s" % variable_label)
+      ax.plot(ecdf_sp.x, ecdf_sp.y, drawstyle='steps', linewidth=2,
+        label=u"Klasični usmerjevalni protokol%s" % variable_label)
+
+    ax.set_xlabel('Obremenjenost povezave')
+    ax.set_ylabel('Kumulativna verjetnost')
     ax.grid()
     ax.axis((28, None, 0.99, 1.0005))
     self.convert_axes_to_bw(ax)

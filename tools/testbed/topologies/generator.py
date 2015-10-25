@@ -22,16 +22,20 @@ from .. import exceptions
 import random
 import networkx as nx
 
+
 class Arguments(object):
   pass
+
 
 def evaluate_argument(arg, args):
   """
   A helper function for lazy evaluation of arguments.
   """
+
   if callable(arg):
     return arg(args)
   return arg
+
 
 def generate(topology, arguments, filename):
   """

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # This file is part of UNISPHERE.
 #
@@ -24,14 +25,17 @@ import matplotlib.pyplot as plt
 import numpy
 import scipy.optimize
 
+
 class StateVsSize(base.PlotterBase):
   """
   Draws state growth in relation to topology size.
   """
+
   def plot(self):
     """
     Plots the state growth.
     """
+
     fig, ax = plt.subplots()
 
     values = {}
@@ -54,7 +58,7 @@ class StateVsSize(base.PlotterBase):
     Y = [values[x][0] for x in X]
     Yerr = [values[x][1] for x in X]
 
-    ax.errorbar(X, Y, Yerr, marker='x', color='black', label='Measurements')
+    ax.errorbar(X, Y, Yerr, marker='x', color='black', label='Meritve')
 
     # Fit a function over the measurements when configured
     fit_function = self.graph.settings.get('fit', None)
@@ -64,8 +68,8 @@ class StateVsSize(base.PlotterBase):
       Fy = [fit_function(x, *popt) for x in Fx]
       ax.plot(Fx, Fy, linestyle='--', color='black', label=self.graph.settings.get('fit_label', 'Fit'))
 
-    ax.set_xlabel('Topology Size [nodes]')
-    ax.set_ylabel('State at a Node [entries]')
+    ax.set_xlabel(u'Število vozlišč')
+    ax.set_ylabel(u'Število vnosov')
     ax.grid()
     ax.set_ylim(0, None)
 
