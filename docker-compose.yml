@@ -1,0 +1,11 @@
+db:
+    image: mongo
+    command: --nojournal --smallfiles --noprealloc
+core:
+    image: kostko/unisphere
+    command: bash -c "sleep 5; ./tools/run-scenarios.py --runs pf-b4"
+    volumes:
+        - ./tools/settings.py:/code/tools/settings.py
+        - ./output:/code/output
+    links:
+        - db

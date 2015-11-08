@@ -67,13 +67,14 @@ DataSetProcessor &DataSetStorage::getProcessor()
 void DataSetStorage::initialize()
 {
   try {
+    BOOST_ASSERT(mongo::client::initialize().isOk());
     mongo::ScopedDbConnection db(getConnectionString());
     db.done();
   } catch (mongo::UserException &e) {
     throw DataSetStorageConnectionFailed(e.toString());
   }
 
-  // Initielize the dataset processor thread
+  // Initialize the dataset processor thread
   d->m_processor.initialize();
 }
 

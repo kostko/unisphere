@@ -49,7 +49,7 @@ public:
 LibraryInitializer::LibraryInitializer()
   : m_botan("thread_safe=true")
 {
-  sodium_init();
+  BOOST_ASSERT(sodium_init() >= 0);
   logging::add_common_attributes();
   logging::core::get()->set_logging_enabled(false);
 }

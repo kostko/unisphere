@@ -1,0 +1,15 @@
+cmake
+pkg-config
+libbotan1.10-dev
+libgoogle-perftools-dev
+libprotobuf-dev
+protobuf-compiler
+libgmp-dev
+libgmpxx4ldbl
+libssl-dev
+zlib1g-dev
+libbz2-dev
+python-networkx
+python-paramiko
+python-numpy
+python-scipy
