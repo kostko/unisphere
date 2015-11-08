@@ -67,7 +67,7 @@ DataSetProcessor &DataSetStorage::getProcessor()
 void DataSetStorage::initialize()
 {
   try {
-    BOOST_ASSERT(mongo::client::initialize().isOk());
+    BOOST_ASSERT(mongo::client::initialize().isOK());
     mongo::ScopedDbConnection db(getConnectionString());
     db.done();
   } catch (mongo::UserException &e) {
