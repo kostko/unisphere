@@ -15,9 +15,10 @@ to run the testbed. By default, the image will run the `pf-b4` test, which uses 
 128-node topology and performs some basic protocol tests (the `StandardTests` scenario).
 
 After you have Docker and Docker Compose installed, you can simply start the testbed from the
-top-level directory as follows:
+top-level directory as follows (assuming `unisphere` repository is in `~/unisphere`):
 
 ```
+$ cd ~/unisphere
 $ docker-compose up
 ```
 
@@ -27,6 +28,8 @@ containers. For more information about installing Docker and Docker Compose, see
 
   * https://docs.docker.com/engine/installation
   * https://docs.docker.com/compose/install
+
+The scenario that is used by default will run for around 20 minutes.
 
 Testbed configuration
 =====================
